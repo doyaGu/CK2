@@ -60,7 +60,7 @@ Remarks:
 
 See also:
 *************************************************/
-class CKDataArray : public CKBeObject
+class DLL_EXPORT CKDataArray : public CKBeObject
 {
 public:
     // Column/Format Functions

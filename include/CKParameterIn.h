@@ -37,7 +37,7 @@ The method to use to plug the input parameter to such a shared input is ShareSou
 
 See also: CKBehavior, CKParameterOut, CKParameterOperation
 *************************************************/
-class CKParameterIn : public CKObject
+class DLL_EXPORT CKParameterIn : public CKObject
 {
     friend class CKParameterManager;
     friend class CKParameterOut;

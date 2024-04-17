@@ -147,7 +147,7 @@ cases the name argument is provided as a convenience for debugging and display p
 
 See Also: CKParameterOperation, CKParameter,CKParameterIn, CKParameterOut,ParameterOperation Types,Pre-Registered Parameter Types
 ********************************************/
-class CKParameterManager : public CKBaseManager
+class DLL_EXPORT CKParameterManager : public CKBaseManager
 {
     friend class CKParameter;
     friend class CKContext;

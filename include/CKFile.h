@@ -174,7 +174,7 @@ Remarks:
 
 See also: CreateCKFile,DeleteCKFile
 *************************************************/
-class CKFile
+class DLL_EXPORT CKFile
 {
     friend class CKStateChunk;
 
