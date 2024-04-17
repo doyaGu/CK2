@@ -1,5 +1,8 @@
 #include "CKPluginManager.h"
 
+#include "CKDirectoryParser.h"
+#include "VxMath.h"
+
 CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
     return *this;
 }
@@ -25,11 +28,20 @@ CKPluginManager::~CKPluginManager() {
 }
 
 int CKPluginManager::ParsePlugins(CKSTRING Directory) {
-    return 0;
+    CKDirectoryParser parser(Directory, "*.dll", TRUE);
+    VxAddLibrarySearchPath(Directory);
+    char* plugin = nullptr;
+    int count = 0;
+    while (plugin = parser.GetNextFile()) {
+        if (plugin == nullptr) break;
+        if (RegisterPlugin(plugin) == CK_OK)
+            ++count;
+    }
+    return count;
 }
 
 CKERROR CKPluginManager::RegisterPlugin(CKSTRING str) {
-    return 0;
+    return CK_OK;
 }
 
 CKPluginEntry *CKPluginManager::FindComponent(CKGUID Component, int catIdx) {

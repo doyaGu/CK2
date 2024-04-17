@@ -140,7 +140,7 @@ void CKBuildClassHierarchyTable() {
 }
 
 CKPluginManager *CKGetPluginManager() {
-    return nullptr;
+    return &g_ThePluginManager;
 }
 
 int CKGetPrototypeDeclarationCount() {
