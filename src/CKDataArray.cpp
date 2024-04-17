@@ -1,5 +1,7 @@
 #include "CKDataArray.h"
 
+CK_ID CKDataArray::m_ClassID;
+
 void CKDataArray::InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramguid) {
 
 }

@@ -4,6 +4,9 @@
 #include "CKPlace.h"
 #include "CKObjectArray.h"
 
+
+CK_CLASSID CKLevel::m_ClassID;
+
 CKERROR CKLevel::AddObject(CKObject *obj) {
     if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT) || CKIsChildClassOf(obj, CKCID_LEVEL))
         return CKERR_INVALIDPARAMETER;
@@ -14,7 +17,7 @@ CKERROR CKLevel::AddObject(CKObject *obj) {
 CKERROR CKLevel::RemoveObject(CKObject *obj) {
     if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT))
         return CKERR_INVALIDPARAMETER;
-    GetLevelScene()->RemoveObjectFromScene((CKSceneObject *) obj);
+	GetLevelScene()->RemoveObjectFromScene((CKSceneObject*)obj);
     return CK_OK;
 }
 

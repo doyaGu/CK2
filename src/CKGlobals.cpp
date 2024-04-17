@@ -82,9 +82,9 @@ CKERROR CKStartUp() {
     CKCLASSREGISTER(CKBehaviorLink, CKObject);
     CKCLASSREGISTER(CKSceneObject, CKObject);
     CKCLASSREGISTER(CKSynchroObject, CKObject);
-    CKCLASSREGISTER(CKStateObject, CKObject);
+    //CKCLASSREGISTER(CKStateObject, CKObject);
     CKCLASSREGISTER(CKCriticalSectionObject, CKObject);
-    CKCLASSREGISTER(CKInterfaceObjectManager, CKObject);
+    //CKCLASSREGISTER(CKInterfaceObjectManager, CKObject);
     CKCLASSREGISTER(CKBeObject, CKSceneObject);
     CKCLASSREGISTER(CKBehavior, CKSceneObject);
     CKCLASSREGISTER(CKScene, CKBeObject);
@@ -92,8 +92,8 @@ CKERROR CKStartUp() {
     CKCLASSREGISTER(CKGroup, CKBeObject);
     CKCLASSREGISTER(CKSound, CKBeObject);
     CKCLASSREGISTER(CKDataArray, CKBeObject);
-    CKCLASSREGISTER(CKWaveSound, CKSound);
-    CKCLASSREGISTER(CKMidiSound, CKSound);
+    //CKCLASSREGISTER(CKWaveSound, CKSound);
+    //CKCLASSREGISTER(CKMidiSound, CKSound);
     CKBuildClassHierarchyTable();
 
     return 0;
@@ -280,7 +280,7 @@ CKSTRING CKStrdup(CKSTRING string) {
         return NULL;
 
     size_t len = strlen(string);
-    CKSTRING str = (CKSTRING) VxNew(len + 1);
+    CKSTRING str = nullptr;// (CKSTRING)VxNew(len + 1);
     strcpy(str, string);
     return str;
 }
@@ -314,7 +314,7 @@ CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp) {
         return NULL;
     if (bp->m_Size <= 0 || bp->m_Size >= 256)
         return NULL;
-    CKBitmapProperties *nbp = (CKBitmapProperties *) VxNew(bp->m_Size);
+    CKBitmapProperties* nbp = nullptr;// (CKBitmapProperties*)VxNew(bp->m_Size);
     memcpy(nbp, bp, bp->m_Size);
     return nbp;
 }
@@ -328,7 +328,7 @@ CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode) {
 }
 
 void CKDeletePointer(void *ptr) {
-    VxDelete(ptr);
+    //VxDelete(ptr);
 }
 
 CKERROR CKCopyAllAttributes(CKBeObject *Src, CKBeObject *Dest) {

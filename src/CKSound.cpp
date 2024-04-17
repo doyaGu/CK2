@@ -4,6 +4,8 @@ CK_SOUND_SAVEOPTIONS CKSound::GetSaveOptions() {
     return CKSOUND_EXTERNAL;
 }
 
+CK_CLASSID CKSound::m_ClassID;
+
 void CKSound::SetSaveOptions(CK_SOUND_SAVEOPTIONS Options) {
 
 }

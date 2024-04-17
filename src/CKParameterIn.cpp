@@ -1,5 +1,6 @@
 #include "CKParameterIn.h"
 
+CK_CLASSID CKParameterIn::m_ClassID;
 
 CKERROR CKParameterIn::SetDirectSource(CKParameter *param) {
     return 0;

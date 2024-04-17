@@ -1,5 +1,7 @@
 #include "CKGroup.h"
 
+CK_ID CKGroup::m_ClassID;
+
 CKERROR CKGroup::AddObject(CKBeObject *o) {
     return 0;
 }

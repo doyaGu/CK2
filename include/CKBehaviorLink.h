@@ -24,7 +24,7 @@ the activation from its input to its output, immediately or with a given delay.
 
 See also: CKBehavior,CKBehaviorIO
 **************************************************************************/
-class CKBehaviorLink : public CKObject
+class DLL_EXPORT CKBehaviorLink : public CKObject
 {
     friend class CKBehavior;
     friend class CKBehaviorIO;

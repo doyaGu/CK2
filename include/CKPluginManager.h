@@ -194,7 +194,7 @@ the DLL that declared it.
 
 See Also: CKPluginEntry,CKPluginDll,Creating New Plugins
 **********************************************************************************/
-class CKPluginManager
+class DLL_EXPORT CKPluginManager
 {
 public:
     CKPluginManager();

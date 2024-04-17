@@ -24,7 +24,7 @@ objects such as how do they behave at startup or initial conditions.
 
 See also: CKContext::GetCurrentLevel,CKScene
 *************************************************/
-class CKLevel : public CKBeObject
+class DLL_EXPORT CKLevel : public CKBeObject
 {
     friend class CKScene;
     friend class CKContext;

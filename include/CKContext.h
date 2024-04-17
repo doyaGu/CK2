@@ -8,6 +8,7 @@
 #include "XHashTable.h"
 #include "VxTimeProfiler.h"
 #include "VxMemoryPool.h"
+#include "CKObjectManager.h"
 
 //-------------------------------------------------------------------------
 
@@ -39,7 +40,7 @@ Remarks:
 
 See also: CKContext::CreateObject, CKContext::GetObject, CKContext::DestroyObject
 *******************************************************************************/
-class CKContext
+class DLL_EXPORT CKContext
 {
     friend class CKBehavior;
 

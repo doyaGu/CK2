@@ -1,4 +1,7 @@
 #include "CKParameterOut.h"
+#include "CKParameterOut.h"
+
+CK_CLASSID CKParameterOut::m_ClassID;
 
 CKERROR CKParameterOut::GetValue(void *buf, CKBOOL update) {
     return CKParameter::GetValue(buf, update);
@@ -44,7 +47,7 @@ void CKParameterOut::RemoveAllDestinations() {
 
 }
 
-CKParameterOut::CKParameterOut(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
+CKParameterOut::CKParameterOut(CKContext *Context, CKSTRING name): CKParameter(Context, name) {
 
 }
 

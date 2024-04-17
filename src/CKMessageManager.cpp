@@ -11,7 +11,7 @@ CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
 }
 
 CKSTRING CKMessageManager::GetMessageTypeName(CKMessageType MsgType) {
-    if (MsgType >= 0 & MsgType < m_RegistredMessageTypes.Size())
+    if (MsgType >= 0 && MsgType < m_RegistredMessageTypes.Size())
         return NULL;
     return m_RegistredMessageTypes[MsgType].Str();
 }
@@ -21,7 +21,7 @@ int CKMessageManager::GetMessageTypeCount() {
 }
 
 void CKMessageManager::RenameMessageType(CKMessageType MsgType, CKSTRING NewName) {
-    if (MsgType >= 0 & MsgType < m_RegistredMessageTypes.Size())
+    if (MsgType >= 0 && MsgType < m_RegistredMessageTypes.Size())
         m_RegistredMessageTypes[MsgType] = NewName;
 }
 

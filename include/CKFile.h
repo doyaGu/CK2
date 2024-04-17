@@ -1,6 +1,8 @@
 #ifndef CKFILE_H
 #define CKFILE_H
 
+#include "CKTypes.h"
+
 #include "CKObjectArray.h"
 #include "CKObject.h"
 #include "CKStateChunk.h"

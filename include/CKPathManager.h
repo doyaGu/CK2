@@ -52,7 +52,7 @@ three default category:
 
 See Also:CKContext::GetPathManager
 ****************************************************/
-class CKPathManager : public CKBaseManager
+class DLL_EXPORT CKPathManager : public CKBaseManager
 {
 public:
     CKPathManager(CKContext *Context);

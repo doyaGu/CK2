@@ -1,7 +1,5 @@
 #include "CKSynchroObject.h"
 
-CK_CLASSID CKSynchroObject::m_ClassID;
-
 void CKSynchroObject::Reset() {
 
 }
@@ -21,7 +19,7 @@ CKBOOL CKSynchroObject::CanIPassRendezVous(CKBeObject *asker) {
 int CKSynchroObject::GetRendezVousNumberOfArrivedObjects() {
     return 0;
 }
-
+//
 //CKBeObject *CKSynchroObject::GetRendezVousArrivedObject(int pos) {
 //    return nullptr;
 //}
@@ -75,87 +73,5 @@ void CKSynchroObject::Register() {
 }
 
 CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
-    return nullptr;
-}
-
-CKBOOL CKStateObject::IsStateActive()
-{
-    return FALSE;
-}
-
-CK_CLASSID CKCriticalSectionObject::m_ClassID;
-
-void CKCriticalSectionObject::Reset()
-{
-}
-
-CKBOOL CKCriticalSectionObject::EnterCriticalSection(CKBeObject* asker)
-{
-    return CKBOOL();
-}
-
-CKBOOL CKCriticalSectionObject::LeaveCriticalSection(CKBeObject* asker)
-{
-    return CKBOOL();
-}
-
-CKCriticalSectionObject::CKCriticalSectionObject(CKContext* Context, CKSTRING name)
-{
-}
-
-CKCriticalSectionObject::~CKCriticalSectionObject()
-{
-}
-
-CK_CLASSID CKCriticalSectionObject::GetClassID()
-{
-    return CK_CLASSID();
-}
-
-CKStateChunk* CKCriticalSectionObject::Save(CKFile* file, CKDWORD flags)
-{
-    return nullptr;
-}
-
-CKERROR CKCriticalSectionObject::Load(CKStateChunk* chunk, CKFile* file)
-{
-    return CKERROR();
-}
-
-void CKCriticalSectionObject::CheckPostDeletion()
-{
-}
-
-int CKCriticalSectionObject::GetMemoryOccupation()
-{
-    return 0;
-}
-
-CKBOOL CKCriticalSectionObject::IsObjectUsed(CKObject* obj, CK_CLASSID cid)
-{
-    return CKBOOL();
-}
-
-CKSTRING CKCriticalSectionObject::GetClassName()
-{
-    return CKSTRING();
-}
-
-int CKCriticalSectionObject::GetDependenciesCount(int mode)
-{
-    return 0;
-}
-
-CKSTRING CKCriticalSectionObject::GetDependencies(int i, int mode)
-{
-    return CKSTRING();
-}
-
-void CKCriticalSectionObject::Register()
-{
-}
-
-CKCriticalSectionObject* CKCriticalSectionObject::CreateInstance(CKContext* Context)
-{
     return nullptr;
 }

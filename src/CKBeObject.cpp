@@ -6,6 +6,8 @@
 #include "CKGroup.h"
 #include "CKParameterOut.h"
 
+CK_CLASSID CKBeObject::m_ClassID;
+
 void CKBeObject::ExecuteBehaviors(float delta) {
     if (m_Context->IsProfilingEnable())
     {

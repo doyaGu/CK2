@@ -7,6 +7,8 @@
 #include "CKParameterLocal.h"
 #include "CKParameterManager.h"
 
+CK_CLASSID CKBehavior::m_ClassID;
+
 CK_BEHAVIOR_TYPE CKBehavior::GetType() {
     if ((m_Flags & CKBEHAVIOR_BUILDINGBLOCK) != 0)
         return CKBEHAVIORTYPE_BASE;
@@ -543,8 +545,8 @@ void CKBehavior::SetPriority(int priority) {
                 CKBeObject *ownerObject = (CKBeObject *) m_Context->GetObjectA(m_Owner);
 
                 // If the owner object exists, sort its scripts
-                if (ownerObject)
-                    ownerObject->SortScripts(); // Calling a class method with an object instance
+                //if (ownerObject)
+                  //  ownerObject->SortScripts(); // Calling a class method with an object instance
             }
         }
     }
@@ -578,9 +580,9 @@ void CKBehavior::SetInterfaceChunk(CKStateChunk *state) {
 
 }
 
-CKBehavior::CKBehavior(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
-
-}
+//CKBehavior::CKBehavior(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
+//
+//}
 
 CKBehavior::~CKBehavior() {
 

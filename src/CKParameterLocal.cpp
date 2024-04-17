@@ -1,5 +1,7 @@
 #include "CKParameterLocal.h"
 
+CK_CLASSID CKParameterLocal::m_ClassID;
+
 void CKParameterLocal::SetAsMyselfParameter(CKBOOL act) {
 
 }

@@ -1,5 +1,7 @@
 #include "CKParameter.h"
 
+CK_CLASSID CKParameter::m_ClassID;
+
 CKObject *CKParameter::GetValueObject(CKBOOL update) {
     return nullptr;
 }

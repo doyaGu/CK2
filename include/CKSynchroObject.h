@@ -32,9 +32,9 @@ public:
     int GetRendezVousNumberOfWaiters();
     CKBOOL CanIPassRendezVous(CKBeObject *asker);
     int GetRendezVousNumberOfArrivedObjects();
-    CKBeObject *GetRendezVousArrivedObject(int pos);
+    //CKBeObject *GetRendezVousArrivedObject(int pos);
 
-    //-------------------------------------------------------------------
+    ////-------------------------------------------------------------------
 
     CKSynchroObject(CKContext *Context, CKSTRING name = NULL);
     virtual ~CKSynchroObject();

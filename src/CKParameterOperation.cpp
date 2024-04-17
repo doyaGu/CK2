@@ -1,5 +1,7 @@
 #include "CKParameterOperation.h"
 
+CK_ID CKParameterOperation::m_ClassID;
+
 CKERROR CKParameterOperation::DoOperation() {
     return 0;
 }

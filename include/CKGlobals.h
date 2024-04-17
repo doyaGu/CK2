@@ -10,26 +10,26 @@ typedef XHashTable<CKObjectDeclaration *, CKGUID>::Iterator XObjDeclHashTableIt;
 //-----------------------------------------------
 // Initializations functions
 
-CKERROR CKStartUp();
-CKERROR CKShutdown();
+DLL_EXPORT CKERROR CKStartUp();
+DLL_EXPORT CKERROR CKShutdown();
 
-CKContext *GetCKContext(int pos);
+DLL_EXPORT CKContext *GetCKContext(int pos);
 
-CKObject *CKGetObject(CKContext *iCtx, CK_ID iID);
+DLL_EXPORT CKObject *CKGetObject(CKContext *iCtx, CK_ID iID);
 
-CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags);
-CKERROR CKCloseContext(CKContext *);
+DLL_EXPORT CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags);
+DLL_EXPORT CKERROR CKCloseContext(CKContext *);
 
-CKSTRING CKGetStartPath();
-CKSTRING CKGetPluginsPath();
+DLL_EXPORT CKSTRING CKGetStartPath();
+DLL_EXPORT CKSTRING CKGetPluginsPath();
 
-void CKDestroyObject(CKObject *o, CKDWORD Flags = 0, CKDependencies *dep = NULL);
+DLL_EXPORT void CKDestroyObject(CKObject *o, CKDWORD Flags = 0, CKDependencies *dep = NULL);
 
-CKDWORD CKGetVersion();
+DLL_EXPORT CKDWORD CKGetVersion();
 
-void CKBuildClassHierarchyTable();
+DLL_EXPORT void CKBuildClassHierarchyTable();
 
-CKPluginManager *CKGetPluginManager();
+DLL_EXPORT CKPluginManager *CKGetPluginManager();
 
 //----------------------------------------------------------
 // Behavior prototype declaration functions
@@ -41,12 +41,12 @@ XObjDeclHashTableIt CKGetPrototypeDeclarationStartIterator();
 
 XObjDeclHashTableIt CKGetPrototypeDeclarationEndIterator();
 
-CKObjectDeclaration *CKGetObjectDeclarationFromGuid(CKGUID guid);
-CKBehaviorPrototype *CKGetPrototypeFromGuid(CKGUID guid);
-CKERROR CKRemovePrototypeDeclaration(CKObjectDeclaration *objdecl);
-CKObjectDeclaration *CreateCKObjectDeclaration(CKSTRING Name);
-CKBehaviorPrototype *CreateCKBehaviorPrototype(CKSTRING Name);
-CKBehaviorPrototype *CreateCKBehaviorPrototypeRunTime(CKSTRING Name);
+DLL_EXPORT CKObjectDeclaration *CKGetObjectDeclarationFromGuid(CKGUID guid);
+DLL_EXPORT CKBehaviorPrototype *CKGetPrototypeFromGuid(CKGUID guid);
+DLL_EXPORT CKERROR CKRemovePrototypeDeclaration(CKObjectDeclaration *objdecl);
+DLL_EXPORT CKObjectDeclaration *CreateCKObjectDeclaration(CKSTRING Name);
+DLL_EXPORT CKBehaviorPrototype *CreateCKBehaviorPrototype(CKSTRING Name);
+DLL_EXPORT CKBehaviorPrototype *CreateCKBehaviorPrototypeRunTime(CKSTRING Name);
 
 #ifdef VIRTOOLS_RUNTIME_VERSION
 #define CreateCKBehaviorPrototype CreateCKBehaviorPrototypeRunTime
@@ -72,17 +72,17 @@ CKClassDesc *CKGetClassDesc(CK_CLASSID cid);
 CKSTRING CKClassIDToString(CK_CLASSID cid);
 CK_CLASSID CKStringToClassID(CKSTRING classname);
 
-CKBOOL CKIsChildClassOf(CK_CLASSID child, CK_CLASSID parent);
-CKBOOL CKIsChildClassOf(CKObject *obj, CK_CLASSID parent);
-CK_CLASSID CKGetParentClassID(CK_CLASSID child);
-CK_CLASSID CKGetParentClassID(CKObject *obj);
-CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2);
+DLL_EXPORT CKBOOL CKIsChildClassOf(CK_CLASSID child, CK_CLASSID parent);
+DLL_EXPORT CKBOOL CKIsChildClassOf(CKObject *obj, CK_CLASSID parent);
+DLL_EXPORT CK_CLASSID CKGetParentClassID(CK_CLASSID child);
+DLL_EXPORT CK_CLASSID CKGetParentClassID(CKObject *obj);
+DLL_EXPORT CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2);
 
 //-----------------------------------------------
 // Array Creation Functions
 
-CKObjectArray *CreateCKObjectArray();
-void DeleteCKObjectArray(CKObjectArray *obj);
+DLL_EXPORT CKObjectArray *CreateCKObjectArray();
+DLL_EXPORT void DeleteCKObjectArray(CKObjectArray *obj);
 
 //-----------------------------------------------
 // StateChunk Creation Functions

@@ -55,3 +55,17 @@ void XObjectPointerArray::Remap(CKDependenciesContext &context) {
             *it = context.Remap(*it);
     }
 }
+
+CKBOOL XSObjectArray::RemoveObject(CKObject* obj)
+{
+    return CKBOOL();
+}
+
+void XSObjectArray::Save(CKStateChunk* chunk, CKContext* ctx) const
+{
+}
+
+CKBOOL XObjectArray::RemoveObject(CKObject* obj)
+{
+    return CKBOOL();
+}

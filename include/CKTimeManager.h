@@ -65,7 +65,7 @@ the frame dependant.
 
 See also: Time Management,Creating a Standalone Application,CKContext::GetTimeManager
 *****************************************************************************/
-class CKTimeManager : public CKBaseManager
+class DLL_EXPORT CKTimeManager : public CKBaseManager
 {
 public:
     //*********** Processing **********************

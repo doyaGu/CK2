@@ -1,5 +1,6 @@
 #include "CKScene.h"
 
+CK_CLASSID CKScene::m_ClassID;
 
 void CKScene::AddObjectToScene(CKSceneObject *o, CKBOOL dependencies) {
 
@@ -26,12 +27,12 @@ int CKScene::GetObjectCount() {
 }
 
 const XObjectPointerArray &CKScene::ComputeObjectList(CK_CLASSID cid, CKBOOL derived) {
-    return <#initializer#>;
+    return XObjectPointerArray();
 }
 
-CKSceneObjectIterator CKScene::GetObjectIterator() {
-    return nullptr;
-}
+//CKSceneObjectIterator CKScene::GetObjectIterator() {
+//    return CKSceneObjectIterator(m_SceneObjects.Begin());
+//}
 
 void CKScene::Activate(CKSceneObject *o, CKBOOL Reset) {
 

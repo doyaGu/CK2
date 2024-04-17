@@ -118,7 +118,7 @@ Remarks:
 
 See also: CKBeObject, CKScene, CKParameterOut, CKParameterIn, CKBehaviorLink, CKBehaviorPrototype
 ************************************************************************************/
-class CKBehavior : public CKSceneObject
+class DLL_EXPORT CKBehavior : public CKSceneObject
 {
     friend class CKBehaviorManager;
     friend class CKBeObject;

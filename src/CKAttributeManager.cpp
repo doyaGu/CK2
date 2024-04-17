@@ -66,22 +66,22 @@ CKSTRING CKAttributeManager::GetAttributeDefaultValue(CKAttributeType AttribType
     return nullptr;
 }
 
-const XObjectPointerArray &CKAttributeManager::GetAttributeListPtr(CKAttributeType AttribType) {
-    return <#initializer#>;
-}
-
-const XObjectPointerArray &CKAttributeManager::GetGlobalAttributeListPtr(CKAttributeType AttribType) {
-    return <#initializer#>;
-}
-
-const XObjectPointerArray &CKAttributeManager::FillListByAttributes(CKAttributeType *ListAttrib, int AttribCount) {
-    return <#initializer#>;
-}
-
-const XObjectPointerArray &
-CKAttributeManager::FillListByGlobalAttributes(CKAttributeType *ListAttrib, int AttribCount) {
-    return <#initializer#>;
-}
+//const XObjectPointerArray &CKAttributeManager::GetAttributeListPtr(CKAttributeType AttribType) {
+//    return <#initializer#>;
+//}
+//
+//const XObjectPointerArray &CKAttributeManager::GetGlobalAttributeListPtr(CKAttributeType AttribType) {
+//    return <#initializer#>;
+//}
+//
+//const XObjectPointerArray &CKAttributeManager::FillListByAttributes(CKAttributeType *ListAttrib, int AttribCount) {
+//    return <#initializer#>;
+//}
+//
+//const XObjectPointerArray &
+//CKAttributeManager::FillListByGlobalAttributes(CKAttributeType *ListAttrib, int AttribCount) {
+//    return <#initializer#>;
+//}
 
 int CKAttributeManager::GetCategoriesCount() {
     return 0;
@@ -137,6 +137,10 @@ void CKAttributeManager::RefreshList(CKObject *obj, CKScene *scene) {
 
 void CKAttributeManager::RemoveAttributeFromObject(CKBeObject *beo) {
 
+}
+
+CKAttributeManager::CKAttributeManager(CKContext* Context): CKBaseManager(Context, ATTRIBUTE_MANAGER_GUID, "Attribute Manager")
+{
 }
 
 CKAttributeManager::~CKAttributeManager() {

@@ -2,8 +2,13 @@
 #define CKMESSAGEMANAGER_H
 
 #include "CKDefines.h"
+#include "CKTypes.h"
 #include "CKFile.h"
 #include "CKBaseManager.h"
+#include "XClassArray.h"
+#include "XObjectArray.h"
+
+
 
 struct CKMessageWaitingList;
 
@@ -56,7 +61,7 @@ are stacked in the object's "last frame messages" list.
 
 See also: CKContext::GetMessageManager,CKMessage
 ****************************************************************************/
-class CKMessageManager : public CKBaseManager
+class DLL_EXPORT CKMessageManager : public CKBaseManager
 {
     friend class CKMessage;
 

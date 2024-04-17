@@ -64,6 +64,7 @@ CKERROR CKPathManager::RenamePath(int catIdx, int pathIdx, XString &path) {
     return 0;
 }
 
+const char* g_StartPath = "";
 CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) {
     XString v4;
     if (file == "") return CKERR_INVALIDFILE;

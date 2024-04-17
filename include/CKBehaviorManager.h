@@ -24,7 +24,7 @@ Remarks:
 provided for special behavior processing and direct access to the execution of behaviors.
 See Also: CKBehavior, CKBeObject, CKScene
 *************************************************************************/
-class CKBehaviorManager : public CKBaseManager
+class DLL_EXPORT CKBehaviorManager : public CKBaseManager
 {
     friend class CKBehavior;
 

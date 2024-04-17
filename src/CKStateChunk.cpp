@@ -1531,24 +1531,29 @@ void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *
 }
 
 CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
+    return FALSE;
 }
 
 void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
 }
 
 CKBOOL ReadRawBitmapHeader(VxImageDescEx &desc) {
+    return FALSE;
 }
 
 CKBOOL ReadRawBitmapData(VxImageDescEx &desc) {
+    return FALSE;
 }
 
 CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
+    return nullptr;
 }
 
 void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
 }
 
 BITMAP_HANDLE CKStateChunk::ReadBitmap() {
+    return nullptr;
 }
 
 CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler)

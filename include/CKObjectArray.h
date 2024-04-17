@@ -52,7 +52,7 @@ But use:
 CKObjectArray must be  created and deleted through the global functions CreateCKObjectArray and DeleteCKObjectArray
 See also: CreateCKObjectArray, DeleteCKObjectArray
 *************************************************/
-class CKObjectArray
+class DLL_EXPORT CKObjectArray
 {
 public:
     //----------------------------------------------------
