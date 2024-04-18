@@ -40,7 +40,66 @@ int CKPluginManager::ParsePlugins(CKSTRING Directory) {
     return count;
 }
 
-CKERROR CKPluginManager::RegisterPlugin(CKSTRING str) {
+typedef int (*pCountFunc) (void);
+typedef CKPluginInfo* (*pPluginInfoFunc) (int);
+CKERROR CKPluginManager::RegisterPlugin(CKSTRING path
+) {
+    if (!path)
+        return CKERR_INVALIDPARAMETER;
+
+    int idx = -1;
+    CKPluginDll* plugin = GetPluginDllInfo(path, &idx);
+    if (plugin) {
+        if (!plugin->m_DllInstance)
+            return ReLoadPluginDll(idx);
+        return CKERR_ALREADYPRESENT;
+    }
+
+    VxSharedLibrary vxLibrary;
+    auto* handle = vxLibrary.Load(path);
+    if (handle)
+        return CKERR_INVALIDPLUGIN;
+    pCountFunc pFuncCKGetPluginInfoCount = (pCountFunc)vxLibrary.GetFunctionPtr("CKGetPluginInfoCount");
+    pPluginInfoFunc pFuncCKGetPluginInfo = (pPluginInfoFunc)vxLibrary.GetFunctionPtr("CKGetPluginInfo");
+
+    if (!pFuncCKGetPluginInfo) {
+        vxLibrary.ReleaseLibrary();
+        return CKERR_INVALIDPLUGIN;
+    }
+
+    CKPluginDll pluginDll;
+    pluginDll.m_DllFileName = path;
+    pluginDll.m_PluginInfoCount =
+        pFuncCKGetPluginInfoCount ? pFuncCKGetPluginInfoCount() : 1;
+    pluginDll.m_DllInstance = handle;
+
+    for (int i = 0; i < pluginDll.m_PluginInfoCount; ++i) {
+        CKPluginInfo* info = pFuncCKGetPluginInfo(i);
+        if (!info)
+            continue;
+
+        CKPluginEntry entry;
+        entry.m_PluginDllIndex = m_PluginDlls.Size();
+        entry.m_PositionInDll = i;
+        entry.m_PluginInfo = *info;
+
+        CK_PLUGIN_TYPE type = info->m_Type;
+        switch (type) {
+        case CKPLUGIN_BITMAP_READER: {
+            entry.m_ReadersInfo = new CKPluginEntryReadersData;
+            VxSharedLibrary library;
+            library.Attach(pluginDll.m_DllInstance);
+            entry.m_ReadersInfo->m_GetReaderFct = (CKReaderGetReaderFunction)library.GetFunctionPtr("CKGetReader");
+            break;
+        }
+        case CKPLUGIN_MODEL_READER:
+        case CKPLUGIN_BEHAVIOR_DLL:
+        case CKPLUGIN_MOVIE_READER:
+        default:
+            break;
+        }
+    }
+
     return CK_OK;
 }
 
@@ -93,7 +152,7 @@ CKERROR CKPluginManager::ReLoadPluginDll(int PluginDllIdx) {
 }
 
 int CKPluginManager::GetPluginCount(int catIdx) {
-    return 0;
+    return m_PluginCategories[catIdx].m_Entries.Size();
 }
 
 CKPluginEntry *CKPluginManager::GetPluginInfo(int catIdx, int PluginIdx) {
