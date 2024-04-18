@@ -22,7 +22,7 @@ Remarks:
 
 See also:
 *************************************************/
-class CKSynchroObject : public CKObject
+class DLL_EXPORT CKSynchroObject : public CKObject
 {
 public:
     void Reset();

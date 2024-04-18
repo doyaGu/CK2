@@ -87,67 +87,67 @@ DLL_EXPORT void DeleteCKObjectArray(CKObjectArray *obj);
 //-----------------------------------------------
 // StateChunk Creation Functions
 
-CKStateChunk *CreateCKStateChunk(CK_CLASSID id, CKFile *file = NULL);
-CKStateChunk *CreateCKStateChunk(CKStateChunk *chunk);
-void DeleteCKStateChunk(CKStateChunk *chunk);
+DLL_EXPORT CKStateChunk *CreateCKStateChunk(CK_CLASSID id, CKFile *file = NULL);
+DLL_EXPORT CKStateChunk *CreateCKStateChunk(CKStateChunk *chunk);
+DLL_EXPORT void DeleteCKStateChunk(CKStateChunk *chunk);
 
-CKStateChunk *CKSaveObjectState(CKObject *obj, CKDWORD Flags = CK_STATESAVE_ALL);
-CKERROR CKReadObjectState(CKObject *obj, CKStateChunk *chunk);
+DLL_EXPORT CKStateChunk *CKSaveObjectState(CKObject *obj, CKDWORD Flags = CK_STATESAVE_ALL);
+DLL_EXPORT CKERROR CKReadObjectState(CKObject *obj, CKStateChunk *chunk);
 
 //-----------------------------------------------
 // Bitmap utilities
 
-BITMAP_HANDLE CKLoadBitmap(CKSTRING filename);
-CKBOOL CKSaveBitmap(CKSTRING filename, BITMAP_HANDLE bm);
-CKBOOL CKSaveBitmap(CKSTRING filename, VxImageDescEx &desc);
+DLL_EXPORT BITMAP_HANDLE CKLoadBitmap(CKSTRING filename);
+DLL_EXPORT CKBOOL CKSaveBitmap(CKSTRING filename, BITMAP_HANDLE bm);
+DLL_EXPORT CKBOOL CKSaveBitmap(CKSTRING filename, VxImageDescEx &desc);
 
 //------------------------------------------------
 //--- Endian Conversion utilities
 
-void CKConvertEndianArray32(void *buf, int DwordCount);
-void CKConvertEndianArray16(void *buf, int DwordCount);
-CKDWORD CKConvertEndian32(CKDWORD dw);
-CKWORD CKConvertEndian16(CKWORD w);
+DLL_EXPORT void CKConvertEndianArray32(void *buf, int DwordCount);
+DLL_EXPORT void CKConvertEndianArray16(void *buf, int DwordCount);
+DLL_EXPORT CKDWORD CKConvertEndian32(CKDWORD dw);
+DLL_EXPORT CKWORD CKConvertEndian16(CKWORD w);
 
 //------------------------------------------------
 // Compression utilities
 
-CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC = 0);
-char *CKPackData(char *Data, int size, int &NewSize, int compressionlevel);
-char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize);
+DLL_EXPORT CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC = 0);
+DLL_EXPORT char *CKPackData(char *Data, int size, int &NewSize, int compressionlevel);
+DLL_EXPORT char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize);
 
 //-------------------------------------------------
 // String Utilities
 
-CKSTRING CKStrdup(CKSTRING string);
-CKSTRING CKStrupr(CKSTRING string);
-CKSTRING CKStrlwr(CKSTRING string);
+DLL_EXPORT CKSTRING CKStrdup(CKSTRING string);
+DLL_EXPORT CKSTRING CKStrupr(CKSTRING string);
+DLL_EXPORT CKSTRING CKStrlwr(CKSTRING string);
 
 //-------------------------------------------------
 // CKBitmapProperties Utilities
 
-CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp);
+DLL_EXPORT CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp);
 
 #define CKDeleteBitmapProperties(bp) CKDeletePointer((void *)bp)
 
 //-------------------------------------------------
 // Class Dependencies utilities
 
-void CKCopyDefaultClassDependencies(CKDependencies &d, CK_DEPENDENCIES_OPMODE mode);
-CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode);
+DLL_EXPORT void CKCopyDefaultClassDependencies(CKDependencies &d, CK_DEPENDENCIES_OPMODE mode);
+DLL_EXPORT CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode);
 
-void CKDeletePointer(void *ptr);
+DLL_EXPORT void CKDeletePointer(void *ptr);
 
 //-------------------------------------------------------------------
 
 //-------------------------------------------------
 // Merge Utilities
-CKERROR CKCopyAllAttributes(CKBeObject *Src, CKBeObject *Dest);
-CKERROR CKMoveAllScripts(CKBeObject *Src, CKBeObject *Dest);
-CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh);
-void CKRemapObjectParameterValue(CKContext *ckContext, CK_ID oldID, CK_ID newID, CK_CLASSID cid = CKCID_OBJECT, CKBOOL derived = TRUE);
+DLL_EXPORT CKERROR CKCopyAllAttributes(CKBeObject *Src, CKBeObject *Dest);
+DLL_EXPORT CKERROR CKMoveAllScripts(CKBeObject *Src, CKBeObject *Dest);
+DLL_EXPORT CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh);
+DLL_EXPORT void CKRemapObjectParameterValue(CKContext *ckContext, CK_ID oldID, CK_ID newID, CK_CLASSID cid = CKCID_OBJECT, CKBOOL derived = TRUE);
 
-void CKStoreDeclaration(XObjectDeclarationArray *reg, CKObjectDeclaration *a);
+DLL_EXPORT void CKStoreDeclaration(XObjectDeclarationArray *reg, CKObjectDeclaration *a);
 
 //-------- CKClass Registration
 #define CKCLASSNOTIFYFROM(cls1, cls2) CKClassNeedNotificationFrom(cls1::m_ClassID, cls2::m_ClassID)

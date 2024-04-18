@@ -194,7 +194,7 @@ Instances of CKStateChunk should be explicitly deleted with the DeleteCKStateChu
 
 See also: Using State Chunks, CKSaveObjectState, CKReadObjectState, DeleteCKStateChunk
 **********************************************************************/
-class CKStateChunk
+class DLL_EXPORT CKStateChunk
 {
     friend class CKFile;
     friend class ChunkParser;

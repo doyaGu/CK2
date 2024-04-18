@@ -19,7 +19,7 @@ Remarks:
 
 See also: CKParameterOut
 *****************************************************************************/
-class CKParameterLocal : public CKParameter
+class DLL_EXPORT CKParameterLocal : public CKParameter
 {
 public:
     //--------------------------------------------

@@ -19,7 +19,7 @@ onto the output parameter. To have the list and definition of predefined paramet
 
 See also: CKBehavior, CKParameterIn, CKParameterOperation
 **********************************************************************************/
-class CKParameter : public CKObject
+class DLL_EXPORT CKParameter : public CKObject
 {
     friend class CKParameterIn;
     friend class CKParameterManager;

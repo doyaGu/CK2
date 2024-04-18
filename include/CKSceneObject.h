@@ -20,7 +20,7 @@ Remarks:
 
 See also: CKBeObject, CKScene
 *************************************************/
-class CKSceneObject : public CKObject
+class DLL_EXPORT CKSceneObject : public CKObject
 {
 public:
     //----------------------------------------------------------

@@ -32,7 +32,7 @@ Remarks:
 
 See also: CKParameterManager, CKParameterOut, CKParameterIn, CKBehaviorPrototype,ParameterOperation Types
 *********************************************************************************/
-class CKParameterOperation : public CKObject
+class DLL_EXPORT CKParameterOperation : public CKObject
 {
     friend class CKBehavior;
     friend class CKParameterIn;

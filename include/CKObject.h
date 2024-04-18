@@ -62,7 +62,7 @@ Remarks:
 
 See also: CKContext::CreateObject, CKContext::GetObject, CKContext::DestroyObject
 *******************************************************************************/
-class CKObject
+class DLL_EXPORT CKObject
 {
 public:
     //----------------------------------------------------------

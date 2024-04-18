@@ -38,7 +38,7 @@ new type of attribute may be accessed by name or by the unique index returned by
 + See the Using attributes paper for more detail on how to use attributes.
 See also: CKBeObject::SetAttribute,CKBeObject,CKParameterManager,Using Attributes
 ***********************************************************************/
-class CKAttributeManager : public CKBaseManager
+class DLL_EXPORT CKAttributeManager : public CKBaseManager
 {
     friend class CKPluginManager;
     friend class CKFile;

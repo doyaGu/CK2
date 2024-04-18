@@ -332,7 +332,7 @@ Remarks:
     + Supports for Check, Load, Save, Add, Remove, Find functions in the Object CK_ID array.
 See Also: XSObjectPointerArray,XObjectArray,CKObjectArray
 ****************************************************************************/
-class XObjectArray : public XArray<CK_ID>
+class DLL_EXPORT XObjectArray : public XArray<CK_ID>
 {
 public:
     XObjectArray(const int iSize = 0) : XArray<CK_ID>(iSize) {}

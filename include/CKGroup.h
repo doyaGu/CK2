@@ -15,7 +15,7 @@ Remarks:
     + The class id of CKGroup is CKCID_GROUP.
 See also: CKBeObject
 **************************************************************************/
-class CKGroup : public CKBeObject
+class DLL_EXPORT CKGroup : public CKBeObject
 {
     friend class CKBeObject;
 

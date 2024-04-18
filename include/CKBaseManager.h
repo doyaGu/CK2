@@ -91,7 +91,7 @@ Remarks:
 
 See also: CKContext::RegisterNewManager,Implementing a external Manager
 *************************************************************************/
-class CKBaseManager
+class DLL_EXPORT CKBaseManager
 {
 public:
     CKBaseManager(CKContext *Context, CKGUID guid, CKSTRING Name);
