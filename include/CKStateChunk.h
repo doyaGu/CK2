@@ -322,6 +322,7 @@ public:
     void ReadAndFillBuffer_LEndian16(void *buffer);           // fills buffer (must be allocated )
     void ReadAndFillBuffer_LEndian16(int size, void *buffer); // fills buffer with known size (must be allocated )
 
+    CKStateChunk* ReadSubChunk();
     CKStateChunk *ReadSubChunk(CK_READSUBCHUNK_FLAGS Flags = CK_RSC_DEFAULT);
     int ReadBuffer(void **buffer); // returns the size in bytes of the allocated buffer (// Use CKDeletePointer to delete allocated pointer)
     int ReadString(CKSTRING *str); // returns the length of the string including the terminating null character (// Use CKDeletePointer to delete allocated string)

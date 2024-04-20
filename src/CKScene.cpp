@@ -198,8 +198,8 @@ int CKScene::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     return CKBeObject::IsObjectUsed(o, cid);
 }
 
-CKERROR CKScene::PrepareDependencies(CKDependenciesContext &context, CKBOOL iCaller) {
-    return CKBeObject::PrepareDependencies(context, iCaller);
+CKERROR CKScene::PrepareDependencies(CKDependenciesContext &context) {
+    return CKBeObject::PrepareDependencies(context);
 }
 
 CKERROR CKScene::RemapDependencies(CKDependenciesContext &context) {

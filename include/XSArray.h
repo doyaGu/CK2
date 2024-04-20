@@ -20,7 +20,7 @@ but it occupies less memory.
 See Also : XClassArray, XArray
 ************************************************/
 template <class T>
-class XSArray
+class DLL_EXPORT XSArray
 {
 public:
     XSArray()

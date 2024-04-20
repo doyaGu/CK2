@@ -67,6 +67,6 @@ void CKDependenciesContext::Clear() {
     m_ObjectsClassMask.Clear();
 }
 
-void CKDependenciesContext::FinishPrepareDependencies(CKObject *iMySelf, CK_ID Cid) {
-
+CKERROR CKDependenciesContext::FinishPrepareDependencies(CKObject *iMySelf, CK_CLASSID Cid) {
+    return 0;
 }

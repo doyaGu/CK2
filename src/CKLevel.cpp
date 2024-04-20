@@ -178,8 +178,8 @@ int CKLevel::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     return CKBeObject::IsObjectUsed(o, cid);
 }
 
-CKERROR CKLevel::PrepareDependencies(CKDependenciesContext &context, CKBOOL iCaller) {
-    return CKBeObject::PrepareDependencies(context, iCaller);
+CKERROR CKLevel::PrepareDependencies(CKDependenciesContext &context) {
+    return CKBeObject::PrepareDependencies(context);
 }
 
 CKSTRING CKLevel::GetClassNameA() {

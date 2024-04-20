@@ -56,6 +56,11 @@ void XObjectPointerArray::Remap(CKDependenciesContext &context) {
     }
 }
 
+CKBOOL XSObjectArray::Check(CKContext* Context)
+{
+    return CKBOOL();
+}
+
 CKBOOL XSObjectArray::RemoveObject(CKObject* obj)
 {
     return CKBOOL();
@@ -65,7 +70,59 @@ void XSObjectArray::Save(CKStateChunk* chunk, CKContext* ctx) const
 {
 }
 
+CKBOOL XObjectArray::Check(CKContext* Context)
+{
+    return CKBOOL();
+}
+
+CKObject* XObjectArray::GetObject(CKContext* Context, unsigned int i) const
+{
+    return nullptr;
+}
+
 CKBOOL XObjectArray::RemoveObject(CKObject* obj)
 {
     return CKBOOL();
+}
+
+CKBOOL XObjectArray::FindObject(CKObject* obj) const
+{
+    return CKBOOL();
+}
+
+void XObjectArray::Load(CKStateChunk* chunk)
+{
+}
+
+void XObjectArray::Save(CKStateChunk* chunk, CKContext* ctx) const
+{
+}
+
+void XObjectArray::Prepare(CKDependenciesContext& context) const
+{
+}
+
+void XObjectArray::Remap(CKDependenciesContext& context)
+{
+}
+
+CKBOOL XSObjectPointerArray::Check()
+{
+    return CKBOOL();
+}
+
+void XSObjectPointerArray::Load(CKContext* Context, CKStateChunk* chunk)
+{
+}
+
+void XSObjectPointerArray::Save(CKStateChunk* chunk) const
+{
+}
+
+void XSObjectPointerArray::Prepare(CKDependenciesContext& context) const
+{
+}
+
+void XSObjectPointerArray::Remap(CKDependenciesContext& context)
+{
 }

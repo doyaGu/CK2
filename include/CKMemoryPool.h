@@ -4,13 +4,13 @@
 #include "CKContext.h"
 #include "VxMemoryPool.h"
 
-class CKMemoryPool
+class DLL_EXPORT CKMemoryPool
 {
 public:
-    CKMemoryPool(CKContext *Context, size_t ByteCount = 0);
+    CKMemoryPool(CKContext *Context, int ByteCount = 0);
     ~CKMemoryPool();
 
-    CKObject &operator=(const CKObject &);
+    //CKObject &operator=(const CKObject &);
 
     VxMemoryPool *Mem() const;
 

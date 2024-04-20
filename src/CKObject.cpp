@@ -122,7 +122,7 @@ CKBOOL CKObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
     return FALSE;
 }
 
-CKERROR CKObject::PrepareDependencies(CKDependenciesContext &context, CKBOOL iCaller) {
+CKERROR CKObject::PrepareDependencies(CKDependenciesContext &context) {
     if (context.m_Mode == CK_DEPENDENCIES_SAVE && (m_ObjectFlags & CK_OBJECT_NOTTOBESAVED) != 0)
         return CKERR_INCOMPATIBLEPARAMETERS;
 

@@ -106,8 +106,8 @@ int CKGroup::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     return CKBeObject::IsObjectUsed(o, cid);
 }
 
-CKERROR CKGroup::PrepareDependencies(CKDependenciesContext &context, CKBOOL iCaller) {
-    return CKBeObject::PrepareDependencies(context, iCaller);
+CKERROR CKGroup::PrepareDependencies(CKDependenciesContext &context) {
+    return CKBeObject::PrepareDependencies(context);
 }
 
 CKERROR CKGroup::RemapDependencies(CKDependenciesContext &context) {

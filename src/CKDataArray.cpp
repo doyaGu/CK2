@@ -238,8 +238,8 @@ int CKDataArray::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     return CKBeObject::IsObjectUsed(o, cid);
 }
 
-CKERROR CKDataArray::PrepareDependencies(CKDependenciesContext &context, CKBOOL iCaller) {
-    return CKBeObject::PrepareDependencies(context, iCaller);
+CKERROR CKDataArray::PrepareDependencies(CKDependenciesContext &context) {
+    return CKBeObject::PrepareDependencies(context);
 }
 
 CKERROR CKDataArray::RemapDependencies(CKDependenciesContext &context) {

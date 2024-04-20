@@ -173,12 +173,12 @@ DLL_EXPORT void CKStoreDeclaration(XObjectDeclarationArray *reg, CKObjectDeclara
         CKClassRegister(cls1::m_ClassID, Parent_Class, cls1::Register, (CKCLASSCREATIONFCT)cls1::CreateInstance, cls1::GetClassName, cls1::GetDependencies, cls1::GetDependenciesCount); \
     }
 
-void CKClassNeedNotificationFrom(CK_CLASSID Cid1, CK_CLASSID Cid2);
-void CKClassRegisterAssociatedParameter(CK_CLASSID Cid, CKGUID pguid);
-void CKClassRegisterDefaultDependencies(CK_CLASSID Cid, CKDWORD depend_Mask, int mode);
-void CKClassRegisterDefaultOptions(CK_CLASSID Cid, CKDWORD options_Mask);
-CK_CLASSID CKClassGetNewIdentifier();
-void CKClassRegister(CK_CLASSID Cid, CK_CLASSID Parent_Cid,
+DLL_EXPORT void CKClassNeedNotificationFrom(CK_CLASSID Cid1, CK_CLASSID Cid2);
+DLL_EXPORT void CKClassRegisterAssociatedParameter(CK_CLASSID Cid, CKGUID pguid);
+DLL_EXPORT void CKClassRegisterDefaultDependencies(CK_CLASSID Cid, CKDWORD depend_Mask, int mode);
+DLL_EXPORT void CKClassRegisterDefaultOptions(CK_CLASSID Cid, CKDWORD options_Mask);
+DLL_EXPORT CK_CLASSID CKClassGetNewIdentifier();
+DLL_EXPORT void CKClassRegister(CK_CLASSID Cid, CK_CLASSID Parent_Cid,
                      CKCLASSREGISTERFCT registerfct, CKCLASSCREATIONFCT creafct,
                      CKCLASSNAMEFCT NameFct, CKCLASSDEPENDENCIESFCT DependsFct,
                      CKCLASSDEPENDENCIESCOUNTFCT DependsCountFct);

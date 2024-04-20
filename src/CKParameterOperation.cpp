@@ -63,8 +63,8 @@ int CKParameterOperation::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     return CKObject::IsObjectUsed(o, cid);
 }
 
-CKERROR CKParameterOperation::PrepareDependencies(CKDependenciesContext &context, CKBOOL iCaller) {
-    return CKObject::PrepareDependencies(context, iCaller);
+CKERROR CKParameterOperation::PrepareDependencies(CKDependenciesContext &context) {
+    return CKObject::PrepareDependencies(context);
 }
 
 CKERROR CKParameterOperation::RemapDependencies(CKDependenciesContext &context) {

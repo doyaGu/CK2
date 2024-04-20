@@ -42,7 +42,7 @@ Remarks:
     + Supports for Check, Load, Save, Add, Remove, Find functions in the XObjectArray.
 See Also: XSObjectPointerArray,XObjectArray,CKObjectArray, XSArray
 ****************************************************************************/
-class XSObjectArray : public XSArray<CK_ID>
+class DLL_EXPORT XSObjectArray : public XSArray<CK_ID>
 {
 public:
     /***************************************************************************
@@ -210,7 +210,7 @@ Remarks:
     + Supports for Check, Load, Save, Add, Remove, Find functions in the CKObject Pointer array.
 See Also:XSObjectPointerArray,XObjectArray,CKObjectArray
 ****************************************************************************/
-class XObjectPointerArray : public XArray<CKObject *>
+class DLL_EXPORT XObjectPointerArray : public XArray<CKObject *>
 {
 public:
     XObjectPointerArray(const int iSize = 0) : XArray<CKObject *>(iSize) {}
@@ -506,7 +506,7 @@ Remarks:
 
 See Also:XObjectPointerArray,XObjectArray,CKObjectArray
 ****************************************************************************/
-class XSObjectPointerArray : public XSArray<CKObject *>
+class DLL_EXPORT XSObjectPointerArray : public XSArray<CKObject *>
 {
 public:
     /*******************************************************

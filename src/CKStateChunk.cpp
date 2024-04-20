@@ -844,6 +844,11 @@ void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
     }
 }
 
+CKStateChunk* CKStateChunk::ReadSubChunk()
+{
+    return ReadSubChunk(CK_RSC_DEFAULT);
+}
+
 CKStateChunk *CKStateChunk::ReadSubChunk(CK_READSUBCHUNK_FLAGS Flag) {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
     {

@@ -241,8 +241,8 @@ CKBOOL CKBeObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
     return CKObject::IsObjectUsed(obj, cid);
 }
 
-CKERROR CKBeObject::PrepareDependencies(CKDependenciesContext &context, CKBOOL iCaller) {
-    return CKObject::PrepareDependencies(context, iCaller);
+CKERROR CKBeObject::PrepareDependencies(CKDependenciesContext &context) {
+    return 0;
 }
 
 CKERROR CKBeObject::RemapDependencies(CKDependenciesContext &context) {

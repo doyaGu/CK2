@@ -84,7 +84,7 @@ operations like copy, delete, etc.
 Remarks:
 See also: CKDependencies,CKContext
 *************************************************/
-class CKDependenciesContext
+class DLL_EXPORT CKDependenciesContext
 {
     friend class CKObject;
     friend class CKStateChunk;
@@ -222,7 +222,7 @@ public:
 
     XObjectPointerArray m_DynamicObjects;
 
-    void FinishPrepareDependencies(CKObject *iMySelf, CK_ID Cid);
+    CKERROR FinishPrepareDependencies(CKObject *iMySelf, CK_CLASSID Cid);
 
     // the context
     CKContext *m_CKContext;

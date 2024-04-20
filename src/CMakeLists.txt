@@ -136,6 +136,8 @@ set(CK2_SOURCES
         CKDebugContext.cpp
         CKSynchroObject.cpp
         CKBitmapData.cpp
+        CKMemoryPool.cpp
+
 
         # Parameters
         CKParameter.cpp
