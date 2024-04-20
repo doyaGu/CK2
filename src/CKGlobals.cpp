@@ -27,7 +27,9 @@
 
 extern INSTANCE_HANDLE g_CKModule;
 
+XString g_PluginPath;
 XString g_StartPath;
+extern XArray<CKContext*> g_Contextes;
 XClassInfoArray g_CKClassInfo;
 int g_MaxClassID = 55;
 ProcessorsType g_TheProcessor;

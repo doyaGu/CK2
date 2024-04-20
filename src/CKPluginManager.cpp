@@ -3,6 +3,8 @@
 #include "CKDirectoryParser.h"
 #include "VxMath.h"
 
+extern XArray<CKContext*> g_Contextes;
+
 CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
     return *this;
 }
@@ -40,10 +42,9 @@ int CKPluginManager::ParsePlugins(CKSTRING Directory) {
     return count;
 }
 
-typedef int (*pCountFunc) (void);
-typedef CKPluginInfo* (*pPluginInfoFunc) (int);
-CKERROR CKPluginManager::RegisterPlugin(CKSTRING path
-) {
+typedef int (*CountFuncPtr) (void);
+typedef CKPluginInfo* (*PluginInfoFuncPtr) (int);
+CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
     if (!path)
         return CKERR_INVALIDPARAMETER;
 
@@ -59,8 +60,8 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path
     auto* handle = vxLibrary.Load(path);
     if (handle)
         return CKERR_INVALIDPLUGIN;
-    pCountFunc pFuncCKGetPluginInfoCount = (pCountFunc)vxLibrary.GetFunctionPtr("CKGetPluginInfoCount");
-    pPluginInfoFunc pFuncCKGetPluginInfo = (pPluginInfoFunc)vxLibrary.GetFunctionPtr("CKGetPluginInfo");
+    CountFuncPtr pFuncCKGetPluginInfoCount = (CountFuncPtr)vxLibrary.GetFunctionPtr("CKGetPluginInfoCount");
+    PluginInfoFuncPtr pFuncCKGetPluginInfo = (PluginInfoFuncPtr)vxLibrary.GetFunctionPtr("CKGetPluginInfo");
 
     if (!pFuncCKGetPluginInfo) {
         vxLibrary.ReleaseLibrary();
@@ -72,35 +73,61 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path
     pluginDll.m_PluginInfoCount =
         pFuncCKGetPluginInfoCount ? pFuncCKGetPluginInfoCount() : 1;
     pluginDll.m_DllInstance = handle;
-
+    CKERROR err = CKERR_INVALIDPLUGIN;
     for (int i = 0; i < pluginDll.m_PluginInfoCount; ++i) {
         CKPluginInfo* info = pFuncCKGetPluginInfo(i);
         if (!info)
             continue;
 
-        CKPluginEntry entry;
+        CKPluginEntry* pEntry = new CKPluginEntry;
+        CKPluginEntry& entry = *pEntry;
         entry.m_PluginDllIndex = m_PluginDlls.Size();
         entry.m_PositionInDll = i;
         entry.m_PluginInfo = *info;
 
         CK_PLUGIN_TYPE type = info->m_Type;
         switch (type) {
-        case CKPLUGIN_BITMAP_READER: {
+        case CKPLUGIN_BITMAP_READER:
+        case CKPLUGIN_MODEL_READER:
+        case CKPLUGIN_MOVIE_READER: {
             entry.m_ReadersInfo = new CKPluginEntryReadersData;
             VxSharedLibrary library;
             library.Attach(pluginDll.m_DllInstance);
             entry.m_ReadersInfo->m_GetReaderFct = (CKReaderGetReaderFunction)library.GetFunctionPtr("CKGetReader");
             break;
         }
-        case CKPLUGIN_MODEL_READER:
-        case CKPLUGIN_BEHAVIOR_DLL:
-        case CKPLUGIN_MOVIE_READER:
+        case CKPLUGIN_BEHAVIOR_DLL: {
+            entry.m_BehaviorsInfo = new CKPluginEntryBehaviorsData;
+            CKDLL_OBJECTDECLARATIONFUNCTION pfRegisterBehaviorDeclarations =
+                (CKDLL_OBJECTDECLARATIONFUNCTION)vxLibrary.GetFunctionPtr("RegisterBehaviorDeclarations");
+            if (!pfRegisterBehaviorDeclarations)
+                (CKDLL_OBJECTDECLARATIONFUNCTION)vxLibrary.GetFunctionPtr("RegisterNEMOExtensions");
+            InitializeBehaviors(pfRegisterBehaviorDeclarations, entry);
+            break;
+        }
         default:
             break;
         }
+        m_PluginCategories[type].m_Entries.PushBack(pEntry);
+        // g_Context ?
+        if (g_Contextes.Size() % 4 != 0) {
+            
+        }
+        err = CK_OK;
     }
-
-    return CK_OK;
+    if (err != CK_OK) {
+        vxLibrary.ReleaseLibrary();
+    }
+    else {
+        if (g_Contextes.Size() % 4 != 0) {
+            for (auto pCtx = g_Contextes.Begin();
+                pCtx != g_Contextes.End();
+                ++pCtx) {
+                //for ()
+            }
+        }
+    }
+    return err;
 }
 
 CKPluginEntry *CKPluginManager::FindComponent(CKGUID Component, int catIdx) {

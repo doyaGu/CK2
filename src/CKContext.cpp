@@ -13,6 +13,8 @@
 #include "CKParameterOperation.h"
 #include "CKFile.h"
 
+XArray<CKContext*> g_Contextes;
+
 CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATION_OPTIONS Options, CK_CREATIONMODE *Res) {
     return nullptr;
 }
