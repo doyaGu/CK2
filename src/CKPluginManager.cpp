@@ -1,32 +1,91 @@
 #include "CKPluginManager.h"
 
-#include "CKDirectoryParser.h"
 #include "VxMath.h"
+#include "CKDirectoryParser.h"
+#include "CKGlobals.h"
+#include "CKObjectDeclaration.h"
 
 extern XArray<CKContext *> g_Contextes;
 
 CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
+    if (this == &ent) {
+        return *this;
+    }
+
+    if (ent.m_ReadersInfo) {
+        if (!m_ReadersInfo) {
+            m_ReadersInfo = new CKPluginEntryReadersData;
+        }
+        memcpy(m_ReadersInfo, ent.m_ReadersInfo, sizeof(CKPluginEntryReadersData));
+    } else {
+        delete m_ReadersInfo;
+        m_ReadersInfo = nullptr;
+    }
+
+    if (ent.m_BehaviorsInfo) {
+        if (!m_BehaviorsInfo) {
+            m_BehaviorsInfo = new CKPluginEntryBehaviorsData;
+        }
+        m_BehaviorsInfo->m_BehaviorsGUID = ent.m_BehaviorsInfo->m_BehaviorsGUID;
+    } else {
+        delete m_BehaviorsInfo;
+        m_BehaviorsInfo = nullptr;
+    }
+
+    m_PluginDllIndex = ent.m_PluginDllIndex;
+    m_PositionInDll = ent.m_PositionInDll;
+    m_PluginInfo = ent.m_PluginInfo;
+    m_Active = ent.m_Active;
+    m_NeededByFile = ent.m_NeededByFile;
+    m_IndexInCategory = ent.m_IndexInCategory;
+    m_PluginDllIndex = ent.m_PluginDllIndex;
+
     return *this;
 }
 
-CKPluginEntry::CKPluginEntry() {
+CKPluginEntry::CKPluginEntry()
+        : m_PluginInfo(),
+          m_PluginDllIndex(0),
+          m_PositionInDll(0),
+          m_ReadersInfo(nullptr),
+          m_BehaviorsInfo(nullptr),
+          m_Active(FALSE),
+          m_IndexInCategory(0),
+          m_NeededByFile(FALSE) {}
 
-}
-
-CKPluginEntry::CKPluginEntry(const CKPluginEntry &ent) {
-
+CKPluginEntry::CKPluginEntry(const CKPluginEntry &ent) : m_PluginInfo() {
+    m_PluginDllIndex = ent.m_PluginDllIndex;
+    m_PositionInDll = ent.m_PositionInDll;
+    m_PluginInfo = ent.m_PluginInfo;
+    m_Active = ent.m_Active;
+    m_NeededByFile = ent.m_NeededByFile;
+    m_IndexInCategory = ent.m_IndexInCategory;
+    if (ent.m_ReadersInfo) {
+        m_ReadersInfo = new CKPluginEntryReadersData;
+        memcpy(m_ReadersInfo, ent.m_ReadersInfo, sizeof(CKPluginEntryReadersData));
+    } else {
+        m_ReadersInfo = nullptr;
+    }
+    if (ent.m_BehaviorsInfo) {
+        m_BehaviorsInfo = new CKPluginEntryBehaviorsData;
+        m_BehaviorsInfo->m_BehaviorsGUID = ent.m_BehaviorsInfo->m_BehaviorsGUID;
+    } else {
+        m_BehaviorsInfo = nullptr;
+    }
 }
 
 CKPluginEntry::~CKPluginEntry() {
-
+    delete m_ReadersInfo;
+    delete m_BehaviorsInfo;
 }
 
-CKPluginManager::CKPluginManager() {
-
-}
+CKPluginManager::CKPluginManager() {}
 
 CKPluginManager::~CKPluginManager() {
-
+    Clean();
+    m_RunTimeDlls.Clear();
+    m_PluginDlls.Clear();
+    m_PluginCategories.Clear();
 }
 
 int CKPluginManager::ParsePlugins(CKSTRING Directory) {
@@ -137,35 +196,95 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
 }
 
 CKPluginEntry *CKPluginManager::FindComponent(CKGUID Component, int catIdx) {
-    return nullptr;
+    if (catIdx < 0) {
+        for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+            for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+                if ((*eit)->m_PluginInfo.m_GUID == Component) {
+                    return *eit;
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
+    CKPluginCategory &cat = m_PluginCategories[catIdx];
+    for (XArray<CKPluginEntry *>::Iterator eit = cat.m_Entries.Begin(); eit != cat.m_Entries.End(); ++eit) {
+        if ((*eit)->m_PluginInfo.m_GUID == Component) {
+            return *eit;
+        }
+    }
+    if (catIdx != 4)
+        return nullptr;
+
+    CKObjectDeclaration *decl = CKGetObjectDeclarationFromGuid(Component);
+    if (!decl)
+        return nullptr;
+
+    return GetPluginInfo(4, decl->m_PluginIndex);
 }
 
 int CKPluginManager::AddCategory(CKSTRING cat) {
-    return 0;
+    if (!cat || strlen(cat) == 0)
+        return -1;
+
+    int idx = GetCategoryIndex(cat);
+    if (idx == -1) {
+        CKPluginCategory category;
+        category.m_Name = cat;
+        m_PluginCategories.PushBack(category);
+    }
+
+    return idx;
 }
 
 CKERROR CKPluginManager::RemoveCategory(int catIdx) {
-    return 0;
+    if (catIdx < 0 || catIdx >= m_PluginCategories.Size())
+        return CKERR_INVALIDPARAMETER;
+
+    CKPluginCategory &cat = m_PluginCategories[catIdx];
+    if (!cat.m_Entries.IsEmpty()) {
+        for (XArray<CKPluginEntry *>::Iterator eit = cat.m_Entries.Begin(); eit != cat.m_Entries.End(); ++eit) {
+            if (*eit) {
+                delete (*eit);
+            }
+        }
+    }
+
+    m_PluginCategories.RemoveAt(catIdx);
+    return CK_OK;
 }
 
 int CKPluginManager::GetCategoryCount() {
-    return 0;
+    return m_PluginCategories.Size();
 }
 
 CKSTRING CKPluginManager::GetCategoryName(int catIdx) {
-    return nullptr;
+    return m_PluginCategories[catIdx].m_Name.Str();
 }
 
 int CKPluginManager::GetCategoryIndex(CKSTRING cat) {
-    return 0;
+    if (m_PluginCategories.Size() == 0)
+        return -1;
+
+    for (int i = 0; i < m_PluginCategories.Size(); ++i) {
+        if (m_PluginCategories[i].m_Name.Compare(cat) == 0)
+            return i;
+    }
+
+    return -1;
 }
 
 CKERROR CKPluginManager::RenameCategory(int catIdx, CKSTRING newName) {
-    return 0;
+    if (catIdx < 0 || catIdx >= m_PluginCategories.Size())
+        return CKERR_INVALIDPARAMETER;
+
+    m_PluginCategories[catIdx].m_Name = newName;
+    return CK_OK;
 }
 
 int CKPluginManager::GetPluginDllCount() {
-    return 0;
+    return m_PluginDlls.Size();
 }
 
 CKPluginDll *CKPluginManager::GetPluginDllInfo(int PluginDllIdx) {
@@ -199,7 +318,7 @@ int CKPluginManager::GetPluginCount(int catIdx) {
 }
 
 CKPluginEntry *CKPluginManager::GetPluginInfo(int catIdx, int PluginIdx) {
-    return nullptr;
+    return m_PluginCategories[catIdx].m_Entries[PluginIdx];
 }
 
 CKBOOL CKPluginManager::SetReaderOptionData(CKContext *context, void *memdata, CKParameterOut *Param, CKFileExtension ext, CKGUID *guid) {
@@ -235,11 +354,29 @@ CKERROR CKPluginManager::Save(CKContext *context, CKSTRING FileName, CKObjectArr
 }
 
 void CKPluginManager::ReleaseAllPlugins() {
+    for (XClassArray<CKPluginDll>::Iterator it = m_PluginDlls.Begin(); it != m_PluginDlls.End(); ++it) {
+        if (it->m_DllInstance) {
+            VxSharedLibrary sl;
+            sl.Attach(it->m_DllInstance);
+            sl.ReleaseLibrary();
+            it->m_DllInstance = nullptr;
+        }
+    }
 
+    for (XClassArray<VxSharedLibrary *>::Iterator it = m_RunTimeDlls.Begin(); it != m_RunTimeDlls.End(); ++it) {
+        (*it)->ReleaseLibrary();
+        delete *it;
+    }
+
+    Clean();
 }
 
 void CKPluginManager::InitializePlugins(CKContext *context) {
-
+    for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+        for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+            InitInstancePluginEntry(*eit, context);
+        }
+    }
 }
 
 void CKPluginManager::ComputeDependenciesList(CKFile *file) {
@@ -291,7 +428,17 @@ CKDataReader *CKPluginManager::GUIDFindReader(CKGUID &guid, int Category) {
 }
 
 void CKPluginManager::Clean() {
+    for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+        for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+            if (*eit) {
+                delete (*eit);
+            }
+        }
+    }
 
+    m_PluginCategories.Clear();
+    m_PluginDlls.Clear();
+    m_RunTimeDlls.Clear();
 }
 
 void CKPluginManager::Init() {
