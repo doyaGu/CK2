@@ -352,7 +352,7 @@ typedef int (*CKCLASSDEPENDENCIESCOUNTFCT)(int);
 #define CK_GENERALOPTIONS_CANUSECURRENTOBJECT 2	 // Classes that can use an existing object (Meshes,Materials for example)
 #define CK_GENERALOPTIONS_AUTOMATICUSECURRENT 4	 // Classes that automatically use an existing object (Synchro objects...)
 
-struct CKClassDesc
+struct DLL_EXPORT CKClassDesc
 {
     int Done;
     // Initialized upon class registration

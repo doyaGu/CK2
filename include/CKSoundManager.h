@@ -160,7 +160,7 @@ Remarks:
 
 See also: CKContext::GetSoundManager,CKMidiManager,CKWaveSound
 *********************************************************************/
-class CKSoundManager : public CKBaseManager
+class DLL_EXPORT CKSoundManager : public CKBaseManager
 {
 public:
     // Get the caps of the sound manager

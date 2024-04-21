@@ -197,7 +197,7 @@ CKBOOL CKBitmapData::ResizeImages(int Width, int Height) {
     return 0;
 }
 
-CKBOOL CKBitmapData::LoadSlotImage(const XString &Name, int Slot) {
+CKBOOL CKBitmapData::LoadSlotImage(/*const XString &*/XString Name, int Slot) {
     CKPathSplitter splitter((CKSTRING) Name.CStr());
     CKSTRING extStr = splitter.GetExtension();
     CKPluginManager *pm = CKGetPluginManager();
@@ -258,8 +258,9 @@ CKBOOL CKBitmapData::LoadSlotImage(const XString &Name, int Slot) {
     return TRUE;
 }
 
-CKBOOL CKBitmapData::LoadMovieFile(const XString &Name) {
-    return 0;
+CKBOOL CKBitmapData::LoadMovieFile(XString Name)
+{
+    return CKBOOL();
 }
 
 CKMovieInfo *CKBitmapData::CreateMovieInfo(const XString &s, CKMovieProperties **mp) {

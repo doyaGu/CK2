@@ -250,3 +250,30 @@ CKBOOL CKParameterManager::RemoveAllParameterTypes() {
 CKBOOL CKParameterManager::RemoveAllOperations() {
     return 0;
 }
+
+CKStructHelper::CKStructHelper(CKParameter* Param)
+{
+}
+
+CKStructHelper::CKStructHelper(CKContext* ctx, CKGUID PGuid, CK_ID* Data)
+{
+}
+
+CKStructHelper::CKStructHelper(CKContext* ctx, CKParameterType PType, CK_ID* Data)
+{
+}
+
+char* CKStructHelper::GetMemberName(int Pos)
+{
+    return nullptr;
+}
+
+CKGUID CKStructHelper::GetMemberGUID(int Pos)
+{
+    return CKGUID();
+}
+
+int CKStructHelper::GetMemberCount()
+{
+    return 0;
+}

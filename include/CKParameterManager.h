@@ -70,7 +70,7 @@ or it can be use to access the sub-members of a parameter of the type CKPGUID_MY
 
 See Also: RegisterNewStructure,
 ************************************************************/
-class CKStructHelper
+class DLL_EXPORT CKStructHelper
 {
 public:
     CKStructHelper(CKParameter *Param);

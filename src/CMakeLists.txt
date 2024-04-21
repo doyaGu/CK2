@@ -135,6 +135,7 @@ set(CK2_SOURCES
         # Misc
         CKDebugContext.cpp
         CKSynchroObject.cpp
+        CKRenderContext.cpp
         CKBitmapData.cpp
         CKMemoryPool.cpp
 
@@ -165,6 +166,7 @@ set(CK2_SOURCES
 
         # Sound
         CKSound.cpp
+	CKSoundManager.cpp
         CKWaveSound.cpp
         CKMidiSound.cpp
 

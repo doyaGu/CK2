@@ -67,10 +67,10 @@ See Also:Main Steps of Building Block Creation
 //----------------------------------------------------------
 // Class Hierarchy Management
 
-int CKGetClassCount();
-CKClassDesc *CKGetClassDesc(CK_CLASSID cid);
-CKSTRING CKClassIDToString(CK_CLASSID cid);
-CK_CLASSID CKStringToClassID(CKSTRING classname);
+DLL_EXPORT int CKGetClassCount();
+DLL_EXPORT CKClassDesc *CKGetClassDesc(CK_CLASSID cid);
+DLL_EXPORT CKSTRING CKClassIDToString(CK_CLASSID cid);
+DLL_EXPORT CK_CLASSID CKStringToClassID(CKSTRING classname);
 
 DLL_EXPORT CKBOOL CKIsChildClassOf(CK_CLASSID child, CK_CLASSID parent);
 DLL_EXPORT CKBOOL CKIsChildClassOf(CKObject *obj, CK_CLASSID parent);

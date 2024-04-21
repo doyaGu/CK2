@@ -31,7 +31,7 @@ Remarks:
 
 See also: CK2dCurvePoint,CKCurve
 **********************************************************************/
-class CK2dCurve
+class DLL_EXPORT CK2dCurve
 {
 public:
     /*************************************************

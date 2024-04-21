@@ -260,6 +260,9 @@ public:
     void WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *reader, CKBitmapProperties *bp);
     void WriteManagerInt(CKGUID Manager, int val);
 
+    void WriteArray_LEndian(int, int, void*);
+    void WriteArray_LEndian16(int, int, void*);
+
     // No assumptions are made about contents
     // items should be converted to little-endian (PC) format before calling these if necessary
     void WriteBuffer(int size, void *buf);
@@ -270,6 +273,7 @@ public:
 
     void WriteBuffer_LEndian(int size, void *buf);
     void WriteBuffer_LEndian16(int size, void *buf);
+
 
     void WriteBufferNoSize_LEndian(int size, void *buf);   // Do not store size
     void WriteBufferNoSize_LEndian16(int size, void *buf); // Do not store size
@@ -308,6 +312,10 @@ public:
     void ReadVector(VxVector *v);
     void ReadMatrix(VxMatrix &mat);
     int ReadManagerInt(CKGUID *guid);
+
+    int ReadArray_LEndian(void**);
+    int ReadArray_LEndian16(void**);
+
 
     const XObjectArray &ReadXObjectArray();
     const XObjectPointerArray &ReadXObjectArray(CKContext *context);

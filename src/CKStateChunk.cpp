@@ -414,6 +414,14 @@ void CKStateChunk::WriteManagerInt(CKGUID Manager, int val) {
     m_Data[m_ChunkParser->CurrentPos++] = val;
 }
 
+void CKStateChunk::WriteArray_LEndian(int, int, void*)
+{
+}
+
+void CKStateChunk::WriteArray_LEndian16(int, int, void*)
+{
+}
+
 int CKStateChunk::StartManagerReadSequence(CKGUID *guid) {
     int i = m_Data[m_ChunkParser->CurrentPos++];
     if (guid)
@@ -427,6 +435,16 @@ int CKStateChunk::ReadManagerInt(CKGUID *guid) {
         *guid = *(CKGUID *) &m_Data[m_ChunkParser->CurrentPos];
     m_ChunkParser->CurrentPos += 2;
     return m_Data[m_ChunkParser->CurrentPos++];
+}
+
+int CKStateChunk::ReadArray_LEndian(void**)
+{
+    return CK_OK;
+}
+
+int CKStateChunk::ReadArray_LEndian16(void**)
+{
+    return CK_OK;
 }
 
 int CKStateChunk::ReadManagerIntSequence() {

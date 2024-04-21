@@ -47,7 +47,7 @@ Example:
 
 See also: CKBehaviorPrototype,
 ********************************************************************************/
-class CKObjectDeclaration
+class DLL_EXPORT CKObjectDeclaration
 {
 public:
     //////////////////////////////////////////////////

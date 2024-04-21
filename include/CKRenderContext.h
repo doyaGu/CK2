@@ -57,7 +57,7 @@ If a render context is used without a level the user must attach the objects he 
 + The class ID of CKRenderContext is CKCID_RENDERCONTEXT.
 See also: CKRenderManager
 *********************************************************************/
-class CKRenderContext : public CKObject
+class DLL_EXPORT CKRenderContext : public CKObject
 {
 public:
     /*************************************************
