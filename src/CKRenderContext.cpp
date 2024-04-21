@@ -4,6 +4,7 @@ CKRenderContext::CKRenderContext(CKContext* Context, CKSTRING name)
 {
 }
 
-CKRenderContext::~CKRenderContext()
+CKRenderContext::~CKRenderContext(void)
 {
+	CKObject::~CKObject();
 }

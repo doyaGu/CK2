@@ -1238,7 +1238,7 @@ public:
 
     CKRenderContext(CKContext *Context, CKSTRING name = NULL);
 
-    virtual ~CKRenderContext();
+    virtual ~CKRenderContext(void);
 
     virtual CKDWORD GetStencilFreeMask() = 0;
 

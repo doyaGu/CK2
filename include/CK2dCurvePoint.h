@@ -23,7 +23,7 @@ Remarks:
 
 See also: CK2dCurve
 *************************************************************************/
-class CK2dCurvePoint
+class DLL_EXPORT CK2dCurvePoint
 {
     friend class CK2dCurve;
 

@@ -61,6 +61,11 @@ CKBOOL XSObjectArray::Check(CKContext* Context)
     return CKBOOL();
 }
 
+CKObject* XSObjectArray::GetObject(CKContext* Context, unsigned int i) const
+{
+    return nullptr;
+}
+
 CKBOOL XSObjectArray::RemoveObject(CKObject* obj)
 {
     return CKBOOL();
