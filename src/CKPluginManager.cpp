@@ -3,7 +3,7 @@
 #include "CKDirectoryParser.h"
 #include "VxMath.h"
 
-extern XArray<CKContext*> g_Contextes;
+extern XArray<CKContext *> g_Contextes;
 
 CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
     return *this;
@@ -30,57 +30,58 @@ CKPluginManager::~CKPluginManager() {
 }
 
 int CKPluginManager::ParsePlugins(CKSTRING Directory) {
-    CKDirectoryParser parser(Directory, "*.dll", TRUE);
+    CKDirectoryParser parser(Directory, (CKSTRING) "*.dll", TRUE);
     VxAddLibrarySearchPath(Directory);
-    char* plugin = nullptr;
     int count = 0;
-    while (plugin = parser.GetNextFile()) {
-        if (plugin == nullptr) break;
+    for (char *plugin = parser.GetNextFile(); plugin != nullptr; plugin = parser.GetNextFile()) {
         if (RegisterPlugin(plugin) == CK_OK)
             ++count;
     }
     return count;
 }
 
-typedef int (*CountFuncPtr) (void);
-typedef CKPluginInfo* (*PluginInfoFuncPtr) (int);
+typedef int (*CountFuncPtr)();
+typedef CKPluginInfo *(*PluginInfoFuncPtr)(int);
+
 CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
     if (!path)
         return CKERR_INVALIDPARAMETER;
 
     int idx = -1;
-    CKPluginDll* plugin = GetPluginDllInfo(path, &idx);
+    CKPluginDll *plugin = GetPluginDllInfo(path, &idx);
     if (plugin) {
         if (!plugin->m_DllInstance)
             return ReLoadPluginDll(idx);
         return CKERR_ALREADYPRESENT;
     }
-    
+
     VxSharedLibrary vxLibrary;
-    auto* handle = vxLibrary.Load(path);
+    auto *handle = vxLibrary.Load(path);
     if (!handle)
         return CKERR_INVALIDPLUGIN;
-    CountFuncPtr pFuncCKGetPluginInfoCount = (CountFuncPtr)vxLibrary.GetFunctionPtr("CKGetPluginInfoCount");
-    PluginInfoFuncPtr pFuncCKGetPluginInfo = (PluginInfoFuncPtr)vxLibrary.GetFunctionPtr("CKGetPluginInfo");
 
+    auto pFuncCKGetPluginInfoCount = (CountFuncPtr) vxLibrary.GetFunctionPtr("CKGetPluginInfoCount");
+    auto pFuncCKGetPluginInfo = (PluginInfoFuncPtr) vxLibrary.GetFunctionPtr("CKGetPluginInfo");
     if (!pFuncCKGetPluginInfo) {
         vxLibrary.ReleaseLibrary();
         return CKERR_INVALIDPLUGIN;
     }
 
+    XClassArray<CKPluginEntry> pluginEntries;
+
     CKPluginDll pluginDll;
     pluginDll.m_DllFileName = path;
-    pluginDll.m_PluginInfoCount =
-        pFuncCKGetPluginInfoCount ? pFuncCKGetPluginInfoCount() : 1;
+    pluginDll.m_PluginInfoCount = pFuncCKGetPluginInfoCount ? pFuncCKGetPluginInfoCount() : 1;
     pluginDll.m_DllInstance = handle;
+
     CKERROR err = CKERR_INVALIDPLUGIN;
     for (int i = 0; i < pluginDll.m_PluginInfoCount; ++i) {
-        CKPluginInfo* info = pFuncCKGetPluginInfo(i);
+        CKPluginInfo *info = pFuncCKGetPluginInfo(i);
         if (!info)
             continue;
 
-        CKPluginEntry* pEntry = new CKPluginEntry;
-        CKPluginEntry& entry = *pEntry;
+        CKPluginEntry *pEntry = new CKPluginEntry;
+        CKPluginEntry &entry = *pEntry;
         entry.m_PluginDllIndex = m_PluginDlls.Size();
         entry.m_PositionInDll = i;
         entry.m_PluginInfo = *info;
@@ -89,47 +90,49 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
         m_PluginCategories.Resize(type + 1);
         entry.m_IndexInCategory = m_PluginCategories[type].m_Entries.Size();
         switch (type) {
-        case CKPLUGIN_BITMAP_READER:
-        case CKPLUGIN_SOUND_READER:
-        case CKPLUGIN_MODEL_READER:
-        case CKPLUGIN_MOVIE_READER: {
-            entry.m_ReadersInfo = new CKPluginEntryReadersData;
-            VxSharedLibrary library;
-            library.Attach(pluginDll.m_DllInstance);
-            entry.m_ReadersInfo->m_GetReaderFct = (CKReaderGetReaderFunction)library.GetFunctionPtr("CKGetReader");
-            break;
+            case CKPLUGIN_BITMAP_READER:
+            case CKPLUGIN_SOUND_READER:
+            case CKPLUGIN_MODEL_READER:
+            case CKPLUGIN_MOVIE_READER: {
+                entry.m_ReadersInfo = new CKPluginEntryReadersData;
+                VxSharedLibrary library;
+                library.Attach(pluginDll.m_DllInstance);
+                entry.m_ReadersInfo->m_GetReaderFct = (CKReaderGetReaderFunction) library.GetFunctionPtr("CKGetReader");
+                break;
+            }
+            case CKPLUGIN_BEHAVIOR_DLL: {
+                entry.m_BehaviorsInfo = new CKPluginEntryBehaviorsData;
+                auto pfRegisterBehaviorDeclarations = (CKDLL_OBJECTDECLARATIONFUNCTION) vxLibrary.GetFunctionPtr("RegisterBehaviorDeclarations");
+                if (!pfRegisterBehaviorDeclarations)
+                    (CKDLL_OBJECTDECLARATIONFUNCTION) vxLibrary.GetFunctionPtr("RegisterNEMOExtensions");
+                InitializeBehaviors(pfRegisterBehaviorDeclarations, entry);
+                break;
+            }
+            default:
+                break;
         }
-        case CKPLUGIN_BEHAVIOR_DLL: {
-            entry.m_BehaviorsInfo = new CKPluginEntryBehaviorsData;
-            CKDLL_OBJECTDECLARATIONFUNCTION pfRegisterBehaviorDeclarations =
-                (CKDLL_OBJECTDECLARATIONFUNCTION)vxLibrary.GetFunctionPtr("RegisterBehaviorDeclarations");
-            if (!pfRegisterBehaviorDeclarations)
-                (CKDLL_OBJECTDECLARATIONFUNCTION)vxLibrary.GetFunctionPtr("RegisterNEMOExtensions");
-            InitializeBehaviors(pfRegisterBehaviorDeclarations, entry);
-            break;
-        }
-        default:
-            break;
-        }
+
         m_PluginCategories[type].m_Entries.PushBack(pEntry);
-        // g_Context ?
-        if (g_Contextes.Size() % 4 != 0) {
-            
+        if (!g_Contextes.IsEmpty()) {
+            pluginEntries.PushBack(entry);
         }
+
         err = CK_OK;
     }
+
     if (err != CK_OK) {
         vxLibrary.ReleaseLibrary();
+        return err;
     }
-    else {
-        if (g_Contextes.Size() % 4 != 0) {
-            for (auto pCtx = g_Contextes.Begin();
-                pCtx != g_Contextes.End();
-                ++pCtx) {
-                //for ()
+
+    if (!g_Contextes.IsEmpty()) {
+        for (XArray<CKContext *>::Iterator cit = g_Contextes.Begin(); cit != g_Contextes.End(); ++cit) {
+            for (XClassArray<CKPluginEntry>::Iterator eit = pluginEntries.Begin(); eit != pluginEntries.End(); ++eit) {
+                InitInstancePluginEntry(&*eit, *cit);
             }
         }
     }
+
     return err;
 }
 
@@ -176,7 +179,7 @@ CKPluginDll *CKPluginManager::GetPluginDllInfo(CKSTRING PluginName, int *idx) {
         if (path.Compare(i->m_DllFileName) == 0)
             break;
     }
-    
+
     if (idx && i != m_PluginDlls.End()) {
         *idx = i - m_PluginDlls.Begin();
     }
