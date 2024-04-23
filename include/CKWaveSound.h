@@ -22,7 +22,7 @@ panning and volume control.
 + Its class id is CKCID_WAVESOUND
 See also: CKMidiSound,CKSoundManager
 ******************************************************************************/
-class CKWaveSound : public CKSound
+class DLL_EXPORT CKWaveSound : public CKSound
 {
     friend class CKSoundManager;
 
@@ -199,7 +199,7 @@ public:
         return CKIsChildClassOf(iO, CKCID_WAVESOUND) ? (CKWaveSound *)iO : NULL;
     }
 
-    // protected:
+protected:
     CKSoundManager *m_SoundManager;
     void *m_Source;
     CKDWORD m_State;

@@ -80,6 +80,16 @@ CKBOOL XObjectArray::Check(CKContext* Context)
     return CKBOOL();
 }
 
+CKBOOL XObjectArray::AddIfNotHere(CK_ID id)
+{
+    return CKBOOL();
+}
+
+CKBOOL XObjectArray::AddIfNotHere(CKObject* obj)
+{
+    return CKBOOL();
+}
+
 CKObject* XObjectArray::GetObject(CKContext* Context, unsigned int i) const
 {
     return nullptr;

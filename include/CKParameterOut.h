@@ -39,7 +39,7 @@ function that will create the edition window when needed by the interface.
 
 See also: CKBehavior, CKParameterIn, CKParameterOperation
 **********************************************************************************/
-class CKParameterOut : public CKParameter
+class DLL_EXPORT CKParameterOut : public CKParameter
 {
     friend class CKParameterIn;
     friend class CKParameter;

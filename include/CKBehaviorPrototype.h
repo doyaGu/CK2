@@ -104,7 +104,7 @@ Remarks:
 
 See also: CreateCKBehaviorPrototype,CKBehavior
 *************************************************/
-class CKBehaviorPrototype
+class DLL_EXPORT CKBehaviorPrototype
 {
     friend class CKBehavior;
     friend class CKBehaviorPrototypeTemporary;
