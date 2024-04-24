@@ -119,13 +119,6 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
     auto *handle = vxLibrary.Load(path);
 
     CKPathSplitter ps(path);
-    if (handle) {
-        std::cout << ps.GetName() << " - OK\n";
-    }
-    else {
-        std::cout << ps.GetName() << " - Failed\n";
-        return CKERR_INVALIDPLUGIN;
-    }
 
     if (!handle)
         return CKERR_INVALIDPLUGIN;
