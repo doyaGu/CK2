@@ -31,6 +31,7 @@ XString g_PluginPath;
 XString g_StartPath;
 XArray<CKContext*> g_Contextes;
 XClassInfoArray g_CKClassInfo;
+CKStats g_MainStats;
 int g_MaxClassID = 55;
 ProcessorsType g_TheProcessor;
 CKPluginManager g_ThePluginManager;
@@ -114,7 +115,17 @@ CKObject *CKGetObject(CKContext *iCtx, CK_ID iID) {
 }
 
 CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) {
-    return 0;
+    if (iRenderEngine < 0 || iRenderEngine >= g_ThePluginManager.GetPluginCount(CKPLUGIN_RENDERENGINE_DLL))
+        iRenderEngine = 0;
+
+    auto* ctx = new CKContext(iWin, iRenderEngine, Flags);
+    g_Contextes.PushBack(ctx);
+    g_ThePluginManager.InitializePlugins(ctx);
+    memset(&g_MainStats, 0, sizeof(g_MainStats));
+    ctx->m_InitManagerOnRegister = TRUE;
+    ctx->ExecuteManagersOnCKInit();
+    *iContext = ctx;
+    return CK_OK;
 }
 
 CKERROR CKCloseContext(CKContext *) {
@@ -282,7 +293,7 @@ CKSTRING CKStrdup(CKSTRING string) {
         return NULL;
 
     size_t len = strlen(string);
-    CKSTRING str = nullptr;// (CKSTRING)VxNew(len + 1);
+    CKSTRING str = new char[len + 1];
     strcpy(str, string);
     return str;
 }
