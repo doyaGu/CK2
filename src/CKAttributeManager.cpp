@@ -66,22 +66,26 @@ CKSTRING CKAttributeManager::GetAttributeDefaultValue(CKAttributeType AttribType
     return nullptr;
 }
 
-//const XObjectPointerArray &CKAttributeManager::GetAttributeListPtr(CKAttributeType AttribType) {
-//    return <#initializer#>;
-//}
-//
-//const XObjectPointerArray &CKAttributeManager::GetGlobalAttributeListPtr(CKAttributeType AttribType) {
-//    return <#initializer#>;
-//}
-//
-//const XObjectPointerArray &CKAttributeManager::FillListByAttributes(CKAttributeType *ListAttrib, int AttribCount) {
-//    return <#initializer#>;
-//}
-//
-//const XObjectPointerArray &
-//CKAttributeManager::FillListByGlobalAttributes(CKAttributeType *ListAttrib, int AttribCount) {
-//    return <#initializer#>;
-//}
+const XObjectPointerArray &CKAttributeManager::GetAttributeListPtr(CKAttributeType AttribType) {
+    XObjectPointerArray a;
+    return a;
+}
+
+const XObjectPointerArray &CKAttributeManager::GetGlobalAttributeListPtr(CKAttributeType AttribType) {
+    XObjectPointerArray a;
+    return a;
+}
+
+const XObjectPointerArray &CKAttributeManager::FillListByAttributes(CKAttributeType *ListAttrib, int AttribCount) {
+    XObjectPointerArray a;
+    return a;
+}
+
+const XObjectPointerArray &
+CKAttributeManager::FillListByGlobalAttributes(CKAttributeType *ListAttrib, int AttribCount) {
+    XObjectPointerArray a;
+    return a;
+}
 
 int CKAttributeManager::GetCategoriesCount() {
     return 0;

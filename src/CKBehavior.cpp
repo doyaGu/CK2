@@ -289,6 +289,11 @@ CKParameterIn *CKBehavior::CreateInputParameter(CKSTRING name, CKGUID guid) {
     return nullptr;
 }
 
+CKParameterIn* CKBehavior::InsertInputParameter(int pos, CKSTRING name, CKParameterType type)
+{
+    return nullptr;
+}
+
 void CKBehavior::AddInputParameter(CKParameterIn *in) {
 
 }
@@ -342,6 +347,11 @@ CKParameterOut *CKBehavior::CreateOutputParameter(CKSTRING name, CKParameterType
 }
 
 CKParameterOut *CKBehavior::CreateOutputParameter(CKSTRING name, CKGUID guid) {
+    return nullptr;
+}
+
+CKParameterOut* CKBehavior::InsertOutputParameter(int pos, CKSTRING name, CKParameterType type)
+{
     return nullptr;
 }
 

@@ -5,8 +5,8 @@
 #include "CKSceneObjectDesc.h"
 #include "XHashTable.h"
 
-//typedef XHashTable<CKSceneObjectDesc, CK_ID> CKSODHash;
-//typedef CKSODHash::Iterator CKSODHashIt;
+typedef XHashTable<CKSceneObjectDesc, CK_ID> CKSODHash;
+typedef CKSODHash::Iterator CKSODHashIt;
 
 /*************************************************
 Summary: Iterators on objects in a scene.
@@ -29,41 +29,41 @@ For example if can be use in following way:
 
 See Also:CKScene::GetObjectIterator
 *************************************************/
-//class CKSceneObjectIterator
-//{
-//public:
-//    CKSceneObjectIterator() = delete;
-//    CKSceneObjectIterator(CKSODHashIt it) : m_Iterator(it) {}
-//    // Summary:Returns the ID of the current object.
-//    // Return Value
-//    //	CK_ID of the current object.
-//    CK_ID GetObjectID() { return m_Iterator.GetKey(); }
-//
-//    CKSceneObjectDesc *GetObjectDesc() { return m_Iterator; }
-//    // Summary:Reset iterator to start of the list.
-//    void Rewind()
-//    {
-//        m_Iterator = m_Iterator.m_Table->Begin();
-//    }
-//
-//    void RemoveAt()
-//    {
-//        m_Iterator = m_Iterator.m_Table->Remove(m_Iterator);
-//    }
-//
-//    // Summary:Indicates if end of list is reached.
-//    // Return Value
-//    //	Returns TRUE if the iterator is at the end of the list of objects.
-//    int End() { return m_Iterator == m_Iterator.m_Table->End(); }
-//
-//    CKSceneObjectIterator &operator++(int)
-//    {
-//        ++m_Iterator;
-//        return *this;
-//    }
-//
-//    CKSODHashIt m_Iterator;
-//};
+class CKSceneObjectIterator
+{
+public:
+    CKSceneObjectIterator() = delete;
+    CKSceneObjectIterator(CKSODHashIt it) : m_Iterator(it) {}
+    // Summary:Returns the ID of the current object.
+    // Return Value
+    //	CK_ID of the current object.
+    CK_ID GetObjectID() { return m_Iterator.GetKey(); }
+
+    CKSceneObjectDesc *GetObjectDesc() { return m_Iterator; }
+    // Summary:Reset iterator to start of the list.
+    void Rewind()
+    {
+        m_Iterator = m_Iterator.m_Table->Begin();
+    }
+
+    void RemoveAt()
+    {
+        m_Iterator = m_Iterator.m_Table->Remove(m_Iterator);
+    }
+
+    // Summary:Indicates if end of list is reached.
+    // Return Value
+    //	Returns TRUE if the iterator is at the end of the list of objects.
+    int End() { return m_Iterator == m_Iterator.m_Table->End(); }
+
+    CKSceneObjectIterator &operator++(int)
+    {
+        ++m_Iterator;
+        return *this;
+    }
+
+    CKSODHashIt m_Iterator;
+};
 
 /*****************************************************************************
 {filename:CKScene}
@@ -105,7 +105,7 @@ public:
 
     //-----------------------------------------------------------
     // Object Settings by index in list
-    //CKSceneObjectIterator GetObjectIterator();
+    CKSceneObjectIterator GetObjectIterator();
 
     //---- BeObject and Script Activation/deactivation
     void Activate(CKSceneObject *o, CKBOOL Reset);

@@ -3,10 +3,11 @@
 
 #include "CKDefines.h"
 #include "CKBaseManager.h"
+#include "XObjectArray.h"
 
 struct CKAttributeDesc;
 struct CKAttributeCategoryDesc;
-class XObjectPointerArray;
+//class XObjectPointerArray;
 
 /****************************************************************
 Summary: Function called when an attribute is set or removed on an object.

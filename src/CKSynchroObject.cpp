@@ -78,9 +78,71 @@ CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
     return nullptr;
 }
 
+CK_CLASSID CKStateObject::m_ClassID;
+
 CKBOOL CKStateObject::IsStateActive()
 {
     return FALSE;
+}
+
+void CKStateObject::EnterState()
+{
+}
+
+void CKStateObject::LeaveState()
+{
+}
+
+CKStateObject::CKStateObject(CKContext* Context, CKSTRING name)
+{
+}
+
+CKStateObject::~CKStateObject()
+{
+}
+
+CK_CLASSID CKStateObject::GetClassID()
+{
+    return CK_CLASSID();
+}
+
+CKStateChunk* CKStateObject::Save(CKFile* file, CKDWORD flags)
+{
+    return nullptr;
+}
+
+CKERROR CKStateObject::Load(CKStateChunk* chunk, CKFile* file)
+{
+    return CKERROR();
+}
+
+int CKStateObject::GetMemoryOccupation()
+{
+    return 0;
+}
+
+CKSTRING CKStateObject::GetClassName()
+{
+    return CKSTRING();
+}
+
+int CKStateObject::GetDependenciesCount(int mode)
+{
+    return 0;
+}
+
+CKSTRING CKStateObject::GetDependencies(int i, int mode)
+{
+    return CKSTRING();
+}
+
+void CKStateObject::Register()
+{
+}
+
+CKStateObject* CKStateObject::CreateInstance(CKContext* Context)
+{
+    return nullptr;
 }
 
 CK_CLASSID CKCriticalSectionObject::m_ClassID;

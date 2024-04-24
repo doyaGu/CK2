@@ -79,7 +79,7 @@ Remarks:
 
 See also:
 *************************************************/
-class CKCriticalSectionObject : public CKObject
+class DLL_EXPORT CKCriticalSectionObject : public CKObject
 {
 public:
     void Reset();
@@ -128,7 +128,7 @@ be checked through IsStateActive.
 
 See also:
 *************************************************/
-class CKStateObject : public CKObject
+class DLL_EXPORT CKStateObject : public CKObject
 {
 
 public:

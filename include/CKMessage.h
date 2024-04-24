@@ -33,7 +33,7 @@ when creating a message with the SendMessage methods of the CKMessageManager
 
 See also: CKMessageManager, CKMessageManager::SendMessageSingle, CKMessageManager::SendMessageGroup, CKMessageManager::SendMessageBroadcast
 ***********************************************************************/
-class CKMessage
+class DLL_EXPORT CKMessage
 {
     friend class CKMessageManager;
 

@@ -23,9 +23,10 @@ CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKS
     return nullptr;
 }
 
-//const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies, CK_OBJECTCREATION_OPTIONS Options, CKSTRING AppendName) {
-//    return;
-//}
+const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies, CK_OBJECTCREATION_OPTIONS Options, CKSTRING AppendName) {
+    XObjectArray a;
+    return a;
+}
 
 CKObject *CKContext::GetObject(CK_ID ObjID) {
     if (ObjID > m_ObjectManager->GetObjectsCount())

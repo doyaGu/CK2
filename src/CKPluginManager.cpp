@@ -4,6 +4,7 @@
 #include "CKDirectoryParser.h"
 #include "CKGlobals.h"
 #include "CKObjectDeclaration.h"
+#include <iostream>
 
 extern XArray<CKContext *> g_Contextes;
 
@@ -116,6 +117,16 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
 
     VxSharedLibrary vxLibrary;
     auto *handle = vxLibrary.Load(path);
+
+    CKPathSplitter ps(path);
+    if (handle) {
+        std::cout << ps.GetName() << " - OK\n";
+    }
+    else {
+        std::cout << ps.GetName() << " - Failed\n";
+        return CKERR_INVALIDPLUGIN;
+    }
+
     if (!handle)
         return CKERR_INVALIDPLUGIN;
 
@@ -146,7 +157,8 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
         entry.m_PluginInfo = *info;
 
         CK_PLUGIN_TYPE type = info->m_Type;
-        m_PluginCategories.Resize(type + 1);
+        if (type >= m_PluginCategories.Size())
+            m_PluginCategories.Resize(type + 1);
         entry.m_IndexInCategory = m_PluginCategories[type].m_Entries.Size();
         switch (type) {
             case CKPLUGIN_BITMAP_READER:

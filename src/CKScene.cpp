@@ -30,9 +30,9 @@ const XObjectPointerArray &CKScene::ComputeObjectList(CK_CLASSID cid, CKBOOL der
     return XObjectPointerArray();
 }
 
-//CKSceneObjectIterator CKScene::GetObjectIterator() {
-//    return CKSceneObjectIterator(m_SceneObjects.Begin());
-//}
+CKSceneObjectIterator CKScene::GetObjectIterator() {
+    return CKSceneObjectIterator(CKSODHashIt());
+}
 
 void CKScene::Activate(CKSceneObject *o, CKBOOL Reset) {
 

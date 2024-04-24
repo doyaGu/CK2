@@ -84,7 +84,7 @@ CKERROR CKStartUp() {
     CKCLASSREGISTER(CKBehaviorLink, CKObject);
     CKCLASSREGISTER(CKSceneObject, CKObject);
     CKCLASSREGISTER(CKSynchroObject, CKObject);
-    //CKCLASSREGISTER(CKStateObject, CKObject);
+    CKCLASSREGISTER(CKStateObject, CKObject);
     CKCLASSREGISTER(CKCriticalSectionObject, CKObject);
     //CKCLASSREGISTER(CKInterfaceObjectManager, CKObject);
     CKCLASSREGISTER(CKBeObject, CKSceneObject);
@@ -94,7 +94,7 @@ CKERROR CKStartUp() {
     CKCLASSREGISTER(CKGroup, CKBeObject);
     CKCLASSREGISTER(CKSound, CKBeObject);
     CKCLASSREGISTER(CKDataArray, CKBeObject);
-    //CKCLASSREGISTER(CKWaveSound, CKSound);
+    CKCLASSREGISTER(CKWaveSound, CKSound);
     //CKCLASSREGISTER(CKMidiSound, CKSound);
     CKBuildClassHierarchyTable();
 
