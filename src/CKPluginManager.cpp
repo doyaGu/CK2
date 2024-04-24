@@ -150,7 +150,7 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
         entry.m_PluginInfo = *info;
 
         CK_PLUGIN_TYPE type = info->m_Type;
-        if (type >= m_PluginCategories.Size())
+        if (type > m_PluginCategories.Size() - 1)
             m_PluginCategories.Resize(type + 1);
         entry.m_IndexInCategory = m_PluginCategories[type].m_Entries.Size();
         switch (type) {
@@ -189,6 +189,7 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
         return err;
     }
 
+    m_PluginDlls.PushBack(pluginDll);
     if (!g_Contextes.IsEmpty()) {
         for (XArray<CKContext *>::Iterator cit = g_Contextes.Begin(); cit != g_Contextes.End(); ++cit) {
             for (XClassArray<CKPluginEntry>::Iterator eit = pluginEntries.Begin(); eit != pluginEntries.End(); ++eit) {
@@ -304,7 +305,11 @@ CKPluginDll *CKPluginManager::GetPluginDllInfo(CKSTRING PluginName, int *idx) {
             break;
     }
 
-    if (idx && i != m_PluginDlls.End()) {
+    if (i == m_PluginDlls.End()) {
+        return nullptr;
+    }
+
+    if (idx) {
         *idx = i - m_PluginDlls.Begin();
     }
     return i;
