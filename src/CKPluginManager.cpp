@@ -416,7 +416,24 @@ CKPluginEntry *CKPluginManager::GetPluginInfo(int catIdx, int PluginIdx) {
 }
 
 CKBOOL CKPluginManager::SetReaderOptionData(CKContext *context, void *memdata, CKParameterOut *Param, CKFileExtension ext, CKGUID *guid) {
-    return 0;
+    auto *ids = (CK_ID *) Param->GetReadDataPtr();
+    CKParameterType type = Param->GetType();
+    CKStructStruct *desc = context->m_ParameterManager->GetStructDescByType(type);
+    if (!desc)
+        return FALSE;
+
+    char *mem = (char *)memdata;
+    for (int i = 0; i < desc->NbData; ++i) {
+        auto *param = (CKParameter *)context->GetObject(ids[i]);
+        if (param) {
+            int size = param->GetDataSize();
+            void *data = param->GetReadDataPtr();
+            memcpy(mem, data, size);
+            mem += size;
+        }
+    }
+
+    return TRUE;
 }
 
 CKParameterOut *CKPluginManager::GetReaderOptionData(CKContext *context, void *memdata, CKFileExtension ext, CKGUID *guid) {
