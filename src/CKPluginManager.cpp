@@ -722,15 +722,89 @@ void CKPluginManager::RemoveBehaviors(int PluginIndex) {
 }
 
 CKPluginEntry *CKPluginManager::EXTFindEntry(CKFileExtension &ext, int Category) {
+    if (Category >= 0) {
+        auto &category = m_PluginCategories[Category];
+        for (XArray<CKPluginEntry *>::Iterator it = category.m_Entries.Begin(); it != category.m_Entries.End(); ++it) {
+            CKPluginEntry *entry = *it;
+            if (strcmpi(entry->m_PluginInfo.m_Extension, ext) == 0)
+                return entry;
+        }
+    } else {
+        for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+            for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+                CKPluginEntry *entry = *eit;
+                if (strcmpi(entry->m_PluginInfo.m_Extension, ext) == 0)
+                    return entry;
+            }
+        }
+    }
+
     return nullptr;
 }
 
 CKDataReader *CKPluginManager::EXTFindReader(CKFileExtension &ext, int Category) {
-    return nullptr;
+    CKPluginEntry *entry = nullptr;
+
+    if (Category >= 0) {
+        auto &category = m_PluginCategories[Category];
+        for (XArray<CKPluginEntry *>::Iterator it = category.m_Entries.Begin(); it != category.m_Entries.End(); ++it) {
+            if (strcmpi((*it)->m_PluginInfo.m_Extension, ext) == 0) {
+                entry = *it;
+                break;
+            }
+        }
+    } else {
+        for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+            for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+                if (strcmpi((*eit)->m_PluginInfo.m_Extension, ext) == 0) {
+                    entry = *eit;
+                    break;
+                }
+            }
+            if (entry)
+                break;
+        }
+    }
+
+    if (!entry)
+        return nullptr;
+
+    auto *fct = entry->m_ReadersInfo->m_GetReaderFct;
+    return (fct) ? fct(entry->m_PositionInDll) : nullptr;
 }
 
 CKDataReader *CKPluginManager::GUIDFindReader(CKGUID &guid, int Category) {
-    return nullptr;
+    CKPluginEntry *entry = nullptr;
+
+    if (Category >= 0) {
+        auto &category = m_PluginCategories[Category];
+        for (XArray<CKPluginEntry *>::Iterator it = category.m_Entries.Begin(); it != category.m_Entries.End(); ++it) {
+            if ((*it)->m_PluginInfo.m_GUID == guid) {
+                entry = *it;
+                break;
+            }
+        }
+    } else {
+        for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+            for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+                if ((*eit)->m_PluginInfo.m_GUID == guid) {
+                    entry = *eit;
+                    break;
+                }
+            }
+            if (entry)
+                break;
+        }
+    }
+
+    if (!entry)
+        return nullptr;
+
+    auto &pluginDll = m_PluginDlls[entry->m_PluginDllIndex];
+    VxSharedLibrary shl;
+    shl.Attach(pluginDll.m_DllInstance);
+    auto *fct = (CKReaderGetReaderFunction) shl.GetFunctionPtr("CKGetReader");
+    return (fct) ? fct(entry->m_PositionInDll) : nullptr;
 }
 
 void CKPluginManager::Clean() {
