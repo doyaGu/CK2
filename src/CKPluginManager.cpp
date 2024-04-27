@@ -424,19 +424,39 @@ CKParameterOut *CKPluginManager::GetReaderOptionData(CKContext *context, void *m
 }
 
 CKBitmapReader *CKPluginManager::GetBitmapReader(CKFileExtension &ext, CKGUID *preferedGUID) {
-    return nullptr;
+    if (!preferedGUID)
+        return (CKBitmapReader *) EXTFindReader(ext, CKPLUGIN_BITMAP_READER);
+    auto *reader = (CKBitmapReader *) GUIDFindReader(*preferedGUID, CKPLUGIN_BITMAP_READER);
+    if (!reader)
+        reader = (CKBitmapReader *) EXTFindReader(ext, CKPLUGIN_BITMAP_READER);
+    return reader;
 }
 
 CKSoundReader *CKPluginManager::GetSoundReader(CKFileExtension &ext, CKGUID *preferedGUID) {
-    return nullptr;
+    if (!preferedGUID)
+        return (CKSoundReader *) EXTFindReader(ext, CKPLUGIN_SOUND_READER);
+    auto *reader = (CKSoundReader *) GUIDFindReader(*preferedGUID, CKPLUGIN_SOUND_READER);
+    if (!reader)
+        reader = (CKSoundReader *) EXTFindReader(ext, CKPLUGIN_SOUND_READER);
+    return reader;
 }
 
 CKModelReader *CKPluginManager::GetModelReader(CKFileExtension &ext, CKGUID *preferedGUID) {
-    return nullptr;
+    if (!preferedGUID)
+        return (CKModelReader *) EXTFindReader(ext, CKPLUGIN_MODEL_READER);
+    auto *reader = (CKModelReader *) GUIDFindReader(*preferedGUID, CKPLUGIN_MODEL_READER);
+    if (!reader)
+        reader = (CKModelReader *) EXTFindReader(ext, CKPLUGIN_MODEL_READER);
+    return reader;
 }
 
 CKMovieReader *CKPluginManager::GetMovieReader(CKFileExtension &ext, CKGUID *preferedGUID) {
-    return nullptr;
+    if (!preferedGUID)
+        return (CKMovieReader *) EXTFindReader(ext, CKPLUGIN_MOVIE_READER);
+    auto *reader = (CKMovieReader *) GUIDFindReader(*preferedGUID, CKPLUGIN_MOVIE_READER);
+    if (!reader)
+        reader = (CKMovieReader *) EXTFindReader(ext, CKPLUGIN_MOVIE_READER);
+    return reader;
 }
 
 CKERROR CKPluginManager::Load(CKContext *context, CKSTRING FileName, CKObjectArray *liste, CK_LOAD_FLAGS LoadFlags, CKCharacter *carac, CKGUID *Readerguid) {
