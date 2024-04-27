@@ -520,11 +520,6 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
 }
 
 void CKPluginManager::ExitInstancePluginEntry(CKPluginEntry *entry, CKContext *context) {
-
-}
-
-void CKPluginManager::InitializeBehaviors(VxSharedLibrary &lib, CKPluginEntry &entry) {
-
 }
 
 void CKPluginManager::InitializeBehaviors(CKDLL_OBJECTDECLARATIONFUNCTION Fct, CKPluginEntry &entry) {
@@ -533,14 +528,6 @@ void CKPluginManager::InitializeBehaviors(CKDLL_OBJECTDECLARATIONFUNCTION Fct, C
 
 void CKPluginManager::RemoveBehaviors(int PluginIndex) {
 
-}
-
-int CKPluginManager::AddPlugin(int catIdx, CKPluginEntry &Plugin) {
-    return 0;
-}
-
-CKERROR CKPluginManager::RemovePlugin(int catIdx, int PluginIdx) {
-    return 0;
 }
 
 CKPluginEntry *CKPluginManager::EXTFindEntry(CKFileExtension &ext, int Category) {
@@ -567,8 +554,4 @@ void CKPluginManager::Clean() {
     m_PluginCategories.Clear();
     m_PluginDlls.Clear();
     m_RunTimeDlls.Clear();
-}
-
-void CKPluginManager::Init() {
-
 }
