@@ -349,7 +349,61 @@ CKERROR CKPluginManager::UnLoadPluginDll(int PluginDllIdx) {
 }
 
 CKERROR CKPluginManager::ReLoadPluginDll(int PluginDllIdx) {
-    return 0;
+    CKPluginDll *pluginDll = GetPluginDllInfo(PluginDllIdx);
+    if (!pluginDll)
+        return CKERR_INVALIDPARAMETER;
+
+    VxSharedLibrary shl;
+    if (!pluginDll->m_DllInstance) {
+        pluginDll->m_DllInstance = shl.Load(pluginDll->m_DllFileName.Str());
+        if (!pluginDll->m_DllInstance)
+            return CKERR_INVALIDPARAMETER;
+    }
+
+    auto *getPluginInfoCountFunc = (CKPluginGetInfoCountFunction) shl.GetFunctionPtr("CKGetPluginInfoCount");
+    auto *getPluginInfoFunc = (CKPluginGetInfoFunction) shl.GetFunctionPtr("CKGetPluginInfo");
+    if (!getPluginInfoFunc)
+        return CKERR_INVALIDPARAMETER;
+
+    int pluginInfoCount = (getPluginInfoCountFunc) ? getPluginInfoCountFunc() : 1;
+
+    for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+        for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+            CKPluginEntry *entry = *eit;
+            if (entry->m_PluginDllIndex != PluginDllIdx)
+                continue;
+
+            if (entry->m_PositionInDll >= pluginInfoCount)
+                continue;
+
+            CKPluginInfo *pluginInfo = getPluginInfoFunc(entry->m_PositionInDll);
+            if (!pluginInfo)
+                continue;
+
+            entry->m_PluginInfo = *pluginInfo;
+
+            switch (pluginInfo->m_Type) {
+                case CKPLUGIN_BITMAP_READER:
+                case CKPLUGIN_SOUND_READER:
+                case CKPLUGIN_MODEL_READER:
+                case CKPLUGIN_MOVIE_READER: {
+                    entry->m_ReadersInfo->m_GetReaderFct = (CKReaderGetReaderFunction) shl.GetFunctionPtr("CKGetReader");
+                    break;
+                }
+                case CKPLUGIN_BEHAVIOR_DLL: {
+                    auto registerBehaviorDeclarationsFunc = (CKDLL_OBJECTDECLARATIONFUNCTION) shl.GetFunctionPtr("RegisterBehaviorDeclarations");
+                    if (!registerBehaviorDeclarationsFunc)
+                        registerBehaviorDeclarationsFunc = (CKDLL_OBJECTDECLARATIONFUNCTION) shl.GetFunctionPtr("RegisterNEMOExtensions");
+                    InitializeBehaviors(registerBehaviorDeclarationsFunc, *entry);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+
+    return CK_OK;
 }
 
 int CKPluginManager::GetPluginCount(int catIdx) {
