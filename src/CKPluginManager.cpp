@@ -397,7 +397,76 @@ void CKPluginManager::MarkComponentAsNeeded(CKGUID Component, int catIdx) {
 
 }
 
+#include "CKParameterManager.h"
+CKPluginEntry* g_TheCurrentPluginEntry;
 void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *context) {
+    // Some mysterious check...
+    const auto& pluginInfo = entry->m_PluginInfo;
+    if ((context->m_StartOptions & 2) != 0 && pluginInfo.m_GUID == CKGUID(0xF787C904, 0))
+        return;
+    
+    g_TheCurrentPluginEntry = entry;
+    auto bg = context->m_ManagerTable.Begin();
+
+    if (pluginInfo.m_InitInstanceFct &&
+        (pluginInfo.m_Type != CKPLUGIN_RENDERENGINE_DLL ||
+        context->m_SelectedRenderEngine == entry->m_IndexInCategory)) {
+        (pluginInfo.m_InitInstanceFct)(context);
+    }
+
+    auto pluginType = entry->m_PluginInfo.m_Type;
+    if (pluginType == CKPLUGIN_MANAGER_DLL) {
+        entry->m_Active = context->m_ManagerTable.Begin() != bg;
+    }
+    else {
+        entry->m_Active = pluginType != CKPLUGIN_RENDERENGINE_DLL
+            || entry->m_IndexInCategory == context->m_SelectedRenderEngine;
+    }
+
+    auto& readerInfo = entry->m_ReadersInfo;
+    if (!readerInfo) {
+        g_TheCurrentPluginEntry = 0;
+        return;
+    }
+
+    auto* readerFct = readerInfo->m_GetReaderFct;
+    if (!readerFct) {
+        g_TheCurrentPluginEntry = 0;
+        return;
+    }
+
+    auto* reader = readerFct(entry->m_PositionInDll);
+    if (!reader) {
+        g_TheCurrentPluginEntry = 0;
+        return;
+    }
+
+    readerInfo->m_OptionCount = reader->GetOptionsCount();
+    readerInfo->m_ReaderFlags = reader->GetFlags();
+
+    XArray<CKGUID> guidArray(readerInfo->m_OptionCount);
+
+    for (int i = 0; i < readerInfo->m_OptionCount; i++) {
+        CKSTRING desc = CKStrdup(reader->GetOptionDescription(i));
+        XString xdesc = desc;
+        auto pos = xdesc.Find(':');
+        if (pos == XString::NOTFOUND)
+            continue;
+        auto& newDesc = xdesc.Crop(0, pos);
+        if (newDesc == "Flags")
+            break;
+        if (newDesc == "Enum") {
+            auto guid = context->GetSecureGuid();
+            //context->m_ParameterManager->RegisterNewEnum(guid, desc, );
+        }
+        else {
+            CKGUID parameterTypeGuid = 
+                context->m_ParameterManager->ParameterNameToGuid(desc);
+            guidArray.PushBack(parameterTypeGuid);
+        }
+
+
+    }
 
 }
 
