@@ -644,6 +644,38 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
 }
 
 void CKPluginManager::ExitInstancePluginEntry(CKPluginEntry *entry, CKContext *context) {
+    if (!entry || !context)
+        return;
+
+    auto &pluginInfo = entry->m_PluginInfo;
+    if (pluginInfo.m_ExitInstanceFct)
+        pluginInfo.m_ExitInstanceFct(context);
+
+    auto &readerInfo = entry->m_ReadersInfo;
+    if (!readerInfo || readerInfo->m_SettingsParameterGuid == CKGUID())
+        return;
+
+    CKParameterManager *pm = context->m_ParameterManager;
+    CKParameterType type = pm->ParameterGuidToType(readerInfo->m_SettingsParameterGuid);
+    CKStructStruct *structDesc = pm->GetStructDescByType(type);
+    if (!structDesc)
+        return;
+
+    XArray<CKGUID> guids;
+    guids.PushBack(readerInfo->m_SettingsParameterGuid);
+
+    for (int i = 0; i < structDesc->NbData; ++i) {
+        CKParameterTypeDesc *paramTypeDesc = pm->GetParameterTypeDescription(structDesc->Guids[i]);
+        if ((paramTypeDesc->dwFlags & (CKPARAMETERTYPE_FLAGS | CKPARAMETERTYPE_ENUMS)) != 0) {
+            guids.PushBack(structDesc->Guids[i]);
+        }
+    }
+
+    for (XArray<CKGUID>::Iterator it = guids.Begin(); it != guids.End(); ++it) {
+        pm->UnRegisterParameterType(*it);
+    }
+
+    readerInfo->m_SettingsParameterGuid = CKGUID();
 }
 
 void CKPluginManager::InitializeBehaviors(CKDLL_OBJECTDECLARATIONFUNCTION Fct, CKPluginEntry &entry) {
