@@ -7,6 +7,7 @@
 #include "CKParameterManager.h"
 
 extern XArray<CKContext *> g_Contextes;
+extern XObjDeclHashTable g_PrototypeDeclarationList;
 
 CKPluginEntry *g_TheCurrentPluginEntry;
 
@@ -679,11 +680,45 @@ void CKPluginManager::ExitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
 }
 
 void CKPluginManager::InitializeBehaviors(CKDLL_OBJECTDECLARATIONFUNCTION Fct, CKPluginEntry &entry) {
+    if (!Fct)
+        return;
 
+    XObjectDeclarationArray array;
+    Fct(&array);
+
+    for (XObjectDeclarationArray::Iterator it = array.Begin(); it != array.End(); ++it) {
+        CKObjectDeclaration *decl = *it;
+        decl->m_PluginIndex = entry.m_IndexInCategory;
+        if (decl->m_Type == CKDLL_BEHAVIORPROTOTYPE) {
+            CKGUID guid = decl->GetGuid();
+            auto pair = g_PrototypeDeclarationList.TestInsert(guid, decl);
+            if (pair.m_New) {
+                entry.m_BehaviorsInfo->m_BehaviorsGUID.PushBack(guid);
+            } else {
+                CKObjectDeclaration *decl2 = CKGetObjectDeclarationFromGuid(guid);
+                if (decl2 && decl2 != decl) {
+                    if (strcmp(decl->GetName(), decl2->GetName()) == 0 && decl->GetVersion() > decl2->GetVersion()) {
+                        *decl2 = *decl;
+                    }
+                    delete decl;
+                }
+            }
+        }
+    }
 }
 
 void CKPluginManager::RemoveBehaviors(int PluginIndex) {
+    XObjectDeclarationArray array;
+    for (XObjDeclHashTable::Iterator it = g_PrototypeDeclarationList.Begin();
+         it != g_PrototypeDeclarationList.End(); ++it) {
+        CKObjectDeclaration *decl = *it;
+        if (decl && decl->GetPluginIndex() == PluginIndex)
+            array.PushBack(decl);
+    }
 
+    for (XObjectDeclarationArray::Iterator it = array.Begin(); it != array.End(); ++it) {
+        CKRemovePrototypeDeclaration(*it);
+    }
 }
 
 CKPluginEntry *CKPluginManager::EXTFindEntry(CKFileExtension &ext, int Category) {
