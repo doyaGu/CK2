@@ -536,7 +536,20 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
 }
 
 void CKPluginManager::MarkComponentAsNeeded(CKGUID Component, int catIdx) {
-
+    if (catIdx >= 0) {
+        auto &category = m_PluginCategories[catIdx];
+        for (XArray<CKPluginEntry *>::Iterator it = category.m_Entries.Begin(); it != category.m_Entries.End(); ++it) {
+            if ((*it)->m_PluginInfo.m_GUID == Component)
+                (*it)->m_NeededByFile = TRUE;
+        }
+    } else {
+        for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+            for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+                if ((*eit)->m_PluginInfo.m_GUID == Component)
+                    (*eit)->m_NeededByFile = TRUE;
+            }
+        }
+    }
 }
 
 void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *context) {
