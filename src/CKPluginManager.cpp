@@ -1,12 +1,14 @@
 #include "CKPluginManager.h"
 
 #include "VxMath.h"
-#include "CKDirectoryParser.h"
 #include "CKGlobals.h"
+#include "CKDirectoryParser.h"
 #include "CKObjectDeclaration.h"
-#include <iostream>
+#include "CKParameterManager.h"
 
 extern XArray<CKContext *> g_Contextes;
+
+CKPluginEntry *g_TheCurrentPluginEntry;
 
 CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
     if (this == &ent) {
@@ -397,77 +399,129 @@ void CKPluginManager::MarkComponentAsNeeded(CKGUID Component, int catIdx) {
 
 }
 
-#include "CKParameterManager.h"
-CKPluginEntry* g_TheCurrentPluginEntry;
 void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *context) {
-    // Some mysterious check...
-    const auto& pluginInfo = entry->m_PluginInfo;
-    if ((context->m_StartOptions & 2) != 0 && pluginInfo.m_GUID == CKGUID(0xF787C904, 0))
+    auto &pluginInfo = entry->m_PluginInfo;
+
+    if ((context->m_StartOptions & CK_CONFIG_DISABLEDINPUT) != 0 && pluginInfo.m_GUID == INPUT_MANAGER_GUID)
         return;
-    
+
     g_TheCurrentPluginEntry = entry;
-    auto bg = context->m_ManagerTable.Begin();
 
     if (pluginInfo.m_InitInstanceFct &&
         (pluginInfo.m_Type != CKPLUGIN_RENDERENGINE_DLL ||
-        context->m_SelectedRenderEngine == entry->m_IndexInCategory)) {
-        (pluginInfo.m_InitInstanceFct)(context);
+         context->m_SelectedRenderEngine == entry->m_IndexInCategory)) {
+        pluginInfo.m_InitInstanceFct(context);
     }
 
-    auto pluginType = entry->m_PluginInfo.m_Type;
+    auto pluginType = pluginInfo.m_Type;
     if (pluginType == CKPLUGIN_MANAGER_DLL) {
-        entry->m_Active = context->m_ManagerTable.Begin() != bg;
-    }
-    else {
-        entry->m_Active = pluginType != CKPLUGIN_RENDERENGINE_DLL
-            || entry->m_IndexInCategory == context->m_SelectedRenderEngine;
+        entry->m_Active = context->m_ManagerTable.IsHere(pluginInfo.m_GUID);
+    } else if (pluginType == CKPLUGIN_RENDERENGINE_DLL) {
+        entry->m_Active = entry->m_IndexInCategory == context->m_SelectedRenderEngine;
+    } else {
+        entry->m_Active = TRUE;
     }
 
-    auto& readerInfo = entry->m_ReadersInfo;
+    auto &readerInfo = entry->m_ReadersInfo;
     if (!readerInfo) {
-        g_TheCurrentPluginEntry = 0;
+        g_TheCurrentPluginEntry = nullptr;
         return;
     }
 
-    auto* readerFct = readerInfo->m_GetReaderFct;
+    auto *readerFct = readerInfo->m_GetReaderFct;
     if (!readerFct) {
-        g_TheCurrentPluginEntry = 0;
+        g_TheCurrentPluginEntry = nullptr;
         return;
     }
 
-    auto* reader = readerFct(entry->m_PositionInDll);
+    auto *reader = readerFct(entry->m_PositionInDll);
     if (!reader) {
-        g_TheCurrentPluginEntry = 0;
+        g_TheCurrentPluginEntry = nullptr;
         return;
     }
 
-    readerInfo->m_OptionCount = reader->GetOptionsCount();
+    int optionCount = reader->GetOptionsCount();
+    readerInfo->m_OptionCount = optionCount;
     readerInfo->m_ReaderFlags = reader->GetFlags();
 
-    XArray<CKGUID> guidArray(readerInfo->m_OptionCount);
-
-    for (int i = 0; i < readerInfo->m_OptionCount; i++) {
-        CKSTRING desc = CKStrdup(reader->GetOptionDescription(i));
-        XString xdesc = desc;
-        auto pos = xdesc.Find(':');
-        if (pos == XString::NOTFOUND)
-            continue;
-        auto& newDesc = xdesc.Crop(0, pos);
-        if (newDesc == "Flags")
-            break;
-        if (newDesc == "Enum") {
-            auto guid = context->GetSecureGuid();
-            //context->m_ParameterManager->RegisterNewEnum(guid, desc, );
-        }
-        else {
-            CKGUID parameterTypeGuid = 
-                context->m_ParameterManager->ParameterNameToGuid(desc);
-            guidArray.PushBack(parameterTypeGuid);
-        }
-
-
+    if (optionCount == 0) {
+        g_TheCurrentPluginEntry = nullptr;
+        reader->Release();
+        return;
     }
 
+    CKParameterManager *pm = context->m_ParameterManager;
+
+    XArray<CKGUID> optionGuids(optionCount);
+
+    size_t optionNamesLength = 0;
+    auto *optionNames = new CKSTRING[optionCount];
+    memset(optionNames, 0, sizeof(CKSTRING) * optionCount);
+
+    for (int i = 0; i < optionCount; ++i) {
+        CKSTRING desc = CKStrdup(reader->GetOptionDescription(i));
+        char *name = strchr(desc, ':');
+        if (!name)
+            continue;
+
+        *name = '\0';
+        ++name;
+
+        char *data = strchr(name, ':');
+        if (data) {
+            *data = '\0';
+            ++data;
+        }
+
+        CKGUID guid;
+
+        if (stricmp(desc, "Flags") == 0) {
+            guid = context->GetSecureGuid();
+            pm->RegisterNewFlags(guid, name, data);
+        } else if (stricmp(desc, "Enum") == 0) {
+            guid = context->GetSecureGuid();
+            pm->RegisterNewEnum(guid, name, data);
+            CKParameterTypeDesc *paramTypeDesc = pm->GetParameterTypeDescription(guid);
+            if (paramTypeDesc)
+                paramTypeDesc->dwFlags |= CKPARAMETERTYPE_HIDDEN;
+        } else {
+            guid = pm->ParameterNameToGuid(desc);
+        }
+
+        optionGuids.PushBack(guid);
+
+        optionNames[i] = CKStrdup(name);
+        optionNamesLength += strlen(name) + 2;
+
+        CKDeletePointer(desc);
+    }
+
+    auto *data = new char[optionNamesLength];
+    strcpy(data, "");
+    for (int i = 0; i < optionCount; ++i) {
+        strcat(data, optionNames[i]);
+        strcat(data, ",");
+    }
+    data[strlen(data) - 1] = '\0';
+
+    XString name = pluginInfo.m_Description;
+    name << " Options Parameter";
+    readerInfo->m_SettingsParameterGuid = context->GetSecureGuid();
+
+    pm->RegisterNewStructure(readerInfo->m_SettingsParameterGuid, name.Str(), data, optionGuids);
+    CKParameterTypeDesc *paramTypeDesc = pm->GetParameterTypeDescription(readerInfo->m_SettingsParameterGuid);
+    if (paramTypeDesc)
+        paramTypeDesc->dwFlags |= CKPARAMETERTYPE_HIDDEN;
+
+    for (int i = 0; i < optionCount; ++i) {
+        CKDeletePointer(optionNames[i]);
+    }
+    memset(optionNames, 0, sizeof(CKSTRING) * optionCount);
+    delete[] optionNames;
+    delete[] data;
+
+    g_TheCurrentPluginEntry = nullptr;
+    reader->Release();
 }
 
 void CKPluginManager::ExitInstancePluginEntry(CKPluginEntry *entry, CKContext *context) {
