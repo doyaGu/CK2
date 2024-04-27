@@ -437,7 +437,57 @@ CKBOOL CKPluginManager::SetReaderOptionData(CKContext *context, void *memdata, C
 }
 
 CKParameterOut *CKPluginManager::GetReaderOptionData(CKContext *context, void *memdata, CKFileExtension ext, CKGUID *guid) {
-    return nullptr;
+    CKPluginEntry *entry = nullptr;
+
+    if (guid) {
+        for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+            for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+                if ((*eit)->m_PluginInfo.m_GUID == *guid) {
+                    entry = *eit;
+                    break;
+                }
+            }
+        }
+    } else {
+        for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+            for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+                if (strcmpi((*eit)->m_PluginInfo.m_Extension, ext) == 0) {
+                    entry = *eit;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!entry)
+        return nullptr;
+
+    CKGUID paramGuid = entry->m_ReadersInfo->m_SettingsParameterGuid;
+    if (paramGuid == CKGUID())
+        return nullptr;
+
+    CKParameterOut *paramOut = context->CreateCKParameterOut("Temp", paramGuid);
+
+    auto *ids = (CK_ID *) paramOut->GetReadDataPtr();
+    CKParameterType type = paramOut->GetType();
+    CKStructStruct *desc = context->m_ParameterManager->GetStructDescByType(type);
+    if (!desc) {
+        CKDestroyObject(paramOut);
+        return nullptr;
+    }
+
+    char *mem = (char *)memdata;
+    for (int i = 0; i < desc->NbData; ++i) {
+        auto *param = (CKParameter *)context->GetObject(ids[i]);
+        if (param) {
+            int size = param->GetDataSize();
+            void *data = param->GetReadDataPtr();
+            memcpy(mem, data, size);
+            mem += size;
+        }
+    }
+
+    return paramOut;
 }
 
 CKBitmapReader *CKPluginManager::GetBitmapReader(CKFileExtension &ext, CKGUID *preferedGUID) {
