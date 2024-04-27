@@ -314,7 +314,38 @@ CKPluginDll *CKPluginManager::GetPluginDllInfo(CKSTRING PluginName, int *idx) {
 }
 
 CKERROR CKPluginManager::UnLoadPluginDll(int PluginDllIdx) {
-    return 0;
+    CKPluginDll *pluginDll = GetPluginDllInfo(PluginDllIdx);
+    if (!pluginDll || !pluginDll->m_DllInstance)
+        return CKERR_INVALIDPARAMETER;
+
+    for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+        int index = 0;
+        for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+            CKPluginEntry *entry = *eit;
+            if (entry->m_PluginDllIndex == PluginDllIdx) {
+                auto &pluginInfo = entry->m_PluginInfo;
+                if (pluginInfo.m_Type == CKPLUGIN_BEHAVIOR_DLL) {
+                    RemoveBehaviors(index);
+                }
+
+                for (XArray<CKContext *>::Iterator tit = g_Contextes.Begin(); tit != g_Contextes.End(); ++tit) {
+                    ExitInstancePluginEntry(entry, *tit);
+                }
+
+                pluginInfo.m_InitInstanceFct = nullptr;
+                pluginInfo.m_ExitInstanceFct = nullptr;
+            }
+
+            ++index;
+        }
+    }
+
+    VxSharedLibrary shl;
+    shl.Attach(pluginDll->m_DllInstance);
+    shl.ReleaseLibrary();
+    pluginDll->m_DllInstance = nullptr;
+
+    return CK_OK;
 }
 
 CKERROR CKPluginManager::ReLoadPluginDll(int PluginDllIdx) {
