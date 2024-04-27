@@ -217,14 +217,15 @@ CKPluginEntry *CKPluginManager::FindComponent(CKGUID Component, int catIdx) {
             return *eit;
         }
     }
-    if (catIdx != 4)
+
+    if (catIdx != CKPLUGIN_BEHAVIOR_DLL)
         return nullptr;
 
     CKObjectDeclaration *decl = CKGetObjectDeclarationFromGuid(Component);
     if (!decl)
         return nullptr;
 
-    return GetPluginInfo(4, decl->m_PluginIndex);
+    return GetPluginInfo(CKPLUGIN_BEHAVIOR_DLL, decl->m_PluginIndex);
 }
 
 int CKPluginManager::AddCategory(CKSTRING cat) {
