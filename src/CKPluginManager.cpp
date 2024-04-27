@@ -439,11 +439,49 @@ CKMovieReader *CKPluginManager::GetMovieReader(CKFileExtension &ext, CKGUID *pre
 }
 
 CKERROR CKPluginManager::Load(CKContext *context, CKSTRING FileName, CKObjectArray *liste, CK_LOAD_FLAGS LoadFlags, CKCharacter *carac, CKGUID *Readerguid) {
-    return 0;
+    if (!FileName || !context)
+        return CKERR_INVALIDPARAMETER;
+
+    context->m_RenameOption = 0;
+    context->field_460 = 0;
+
+    CKPathSplitter ps(FileName);
+    CKFileExtension ext(ps.GetExtension());
+
+    CKERROR err = CK_OK;
+    auto *reader = GetModelReader(ext, Readerguid);
+    if (reader) {
+        err = reader->Load(context, FileName, liste, LoadFlags, carac);
+        reader->Release();
+    } else {
+        err = CKERR_NOLOADPLUGINS;
+    }
+
+    context->SetAutomaticLoadMode(CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID);
+    context->SetUserLoadCallback(nullptr, nullptr);
+
+    return err;
 }
 
 CKERROR CKPluginManager::Save(CKContext *context, CKSTRING FileName, CKObjectArray *liste, CKDWORD SaveFlags, CKGUID *Readerguid) {
-    return 0;
+    if (!FileName || !context)
+        return CKERR_INVALIDPARAMETER;
+
+    CKPathSplitter ps(FileName);
+    CKFileExtension ext(ps.GetExtension());
+
+    CKERROR err = CK_OK;
+    auto *reader = GetModelReader(ext, Readerguid);
+    if (reader && (reader->GetFlags() & CK_DATAREADER_FILESAVE) != 0) {
+        err = reader->Save(context, FileName, liste, SaveFlags);
+    } else {
+        err = CKERR_NOSAVEPLUGINS;
+    }
+
+    if (reader)
+        reader->Release();
+
+    return err;
 }
 
 void CKPluginManager::ReleaseAllPlugins() {
