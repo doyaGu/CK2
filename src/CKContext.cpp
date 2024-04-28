@@ -13,8 +13,6 @@
 #include "CKParameterOperation.h"
 #include "CKFile.h"
 
-//XArray<CKContext*> g_Contextes;
-
 CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATION_OPTIONS Options, CK_CREATIONMODE *Res) {
     return nullptr;
 }
@@ -743,7 +741,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags)
 
 //    field_3C8 = (DWORD)operator new(0x104u);
 //    field_3CC = (DWORD)operator new(0x104u);
-    //field_45C = 0;
+    field_45C = 0;
     field_460 = 0;
 
     m_CurrentLevel = 0;

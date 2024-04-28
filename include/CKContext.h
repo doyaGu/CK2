@@ -367,7 +367,7 @@ public:
     CKBaseManager *m_CurrentManager;
     CKDependenciesContext m_DependenciesContext;
     CKDWORD m_DestroyObjectFlag;
-    CKDWORD m_RenameOption;
+    CKDWORD field_45C;
     CKDWORD field_460;
     int m_CompressionLevel;
     XArray<VxMemoryPool *> m_MemoryPools;

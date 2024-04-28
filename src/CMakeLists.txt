@@ -198,5 +198,5 @@ foreach (LIB IN ITEMS CK2 CK2Static)
             PRIVATE
             ${ZLIB_INCLUDE_DIR}
             )
-    target_link_libraries(${LIB} PRIVATE ${ZLIB_LIBRARY})
+    target_link_libraries(${LIB} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/VxMath.lib ${ZLIB_LIBRARY})
 endforeach ()
