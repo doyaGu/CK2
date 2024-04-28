@@ -530,7 +530,7 @@ CKERROR CKPluginManager::Load(CKContext *context, CKSTRING FileName, CKObjectArr
     if (!FileName || !context)
         return CKERR_INVALIDPARAMETER;
 
-    context->m_RenameOption = 0;
+    context->field_45C = 0;
     context->field_460 = 0;
 
     CKPathSplitter ps(FileName);
