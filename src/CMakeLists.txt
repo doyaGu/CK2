@@ -187,10 +187,7 @@ set(CK2_SOURCES
         )
 
 add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+target_include_directories(CK2 PUBLIC $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>)
+target_link_libraries(CK2 PRIVATE miniz "${CMAKE_CURRENT_SOURCE_DIR}/VxMath.lib")
 
-add_library(CK2Static STATIC ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
-
-foreach (LIB IN ITEMS CK2 CK2Static)
-    target_include_directories(${LIB} PUBLIC $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>)
-    target_link_libraries(${LIB} PRIVATE miniz "${CMAKE_CURRENT_SOURCE_DIR}/VxMath.lib")
-endforeach ()
+install(TARGETS CK2 RUNTIME DESTINATION Bin)
