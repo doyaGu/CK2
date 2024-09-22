@@ -192,5 +192,5 @@ add_library(CK2Static STATIC ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_
 
 foreach (LIB IN ITEMS CK2 CK2Static)
     target_include_directories(${LIB} PUBLIC $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>)
-    target_link_libraries(${LIB} PRIVATE miniz)
+    target_link_libraries(${LIB} PRIVATE miniz "${CMAKE_CURRENT_SOURCE_DIR}/VxMath.lib")
 endforeach ()
