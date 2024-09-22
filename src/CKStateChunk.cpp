@@ -2,7 +2,7 @@
 #include "CKFile.h"
 #include "VxMatrix.h"
 
-#include <zlib.h>
+#include <miniz.h>
 
 XObjectPointerArray CKStateChunk::m_TempXOPA;
 XObjectArray CKStateChunk::m_TempXOA;

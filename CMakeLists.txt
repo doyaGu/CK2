@@ -53,7 +53,7 @@ if (MSVC)
     )
 endif ()
 
-find_package(ZLIB REQUIRED)
 
+add_subdirectory(deps)
 add_subdirectory(src)
 
