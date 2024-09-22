@@ -4,6 +4,7 @@
 #include "CKSceneObject.h"
 
 extern int g_MaxClassID;
+extern XClassInfoArray g_CKClassInfo;
 
 int CKObjectManager::ObjectsByClass(CK_CLASSID cid, CKBOOL derived, CK_ID *obj_ids) {
     if (cid < 0 || cid >= g_MaxClassID)
@@ -54,7 +55,7 @@ CKERROR CKObjectManager::DeleteAllObjects() {
     }
 
     m_ObjectsCount = 0;
-    m_Array.Clear();
+    m_FreeIds.Clear();
     m_ObjectAppData.Clear();
 
     return CK_OK;
@@ -100,31 +101,170 @@ CK_ID *CKObjectManager::GetObjectsListByClassID(CK_CLASSID cid) {
 }
 
 CK_ID CKObjectManager::RegisterObject(CKObject *iObject) {
-    return 0;
+    if (m_FreeIds.Size() != 0) {
+        CK_ID id = m_FreeIds.PopBack();
+        m_Objects[id] = iObject;
+        return id;
+    }
+
+    ++m_ObjectsCount;
+    if (m_ObjectsCount >= m_Count) {
+        m_Count += 100;
+        CKObject **objs = new CKObject*[m_Count];
+        memset(objs, 0, sizeof(CKObject*) * m_Count);
+        memcpy(objs, m_Objects, sizeof(CKObject*) * (m_Count - 100));
+        delete[] m_Objects;
+        m_Objects = objs;
+    }
+    m_Objects[m_ObjectsCount] = iObject;
+    return m_ObjectsCount;
 }
 
 void CKObjectManager::FinishRegisterObject(CKObject *iObject) {
-
+    if (iObject->IsDynamic())
+        m_DynamicObjects.PushBack(iObject->GetID());
+    else
+        m_ObjectLists[iObject->GetClassID()].PushBack(iObject->GetID());
 }
 
 void CKObjectManager::UnRegisterObject(CK_ID id) {
-
+    if (id < m_Count && id != 0) {
+        if (m_Objects[id]->GetObjectFlags() & CK_OBJECT_FREEID && !m_Context->m_InClearAll) {
+            m_FreeIds.PushBack(id);
+        }
+        m_Objects[id] = nullptr;
+        if (m_ObjectAppData.Size() != 0) {
+            m_ObjectAppData.Remove(id);
+        }
+        if (m_SingleObjectActivities.Size() != 0) {
+            m_SingleObjectActivities.Remove(id);
+        }
+    }
 }
 
 CKObject *CKObjectManager::GetObjectByName(CKSTRING name, CKObject *previous) {
+    if (!name)
+        return nullptr;
+
+    CK_ID id = 0;
+    if (previous)
+        id = previous->GetID();
+    for (CK_ID i = id; i < m_ObjectsCount; ++i) {
+        CKObject *obj = m_Objects[i];
+        if (obj && strcmp(obj->GetName(), name) == 0) {
+            return obj;
+        }
+    }
+
     return nullptr;
 }
 
 CKObject *CKObjectManager::GetObjectByName(CKSTRING name, CK_CLASSID cid, CKObject *previous) {
+    if (!name)
+        return nullptr;
+
+    CK_ID id = 0;
+    if (previous)
+        id = previous->GetID();
+
+    int i = 0;
+    const int count = m_ObjectLists[cid].Size();
+    if (id != 0) {
+        while(i < count) {
+            if (id == m_ObjectLists[cid][i])
+                break;
+            ++i;
+        }
+    }
+
+    for (int j = i + 1; j < count; ++j) {
+        id = m_ObjectLists[cid][j];
+        CKObject *obj = m_Objects[id];
+        if (obj && strcmp(obj->GetName(), name) == 0) {
+            return obj;
+        }
+    }
+
     return nullptr;
 }
 
 CKObject *CKObjectManager::GetObjectByNameAndParentClass(CKSTRING name, CK_CLASSID pcid, CKObject *previous) {
+    if (!name)
+        return nullptr;
+
+    CK_ID id = 0;
+    if (previous)
+        id = previous->GetID();
+
+    int i = 0;
+    int count = 0;
+    CK_CLASSID cid = CKCID_OBJECT;
+    if (id != 0 && g_MaxClassID > CKCID_OBJECT) {
+        while (cid < g_MaxClassID) {
+            auto &ci = g_CKClassInfo[cid];
+            if (ci.Parent == pcid && ci.Children.IsSet(cid)) {
+                count = m_ObjectLists[cid].Size();
+                while(i < count) {
+                    if (id == m_ObjectLists[cid][i])
+                        break;
+                    ++i;
+                }
+                break;
+            }
+            ++cid;
+        }
+    }
+
+    if (cid >= g_MaxClassID)
+        return nullptr;
+
+    CK_CLASSID c = cid;
+    while (c < g_MaxClassID) {
+        auto &ci = g_CKClassInfo[c];
+        if (c < ci.Children.Size() && ci.Children.IsSet(c)) {
+            if (++i < m_ObjectLists[c].Size())
+                break;
+        }
+        i = -1;
+        ++c;
+    }
+
+    if (c >= g_MaxClassID)
+        return nullptr;
+
+    count = m_ObjectLists[c].Size();
+    for (int j = i; j < count; ++j) {
+        id = m_ObjectLists[c][j];
+        CKObject *obj = m_Objects[id];
+        if (obj && strcmp(obj->GetName(), name) == 0) {
+            return obj;
+        }
+    }
+
     return nullptr;
 }
 
 CKERROR CKObjectManager::GetObjectListByType(CK_CLASSID cid, XObjectPointerArray &array, CKBOOL derived) {
-    return 0;
+    if (derived) {
+        const int count = m_ObjectLists.Size();
+        for (int i = 0; i < count; ++i) {
+            if (CKIsChildClassOf(i, cid)) {
+                auto &objs = m_ObjectLists[i];
+                for (auto it = objs.Begin(); it != objs.End(); ++it) {
+                    CKObject *obj = m_Context->GetObject(*it);
+                    array.PushBack(obj);
+                }
+            }
+        }
+    } else {
+        auto &objs = m_ObjectLists[cid];
+        for (auto it = objs.Begin(); it != objs.End(); ++it) {
+            CKObject *obj = m_Context->GetObject(*it);
+            array.PushBack(obj);
+        }
+    }
+
+    return CK_OK;
 }
 
 CKBOOL CKObjectManager::InLoadSession() {
@@ -158,10 +298,9 @@ void CKObjectManager::RegisterLoadObject(CKObject *iObject, int ObjectID) {
 CK_ID CKObjectManager::RealId(CK_ID id) {
     if (!m_LoadSession)
         return id;
-    else if (id < m_MaxObjectID)
+    if (id < m_MaxObjectID)
         return m_LoadSession[id];
-    else
-        return 0;
+    return 0;
 }
 
 int CKObjectManager::CheckIDArray(CK_ID *obj_ids, int Count) {
@@ -275,7 +414,7 @@ CKObjectManager::~CKObjectManager() {
     for (int i = 0; i < 4; ++i)
         m_DeferredDeletions[i].Clear();
 
-    m_Array.Clear();
+    m_FreeIds.Clear();
     m_SingleObjectActivities.Clear();
     m_ObjectAppData.Clear();
     m_ObjectLists.Clear();
