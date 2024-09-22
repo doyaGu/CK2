@@ -104,7 +104,7 @@ public:
     CKDWORD m_MaxObjectID;
     XObjectAppDataTable m_ObjectAppData;
     XHashID m_SingleObjectActivities;
-    XObjectArray m_FreeIds;
+    XObjectArray m_FreeObjectIDs;
     XArray<CKDeferredDeletion *> m_DeferredDeletions[4];
     XObjectArray m_DynamicObjects;
     XBitArray m_SceneGlobalIndex;

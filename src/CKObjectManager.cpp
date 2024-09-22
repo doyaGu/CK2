@@ -55,7 +55,7 @@ CKERROR CKObjectManager::DeleteAllObjects() {
     }
 
     m_ObjectsCount = 0;
-    m_FreeIds.Clear();
+    m_FreeObjectIDs.Clear();
     m_ObjectAppData.Clear();
 
     return CK_OK;
@@ -101,8 +101,8 @@ CK_ID *CKObjectManager::GetObjectsListByClassID(CK_CLASSID cid) {
 }
 
 CK_ID CKObjectManager::RegisterObject(CKObject *iObject) {
-    if (m_FreeIds.Size() != 0) {
-        CK_ID id = m_FreeIds.PopBack();
+    if (m_FreeObjectIDs.Size() != 0) {
+        CK_ID id = m_FreeObjectIDs.PopBack();
         m_Objects[id] = iObject;
         return id;
     }
@@ -130,7 +130,7 @@ void CKObjectManager::FinishRegisterObject(CKObject *iObject) {
 void CKObjectManager::UnRegisterObject(CK_ID id) {
     if (id < m_Count && id != 0) {
         if (m_Objects[id]->GetObjectFlags() & CK_OBJECT_FREEID && !m_Context->m_InClearAll) {
-            m_FreeIds.PushBack(id);
+            m_FreeObjectIDs.PushBack(id);
         }
         m_Objects[id] = nullptr;
         if (m_ObjectAppData.Size() != 0) {
@@ -414,7 +414,7 @@ CKObjectManager::~CKObjectManager() {
     for (int i = 0; i < 4; ++i)
         m_DeferredDeletions[i].Clear();
 
-    m_FreeIds.Clear();
+    m_FreeObjectIDs.Clear();
     m_SingleObjectActivities.Clear();
     m_ObjectAppData.Clear();
     m_ObjectLists.Clear();
