@@ -12,9 +12,73 @@
 #include "CKBitmapReader.h"
 #include "CKParameterOperation.h"
 #include "CKFile.h"
+#include "CKGlobals.h"
+
+//XArray<CKContext*> g_Contextes;
+extern XClassInfoArray g_CKClassInfo;
 
 CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATION_OPTIONS Options, CK_CREATIONMODE *Res) {
-    return nullptr;
+    CKObject* obj = nullptr;
+    CK_CREATIONMODE mode = CKLOAD_OK;
+    char* buffer = GetStringBuffer(512);
+    unsigned int objectCreationOption = (Options & CK_OBJECTCREATION_FLAGSMASK);
+    CKClassDesc& classDesc = g_CKClassInfo[cid];
+    CKDWORD defaultOptions = classDesc.DefaultOptions;
+    if (defaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
+        objectCreationOption = CK_OBJECTCREATION_NONAMECHECK;
+    if (defaultOptions & CK_GENERALOPTIONS_AUTOMATICUSECURRENT)
+        objectCreationOption = CK_OBJECTCREATION_USECURRENT;
+
+    switch (objectCreationOption) {
+        case CK_OBJECTCREATION_RENAME: {
+            obj = GetObjectByNameAndClass(Name, cid);
+            if (!obj)
+                break;
+            GetSecureName(buffer, Name, cid);
+            mode = CKLOAD_RENAME;
+            break;
+        }
+        case CK_OBJECTCREATION_USECURRENT: {
+            obj = GetObjectByNameAndClass(Name, cid);
+            if (!obj)
+                break;
+            mode = CKLOAD_USECURRENT;
+            break;
+        }
+        case CK_OBJECTCREATION_ASK: {
+            mode = LoadVerifyObjectUnicity(Name, cid, buffer, &obj);
+            break;
+        }
+        case CK_OBJECTCREATION_NONAMECHECK:
+        case CK_OBJECTCREATION_REPLACE:
+        default:
+            break;
+    }
+
+    if (mode != CKLOAD_USECURRENT)
+    {
+        if (classDesc.CreationFct) {
+            m_InDynamicCreationMode = !!(Options & CK_OBJECTCREATION_ASK);
+            obj = classDesc.CreationFct(this);
+            m_InDynamicCreationMode = FALSE;
+            if (Options & CK_OBJECTCREATION_DYNAMIC)
+                obj->ModifyObjectFlags(CK_OBJECT_DYNAMIC, 0);
+            m_ObjectManager->FinishRegisterObject(obj);
+        }
+    }
+
+    if (obj) {
+        if (Name != nullptr) {
+            if (mode & CKLOAD_RENAME)
+                obj->SetName(buffer);
+            else
+                obj->SetName(Name);
+        }
+    }
+
+    if (Res)
+        *Res = mode;
+    return obj;
 }
 
 CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKSTRING AppendName, CK_OBJECTCREATION_OPTIONS Options) {
@@ -390,7 +454,10 @@ float CKContext::GetLastUserProfileTime(CKDWORD UserSlot) {
 }
 
 CKSTRING CKContext::GetStringBuffer(int size) {
-    return nullptr;
+    if (m_StringBuffer.Length() < size) {
+        m_StringBuffer.Resize(size);
+    }
+    return m_StringBuffer.Str();
 }
 
 CKGUID CKContext::GetSecureGuid() {
@@ -511,7 +578,62 @@ void CKContext::SetUserLoadCallback(CK_USERLOADCALLBACK fct, void *Arg) {
 }
 
 CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, const CKSTRING NewName, CKObject **newobj) {
-    return CKLOAD_USECURRENT;
+    if (OldName == nullptr)
+        return CKLOAD_OK;
+
+    auto& classDesc = g_CKClassInfo[Cid];
+    if (classDesc.DefaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
+        return CKLOAD_OK;
+
+    auto* obj = GetObjectByNameAndClass(OldName, Cid);
+    if (!obj)
+        return CKLOAD_OK;
+    if (newobj != nullptr)
+        *newobj = obj;
+    if (classDesc.DefaultOptions & CK_GENERALOPTIONS_AUTOMATICUSECURRENT)
+        return CKLOAD_USECURRENT;
+    if (m_UserLoadCallBack)
+        return m_UserLoadCallBack(Cid, OldName, NewName, newobj, m_UserLoadCallBackArgs);
+    if ((classDesc.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT) == 0) {
+        if (CKIsChildClassOf(Cid, CKCID_3DENTITY)) {
+            if (m_3DObjectsLoadMode != CKLOAD_INVALID)
+            {
+                if (m_3DObjectsLoadMode == CKLOAD_RENAME)
+                    GetSecureName(NewName, OldName, Cid);
+                return m_3DObjectsLoadMode;
+            }
+        }
+        else {
+            if (m_GeneralLoadMode != CKLOAD_INVALID)
+            {
+                if (m_GeneralLoadMode == CKLOAD_RENAME)
+                    GetSecureName(NewName, OldName, Cid);
+                return m_GeneralLoadMode;
+            }
+        }
+
+        switch (m_RenameOption)
+        {
+            case CKLOAD_REPLACE:
+                return CKLOAD_OK;
+            case CKLOAD_USECURRENT: {
+                if (newobj != nullptr) // This check does not present in original version
+                    *newobj = obj;
+                return CKLOAD_USECURRENT;
+            }
+            case CKLOAD_RENAME: {
+                GetSecureName(NewName, OldName, Cid);
+                if (newobj != nullptr) // This check does not present in original version
+                    *newobj = nullptr;
+                return CKLOAD_RENAME;
+            }
+            default:
+                break;
+        }
+    }
+
+    // TODO ...
+    return CKLOAD_OK;
 }
 
 CKBOOL CKContext::IsInLoad() {
@@ -741,8 +863,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags)
 
 //    field_3C8 = (DWORD)operator new(0x104u);
 //    field_3CC = (DWORD)operator new(0x104u);
-    field_45C = 0;
-    field_460 = 0;
+    m_RenameOption = 0;
+    m_RenameDialogOption = 0;
 
     m_CurrentLevel = 0;
     m_CompressionLevel = 5;
