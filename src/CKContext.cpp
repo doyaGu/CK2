@@ -611,8 +611,25 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
                 return m_GeneralLoadMode;
             }
         }
-        if (m_RenameOption == 1)
-            return CKLOAD_OK;
+
+        switch (m_RenameOption)
+        {
+            case CKLOAD_REPLACE:
+                return CKLOAD_OK;
+            case CKLOAD_USECURRENT: {
+                if (newobj != nullptr) // This check does not present in original version
+                    *newobj = obj;
+                return CKLOAD_USECURRENT;
+            }
+            case CKLOAD_RENAME: {
+                GetSecureName(NewName, OldName, Cid);
+                if (newobj != nullptr) // This check does not present in original version
+                    *newobj = nullptr;
+                return CKLOAD_RENAME;
+            }
+            default:
+                break;
+        }
     }
 
     // TODO ...
@@ -847,7 +864,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags)
 //    field_3C8 = (DWORD)operator new(0x104u);
 //    field_3CC = (DWORD)operator new(0x104u);
     m_RenameOption = 0;
-    field_460 = 0;
+    m_RenameDialogOption = 0;
 
     m_CurrentLevel = 0;
     m_CompressionLevel = 5;

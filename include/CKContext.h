@@ -368,7 +368,7 @@ public:
     CKDependenciesContext m_DependenciesContext;
     CKDWORD m_DestroyObjectFlag;
     CKDWORD m_RenameOption;
-    CKDWORD field_460;
+    CKDWORD m_RenameDialogOption;
     int m_CompressionLevel;
     XArray<VxMemoryPool *> m_MemoryPools;
     XBitArray m_BitArray;
