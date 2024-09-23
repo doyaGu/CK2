@@ -94,7 +94,6 @@ int CKPluginManager::ParsePlugins(CKSTRING Directory) {
     VxAddLibrarySearchPath(Directory);
     int count = 0;
     for (char *plugin = parser.GetNextFile(); plugin != nullptr; plugin = parser.GetNextFile()) {
-        printf("ParsePlugins @ %s\n", plugin);
         if (RegisterPlugin(plugin) == CK_OK)
             ++count;
     }
