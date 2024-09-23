@@ -21,7 +21,7 @@
 #define CKGUIDREF CKGUID &
 #endif
 
-typedef XNHashTable<int, CKGUID> XHashGuidToType;
+typedef XNHashTable<CKParameterType, CKGUID> XHashGuidToType;
 
 /***********************************************************
 Summary: Helper class to access a parameter of type structure.
@@ -261,8 +261,8 @@ protected:
     CKFlagsStruct *m_Flags;
     int m_NbStructDefined;
     CKStructStruct *m_Structs;
-    int m_NbEnumsDefined;
-    CKEnumStruct *m_Enums;
+    int m_NbEnumsDefined = 0;
+    CKEnumStruct *m_Enums = nullptr;
 
     CKBOOL CheckParamTypeValidity(CKParameterType type);
     CKBOOL CheckOpCodeValidity(CKOperationType type);

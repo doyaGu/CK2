@@ -249,12 +249,8 @@ protected:
     //--- Utils
     void InitInstancePluginEntry(CKPluginEntry *entry, CKContext *context);
     void ExitInstancePluginEntry(CKPluginEntry *entry, CKContext *context);
-    void InitializeBehaviors(VxSharedLibrary &lib, CKPluginEntry &entry);
     void InitializeBehaviors(CKDLL_OBJECTDECLARATIONFUNCTION Fct, CKPluginEntry &entry);
     void RemoveBehaviors(int PluginIndex);
-
-    int AddPlugin(int catIdx, CKPluginEntry &Plugin); // Adds a Plugin to a category
-    CKERROR RemovePlugin(int catIdx, int PluginIdx);  // Removes a Plugin in a category
 
     CKPluginEntry *EXTFindEntry(CKFileExtension &ext, int Category = -1);
     CKDataReader *EXTFindReader(CKFileExtension &ext, int Category = -1);
@@ -265,7 +261,6 @@ protected:
     XClassArray<VxSharedLibrary *> m_RunTimeDlls;
 
     void Clean();
-    void Init();
 };
 
 #endif // CKPLUGINMANAGER_H

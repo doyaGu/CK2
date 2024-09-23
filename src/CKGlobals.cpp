@@ -24,6 +24,7 @@
 #include "CKDataArray.h"
 #include "CKWaveSound.h"
 #include "CKMidiSound.h"
+#include "CKObjectDeclaration.h"
 
 extern INSTANCE_HANDLE g_CKModule;
 
@@ -185,7 +186,7 @@ CKERROR CKRemovePrototypeDeclaration(CKObjectDeclaration *objdecl) {
 }
 
 CKObjectDeclaration *CreateCKObjectDeclaration(CKSTRING Name) {
-    return nullptr;
+    return new CKObjectDeclaration(Name);
 }
 
 CKBehaviorPrototype *CreateCKBehaviorPrototype(CKSTRING Name) {

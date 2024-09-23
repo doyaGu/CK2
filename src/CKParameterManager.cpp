@@ -1,5 +1,5 @@
 #include "CKParameterManager.h"
-
+#include "CKGlobals.h"
 
 CKERROR CKParameterManager::RegisterParameterType(CKParameterTypeDesc *param_type) {
     return 0;
@@ -10,11 +10,16 @@ CKERROR CKParameterManager::UnRegisterParameterType(CKGUID guid) {
 }
 
 CKParameterTypeDesc *CKParameterManager::GetParameterTypeDescription(int type) {
-    return nullptr;
+    if (type < 0 || type > m_RegistredTypes.Size())
+        return nullptr;
+    return m_RegistredTypes[type];
 }
 
 CKParameterTypeDesc *CKParameterManager::GetParameterTypeDescription(CKGUID guid) {
-    return nullptr;
+    auto type = ParameterGuidToType(guid);
+    if (type == -1)
+        return nullptr;
+    return m_RegistredTypes[type];
 }
 
 int CKParameterManager::GetParameterSize(CKParameterType type) {
@@ -26,7 +31,10 @@ int CKParameterManager::GetParameterTypesCount() {
 }
 
 CKParameterType CKParameterManager::ParameterGuidToType(CKGUID guid) {
-    return 0;
+    auto* pType = m_ParamGuids.FindPtr(guid);
+    if (pType)
+        return *pType;
+    return -1;
 }
 
 CKSTRING CKParameterManager::ParameterGuidToName(CKGUID guid) {
@@ -86,7 +94,34 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
 }
 
 CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, CKSTRING EnumData) {
-    return 0;
+    if (!EnumName || !EnumData)
+        return CKERR_INVALIDPARAMETER;
+    if (ParameterGuidToType(EnumGuid) >= 0)
+        return CKERR_INVALIDGUID;
+    CKParameterTypeDesc desc;
+    desc.Guid = EnumGuid;
+    desc.TypeName = EnumName;
+    desc.DerivedFrom = CKPGUID_INT;
+    desc.dwParam = m_NbEnumsDefined;
+    desc.DefaultSize = sizeof(int);
+    desc.StringFunction = nullptr;//(CK_PARAMETERSTRINGFUNCTION)CKEnumStringFunc;
+    desc.Valid = 1;
+    desc.CreateDefaultFunction = nullptr;
+    desc.DeleteFunction = nullptr;
+    desc.SaveLoadFunction = nullptr;
+    desc.Cid = 0;
+    desc.CopyFunction = nullptr;
+    desc.dwFlags = CKPARAMETERTYPE_ENUMS;
+    desc.UICreatorFunction = nullptr;
+    RegisterParameterType(&desc);
+    CKEnumStruct* enums = new CKEnumStruct[m_NbEnumsDefined + 1];
+    if (m_Enums) {
+        memcpy(enums, m_Enums, sizeof(CKEnumStruct) * m_NbEnumsDefined);
+        delete[] m_Enums;
+    }
+    m_Enums = enums;
+    // TODO
+    return CK_OK;
 }
 
 CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING EnumData) {
