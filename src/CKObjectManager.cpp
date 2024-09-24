@@ -2,6 +2,12 @@
 
 #include "CKContext.h"
 #include "CKSceneObject.h"
+#include "CKRenderManager.h"
+#include "CKRenderContext.h"
+#include "CKMaterial.h"
+#include "CK2dEntity.h"
+#include "CK3dEntity.h"
+#include "CKBehavior.h"
 
 extern int g_MaxClassID;
 extern XClassInfoArray g_CKClassInfo;
@@ -62,7 +68,93 @@ CKERROR CKObjectManager::DeleteAllObjects() {
 }
 
 CKERROR CKObjectManager::ClearAllObjects() {
-    return 0;
+    XBitArray objs;
+    objs.CheckSize(m_ObjectsCount);
+
+    m_Context->m_InClearAll = TRUE;
+
+    for (int i = 0; i < m_ObjectsCount; ++i) {
+        CKObject *obj = m_Objects[i];
+        obj->m_ObjectFlags |= CK_OBJECT_TOBEDELETED;
+    }
+
+    CKRenderManager *rm = m_Context->m_RenderManager;
+    if (rm) {
+        int rcCount = rm->GetRenderContextCount();
+        for (int i = 0; i < rcCount; ++i) {
+            CKRenderContext *rc = rm->GetRenderContext(i);
+            if (rc) {
+                objs.Set(rc->GetID());
+                rc->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
+
+                CK3dEntity *ent = rc->GetViewpoint();
+                if (ent) {
+                    objs.Set(ent->GetID());
+                    ent->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
+                }
+
+                CKMaterial *mat = rc->GetBackgroundMaterial();
+                if (mat) {
+                    mat->SetTexture(nullptr);
+                    objs.Set(mat->GetID());
+                    mat->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
+                }
+
+                CK2dEntity *backEnt = rc->Get2dRoot(TRUE);
+                if (backEnt) {
+                    objs.Set(backEnt->GetID());
+                    backEnt->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
+                }
+
+                CK2dEntity *foreEnt = rc->Get2dRoot(FALSE);
+                if (foreEnt) {
+                    objs.Set(foreEnt->GetID());
+                    foreEnt->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
+                }
+            }
+        }
+    }
+
+    for (CK_CLASSID cid = 0; cid < g_MaxClassID; ++cid) {
+        m_ObjectLists[cid].Clear();
+    }
+
+    m_FreeObjectIDs.Clear();
+    m_DynamicObjects.Clear();
+
+    for (int i = m_ObjectsCount; i > 0; --i) {
+        if (i >= objs.Size() || objs.IsSet(i)) {
+            CKObject *obj = m_Objects[i];
+            if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
+                CKBehavior *beh = (CKBehavior *) obj;
+                beh->CallCallbackFunction(CKM_BEHAVIORDETACH);
+                beh->~CKBehavior();
+            }
+        }
+    }
+
+    for (int i = m_ObjectsCount; i > 0; --i) {
+        if (i >= objs.Size() || objs.IsSet(i)) {
+            CKObject *obj = m_Objects[i];
+            obj->~CKObject();
+            --m_ObjectsCount;
+        }
+    }
+
+    m_Context->m_InClearAll = FALSE;
+
+    for (int i = 0; i < m_ObjectsCount; ++i) {
+        CKObject *obj = m_Objects[i];
+        if (obj && obj->GetClassID() == CKCID_RENDERCONTEXT) {
+            obj->CheckPostDeletion();
+        }
+        m_ObjectLists.PushBack(i);
+    }
+
+    m_ObjectAppData.Clear();
+    m_SingleObjectActivities.Clear();
+
+    return CK_OK;
 }
 
 CKBOOL CKObjectManager::IsObjectSafe(CKObject *iObject) {
@@ -79,11 +171,108 @@ CKBOOL CKObjectManager::IsObjectSafe(CKObject *iObject) {
 }
 
 CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid, CKDWORD Flags) {
-    return 0;
+    if (m_Context->m_InClearAll)
+        return CK_OK;
+
+    if (Count == 0)
+        return CKERR_INVALIDPARAMETER;
+
+    CKDWORD flags = CK_OBJECT_TOBEDELETED;
+    if (Flags & CK_DESTROY_FREEID)
+        flags |= CK_OBJECT_FREEID;
+
+    XBitArray classIDs;
+    for (int i = 0; i < Count; ++i) {
+        CK_ID id = obj_ids[i];
+        CKObject *obj = m_Objects[id];
+        if (obj) {
+            obj->m_ObjectFlags |= flags;
+            classIDs.Set(obj->GetClassID());
+        }
+    }
+
+    const int classCount = m_ObjectLists.Size();
+    for (int i = 0; i < classCount; ++i) {
+        if (i < classIDs.Size() && classIDs.IsSet(i)) {
+            XObjectArray &array = m_ObjectLists[i];
+            for (int j = 0; j < array.Size(); ++j) {
+                int newSize = CheckIDArrayPredeleted(array.Begin(), array.Size());
+                array.Resize(newSize);
+            }
+        }
+    }
+
+    if ((Flags & CK_DESTROY_NONOTIFY) == 0) {
+        m_Context->ExecuteManagersOnSequenceToBeDeleted(obj_ids, Count);
+        if (classCount > 1) {
+            for (int i = classCount; i > 0; --i) {
+                if (classIDs.CheckCommon(g_CKClassInfo[i].CommonToBeNotify)) {
+                    XObjectArray &array = m_ObjectLists[i];
+                    for (int j = 0; j < array.Size(); ++j) {
+                        CKObject *obj = m_Objects[array[j]];
+                        if (obj) {
+                            obj->CheckPreDeletion();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < Count; ++i) {
+        CK_ID id = obj_ids[i];
+        CKObject *obj = m_Objects[id];
+        if (obj) {
+            obj->PreDelete();
+        }
+    }
+
+    for (int i = 0; i < Count; ++i) {
+        CK_ID id = obj_ids[i];
+        CKObject *obj = m_Objects[id];
+        if (obj) {
+            obj->~CKObject();
+        }
+    }
+
+    m_DynamicObjects.Check(m_Context);
+    if ((Flags & CK_DESTROY_NONOTIFY) == 0 && classCount > 1) {
+        for (int i = 0; i < classCount; ++i) {
+            if (classIDs.CheckCommon(g_CKClassInfo[i].CommonToBeNotify)) {
+                XObjectArray &array = m_ObjectLists[i];
+                for (int j = 0; j < array.Size(); ++j) {
+                    CKObject *obj = m_Objects[array[j]];
+                    if (obj) {
+                        obj->CheckPostDeletion();
+                    }
+                }
+            }
+        }
+    }
+
+    if ((Flags & CK_DESTROY_NONOTIFY) == 0) {
+        m_Context->ExecuteManagersOnSequenceDeleted(obj_ids, Count);
+    }
+
+    return CK_OK;
 }
 
 CKERROR CKObjectManager::GetRootEntities(XObjectPointerArray &array) {
-    return 0;
+    if (g_MaxClassID == 0)
+        return CK_OK;
+
+    for (CK_CLASSID cid = 0; cid < g_MaxClassID; ++cid) {
+        if (CKIsChildClassOf(cid, CKCID_3DENTITY)) {
+            auto &objs = m_ObjectLists[cid];
+            for (auto it = objs.Begin(); it != objs.End(); ++it) {
+                CK3dEntity *ent = (CK3dEntity *) m_Objects[*it];
+                if (ent && ent->GetParent() == nullptr)
+                    array.PushBack(ent);
+            }
+        }
+    }
+
+    return CK_OK;
 }
 
 int CKObjectManager::GetObjectsCountByClassID(CK_CLASSID cid) {
@@ -110,9 +299,9 @@ CK_ID CKObjectManager::RegisterObject(CKObject *iObject) {
     ++m_ObjectsCount;
     if (m_ObjectsCount >= m_Count) {
         m_Count += 100;
-        CKObject **objs = new CKObject*[m_Count];
-        memset(objs, 0, sizeof(CKObject*) * m_Count);
-        memcpy(objs, m_Objects, sizeof(CKObject*) * (m_Count - 100));
+        CKObject **objs = new CKObject *[m_Count];
+        memset(objs, 0, sizeof(CKObject *) * m_Count);
+        memcpy(objs, m_Objects, sizeof(CKObject *) * (m_Count - 100));
         delete[] m_Objects;
         m_Objects = objs;
     }
@@ -170,7 +359,7 @@ CKObject *CKObjectManager::GetObjectByName(CKSTRING name, CK_CLASSID cid, CKObje
     int i = 0;
     const int count = m_ObjectLists[cid].Size();
     if (id != 0) {
-        while(i < count) {
+        while (i < count) {
             if (id == m_ObjectLists[cid][i])
                 break;
             ++i;
@@ -204,7 +393,7 @@ CKObject *CKObjectManager::GetObjectByNameAndParentClass(CKSTRING name, CK_CLASS
             auto &ci = g_CKClassInfo[cid];
             if (ci.Parent == pcid && ci.Children.IsSet(cid)) {
                 count = m_ObjectLists[cid].Size();
-                while(i < count) {
+                while (i < count) {
                     if (id == m_ObjectLists[cid][i])
                         break;
                     ++i;
@@ -272,8 +461,7 @@ CKBOOL CKObjectManager::InLoadSession() {
 }
 
 void CKObjectManager::StartLoadSession(int MaxObjectID) {
-    if (!m_InLoadSession)
-    {
+    if (!m_InLoadSession) {
         if (m_LoadSession)
             delete[] m_LoadSession;
         m_MaxObjectID = MaxObjectID;
@@ -290,7 +478,7 @@ void CKObjectManager::EndLoadSession() {
 }
 
 void CKObjectManager::RegisterLoadObject(CKObject *iObject, int ObjectID) {
-    if ( m_LoadSession && ObjectID >= 0 && ObjectID < m_MaxObjectID) {
+    if (m_LoadSession && ObjectID >= 0 && ObjectID < m_MaxObjectID) {
         m_LoadSession[ObjectID] = (iObject) ? iObject->GetID() : 0;
     }
 }
@@ -305,8 +493,7 @@ CK_ID CKObjectManager::RealId(CK_ID id) {
 
 int CKObjectManager::CheckIDArray(CK_ID *obj_ids, int Count) {
     int i = 0;
-    for (; i < Count; ++i)
-    {
+    for (; i < Count; ++i) {
         CK_ID id = obj_ids[i];
         CKObject *obj = m_Objects[id];
         if (!obj)
@@ -325,8 +512,7 @@ int CKObjectManager::CheckIDArray(CK_ID *obj_ids, int Count) {
 
 int CKObjectManager::CheckIDArrayPredeleted(CK_ID *obj_ids, int Count) {
     int i = 0;
-    for (; i < Count; ++i)
-    {
+    for (; i < Count; ++i) {
         CK_ID id = obj_ids[i];
         CKObject *obj = m_Objects[id];
         if (!obj)
@@ -349,7 +535,7 @@ CKDeferredDeletion *CKObjectManager::MatchDeletion(CKDependencies *depoptions, C
     XArray<CKDeferredDeletion *> &deletions = m_DeferredDeletions[Flags];
     for (XArray<CKDeferredDeletion *>::Iterator it = deletions.Begin(); it != deletions.End(); ++it) {
         if ((*it)->m_Dependencies == depoptions)
-            return (*it);
+            return *it;
     }
     return nullptr;
 }
@@ -395,8 +581,7 @@ CKERROR CKObjectManager::PostProcess() {
 }
 
 CKERROR CKObjectManager::OnCKReset() {
-    if (!m_DynamicObjects.IsEmpty())
-    {
+    if (!m_DynamicObjects.IsEmpty()) {
         m_Context->DestroyObjects(m_DynamicObjects.Begin(), m_DynamicObjects.Size());
         m_DynamicObjects.Clear();
     }
