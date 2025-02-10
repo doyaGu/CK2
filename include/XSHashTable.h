@@ -122,7 +122,8 @@ public:
     Summary: Jumps to next entry in the hashtable.
     ************************************************/
     tIterator &operator++()
-    { // Prefixe
+    {
+        // Prefixe
         ++m_Node;
         pEntry end = m_Table->m_Table.End();
         while (m_Node != end)
