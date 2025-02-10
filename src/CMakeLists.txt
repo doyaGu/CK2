@@ -165,7 +165,7 @@ set(CK2_SOURCES
 
         # Sound
         CKSound.cpp
-	CKSoundManager.cpp
+        CKSoundManager.cpp
         CKWaveSound.cpp
         CKMidiSound.cpp
 
