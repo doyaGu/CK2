@@ -43,8 +43,6 @@ class DLL_EXPORT CKParameterOut : public CKParameter
 {
     friend class CKParameterIn;
     friend class CKParameter;
-    friend class CKParameterFS;
-    friend class CKParameterLocalFS;
     friend class CKParameterManager;
 
 public:
