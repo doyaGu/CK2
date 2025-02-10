@@ -176,6 +176,7 @@ set(CK2_SOURCES
         # Base Objects
         CKObject.cpp
         CKSceneObject.cpp
+        CKSceneObjectDesc.cpp
         CKBeObject.cpp
         CKDependencies.cpp
         CKInterfaceObjectManager.cpp

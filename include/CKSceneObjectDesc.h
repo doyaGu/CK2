@@ -19,7 +19,6 @@ public:
     // Virtual functions
 
     CKERROR ReadState(CKStateChunk *chunk);
-    int GetSize();
     void Clear();
     void Init(CKObject *obj = NULL);
 
@@ -29,7 +28,6 @@ public:
     CKDWORD ResetAtStart() { return m_Flags & CK_SCENEOBJECT_START_RESET; }
     CKDWORD IsActive() { return m_Flags & CK_SCENEOBJECT_ACTIVE; }
 
-public:
     CK_ID m_Object;
     CKStateChunk *m_InitialValue;
     union
