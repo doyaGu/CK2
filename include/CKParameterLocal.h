@@ -40,7 +40,7 @@ public:
 
     //---------------------------------------
     // Virtual functions
-    CKParameterLocal(CKContext *Context, CKSTRING name = NULL);
+    CKParameterLocal(CKContext *Context, CKSTRING name = NULL, int type = -1);
     virtual ~CKParameterLocal();
     virtual CK_CLASSID GetClassID();
 
@@ -53,6 +53,7 @@ public:
 
     //--------------------------------------------
     // Dependencies Functions
+    virtual CKERROR PrepareDependencies(CKDependenciesContext &context);
     virtual CKERROR RemapDependencies(CKDependenciesContext &context);
     virtual CKERROR Copy(CKObject &o, CKDependenciesContext &context);
 
