@@ -166,13 +166,6 @@ class CKFileChunk;
 class CKBitmapReader;
 struct CKBitmapProperties;
 
-enum CK_READSUBCHUNK_FLAGS
-{
-    CK_RSC_DEFAULT = 0,	// Default Behavior
-    CK_RSC_SKIP    = 1,	// Just skip the sub chunk, returning NULL and advancing the read cursor.
-    CK_RSC_SCRATCH = 2,	// Returned chunk will be allocated in a scratch pool (for temporary usages).
-};
-
 /**************************************************************************
 Name: CKStateChunk
 
@@ -316,7 +309,6 @@ public:
     int ReadArray_LEndian(void**);
     int ReadArray_LEndian16(void**);
 
-
     const XObjectArray &ReadXObjectArray();
     const XObjectPointerArray &ReadXObjectArray(CKContext *context);
     void ReadObjectArray(CKObjectArray *array);
@@ -331,7 +323,6 @@ public:
     void ReadAndFillBuffer_LEndian16(int size, void *buffer); // fills buffer with known size (must be allocated )
 
     CKStateChunk *ReadSubChunk();
-    CKStateChunk *ReadSubChunk(CK_READSUBCHUNK_FLAGS Flags = CK_RSC_DEFAULT);
     int ReadBuffer(void **buffer); // returns the size in bytes of the allocated buffer (// Use CKDeletePointer to delete allocated pointer)
     int ReadString(CKSTRING *str); // returns the length of the string including the terminating null character (// Use CKDeletePointer to delete allocated string)
 

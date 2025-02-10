@@ -862,13 +862,8 @@ void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
     }
 }
 
-CKStateChunk* CKStateChunk::ReadSubChunk()
-{
-    return ReadSubChunk(CK_RSC_DEFAULT);
-}
-
-CKStateChunk *CKStateChunk::ReadSubChunk(CK_READSUBCHUNK_FLAGS Flag) {
-    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
+CKStateChunk* CKStateChunk::ReadSubChunk() {
+   if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
     {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");

@@ -431,7 +431,7 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
     }
 
     if (m_ParamType->SaveLoadFunction && paramState == 0) {
-        CKStateChunk *subChunk = chunk->ReadSubChunk(CK_RSC_DEFAULT);
+        CKStateChunk *subChunk = chunk->ReadSubChunk();
         m_ParamType->SaveLoadFunction(this, &subChunk, 1);
 
         // Clean up sub-chunk
