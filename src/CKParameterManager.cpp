@@ -242,10 +242,6 @@ CKParameterManager::~CKParameterManager() {
 
 }
 
-void CKParameterManager::UpdateParameterEnum() {
-
-}
-
 CKBOOL CKParameterManager::CheckParamTypeValidity(CKParameterType type) {
     return 0;
 }

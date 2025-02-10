@@ -242,8 +242,6 @@ public:
 
     ~CKParameterManager();
 
-    void UpdateParameterEnum();
-
     CKBOOL m_ParameterTypeEnumUpToDate;
 
 protected:
