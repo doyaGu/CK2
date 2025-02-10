@@ -1,7 +1,7 @@
 #include "CKParameterOut.h"
 #include "CKParameterOut.h"
 
-CK_CLASSID CKParameterOut::m_ClassID;
+CK_CLASSID CKParameterOut::m_ClassID = CKCID_PARAMETEROUT;
 
 CKERROR CKParameterOut::GetValue(void *buf, CKBOOL update) {
     return CKParameter::GetValue(buf, update);

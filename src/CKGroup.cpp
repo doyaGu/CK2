@@ -1,6 +1,6 @@
 #include "CKGroup.h"
 
-CK_ID CKGroup::m_ClassID;
+CK_ID CKGroup::m_ClassID = CKCID_GROUP;
 
 CKERROR CKGroup::AddObject(CKBeObject *o) {
     return 0;

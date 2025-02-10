@@ -1,6 +1,6 @@
 #include "CKScene.h"
 
-CK_CLASSID CKScene::m_ClassID;
+CK_CLASSID CKScene::m_ClassID = CKCID_SCENE;
 
 void CKScene::AddObjectToScene(CKSceneObject *o, CKBOOL dependencies) {
 

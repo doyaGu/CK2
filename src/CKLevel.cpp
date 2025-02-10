@@ -5,7 +5,7 @@
 #include "CKObjectArray.h"
 
 
-CK_CLASSID CKLevel::m_ClassID;
+CK_CLASSID CKLevel::m_ClassID = CKCID_LEVEL;
 
 CKERROR CKLevel::AddObject(CKObject *obj) {
     if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT) || CKIsChildClassOf(obj, CKCID_LEVEL))

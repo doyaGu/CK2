@@ -2,7 +2,7 @@
 #include "CKObjectManager.h"
 #include "CKStateChunk.h"
 
-CK_CLASSID CKObject::m_ClassID = 0;
+CK_CLASSID CKObject::m_ClassID = CKCID_OBJECT;
 
 void CKObject::SetName(CKSTRING Name, CKBOOL shared) {
     if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) == 0)

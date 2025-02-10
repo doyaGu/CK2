@@ -11,7 +11,7 @@ CKBehaviorIO::~CKBehaviorIO() {
 }
 
 CK_CLASSID CKBehaviorIO::GetClassID() {
-    return CKBehaviorIO::m_ClassID;
+    return m_ClassID;
 }
 
 CKStateChunk *CKBehaviorIO::Save(CKFile *file, CKDWORD flags) {

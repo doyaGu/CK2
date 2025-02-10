@@ -2,7 +2,7 @@
 #include "CKScene.h"
 #include "CKAttributeManager.h"
 
-CK_CLASSID CKSceneObject::m_ClassID = 0;
+CK_CLASSID CKSceneObject::m_ClassID = CKCID_SCENEOBJECT;
 
 CKBOOL CKSceneObject::IsActiveInScene(CKScene *scene) {
     if (!scene)

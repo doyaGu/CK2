@@ -1,6 +1,6 @@
 #include "CKSynchroObject.h"
 
-CK_CLASSID CKSynchroObject::m_ClassID;
+CK_CLASSID CKSynchroObject::m_ClassID = CKCID_SYNCHRO;
 
 void CKSynchroObject::Reset() {
 

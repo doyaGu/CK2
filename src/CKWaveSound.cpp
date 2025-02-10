@@ -1,6 +1,6 @@
 #include "CKWaveSound.h"
 
-CK_CLASSID CKWaveSound::m_ClassID;
+CK_CLASSID CKWaveSound::m_ClassID = CKCID_WAVESOUND;
 
 CKSOUNDHANDLE
 CKWaveSound::PlayMinion(CKBOOL Background, CK3dEntity *Ent, VxVector *Position, VxVector *Direction, float MinDelay) {

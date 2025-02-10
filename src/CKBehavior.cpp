@@ -7,7 +7,7 @@
 #include "CKParameterLocal.h"
 #include "CKParameterManager.h"
 
-CK_CLASSID CKBehavior::m_ClassID;
+CK_CLASSID CKBehavior::m_ClassID = CKCID_BEHAVIOR;
 
 CK_BEHAVIOR_TYPE CKBehavior::GetType() {
     if ((m_Flags & CKBEHAVIOR_BUILDINGBLOCK) != 0)

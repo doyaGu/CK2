@@ -1,6 +1,6 @@
 #include "CKParameterOperation.h"
 
-CK_ID CKParameterOperation::m_ClassID;
+CK_ID CKParameterOperation::m_ClassID = CKCID_PARAMETEROPERATION;
 
 CKERROR CKParameterOperation::DoOperation() {
     return 0;
