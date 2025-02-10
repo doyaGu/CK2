@@ -1,6 +1,7 @@
 #ifndef CKBEOBJECT_H
 #define CKBEOBJECT_H
 
+#include "CKBehaviorManager.h"
 #include "CKSceneObject.h"
 #include "XObjectArray.h"
 #include "XBitArray.h"
@@ -62,6 +63,7 @@ See also: CKBehavior, CKMessageManager,CKAttributeManager,CKScene
 *************************************************/
 class DLL_EXPORT CKBeObject : public CKSceneObject
 {
+    friend class CKBehaviorManager;
     friend class CKDebugContext;
     friend class CKFile;
 

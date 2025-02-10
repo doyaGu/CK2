@@ -32,17 +32,23 @@ public:
     //----------------------------------------------
     // Main Process
     CKERROR Execute(float delta);
+    CKERROR ExecuteDebugStart(float delta);
+    void ManageObjectsActivity();
 
     //----------------------------------------------
     // Object Management
     int GetObjectsCount();
     CKBeObject *GetObject(int pos);
+    CKERROR AddObject(CKBeObject *beo);
+    void SortObjects();
+    void RemoveAllObjects();
 
     //-----------------------------------------------
     // Setup
     int GetBehaviorMaxIteration();
     void SetBehaviorMaxIteration(int n);
 
+    int AddObjectNextFrame(CKBeObject *beo);
     int RemoveObjectNextFrame(CKBeObject *beo);
 
     //-------------------------------------------------------------------------
@@ -67,9 +73,9 @@ public:
                CKMANAGER_FUNC_OnCKPlay;
     }
 
-    XArray<CKBehavior *> m_Behaviors;
-    XArray<CKBeObject *> m_BeObjects;
-    BeObjectTable m_BeObjectTable;
+    XObjectPointerArray m_Behaviors;
+    XObjectPointerArray m_BeObjects;
+    BeObjectTable m_BeObjectNextFrame;
     CKBehavior *m_CurrentBehavior;
     int m_BehaviorMaxIteration;
 };
