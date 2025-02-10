@@ -70,7 +70,7 @@ public:
 
     //--------------------------------------------
     // Virtual functions
-    CKParameter(CKContext *Context, CKSTRING name = NULL);
+    CKParameter(CKContext *Context, CKSTRING name = NULL, int type = -1);
     virtual ~CKParameter();
     virtual CK_CLASSID GetClassID();
 
@@ -104,11 +104,8 @@ public:
         return CKIsChildClassOf(iO, CKCID_PARAMETER) ? (CKParameter *)iO : NULL;
     }
 
-    CKERROR CreateDefaultValue();
     void MessageDeleteAfterUse(CKBOOL act);
     CKParameterTypeDesc *GetParameterType() { return m_ParamType; }
-
-    CKBOOL IsCandidateForFixedSize(CKParameterTypeDesc *iType);
 
 protected:
     CKObject *m_Owner;
