@@ -145,7 +145,7 @@ public:
     //---------- BuildingBlock or Graph
     void UseGraph();
     void UseFunction();
-    int IsUsingFunction();
+    CKBOOL IsUsingFunction();
 
     //----------------------------------------------------------------
     // Targetable Behavior
@@ -161,7 +161,7 @@ public:
     //----------------------------------------------------------------
     // Object type to which this behavior applies
     CK_CLASSID GetCompatibleClassID();
-    void SetCompatibleClassID(CK_CLASSID);
+    void SetCompatibleClassID(CK_CLASSID cid);
 
     //----------------------------------------------------------------
     // Execution Function
@@ -177,7 +177,7 @@ public:
     //--------------------------------------------------------------
     // RunTime Functions
     CKBOOL IsActive();
-    int Execute(float deltat);
+    int Execute(float delta);
 
     //--------------------------------------------------------------
     //
@@ -223,7 +223,7 @@ public:
     CKERROR DeleteInput(int pos);
     CKBehaviorIO *GetInput(int pos);
     int GetInputCount();
-    int GetInputPosition(CKBehaviorIO *pbio);
+    int GetInputPosition(CKBehaviorIO *io);
     int AddInput(CKSTRING name);
     CKBehaviorIO *ReplaceInput(int pos, CKBehaviorIO *io);
     CKBehaviorIO *CreateInput(CKSTRING name);

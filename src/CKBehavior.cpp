@@ -1,11 +1,16 @@
 #include "CKBehavior.h"
 
+#include "CKBehaviorIO.h"
+#include "CKBehaviorLink.h"
+#include "CKBehaviorPrototype.h"
 #include "CKBeObject.h"
+#include "CKFile.h"
 #include "CKParameter.h"
 #include "CKParameterIn.h"
 #include "CKParameterOut.h"
 #include "CKParameterLocal.h"
 #include "CKParameterManager.h"
+#include "CKStateChunk.h"
 
 CK_CLASSID CKBehavior::m_ClassID = CKCID_BEHAVIOR;
 
@@ -28,21 +33,21 @@ void CKBehavior::SetFlags(CK_BEHAVIOR_FLAGS flags) {
 }
 
 CK_BEHAVIOR_FLAGS CKBehavior::GetFlags() {
-    return static_cast<CK_BEHAVIOR_FLAGS>(m_Flags);
+    return (CK_BEHAVIOR_FLAGS)m_Flags;
 }
 
 CK_BEHAVIOR_FLAGS CKBehavior::ModifyFlags(CKDWORD Add, CKDWORD Remove) {
     m_Flags = (m_Flags | Add) & ~Remove;
-    return static_cast<CK_BEHAVIOR_FLAGS>(m_Flags);
+    return (CK_BEHAVIOR_FLAGS)m_Flags;
 }
 
 void CKBehavior::UseGraph() {
-    if (m_GraphData) {
+    if (!m_GraphData) {
         m_GraphData = new BehaviorGraphData;
     }
     delete m_BlockData;
-    m_BlockData = NULL;
-    m_Flags = (m_Flags & ~0xFFFF) | ((unsigned short)m_Flags & 0x7FF7);
+    m_BlockData = nullptr;
+    m_Flags &= ~(CKBEHAVIOR_BUILDINGBLOCK | CKBEHAVIOR_USEFUNCTION);
 }
 
 void CKBehavior::UseFunction() {
@@ -50,11 +55,11 @@ void CKBehavior::UseFunction() {
         m_BlockData = new BehaviorBlockData;
     }
     delete m_GraphData;
-    m_BlockData = NULL;
-    m_Flags |= 0x8008;
+    m_GraphData = nullptr;
+    m_Flags |= CKBEHAVIOR_BUILDINGBLOCK | CKBEHAVIOR_USEFUNCTION;
 }
 
-int CKBehavior::IsUsingFunction() {
+CKBOOL CKBehavior::IsUsingFunction() {
     return (m_Flags & CKBEHAVIOR_USEFUNCTION) != 0;
 }
 
@@ -68,16 +73,16 @@ CKBeObject *CKBehavior::GetTarget() {
 
     CKParameterIn *pin = (CKParameterIn *)m_Context->GetObject(m_InputTargetParam);
     if (!pin)
-        return NULL;
+        return nullptr;
 
     CKParameter *param = pin->GetRealSource();
-    CK_ID objId = NULL;
+    CK_ID objId = 0;
     param->GetValue(&objId);
     CKBeObject *obj = (CKBeObject *)m_Context->GetObject(objId);
     CKParameterManager *pm = m_Context->GetParameterManager();
     CK_CLASSID cid = pm->TypeToClassID(pin->GetType());
     if (!CKIsChildClassOf(obj, cid))
-        return NULL;
+        return nullptr;
     return obj;
 }
 
@@ -94,7 +99,12 @@ CKParameterIn *CKBehavior::GetTargetParameter() {
 }
 
 void CKBehavior::SetAsTargetable(CKBOOL target) {
-
+    if (target) {
+        m_Flags |= CKBEHAVIOR_TARGETABLE;
+    } else {
+        UseTarget(FALSE);
+        m_Flags &= ~CKBEHAVIOR_TARGETABLE;
+    }
 }
 
 CKParameterIn *CKBehavior::ReplaceTargetParameter(CKParameterIn *targetParam) {
@@ -106,23 +116,27 @@ CKParameterIn *CKBehavior::RemoveTargetParameter() {
 }
 
 CK_CLASSID CKBehavior::GetCompatibleClassID() {
-    return 0;
+    return m_CompatibleClassID;
 }
 
-void CKBehavior::SetCompatibleClassID(CK_CLASSID) {
-
+void CKBehavior::SetCompatibleClassID(CK_CLASSID cid) {
+    m_CompatibleClassID = cid;
 }
 
 void CKBehavior::SetFunction(CKBEHAVIORFCT fct) {
-
+    if (m_BlockData)
+        m_BlockData->m_Function = fct;
 }
 
 CKBEHAVIORFCT CKBehavior::GetFunction() {
-    return nullptr;
+    if (!m_BlockData)
+        return nullptr;
+    return m_BlockData->m_Function;
 }
 
 void CKBehavior::SetCallbackFunction(CKBEHAVIORCALLBACKFCT fct) {
-
+    if (m_BlockData)
+        m_BlockData->m_Callback = fct;
 }
 
 int CKBehavior::CallCallbackFunction(CKDWORD Message) {
@@ -134,10 +148,10 @@ int CKBehavior::CallSubBehaviorsCallbackFunction(CKDWORD Message, CKGUID *behgui
 }
 
 CKBOOL CKBehavior::IsActive() {
-    return 0;
+    return (m_Flags & CKBEHAVIOR_ACTIVE) != 0;
 }
 
-int CKBehavior::Execute(float deltat) {
+int CKBehavior::Execute(float delta) {
     return 0;
 }
 
@@ -146,15 +160,16 @@ CKBOOL CKBehavior::IsParentScriptActiveInScene(CKScene *scn) {
 }
 
 int CKBehavior::GetShortestDelay(CKBehavior *beh) {
-    return 0;
+    XObjectPointerArray behParsed;
+    return InternalGetShortestDelay(beh, behParsed);
 }
 
 CKBeObject *CKBehavior::GetOwner() {
-    return nullptr;
+    return (CKBeObject *)m_Context->GetObject(m_Owner);
 }
 
 CKBehavior *CKBehavior::GetParent() {
-    return nullptr;
+    return (CKBehavior *)m_Context->GetObject(m_BehParent);
 }
 
 CKBehavior *CKBehavior::GetOwnerScript() {
@@ -178,47 +193,81 @@ CKERROR CKBehavior::InitFctPtrFromPrototype(CKBehaviorPrototype *proto) {
 }
 
 CKGUID CKBehavior::GetPrototypeGuid() {
-    return CKGUID();
+    if (!m_BlockData)
+        return CKGUID();
+    return m_BlockData->m_Guid;
 }
 
 CKBehaviorPrototype *CKBehavior::GetPrototype() {
-    return nullptr;
+    if (!m_BlockData)
+        return nullptr;
+    return CKGetPrototypeFromGuid(m_BlockData->m_Guid);
 }
 
 CKSTRING CKBehavior::GetPrototypeName() {
-    return nullptr;
+    CKBehaviorPrototype *proto = GetPrototype();
+    if (!proto)
+        return nullptr;
+    return proto->GetName();
 }
 
 CKDWORD CKBehavior::GetVersion() {
-    return 0;
+    if (!m_BlockData)
+        return 0;
+    return m_BlockData->m_Version;
 }
 
 void CKBehavior::SetVersion(CKDWORD version) {
-
+    if (m_BlockData)
+        m_BlockData->m_Version = version;
 }
 
 void CKBehavior::ActivateOutput(int pos, CKBOOL active) {
+    if (pos < 0 || pos >= GetOutputCount())
+        return;
 
+    CKBehaviorIO *io = (CKBehaviorIO *)m_OutputArray[pos];
+    if (!io)
+        return;
+
+    if (active) {
+        io->m_ObjectFlags |= CK_BEHAVIORIO_ACTIVE;
+    } else {
+        io->m_ObjectFlags &= ~CK_BEHAVIORIO_ACTIVE;
+    }
 }
 
 CKBOOL CKBehavior::IsOutputActive(int pos) {
-    return 0;
+    if (pos < 0 || pos >= GetOutputCount())
+        return FALSE;
+
+    CKBehaviorIO *io = (CKBehaviorIO *)m_OutputArray[pos];
+    return io ? (io->m_ObjectFlags & CK_BEHAVIORIO_ACTIVE) != 0 : FALSE;
 }
 
 CKBehaviorIO *CKBehavior::RemoveOutput(int pos) {
-    return nullptr;
+    if (pos < 0 || pos >= m_OutputArray.Size()) return nullptr;
+
+    CKBehaviorIO *io = (CKBehaviorIO *)m_OutputArray[pos];
+    m_OutputArray.RemoveAt(pos);
+    return io;
 }
 
 CKERROR CKBehavior::DeleteOutput(int pos) {
-    return 0;
+    CKBehaviorIO *io = RemoveOutput(pos);
+    if (!io)
+        return CKERR_INVALIDPARAMETER;
+    return m_Context->DestroyObject(io);
 }
 
 CKBehaviorIO *CKBehavior::GetOutput(int pos) {
-    return nullptr;
+    if (pos < 0 || pos >= m_OutputArray.Size())
+        return nullptr;
+    return (CKBehaviorIO *)m_OutputArray[pos];
 }
 
 int CKBehavior::GetOutputCount() {
-    return 0;
+    return m_OutputArray.Size();
 }
 
 int CKBehavior::GetOutputPosition(CKBehaviorIO *pbio) {
@@ -226,55 +275,109 @@ int CKBehavior::GetOutputPosition(CKBehaviorIO *pbio) {
 }
 
 int CKBehavior::AddOutput(CKSTRING name) {
-    return 0;
+    CKBehaviorIO *io = CreateOutput(name);
+    return io ? m_OutputArray.Size() - 1 : -1;
 }
 
 CKBehaviorIO *CKBehavior::ReplaceOutput(int pos, CKBehaviorIO *io) {
-    return nullptr;
+    if (pos < 0 || pos >= m_OutputArray.Size())
+        return nullptr;
+
+    CKBehaviorIO *oldIO = (CKBehaviorIO *)m_OutputArray[pos];
+    m_OutputArray[pos] = io;
+    return oldIO;
 }
 
 CKBehaviorIO *CKBehavior::CreateOutput(CKSTRING name) {
-    return nullptr;
+    CKBehaviorIO *io = (CKBehaviorIO *)m_Context->CreateObject(CKCID_BEHAVIORIO, name, CK_OBJECTCREATION_SameDynamic);
+    if (io) {
+        m_OutputArray.PushBack(io);
+        io->m_OwnerBehavior = this;
+        io->ModifyObjectFlags(CK_BEHAVIORIO_OUT, CK_OBJECT_IOTYPEMASK);
+    }
+    return io;
 }
 
 void CKBehavior::ActivateInput(int pos, CKBOOL active) {
+    if (pos < 0 || pos >= m_InputArray.Size())
+        return;
 
+    CKBehaviorIO *io = (CKBehaviorIO *)m_InputArray[pos];
+    if (io) {
+        if (active)
+            io->ModifyObjectFlags(CK_BEHAVIORIO_ACTIVE, 0);
+        else
+            io->ModifyObjectFlags(0, CK_BEHAVIORIO_ACTIVE);
+    }
 }
 
 CKBOOL CKBehavior::IsInputActive(int pos) {
-    return 0;
+    if (pos < 0 || pos >= m_InputArray.Size())
+        return FALSE;
+
+    CKBehaviorIO *io = (CKBehaviorIO *)m_InputArray[pos];
+    return io ? io->IsActive() : FALSE;
 }
 
 CKBehaviorIO *CKBehavior::RemoveInput(int pos) {
-    return nullptr;
+    if (pos < 0 || pos >= m_InputArray.Size())
+        return nullptr;
+
+    CKBehaviorIO *io = (CKBehaviorIO *)m_InputArray[pos];
+    m_InputArray.RemoveAt(pos);
+    return io;
 }
 
 CKERROR CKBehavior::DeleteInput(int pos) {
-    return 0;
+    CKBehaviorIO *io = RemoveInput(pos);
+    if (!io)
+        return CKERR_INVALIDPARAMETER;
+    return m_Context->DestroyObject(io);
 }
 
 CKBehaviorIO *CKBehavior::GetInput(int pos) {
-    return nullptr;
+    if (pos < 0 || pos >= m_InputArray.Size())
+        return nullptr;
+    return (CKBehaviorIO *)m_InputArray[pos];
 }
 
 int CKBehavior::GetInputCount() {
-    return 0;
+    return m_InputArray.Size();
 }
 
-int CKBehavior::GetInputPosition(CKBehaviorIO *pbio) {
-    return 0;
+int CKBehavior::GetInputPosition(CKBehaviorIO *io) {
+    if (!io) return -1;
+
+    for (int i = 0; i < m_InputArray.Size(); ++i) {
+        if (m_InputArray[i] == io) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 int CKBehavior::AddInput(CKSTRING name) {
-    return 0;
+    CKBehaviorIO *io = CreateInput(name);
+    return io ? m_InputArray.Size() - 1 : -1;
 }
 
 CKBehaviorIO *CKBehavior::ReplaceInput(int pos, CKBehaviorIO *io) {
-    return nullptr;
+    if (pos < 0 || pos >= m_InputArray.Size())
+        return nullptr;
+
+    CKBehaviorIO *oldIO = (CKBehaviorIO *)m_InputArray[pos];
+    m_InputArray[pos] = io;
+    return oldIO;
 }
 
 CKBehaviorIO *CKBehavior::CreateInput(CKSTRING name) {
-    return nullptr;
+    CKBehaviorIO *io = (CKBehaviorIO *)m_Context->CreateObject(CKCID_BEHAVIORIO, name, CK_OBJECTCREATION_SameDynamic);
+    if (io) {
+        m_InputArray.PushBack(io);
+        io->m_OwnerBehavior = this;
+        io->ModifyObjectFlags(CK_BEHAVIORIO_IN, CK_OBJECT_IOTYPEMASK); // Clear OUT, set IN
+    }
+    return io;
 }
 
 CKERROR CKBehavior::ExportInputParameter(CKParameterIn *p) {
@@ -289,13 +392,11 @@ CKParameterIn *CKBehavior::CreateInputParameter(CKSTRING name, CKGUID guid) {
     return nullptr;
 }
 
-CKParameterIn* CKBehavior::InsertInputParameter(int pos, CKSTRING name, CKParameterType type)
-{
+CKParameterIn *CKBehavior::InsertInputParameter(int pos, CKSTRING name, CKParameterType type) {
     return nullptr;
 }
 
 void CKBehavior::AddInputParameter(CKParameterIn *in) {
-
 }
 
 int CKBehavior::GetInputParameterPosition(CKParameterIn *) {
@@ -335,7 +436,6 @@ CKBOOL CKBehavior::IsInputParameterEnabled(int pos) {
 }
 
 void CKBehavior::EnableInputParameter(int pos, CKBOOL enable) {
-
 }
 
 CKERROR CKBehavior::ExportOutputParameter(CKParameterOut *p) {
@@ -350,8 +450,7 @@ CKParameterOut *CKBehavior::CreateOutputParameter(CKSTRING name, CKGUID guid) {
     return nullptr;
 }
 
-CKParameterOut* CKBehavior::InsertOutputParameter(int pos, CKSTRING name, CKParameterType type)
-{
+CKParameterOut *CKBehavior::InsertOutputParameter(int pos, CKSTRING name, CKParameterType type) {
     return nullptr;
 }
 
@@ -372,7 +471,6 @@ CKParameterOut *CKBehavior::RemoveOutputParameter(int pos) {
 }
 
 void CKBehavior::AddOutputParameter(CKParameterOut *out) {
-
 }
 
 int CKBehavior::GetOutputParameterCount() {
@@ -404,11 +502,9 @@ CKBOOL CKBehavior::IsOutputParameterEnabled(int pos) {
 }
 
 void CKBehavior::EnableOutputParameter(int pos, CKBOOL enable) {
-
 }
 
 void CKBehavior::SetInputParameterDefaultValue(CKParameterIn *pin, CKParameter *plink) {
-
 }
 
 CKParameterLocal *CKBehavior::CreateLocalParameter(CKSTRING name, CKParameterType type) {
@@ -428,7 +524,6 @@ CKParameterLocal *CKBehavior::RemoveLocalParameter(int pos) {
 }
 
 void CKBehavior::AddLocalParameter(CKParameterLocal *loc) {
-
 }
 
 int CKBehavior::GetLocalParameterPosition(CKParameterLocal *) {
@@ -468,7 +563,12 @@ CKBOOL CKBehavior::IsLocalParameterSetting(int pos) {
 }
 
 void CKBehavior::Activate(CKBOOL Active, CKBOOL breset) {
-
+    if (breset || m_Flags == CKBEHAVIOR_NONE)
+        Reset();
+    if (Active)
+        m_Flags |= CKBEHAVIOR_ACTIVE;
+    else
+        m_Flags &= ~CKBEHAVIOR_ACTIVE;
 }
 
 CKERROR CKBehavior::AddSubBehavior(CKBehavior *cbk) {
@@ -528,11 +628,13 @@ CKParameterOperation *CKBehavior::RemoveParameterOperation(CKParameterOperation 
 }
 
 int CKBehavior::GetParameterOperationCount() {
-    return 0;
+    if (!m_GraphData)
+        return 0;
+    return m_GraphData->m_Operations.Size();
 }
 
 int CKBehavior::GetPriority() {
-    return 0;
+    return m_Priority;
 }
 
 void CKBehavior::SetPriority(int priority) {
@@ -541,7 +643,7 @@ void CKBehavior::SetPriority(int priority) {
     // Check if this behavior has a parent
     if (m_BehParent) {
         // Get the parent behavior object
-        CKBehavior *parentBehavior = (CKBehavior *) m_Context->GetObjectA(m_BehParent);
+        CKBehavior *parentBehavior = (CKBehavior *)m_Context->GetObjectA(m_BehParent);
 
         // If the parent behavior object exists, sort its sub-behaviors
         if (parentBehavior)
@@ -552,18 +654,18 @@ void CKBehavior::SetPriority(int priority) {
             // Check if the 'm_Flags' bitmask has the second bit set
             if ((m_Flags & 2) != 0) {
                 // Get the owner object
-                CKBeObject *ownerObject = (CKBeObject *) m_Context->GetObjectA(m_Owner);
+                CKBeObject *ownerObject = (CKBeObject *)m_Context->GetObjectA(m_Owner);
 
                 // If the owner object exists, sort its scripts
                 //if (ownerObject)
-                  //  ownerObject->SortScripts(); // Calling a class method with an object instance
+                //  ownerObject->SortScripts(); // Calling a class method with an object instance
             }
         }
     }
 }
 
 float CKBehavior::GetLastExecutionTime() {
-    return 0;
+    return m_LastExecutionTime;
 }
 
 CKERROR CKBehavior::SetOwner(CKBeObject *, CKBOOL callback) {
@@ -575,35 +677,50 @@ CKERROR CKBehavior::SetSubBehaviorOwner(CKBeObject *o, CKBOOL callback) {
 }
 
 void CKBehavior::NotifyEdition() {
-
+    CallCallbackFunction(CKM_BEHAVIOREDITED);
 }
 
 void CKBehavior::NotifySettingsEdition() {
-
+    CallCallbackFunction(CKM_BEHAVIORSETTINGSEDITED);
 }
 
 CKStateChunk *CKBehavior::GetInterfaceChunk() {
-    return nullptr;
+    return m_InterfaceChunk;
 }
 
 void CKBehavior::SetInterfaceChunk(CKStateChunk *state) {
-
+    if (m_InterfaceChunk)
+        delete m_InterfaceChunk;
+    m_InterfaceChunk = state;
 }
 
-//CKBehavior::CKBehavior(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
-//
-//}
+CKBehavior::CKBehavior(CKContext *Context, CKSTRING name) : CKSceneObject(Context, name) {
+}
 
 CKBehavior::~CKBehavior() {
-
 }
 
 CK_CLASSID CKBehavior::GetClassID() {
-    return CKSceneObject::GetClassID();
+    return m_ClassID;
 }
 
 void CKBehavior::PreSave(CKFile *file, CKDWORD flags) {
     CKObject::PreSave(file, flags);
+
+    if (m_GraphData) {
+        file->SaveObjects(m_GraphData->m_SubBehaviors.Begin(), m_GraphData->m_SubBehaviors.Size());
+        file->SaveObjects(m_GraphData->m_SubBehaviorLinks.Begin(), m_GraphData->m_SubBehaviorLinks.Size());
+        file->SaveObjects(m_GraphData->m_Operations.Begin(), m_GraphData->m_Operations.Size());
+    }
+
+    file->SaveObjects(m_InputArray.Begin(), m_InputArray.Size());
+    file->SaveObjects(m_OutputArray.Begin(), m_OutputArray.Size());
+    file->SaveObjects(m_InParameter.Begin(), m_InParameter.Size());
+    file->SaveObjects(m_OutParameter.Begin(), m_OutParameter.Size());
+    file->SaveObjects(m_LocalParameter.Begin(), m_LocalParameter.Size());
+
+    CKObject *targetObj = m_Context->GetObject(m_InputTargetParam);
+    file->SaveObject(targetObj);
 }
 
 CKStateChunk *CKBehavior::Save(CKFile *file, CKDWORD flags) {
@@ -615,6 +732,8 @@ CKERROR CKBehavior::Load(CKStateChunk *chunk, CKFile *file) {
 }
 
 void CKBehavior::PostLoad() {
+    if ((m_Flags & (CKBEHAVIOR_SCRIPT | CKBEHAVIOR_TOPMOST)) != 0)
+        HierarchyPostLoad();
     CKObject::PostLoad();
 }
 
@@ -655,43 +774,36 @@ CKSTRING CKBehavior::GetDependencies(int i, int mode) {
 }
 
 void CKBehavior::Register() {
-
 }
 
 CKBehavior *CKBehavior::CreateInstance(CKContext *Context) {
-    return nullptr;
+    return new CKBehavior(Context, nullptr);
 }
 
 void CKBehavior::Reset() {
-
 }
 
 void CKBehavior::ErrorMessage(CKSTRING Error, CKSTRING Context, CKBOOL ShowOwner, CKBOOL ShowScript) {
-
 }
 
 void CKBehavior::ErrorMessage(CKSTRING Error, CKDWORD Context, CKBOOL ShowOwner, CKBOOL ShowScript) {
-
 }
 
 void CKBehavior::SetPrototypeGuid(CKGUID ckguid) {
-
 }
 
 void CKBehavior::SetParent(CKBehavior *parent) {
-
 }
 
 void CKBehavior::SortSubs() {
-
+    if (m_GraphData)
+        m_GraphData->m_SubBehaviors.Sort(CKBehavior::BehaviorPrioritySort);
 }
 
 void CKBehavior::ResetExecutionTime() {
-
 }
 
 void CKBehavior::ExecuteStepStart() {
-
 }
 
 int CKBehavior::ExecuteStep(float delta, CKDebugContext *Context) {
@@ -699,7 +811,6 @@ int CKBehavior::ExecuteStep(float delta, CKDebugContext *Context) {
 }
 
 void CKBehavior::WarnInfiniteLoop() {
-
 }
 
 int CKBehavior::InternalGetShortestDelay(CKBehavior *beh, XObjectPointerArray &behparsed) {
@@ -707,11 +818,9 @@ int CKBehavior::InternalGetShortestDelay(CKBehavior *beh, XObjectPointerArray &b
 }
 
 void CKBehavior::CheckIOsActivation() {
-
 }
 
 void CKBehavior::CheckBehaviorActivity() {
-
 }
 
 int CKBehavior::ExecuteFunction() {
@@ -719,11 +828,9 @@ int CKBehavior::ExecuteFunction() {
 }
 
 void CKBehavior::FindNextBehaviorsToExecute(CKBehavior *beh) {
-
 }
 
 void CKBehavior::HierarchyPostLoad() {
-
 }
 
 int CKBehavior::BehaviorPrioritySort(CKObject *o1, CKObject *o2) {
@@ -735,5 +842,4 @@ int CKBehavior::BehaviorPrioritySort(const void *elem1, const void *elem2) {
 }
 
 void CKBehavior::ApplyPatchLoad() {
-
 }
