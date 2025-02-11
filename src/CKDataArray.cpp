@@ -1,6 +1,6 @@
 #include "CKDataArray.h"
 
-CK_ID CKDataArray::m_ClassID;
+CK_CLASSID CKDataArray::m_ClassID = CKCID_DATAARRAY;
 
 void CKDataArray::InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramguid) {
 
@@ -203,7 +203,7 @@ CKDataArray::~CKDataArray() {
 }
 
 CK_CLASSID CKDataArray::GetClassID() {
-    return CKBeObject::GetClassID();
+    return m_ClassID;
 }
 
 void CKDataArray::PreSave(CKFile *file, CKDWORD flags) {

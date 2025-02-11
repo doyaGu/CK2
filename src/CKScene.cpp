@@ -167,7 +167,7 @@ CKScene::~CKScene() {
 }
 
 CK_CLASSID CKScene::GetClassID() {
-    return CKBeObject::GetClassID();
+    return m_ClassID;
 }
 
 void CKScene::PreSave(CKFile *file, CKDWORD flags) {

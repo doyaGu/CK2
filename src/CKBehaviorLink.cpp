@@ -19,7 +19,7 @@ CKBehaviorLink::~CKBehaviorLink() {
 }
 
 CK_CLASSID CKBehaviorLink::GetClassID() {
-    return CKObject::GetClassID();
+    return m_ClassID;
 }
 
 CKStateChunk *CKBehaviorLink::Save(CKFile *file, CKDWORD flags) {

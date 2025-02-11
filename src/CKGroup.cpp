@@ -1,6 +1,6 @@
 #include "CKGroup.h"
 
-CK_ID CKGroup::m_ClassID = CKCID_GROUP;
+CK_CLASSID CKGroup::m_ClassID = CKCID_GROUP;
 
 CKERROR CKGroup::AddObject(CKBeObject *o) {
     return 0;
@@ -63,7 +63,7 @@ CKGroup::~CKGroup() {
 }
 
 CK_CLASSID CKGroup::GetClassID() {
-    return CKBeObject::GetClassID();
+    return m_ClassID;
 }
 
 void CKGroup::AddToScene(CKScene *scene, CKBOOL dependencies) {

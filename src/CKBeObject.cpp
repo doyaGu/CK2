@@ -206,7 +206,7 @@ CKBeObject::~CKBeObject() {
 }
 
 CK_CLASSID CKBeObject::GetClassID() {
-    return CKSceneObject::GetClassID();
+    return m_ClassID;
 }
 
 void CKBeObject::PreSave(CKFile *file, CKDWORD flags) {

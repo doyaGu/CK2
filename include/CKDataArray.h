@@ -217,9 +217,9 @@ public:
     static CKSTRING GetDependencies(int i, int mode);
     static void Register();
     static CKDataArray *CreateInstance(CKContext *Context);
-    static CK_ID m_ClassID;
+    static CK_CLASSID m_ClassID;
 
-    // Dynamic Cast method (returns NULL if the object can't be casted)
+    // Dynamic Cast method (returns NULL if the object can't be cast)
     static CKDataArray *Cast(CKObject *iO)
     {
         return CKIsChildClassOf(iO, CKCID_DATAARRAY) ? (CKDataArray *)iO : NULL;

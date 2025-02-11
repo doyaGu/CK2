@@ -32,7 +32,7 @@ CKParameterOperation::~CKParameterOperation() {
 }
 
 CK_CLASSID CKParameterOperation::GetClassID() {
-    return CKObject::GetClassID();
+    return m_ClassID;
 }
 
 void CKParameterOperation::PreSave(CKFile *file, CKDWORD flags) {

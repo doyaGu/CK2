@@ -19,7 +19,7 @@ CKSound::~CKSound() {
 }
 
 CK_CLASSID CKSound::GetClassID() {
-    return CKBeObject::GetClassID();
+    return m_ClassID;
 }
 
 CKStateChunk *CKSound::Save(CKFile *file, CKDWORD flags) {

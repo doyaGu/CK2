@@ -56,7 +56,7 @@ CKParameterOut::~CKParameterOut() {
 }
 
 CK_CLASSID CKParameterOut::GetClassID() {
-    return CKParameter::GetClassID();
+    return m_ClassID;
 }
 
 void CKParameterOut::PreSave(CKFile *file, CKDWORD flags) {

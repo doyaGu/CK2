@@ -35,7 +35,7 @@ CKSynchroObject::~CKSynchroObject() {
 }
 
 CK_CLASSID CKSynchroObject::GetClassID() {
-    return CKObject::GetClassID();
+    return m_ClassID;
 }
 
 CKStateChunk *CKSynchroObject::Save(CKFile *file, CKDWORD flags) {

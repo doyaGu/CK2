@@ -254,7 +254,7 @@ CKWaveSound::~CKWaveSound() {
 }
 
 CK_CLASSID CKWaveSound::GetClassID() {
-    return CKSound::GetClassID();
+    return m_ClassID;
 }
 
 CKStateChunk *CKWaveSound::Save(CKFile *File, CKDWORD Flags) {

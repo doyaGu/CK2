@@ -147,7 +147,7 @@ CKLevel::~CKLevel() {
 }
 
 CK_CLASSID CKLevel::GetClassID() {
-    return CKBeObject::GetClassID();
+    return m_ClassID;
 }
 
 void CKLevel::PreSave(CKFile *file, CKDWORD flags) {

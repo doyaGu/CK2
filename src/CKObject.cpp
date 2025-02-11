@@ -61,7 +61,7 @@ CKObject::~CKObject() {
 }
 
 CK_CLASSID CKObject::GetClassID() {
-    return CKObject::m_ClassID;
+    return m_ClassID;
 }
 
 void CKObject::PreSave(CKFile *file, CKDWORD flags) { /* Empty */ }

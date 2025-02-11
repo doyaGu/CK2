@@ -43,7 +43,7 @@ CKMidiSound::~CKMidiSound() {
 }
 
 CK_CLASSID CKMidiSound::GetClassID() {
-    return CKSound::GetClassID();
+    return m_ClassID;
 }
 
 CKStateChunk *CKMidiSound::Save(CKFile *file, CKDWORD flags) {

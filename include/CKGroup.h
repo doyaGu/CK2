@@ -84,7 +84,7 @@ public:
     static CKSTRING GetDependencies(int i, int mode);
     static void Register();
     static CKGroup *CreateInstance(CKContext *Context);
-    static CK_ID m_ClassID;
+    static CK_CLASSID m_ClassID;
 
     // Dynamic Cast method (returns NULL if the object can't be cast)
     static CKGroup *Cast(CKObject *iO)
