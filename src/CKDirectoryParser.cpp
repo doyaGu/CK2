@@ -5,8 +5,7 @@
 
 #include <windows.h>
 
-CKDirectoryParser::CKDirectoryParser(char *dir, char *fileMask, XBOOL recurse)
-{
+CKDirectoryParser::CKDirectoryParser(char *dir, char *fileMask, XBOOL recurse) {
     m_FindData = NULL;
     m_StartDir = NULL;
     m_FullFileName = NULL;
@@ -16,8 +15,7 @@ CKDirectoryParser::CKDirectoryParser(char *dir, char *fileMask, XBOOL recurse)
     Reset(dir, fileMask, recurse);
 }
 
-CKDirectoryParser::~CKDirectoryParser()
-{
+CKDirectoryParser::~CKDirectoryParser() {
     delete (_finddata_t *)m_FindData;
     delete[] m_StartDir;
     delete[] m_FullFileName;
@@ -31,34 +29,27 @@ CKDirectoryParser::~CKDirectoryParser()
     m_hFile = -1;
 }
 
-char *CKDirectoryParser::GetNextFile()
-{
+char *CKDirectoryParser::GetNextFile() {
     char buf[MAX_PATH];
-    if ((m_State & 2) == 0)
-    {
+    if ((m_State & 2) == 0) {
         sprintf(buf, "%s\\%s", m_StartDir, m_FileMask);
-        if (m_hFile == -1)
-        {
+        if (m_hFile == -1) {
             m_hFile = _findfirst(buf, (_finddata_t *)m_FindData);
-            if (m_hFile == -1)
-            {
+            if (m_hFile == -1) {
                 if ((m_State & 1) != 0)
                     m_State |= 2;
                 _findclose(m_hFile);
                 m_hFile = -1;
                 if ((m_State & 2) == 0)
                     return 0;
-            }
-            else
-            {
+            } else {
                 if ((((_finddata_t *)m_FindData)->attrib & 0x10) != 0)
                     return GetNextFile();
                 sprintf(m_FullFileName, "%s\\%s", m_StartDir, ((_finddata_t *)m_FindData)->name);
                 return m_FullFileName;
             }
         }
-        if (!_findnext(m_hFile, (_finddata_t *)m_FindData))
-        {
+        if (!_findnext(m_hFile, (_finddata_t *)m_FindData)) {
             if ((((_finddata_t *)m_FindData)->attrib & 0x10) != 0)
                 return GetNextFile();
             sprintf(m_FullFileName, "%s\\%s", m_StartDir, ((_finddata_t *)m_FindData)->name);
@@ -70,25 +61,20 @@ char *CKDirectoryParser::GetNextFile()
         m_hFile = -1;
         if ((m_State & 2) == 0)
             return NULL;
-    }
-    else
-    {
+    } else {
         char *ret;
-        if (m_hFile == -1)
-        {
+        if (m_hFile == -1) {
             sprintf(buf, "%s\\%s", m_StartDir, "*.*");
             m_hFile = _findfirst(buf, (_finddata_t *)m_FindData);
             if (m_hFile == -1)
                 return NULL;
             if (strcmp(((_finddata_t *)m_FindData)->name, ".") != 0 &&
                 strcmp(((_finddata_t *)m_FindData)->name, "..") != 0 &&
-                ((((_finddata_t *)m_FindData)->attrib & 0x10) != 0))
-            {
+                ((((_finddata_t *)m_FindData)->attrib & 0x10) != 0)) {
                 char dir[MAX_PATH];
                 sprintf(dir, "%s\\%s", m_StartDir, ((_finddata_t *)m_FindData)->name);
                 m_SubParser = new CKDirectoryParser(dir, m_FileMask, TRUE);
-                while (true)
-                {
+                while (true) {
                     ret = m_SubParser->GetNextFile();
                     if (ret)
                         return ret;
@@ -99,14 +85,11 @@ char *CKDirectoryParser::GetNextFile()
                 }
             }
         }
-        if (!m_SubParser)
-        {
-            while (!_findnext(m_hFile, (_finddata_t *)m_FindData))
-            {
+        if (!m_SubParser) {
+            while (!_findnext(m_hFile, (_finddata_t *)m_FindData)) {
                 if (strcmp(((_finddata_t *)m_FindData)->name, ".") != 0 &&
                     strcmp(((_finddata_t *)m_FindData)->name, "..") != 0 &&
-                    ((((_finddata_t *)m_FindData)->attrib & 0x10) != 0))
-                {
+                    ((((_finddata_t *)m_FindData)->attrib & 0x10) != 0)) {
                     char dir[MAX_PATH];
                     sprintf(dir, "%s\\%s", m_StartDir, ((_finddata_t *)m_FindData)->name);
                     m_SubParser = new CKDirectoryParser(dir, m_FileMask, TRUE);
@@ -127,8 +110,7 @@ char *CKDirectoryParser::GetNextFile()
     return NULL;
 }
 
-void CKDirectoryParser::Reset(char *dir, char *fileMask, XBOOL recurse)
-{
+void CKDirectoryParser::Reset(char *dir, char *fileMask, XBOOL recurse) {
     delete (_finddata_t *)m_FindData;
     delete[] m_FullFileName;
     if (m_SubParser)

@@ -1,17 +1,14 @@
 #include "CKAttributeManager.h"
 
-CKAttributeType CKAttributeManager::RegisterNewAttributeType(CKSTRING Name, CKGUID ParameterType, CK_CLASSID CompatibleCid, CK_ATTRIBUT_FLAGS flags)
-{
+CKAttributeType CKAttributeManager::RegisterNewAttributeType(CKSTRING Name, CKGUID ParameterType, CK_CLASSID CompatibleCid, CK_ATTRIBUT_FLAGS flags) {
     return 0;
 }
 
 
 void CKAttributeManager::UnRegisterAttribute(CKAttributeType AttribType) {
-
 }
 
 void CKAttributeManager::UnRegisterAttribute(CKSTRING atname) {
-
 }
 
 CKSTRING CKAttributeManager::GetAttributeNameByType(CKAttributeType AttribType) {
@@ -23,7 +20,6 @@ CKAttributeType CKAttributeManager::GetAttributeTypeByName(CKSTRING AttribName) 
 }
 
 void CKAttributeManager::SetAttributeNameByType(CKAttributeType AttribType, CKSTRING name) {
-
 }
 
 int CKAttributeManager::GetAttributeCount() {
@@ -55,11 +51,9 @@ CK_ATTRIBUT_FLAGS CKAttributeManager::GetAttributeFlags(CKAttributeType AttribTy
 }
 
 void CKAttributeManager::SetAttributeCallbackFunction(CKAttributeType AttribType, CKATTRIBUTECALLBACK fct, void *arg) {
-
 }
 
 void CKAttributeManager::SetAttributeDefaultValue(CKAttributeType AttribType, CKSTRING DefaultVal) {
-
 }
 
 CKSTRING CKAttributeManager::GetAttributeDefaultValue(CKAttributeType AttribType) {
@@ -100,7 +94,6 @@ CKAttributeCategory CKAttributeManager::GetCategoryByName(CKSTRING Name) {
 }
 
 void CKAttributeManager::SetCategoryName(CKAttributeCategory catType, CKSTRING name) {
-
 }
 
 CKAttributeCategory CKAttributeManager::AddCategory(CKSTRING Category, CKDWORD flags) {
@@ -108,7 +101,6 @@ CKAttributeCategory CKAttributeManager::AddCategory(CKSTRING Category, CKDWORD f
 }
 
 void CKAttributeManager::RemoveCategory(CKSTRING Category) {
-
 }
 
 CKDWORD CKAttributeManager::GetCategoryFlags(CKAttributeCategory cat) {
@@ -120,7 +112,6 @@ CKDWORD CKAttributeManager::GetCategoryFlags(CKSTRING cat) {
 }
 
 void CKAttributeManager::SetAttributeCategory(CKAttributeType AttribType, CKSTRING Category) {
-
 }
 
 CKSTRING CKAttributeManager::GetAttributeCategory(CKAttributeType AttribType) {
@@ -132,23 +123,18 @@ CKAttributeCategory CKAttributeManager::GetAttributeCategoryIndex(CKAttributeTyp
 }
 
 void CKAttributeManager::AddAttributeToObject(CKAttributeType AttribType, CKBeObject *beo) {
-
 }
 
 void CKAttributeManager::RefreshList(CKObject *obj, CKScene *scene) {
-
 }
 
 void CKAttributeManager::RemoveAttributeFromObject(CKBeObject *beo) {
-
 }
 
-CKAttributeManager::CKAttributeManager(CKContext* Context): CKBaseManager(Context, ATTRIBUTE_MANAGER_GUID, "Attribute Manager")
-{
+CKAttributeManager::CKAttributeManager(CKContext *Context): CKBaseManager(Context, ATTRIBUTE_MANAGER_GUID, "Attribute Manager") {
 }
 
 CKAttributeManager::~CKAttributeManager() {
-
 }
 
 CKERROR CKAttributeManager::PreClearAll() {

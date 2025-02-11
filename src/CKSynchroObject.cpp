@@ -3,11 +3,9 @@
 CK_CLASSID CKSynchroObject::m_ClassID = CKCID_SYNCHRO;
 
 void CKSynchroObject::Reset() {
-
 }
 
 void CKSynchroObject::SetRendezVousNumberOfWaiters(int waiters) {
-
 }
 
 int CKSynchroObject::GetRendezVousNumberOfWaiters() {
@@ -27,11 +25,9 @@ int CKSynchroObject::GetRendezVousNumberOfArrivedObjects() {
 //}
 
 CKSynchroObject::CKSynchroObject(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
-
 }
 
 CKSynchroObject::~CKSynchroObject() {
-
 }
 
 CK_CLASSID CKSynchroObject::GetClassID() {
@@ -71,7 +67,6 @@ CKSTRING CKSynchroObject::GetDependencies(int i, int mode) {
 }
 
 void CKSynchroObject::Register() {
-
 }
 
 CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
@@ -80,144 +75,114 @@ CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
 
 CK_CLASSID CKStateObject::m_ClassID;
 
-CKBOOL CKStateObject::IsStateActive()
-{
+CKBOOL CKStateObject::IsStateActive() {
     return FALSE;
 }
 
-void CKStateObject::EnterState()
-{
+void CKStateObject::EnterState() {
 }
 
-void CKStateObject::LeaveState()
-{
+void CKStateObject::LeaveState() {
 }
 
-CKStateObject::CKStateObject(CKContext* Context, CKSTRING name)
-{
+CKStateObject::CKStateObject(CKContext *Context, CKSTRING name) {
 }
 
-CKStateObject::~CKStateObject()
-{
+CKStateObject::~CKStateObject() {
 }
 
-CK_CLASSID CKStateObject::GetClassID()
-{
-    return CK_CLASSID();
+CK_CLASSID CKStateObject::GetClassID() {
+    return m_ClassID;
 }
 
-CKStateChunk* CKStateObject::Save(CKFile* file, CKDWORD flags)
-{
+CKStateChunk *CKStateObject::Save(CKFile *file, CKDWORD flags) {
     return nullptr;
 }
 
-CKERROR CKStateObject::Load(CKStateChunk* chunk, CKFile* file)
-{
+CKERROR CKStateObject::Load(CKStateChunk *chunk, CKFile *file) {
     return CKERROR();
 }
 
-int CKStateObject::GetMemoryOccupation()
-{
+int CKStateObject::GetMemoryOccupation() {
     return 0;
 }
 
-CKSTRING CKStateObject::GetClassName()
-{
+CKSTRING CKStateObject::GetClassName() {
     return CKSTRING();
 }
 
-int CKStateObject::GetDependenciesCount(int mode)
-{
+int CKStateObject::GetDependenciesCount(int mode) {
     return 0;
 }
 
-CKSTRING CKStateObject::GetDependencies(int i, int mode)
-{
+CKSTRING CKStateObject::GetDependencies(int i, int mode) {
     return CKSTRING();
 }
 
-void CKStateObject::Register()
-{
+void CKStateObject::Register() {
 }
 
-CKStateObject* CKStateObject::CreateInstance(CKContext* Context)
-{
+CKStateObject *CKStateObject::CreateInstance(CKContext *Context) {
     return nullptr;
 }
 
 CK_CLASSID CKCriticalSectionObject::m_ClassID;
 
-void CKCriticalSectionObject::Reset()
-{
+void CKCriticalSectionObject::Reset() {
 }
 
-CKBOOL CKCriticalSectionObject::EnterCriticalSection(CKBeObject* asker)
-{
+CKBOOL CKCriticalSectionObject::EnterCriticalSection(CKBeObject *asker) {
     return CKBOOL();
 }
 
-CKBOOL CKCriticalSectionObject::LeaveCriticalSection(CKBeObject* asker)
-{
+CKBOOL CKCriticalSectionObject::LeaveCriticalSection(CKBeObject *asker) {
     return CKBOOL();
 }
 
-CKCriticalSectionObject::CKCriticalSectionObject(CKContext* Context, CKSTRING name)
-{
+CKCriticalSectionObject::CKCriticalSectionObject(CKContext *Context, CKSTRING name) {
 }
 
-CKCriticalSectionObject::~CKCriticalSectionObject()
-{
+CKCriticalSectionObject::~CKCriticalSectionObject() {
 }
 
-CK_CLASSID CKCriticalSectionObject::GetClassID()
-{
-    return CK_CLASSID();
+CK_CLASSID CKCriticalSectionObject::GetClassID() {
+    return m_ClassID;
 }
 
-CKStateChunk* CKCriticalSectionObject::Save(CKFile* file, CKDWORD flags)
-{
+CKStateChunk *CKCriticalSectionObject::Save(CKFile *file, CKDWORD flags) {
     return nullptr;
 }
 
-CKERROR CKCriticalSectionObject::Load(CKStateChunk* chunk, CKFile* file)
-{
+CKERROR CKCriticalSectionObject::Load(CKStateChunk *chunk, CKFile *file) {
     return CKERROR();
 }
 
-void CKCriticalSectionObject::CheckPostDeletion()
-{
+void CKCriticalSectionObject::CheckPostDeletion() {
 }
 
-int CKCriticalSectionObject::GetMemoryOccupation()
-{
+int CKCriticalSectionObject::GetMemoryOccupation() {
     return 0;
 }
 
-CKBOOL CKCriticalSectionObject::IsObjectUsed(CKObject* obj, CK_CLASSID cid)
-{
+CKBOOL CKCriticalSectionObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
     return CKBOOL();
 }
 
-CKSTRING CKCriticalSectionObject::GetClassName()
-{
+CKSTRING CKCriticalSectionObject::GetClassName() {
     return CKSTRING();
 }
 
-int CKCriticalSectionObject::GetDependenciesCount(int mode)
-{
+int CKCriticalSectionObject::GetDependenciesCount(int mode) {
     return 0;
 }
 
-CKSTRING CKCriticalSectionObject::GetDependencies(int i, int mode)
-{
+CKSTRING CKCriticalSectionObject::GetDependencies(int i, int mode) {
     return CKSTRING();
 }
 
-void CKCriticalSectionObject::Register()
-{
+void CKCriticalSectionObject::Register() {
 }
 
-CKCriticalSectionObject* CKCriticalSectionObject::CreateInstance(CKContext* Context)
-{
+CKCriticalSectionObject *CKCriticalSectionObject::CreateInstance(CKContext *Context) {
     return nullptr;
 }

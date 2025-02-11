@@ -1,10 +1,8 @@
 #include "CKRenderContext.h"
 
-CKRenderContext::CKRenderContext(CKContext* Context, CKSTRING name)
-{
+CKRenderContext::CKRenderContext(CKContext *Context, CKSTRING name) {
 }
 
-CKRenderContext::~CKRenderContext(void)
-{
+CKRenderContext::~CKRenderContext() {
 	CKObject::~CKObject();
 }
