@@ -144,6 +144,7 @@ int CKBehaviorManager::AddObjectNextFrame(CKBeObject *beo) {
     }
 
     m_BeObjectNextFrame[beo->GetID()] = 1;
+    return CK_OK;
 }
 
 int CKBehaviorManager::RemoveObjectNextFrame(CKBeObject *beo) {

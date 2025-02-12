@@ -680,6 +680,7 @@ CKERROR CKBehavior::ExportInputParameter(CKParameterIn *p) {
     if (!p)
         return CKERR_INVALIDPARAMETER;
     m_InParameter.PushBack(p);
+    return CK_OK;
 }
 
 CKParameterIn *CKBehavior::CreateInputParameter(CKSTRING name, CKParameterType type) {
@@ -797,6 +798,7 @@ CKERROR CKBehavior::ExportOutputParameter(CKParameterOut *p) {
     if (!p)
         return CKERR_INVALIDPARAMETER;
     m_OutParameter.PushBack(p);
+    return CK_OK;
 }
 
 CKParameterOut *CKBehavior::CreateOutputParameter(CKSTRING name, CKParameterType type) {
@@ -898,6 +900,7 @@ CKERROR CKBehavior::SetOutputParameterObject(int pos, CKObject *obj) {
     if (obj)
         objID = obj->GetID();
     param->SetValue(&objID);
+    return CK_OK;
 }
 
 CKObject *CKBehavior::GetOutputParameterObject(int pos) {
@@ -1050,6 +1053,7 @@ CKERROR CKBehavior::SetLocalParameterObject(int pos, CKObject *obj) {
     if (obj)
         objID = obj->GetID();
     param->SetValue(&objID);
+    return CK_OK;
 }
 
 CKBOOL CKBehavior::IsLocalParameterSetting(int pos) {
