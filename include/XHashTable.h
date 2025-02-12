@@ -21,7 +21,7 @@ class XHashTableEntry
     typedef XHashTableEntry<T, K> *tEntry;
 
 public:
-    XHashTableEntry() : m_Key(0), m_Data(0), m_Next(NULL) {}
+    XHashTableEntry() : m_Key(), m_Data(), m_Next(NULL) {}
     XHashTableEntry(const K &k, const T &v) : m_Key(k), m_Data(v), m_Next(NULL) {}
     XHashTableEntry(const XHashTableEntry<T, K> &e) : m_Key(e.m_Key), m_Data(e.m_Data), m_Next(NULL) {}
     ~XHashTableEntry() {}
@@ -66,7 +66,7 @@ public:
     /************************************************
     Summary: Default constructor of the iterator.
     ************************************************/
-    XHashTableIt() : m_Node(0), m_Table(0) {}
+    XHashTableIt() : m_Node(NULL), m_Table(NULL) {}
 
     /************************************************
     Summary: Copy constructor of the iterator.
@@ -198,7 +198,7 @@ public:
     /************************************************
     Summary: Default constructor of the iterator.
     ************************************************/
-    XHashTableConstIt() : m_Node(0), m_Table(0) {}
+    XHashTableConstIt() : m_Node(NULL), m_Table(NULL) {}
 
     /************************************************
     Summary: Copy constructor of the iterator.
