@@ -27,7 +27,8 @@ int CKScene::GetObjectCount() {
 }
 
 const XObjectPointerArray &CKScene::ComputeObjectList(CK_CLASSID cid, CKBOOL derived) {
-    return XObjectPointerArray();
+    static XObjectPointerArray array;
+    return array;
 }
 
 CKSceneObjectIterator CKScene::GetObjectIterator() {
@@ -35,7 +36,7 @@ CKSceneObjectIterator CKScene::GetObjectIterator() {
 }
 
 CKSceneObjectDesc *CKScene::GetSceneObjectDesc(CKSceneObject *o) {
-
+    return nullptr;
 }
 
 void CKScene::Activate(CKSceneObject *o, CKBOOL Reset) {
