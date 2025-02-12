@@ -108,18 +108,21 @@ CKERROR CKMessageManager::RegisterWait(CKMessageType MsgType, CKBehavior *behav,
 
     behav->ModifyFlags(CKBEHAVIOR_WAITSFORMESSAGE, 0);
 
-    CKWaitingObjectArray &waitList = m_MsgWaitingList[MsgType];
-
-    for (XArray<CKWaitingObject>::Iterator it = waitList.Begin(); it != waitList.End(); ++it) {
-        if (it->m_Behavior == behav && it->m_Output == output)
-            return CKERR_ALREADYPRESENT;
+    CKWaitingObjectArray *waitList = &m_MsgWaitingList[MsgType];
+    if (waitList) {
+        for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End(); ++it) {
+            if (it->m_Behavior == behav && it->m_Output == output)
+                return CKERR_ALREADYPRESENT;
+        }
+    } else {
+        waitList = new CKWaitingObjectArray;
     }
 
     CKWaitingObject newEntry = {};
     newEntry.m_Behavior = behav;
     newEntry.m_Output = output;
     newEntry.m_BeObject = obj;
-    waitList.PushBack(newEntry);
+    waitList->PushBack(newEntry);
 
     return CK_OK;
 }
@@ -132,16 +135,16 @@ CKERROR CKMessageManager::UnRegisterWait(CKMessageType MsgType, CKBehavior *beha
     if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
         return CKERR_INVALIDMESSAGE;
 
-    XArray<CKWaitingObject> &waitList = m_MsgWaitingList[MsgType];
-    if (waitList.IsEmpty())
+    XArray<CKWaitingObject> *waitList = &m_MsgWaitingList[MsgType];
+    if (!waitList || waitList->IsEmpty())
         return CK_OK;
 
-    CKBehaviorIO *targetOutput = behav ? behav->GetOutput(OutputToActivate) : nullptr;
+    CKBehaviorIO *output = behav ? behav->GetOutput(OutputToActivate) : nullptr;
 
     // Remove matching entries
-    for (XArray<CKWaitingObject>::Iterator it = waitList.Begin(); it != waitList.End();) {
-        if (it->m_Behavior == behav && (!targetOutput || it->m_Output == targetOutput)) {
-            it = waitList.Remove(it);
+    for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End();) {
+        if (it->m_Behavior == behav && (!output || it->m_Output == output)) {
+            it = waitList->Remove(it);
             if (behav)
                 behav->ModifyFlags(0, CKBEHAVIOR_WAITSFORMESSAGE);
         } else {
@@ -172,8 +175,7 @@ CKStateChunk *CKMessageManager::SaveData(CKFile *SavedFile) {
 
     const int paramOutCount = SavedFile->m_IndexByClassId[CKCID_PARAMETEROUT].Size();
     for (int i = 0; i < paramOutCount; ++i) {
-        CKParameterOut *param = (CKParameterOut *)fileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETEROUT][i]].
-            ObjPtr;
+        CKParameterOut *param = (CKParameterOut *)fileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETEROUT][i]].ObjPtr;
         if (param && param->GetType() == msgParamType) {
             int msgType;
             param->GetValue(&msgType);
@@ -184,9 +186,7 @@ CKStateChunk *CKMessageManager::SaveData(CKFile *SavedFile) {
 
     const int paramLocalCount = SavedFile->m_IndexByClassId[CKCID_PARAMETERLOCAL].Size();
     for (int i = 0; i < paramLocalCount; ++i) {
-        CKParameterLocal *param = static_cast<CKParameterLocal *>(
-            fileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETERLOCAL][i]].ObjPtr
-        );
+        CKParameterLocal *param = (CKParameterLocal *)fileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETERLOCAL][i]].ObjPtr;
         if (param && param->GetType() == msgParamType) {
             int msgType;
             param->GetValue(&msgType);
