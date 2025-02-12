@@ -106,6 +106,7 @@ public:
     //-----------------------------------------------------------
     // Object Settings by index in list
     CKSceneObjectIterator GetObjectIterator();
+    CKSceneObjectDesc *GetSceneObjectDesc(CKSceneObject *o);
 
     //---- BeObject and Script Activation/deactivation
     void Activate(CKSceneObject *o, CKBOOL Reset);
@@ -210,9 +211,11 @@ public:
     void AddObject(CKSceneObject *o);
     void RemoveObject(CKSceneObject *o);
 
+
+
 protected:
     int m_SceneGlobalIndex;
-    //CKSODHash m_SceneObjects;
+    CKSODHash m_SceneObjects;
     CKDWORD m_EnvironmentSettings;
     CK_ID m_Level;
     CKDWORD m_BackgroundColor;

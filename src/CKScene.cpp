@@ -34,6 +34,10 @@ CKSceneObjectIterator CKScene::GetObjectIterator() {
     return CKSceneObjectIterator(CKSODHashIt());
 }
 
+CKSceneObjectDesc *CKScene::GetSceneObjectDesc(CKSceneObject *o) {
+
+}
+
 void CKScene::Activate(CKSceneObject *o, CKBOOL Reset) {
 
 }
@@ -210,7 +214,7 @@ CKERROR CKScene::Copy(CKObject &o, CKDependenciesContext &context) {
     return CKBeObject::Copy(o, context);
 }
 
-CKSTRING CKScene::GetClassNameA() {
+CKSTRING CKScene::GetClassName() {
     return nullptr;
 }
 

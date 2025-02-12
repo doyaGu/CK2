@@ -2,6 +2,10 @@
 
 CK_ID CKParameterOperation::m_ClassID = CKCID_PARAMETEROPERATION;
 
+CKSTRING CKParameterOperation::m_In1Name = "Pin 0";
+CKSTRING CKParameterOperation::m_In2Name = "Pin 1";
+CKSTRING CKParameterOperation::m_OutName = "Pout 0";
+
 CKERROR CKParameterOperation::DoOperation() {
     return 0;
 }
@@ -12,6 +16,9 @@ CKGUID CKParameterOperation::GetOperationGuid() {
 
 void CKParameterOperation::Reconstruct(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid) {
 
+}
+
+void CKParameterOperation::Update() {
 }
 
 CK_PARAMETEROPERATION CKParameterOperation::GetOperationFunction() {
