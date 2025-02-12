@@ -63,6 +63,7 @@ See also: CKBehavior, CKMessageManager,CKAttributeManager,CKScene
 *************************************************/
 class DLL_EXPORT CKBeObject : public CKSceneObject
 {
+    friend class CKBehavior;
     friend class CKBehaviorManager;
     friend class CKDebugContext;
     friend class CKFile;
