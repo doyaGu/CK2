@@ -44,8 +44,8 @@ public:
 
     //--------------------------------------------------------------
     // Associated Parameters
-    CKERROR AddParameter(CKParameter *, CKBOOL DeleteParameterWithMessage = FALSE);
-    CKERROR RemoveParameter(CKParameter *);
+    CKERROR AddParameter(CKParameter *param, CKBOOL DeleteParameterWithMessage = FALSE);
+    CKERROR RemoveParameter(CKParameter *param);
     int GetParameterCount();
     CKParameter *GetParameter(int pos);
 

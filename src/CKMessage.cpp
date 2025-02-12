@@ -1,22 +1,49 @@
 #include "CKMessage.h"
 
+#include "CKParameter.h"
+
 CKERROR CKMessage::SetBroadcastObjectType(CK_CLASSID type) {
-    return 0;
+    if (!CKIsChildClassOf(type, CKCID_BEOBJECT))
+        return CKERR_INVALIDPARAMETER;
+    m_BroadcastCid = type;
+    return CK_OK;
 }
 
-CKERROR CKMessage::AddParameter(CKParameter *, CKBOOL DeleteParameterWithMessage) {
-    return 0;
+CKERROR CKMessage::AddParameter(CKParameter *param, CKBOOL DeleteParameterWithMessage) {
+    if (!param)
+        return CKERR_INVALIDPARAMETER;
+
+    if (!m_Parameters)
+        m_Parameters = new XObjectArray();
+
+    param->MessageDeleteAfterUse(DeleteParameterWithMessage);
+    m_Parameters->PushBack(param->GetID());
+    return CK_OK;
 }
 
-CKERROR CKMessage::RemoveParameter(CKParameter *) {
-    return 0;
+CKERROR CKMessage::RemoveParameter(CKParameter *param) {
+    if (!param)
+        return CKERR_INVALIDPARAMETER;
+
+    if (!m_Parameters)
+        return CKERR_INVALIDPARAMETER;
+
+    m_Parameters->Remove(param->GetID());
+    if (m_Parameters->Size() == 0) {
+        delete m_Parameters;
+        m_Parameters = nullptr;
+    }
 }
 
 int CKMessage::GetParameterCount() {
+    if (m_Parameters)
+        return m_Parameters->Size();
     return 0;
 }
 
 CKParameter *CKMessage::GetParameter(int pos) {
+    if (m_Parameters && pos >= 0 && pos < m_Parameters->Size())
+        return (CKParameter *)m_Context->GetObject((*m_Parameters)[pos]);
     return nullptr;
 }
 
@@ -24,27 +51,23 @@ CKMessage::CKMessage(CKContext *context) {
     m_MessageType = -1;
     m_SendingType = CK_MESSAGE_SINGLE;
     m_Sender = 0;
-    m_Parameters = NULL;
+    m_Parameters = nullptr;
     m_RefCount = 1;
     m_Context = context;
     m_BroadcastCid = 0;
 }
 
 CKMessage::~CKMessage() {
-    if (m_Parameters)
-    {
-        for (XObjectArray::Iterator it = m_Parameters->Begin(); it != m_Parameters->End(); ++it)
-        {
+    if (m_Parameters) {
+        for (XObjectArray::Iterator it = m_Parameters->Begin(); it != m_Parameters->End(); ++it) {
             CKObject *obj = m_Context->GetObject(*it);
-            if (obj && obj->GetObjectFlags() & CK_PARAMETEROUT_DELETEAFTERUSE)
-            {
-                CKDestroyObject(obj, 3);
+            if (obj && obj->GetObjectFlags() & CK_PARAMETEROUT_DELETEAFTERUSE) {
+                CKDestroyObject(obj, CK_DESTROY_TEMPOBJECT);
             }
         }
 
         delete m_Parameters;
     }
-
 }
 
 int CKMessage::AddRef() {

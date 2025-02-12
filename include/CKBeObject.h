@@ -65,6 +65,7 @@ class DLL_EXPORT CKBeObject : public CKSceneObject
 {
     friend class CKBehavior;
     friend class CKBehaviorManager;
+    friend class CKMessageManager;
     friend class CKDebugContext;
     friend class CKFile;
 

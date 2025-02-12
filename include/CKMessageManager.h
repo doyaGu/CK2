@@ -3,12 +3,10 @@
 
 #include "CKDefines.h"
 #include "CKTypes.h"
-#include "CKFile.h"
+#include "CKMessage.h"
 #include "CKBaseManager.h"
 #include "XClassArray.h"
 #include "XObjectArray.h"
-
-
 
 struct CKMessageWaitingList;
 
@@ -79,7 +77,7 @@ public:
     CKERROR SendMessage(CKMessage *msg);
     CKMessage *SendMessageSingle(CKMessageType MsgType, CKBeObject *dest, CKBeObject *sender = NULL);
     CKMessage *SendMessageGroup(CKMessageType MsgType, CKGroup *group, CKBeObject *sender = NULL);
-    CKMessage *SendMessageBroadcast(CKMessageType MsgType, CK_CLASSID id = CKCID_BEOBJECT, CKBeObject *sender = NULL);
+    CKMessage *SendMessageBroadcast(CKMessageType MsgType, CK_CLASSID cid = CKCID_BEOBJECT, CKBeObject *sender = NULL);
 
     //----------------------------------------------
     // Waiting behaviors
@@ -114,9 +112,11 @@ public:
 protected:
     void AddMessageToObject(CKObject *obj, CKMessage *msg, CKScene *currentscene, CKBOOL recurse);
 
-    CKMessage *CreateMessage();
+    CKMessage *CreateMessageSingle(CKMessageType type, CKBeObject *dest, CKBeObject *sender);
+    CKMessage *CreateMessageGroup(CKMessageType type, CKGroup *group, CKBeObject *sender);
+    CKMessage *CreateMessageBroadcast(CKMessageType type, CK_CLASSID objType, CKBeObject *sender);
 
-    CKStringArray m_RegistredMessageTypes;
+    CKStringArray m_RegisteredMessageTypes;
     CKWaitingObjectArray *m_MsgWaitingList;
     XArray<CKMessage *> m_ReceivedMsgThisFrame;
     XObjectPointerArray m_LastFrameObjects;
