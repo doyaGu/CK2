@@ -1137,11 +1137,11 @@ CKBehavior *CKBehavior::RemoveSubBehavior(int pos) {
         return nullptr;
 
     XObjectPointerArray &subBehaviors = m_GraphData->m_SubBehaviors;
-
     if (pos < 0 || pos >= subBehaviors.Size())
         return nullptr;
 
-    CKBehavior *removed = (CKBehavior *)subBehaviors.RemoveAt(pos);
+    CKBehavior *removed = (CKBehavior *) subBehaviors[pos];
+    subBehaviors.RemoveAt(pos);
 
     if (subBehaviors.Size() > 0) {
         removed->m_Flags |= CKBEHAVIOR_TOPMOST;
@@ -1201,10 +1201,15 @@ CKBehaviorLink *CKBehavior::RemoveSubBehaviorLink(int pos) {
     if (!m_GraphData)
         return nullptr;
 
-    CKBehaviorLink *plink = (CKBehaviorLink *)m_GraphData->m_SubBehaviorLinks.RemoveAt(pos);
+    XObjectPointerArray &subBehaviorLinks = m_GraphData->m_SubBehaviorLinks;
+    if (pos < 0 || pos >= subBehaviorLinks.Size())
+        return nullptr;
+
+    CKBehaviorLink *plink = (CKBehaviorLink *)subBehaviorLinks[pos];
     if (!plink)
         return nullptr;
 
+    m_GraphData->m_SubBehaviorLinks.RemoveAt(pos);
     m_GraphData->m_Links.Remove(plink);
     return plink;
 }
@@ -1238,7 +1243,12 @@ CKParameterOperation *CKBehavior::GetParameterOperation(int pos) {
 CKParameterOperation *CKBehavior::RemoveParameterOperation(int pos) {
     if (!m_GraphData)
         return nullptr;
-    CKParameterOperation *op = (CKParameterOperation *)m_GraphData->m_Operations.RemoveAt(pos);
+
+    XObjectPointerArray &operations = m_GraphData->m_Operations;
+    if (pos < 0 || pos >= operations.Size())
+        return nullptr;
+
+    CKParameterOperation *op = (CKParameterOperation *)operations[pos];
     if (op)
         op->SetOwner(nullptr);
     return op;
@@ -1248,7 +1258,7 @@ CKParameterOperation *CKBehavior::RemoveParameterOperation(CKParameterOperation 
     if (!m_GraphData || !op)
         return nullptr;
 
-    if (!(CKParameterOperation *)m_GraphData->m_Operations.Remove(op))
+    if (!m_GraphData->m_Operations.Remove(op))
         return nullptr;
 
     op->SetOwner(nullptr);
