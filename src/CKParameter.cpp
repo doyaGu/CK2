@@ -545,6 +545,8 @@ CKERROR CKParameter::RemapDependencies(CKDependenciesContext &context) {
             objs->Remap(context);
         }
     }
+
+    return CK_OK;
 }
 
 CKERROR CKParameter::Copy(CKObject &o, CKDependenciesContext &context) {
