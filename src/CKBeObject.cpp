@@ -9,33 +9,28 @@
 CK_CLASSID CKBeObject::m_ClassID;
 
 void CKBeObject::ExecuteBehaviors(float delta) {
-    if (m_Context->IsProfilingEnable())
-    {
+    if (m_Context->IsProfilingEnable()) {
         ++m_Context->m_Stats.ActiveObjectsExecuted;
         ResetExecutionTime();
     }
 
-    if (!m_ScriptArray && GetClassID() != CKCID_CHARACTER)
-    {
+    if (!m_ScriptArray && GetClassID() != CKCID_CHARACTER) {
         m_Context->GetBehaviorManager()->RemoveObjectNextFrame(this);
         return;
     }
 
     CKBOOL executed = FALSE;
     int count = m_ScriptArray->Size();
-    for (int i = 0; i < count; ++i)
-    {
+    for (int i = 0; i < count; ++i) {
         CKBehavior *beh = (CKBehavior *)m_ScriptArray->GetObject(i);
-        if (beh->IsActive())
-        {
+        if (beh->IsActive()) {
             executed = TRUE;
             beh->Execute(delta);
             m_LastExecutionTime += beh->GetLastExecutionTime();
         }
     }
 
-    if (!executed && GetClassID() != CKCID_CHARACTER)
-    {
+    if (!executed && GetClassID() != CKCID_CHARACTER) {
         m_Context->GetBehaviorManager()->RemoveObjectNextFrame(this);
         return;
     }
@@ -69,22 +64,17 @@ CKBOOL CKBeObject::SetAttribute(CKAttributeType AttribType, CK_ID parameter) {
         return FALSE;
 
     CKGUID guid = am->GetAttributeParameterGUID(AttribType);
-    if (guid.IsValid() && !m_Context->GetObject(parameter))
-    {
+    if (guid.IsValid() && !m_Context->GetObject(parameter)) {
         CKParameterOut *pout = m_Context->CreateCKParameterOut(NULL, guid, IsDynamic());
-        if (pout)
-        {
+        if (pout) {
             CKSTRING defValue = am->GetAttributeDefaultValue(AttribType);
-            if (defValue)
-            {
+            if (defValue) {
                 pout->SetValue(defValue);
             }
             pout->SetOwner(this);
 
             parameter = pout->GetID();
-        }
-        else
-        {
+        } else {
             parameter = 0;
         }
     }
@@ -130,11 +120,9 @@ CKParameterOut *CKBeObject::GetAttributeParameterByIndex(int index) {
 }
 
 void CKBeObject::GetAttributeList(CKAttributeVal *liste) {
-
 }
 
 void CKBeObject::RemoveAllAttributes() {
-
 }
 
 CKERROR CKBeObject::AddScript(CKBehavior *ckb) {
@@ -166,7 +154,6 @@ int CKBeObject::GetPriority() {
 }
 
 void CKBeObject::SetPriority(int priority) {
-
 }
 
 int CKBeObject::GetLastFrameMessageCount() {
@@ -178,7 +165,6 @@ CKMessage *CKBeObject::GetLastFrameMessage(int pos) {
 }
 
 void CKBeObject::SetAsWaitingForMessages(CKBOOL wait) {
-
 }
 
 CKBOOL CKBeObject::IsWaitingForMessages() {
@@ -194,15 +180,12 @@ float CKBeObject::GetLastExecutionTime() {
 }
 
 void CKBeObject::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects) {
-
 }
 
 CKBeObject::CKBeObject(CKContext *Context, CKSTRING name) : CKSceneObject(Context, name) {
-
 }
 
 CKBeObject::~CKBeObject() {
-
 }
 
 CK_CLASSID CKBeObject::GetClassID() {
@@ -214,8 +197,7 @@ void CKBeObject::PreSave(CKFile *file, CKDWORD flags) {
     if (m_ScriptArray)
         file->SaveObjects(m_ScriptArray->Begin(), m_ScriptArray->Size());
 
-    for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it)
-    {
+    for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
         if ((m_Context->GetAttributeManager()->GetAttributeFlags((*it).AttribType) & CK_ATTRIBUT_DONOTSAVE) == 0)
             file->SaveObject(m_Context->GetObject((*it).Parameter));
     }
@@ -273,16 +255,15 @@ int CKBeObject::GetDependenciesCount(int mode) {
 }
 
 CKSTRING CKBeObject::GetDependencies(int i, int mode) {
-    switch (i)
-    {
-        case 0:
-            return "Scripts";
-        case 1:
-            return "Attributes";
-        case 2:
-            return "Groups Belonging";
-        default:
-            return nullptr;
+    switch (i) {
+    case 0:
+        return "Scripts";
+    case 1:
+        return "Attributes";
+    case 2:
+        return "Groups Belonging";
+    default:
+        return nullptr;
     }
 }
 
@@ -296,19 +277,15 @@ CKBeObject *CKBeObject::CreateInstance(CKContext *Context) {
 }
 
 void CKBeObject::AddToSelfScenes(CKSceneObject *o) {
-
 }
 
 void CKBeObject::RemoveFromSelfScenes(CKSceneObject *o) {
-
 }
 
 void CKBeObject::SortScripts() {
-
 }
 
 void CKBeObject::RemoveFromAllGroups() {
-
 }
 
 CKERROR CKBeObject::AddLastFrameMessage(CKMessage *msg) {
@@ -320,11 +297,9 @@ CKERROR CKBeObject::RemoveAllLastFrameMessage() {
 }
 
 void CKBeObject::ApplyOwner() {
-
 }
 
 void CKBeObject::ResetExecutionTime() {
-
 }
 
 int CKBeObject::BeObjectPrioritySort(const void *o1, const void *o2) {
