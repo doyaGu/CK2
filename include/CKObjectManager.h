@@ -98,7 +98,7 @@ public:
     CKObject **m_Objects;
     XClassArray<XObjectArray> m_ObjectLists;
     CK_ID *m_LoadSession;
-    CKDWORD m_Count;
+    int m_Count;
     CKBOOL m_NeedDeleteAllDynamicObjects;
     CKBOOL m_InLoadSession;
     CKDWORD m_MaxObjectID;
