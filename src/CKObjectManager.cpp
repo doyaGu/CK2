@@ -46,6 +46,10 @@ int CKObjectManager::GetObjectsCount() {
     return m_ObjectsCount;
 }
 
+CKObject *CKObjectManager::GetObjectA(CK_ID id) {
+    return m_Objects[id];
+}
+
 CKERROR CKObjectManager::DeleteAllObjects() {
     for (CK_CLASSID i = CKCID_OBJECT; i < g_MaxClassID; ++i) {
         m_ObjectLists[i].Clear();

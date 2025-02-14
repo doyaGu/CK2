@@ -22,6 +22,7 @@ class CKObjectManager : public CKBaseManager
 public:
     int ObjectsByClass(CK_CLASSID cid, CKBOOL derived, CK_ID *obj_ids);
     int GetObjectsCount();
+    CKObject *GetObject(CK_ID id);
 
     CKERROR DeleteAllObjects();
     CKERROR ClearAllObjects();
