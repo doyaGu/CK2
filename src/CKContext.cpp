@@ -1,5 +1,6 @@
 #include "CKContext.h"
 #include "CKLevel.h"
+#include "CKRenderContext.h"
 #include "CKBaseManager.h"
 #include "CKObjectManager.h"
 #include "CKParameterManager.h"
@@ -82,12 +83,35 @@ CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATI
 }
 
 CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKSTRING AppendName, CK_OBJECTCREATION_OPTIONS Options) {
-    return nullptr;
+    if (!src)
+        return nullptr;
+
+    CKDependenciesContext depContext(this);
+    depContext.SetCreationMode(Options);
+    depContext.SetOperationMode(CK_DEPENDENCIES_COPY);
+    depContext.StartDependencies(Dependencies);
+    depContext.AddObjects(&src->m_ID, 1);
+    depContext.Copy(AppendName);
+    depContext.StopDependencies();
+    return depContext.Remap(src);
 }
 
 const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies, CK_OBJECTCREATION_OPTIONS Options, CKSTRING AppendName) {
-    XObjectArray a;
-    return a;
+    CKDependenciesContext depContext(this);
+    depContext.SetCreationMode(Options);
+    depContext.SetOperationMode(CK_DEPENDENCIES_COPY);
+    depContext.StartDependencies(Dependencies);
+    depContext.AddObjects(SrcObjects.Begin(), SrcObjects.Size());
+    depContext.Copy(AppendName);
+    m_CopyObjects.Clear();
+    const int count = depContext.GetObjectsCount();
+    for (int i = 0; i < count; i++) {
+        CKObject *obj = depContext.GetObjects(i);
+        CK_ID id = obj ? obj->GetID() : 0;
+        m_CopyObjects.PushBack(id);
+    }
+    depContext.StopDependencies();
+    return m_CopyObjects;
 }
 
 CKObject *CKContext::GetObject(CK_ID ObjID) {
@@ -139,9 +163,44 @@ void CKContext::ChangeObjectDynamic(CKObject *iObject, CKBOOL iSetDynamic) {
         m_ObjectManager->UnSetDynamic(iObject);
 }
 
-//const XObjectPointerArray &CKContext::CKFillObjectsUnused() {
-//    return;
-//}
+const XObjectPointerArray &CKContext::CKFillObjectsUnused() {
+    CKDependencies deps;
+    deps.m_Flags = CK_DEPENDENCIES_FULL;
+    CKDependenciesContext depContext(this);
+    depContext.SetOperationMode(CK_DEPENDENCIES_BUILD);
+    depContext.StartDependencies(&deps);
+
+    CKRenderContext *dev = GetPlayerRenderContext();
+    dev->PrepareDependencies(depContext);
+
+    XObjectPointerArray objects;
+
+    objects += GetObjectListByType(CKCID_DATAARRAY, FALSE);
+    objects += GetObjectListByType(CKCID_GROUP, FALSE);
+    objects += GetObjectListByType(CKCID_BEHAVIOR, FALSE);
+
+    objects.Prepare(depContext);
+    m_ObjectsUnused.Clear();
+
+    CKScene* currentScene = GetCurrentScene();
+
+    const int count = m_ObjectManager->GetObjectsCount();
+    for (int i = 0; i < count; ++i) {
+        CKObject* obj = m_ObjectManager->GetObject(i);
+        if (!obj)
+            continue;
+
+        if (!depContext.IsDependenciesHere(obj->GetID())) {
+            if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT) ||
+                ((CKSceneObject*)obj)->IsInScene(currentScene)) {
+                m_ObjectsUnused.PushBack(obj);
+            }
+        }
+    }
+
+    depContext.StopDependencies();
+    return m_ObjectsUnused;
+}
 
 CKObject *CKContext::GetObjectByName(CKSTRING name, CKObject *previous) {
     return m_ObjectManager->GetObjectByName(name, previous);
@@ -156,9 +215,9 @@ CKObject *CKContext::GetObjectByNameAndParentClass(CKSTRING name, CK_CLASSID pci
 }
 
 const XObjectPointerArray &CKContext::GetObjectListByType(CK_CLASSID cid, CKBOOL derived) {
-    m_ObjectList.Clear();
-    m_ObjectManager->GetObjectListByType(cid, m_ObjectList, derived);
-    return m_ObjectList;
+    m_ObjectsUnused.Clear();
+    m_ObjectManager->GetObjectListByType(cid, m_ObjectsUnused, derived);
+    return m_ObjectsUnused;
 }
 
 int CKContext::GetObjectsCountByClassID(CK_CLASSID cid) {

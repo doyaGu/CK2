@@ -380,8 +380,8 @@ public:
     CKDWORD field_4A0;
     CKDWORD m_PVInformation;
     CKBOOL m_InDynamicCreationMode;
-    XObjectPointerArray m_CopyObjects;
-    XObjectPointerArray m_ObjectList;
+    XObjectArray m_CopyObjects;
+    XObjectPointerArray m_ObjectsUnused;
 };
 
 #endif // CKCONTEXT_H
