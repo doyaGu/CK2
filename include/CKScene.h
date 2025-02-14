@@ -211,8 +211,6 @@ public:
     void AddObject(CKSceneObject *o);
     void RemoveObject(CKSceneObject *o);
 
-
-
 protected:
     int m_SceneGlobalIndex;
     CKSODHash m_SceneObjects;
