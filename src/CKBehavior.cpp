@@ -1140,7 +1140,7 @@ CKBehavior *CKBehavior::RemoveSubBehavior(int pos) {
     if (pos < 0 || pos >= subBehaviors.Size())
         return nullptr;
 
-    CKBehavior *removed = (CKBehavior *) subBehaviors[pos];
+    CKBehavior *removed = (CKBehavior *)subBehaviors[pos];
     subBehaviors.RemoveAt(pos);
 
     if (subBehaviors.Size() > 0) {
@@ -1444,11 +1444,382 @@ void CKBehavior::PreSave(CKFile *file, CKDWORD flags) {
 }
 
 CKStateChunk *CKBehavior::Save(CKFile *file, CKDWORD flags) {
-    return CKObject::Save(file, flags);
+    CKStateChunk *baseChunk = CKObject::Save(file, flags);
+    if (!file && !(flags & CK_STATESAVE_BEHAVIORONLY))
+        return baseChunk;
+
+    CKStateChunk *behaviorChunk = new CKStateChunk(CKCID_BEHAVIOR, file);
+    behaviorChunk->StartWrite();
+    behaviorChunk->AddChunkAndDelete(baseChunk);
+
+    if (file) {
+        if (m_Context->m_InterfaceMode && !(m_Context->GetFileWriteMode() & CKFILE_FORVIEWER)) {
+            behaviorChunk->WriteIdentifier(CK_STATESAVE_BEHAVIORINTERFACE);
+            behaviorChunk->WriteSubChunk(m_InterfaceChunk);
+        }
+
+        behaviorChunk->WriteIdentifier(CK_STATESAVE_BEHAVIORNEWDATA);
+        CKDWORD behaviorFlags = m_Flags;
+
+        if (!(behaviorFlags & CKBEHAVIOR_BUILDINGBLOCK))
+            behaviorFlags &= ~CKBEHAVIOR_LOCKED;
+
+        if (m_Priority != 0)
+            behaviorFlags |= CKBEHAVIOR_PRIORITY;
+        if (m_CompatibleClassID != CKCID_BEOBJECT)
+            behaviorFlags |= CKBEHAVIOR_COMPATIBLECLASSID;
+
+        behaviorChunk->WriteDword(behaviorFlags);
+
+        if (behaviorFlags & CKBEHAVIOR_BUILDINGBLOCK) {
+            behaviorChunk->WriteGuid(m_BlockData->m_Guid);
+            behaviorChunk->WriteDword(m_BlockData->m_Version);
+        }
+
+        if (behaviorFlags & CKBEHAVIOR_PRIORITY)
+            behaviorChunk->WriteInt(m_Priority);
+
+        if (behaviorFlags & CKBEHAVIOR_COMPATIBLECLASSID)
+            behaviorChunk->WriteInt(m_CompatibleClassID);
+
+        if (behaviorFlags & CKBEHAVIOR_TARGETABLE) {
+            behaviorChunk->WriteObject(GetTargetParameter());
+        }
+
+        CKDWORD saveFlags = 0;
+        if (m_GraphData) {
+            if (m_GraphData->m_SubBehaviors.Size() > 0)
+                saveFlags |= CK_STATESAVE_BEHAVIORSUBBEHAV;
+            if (m_GraphData->m_SubBehaviorLinks.Size() > 0)
+                saveFlags |= CK_STATESAVE_BEHAVIORSUBLINKS;
+            if (m_GraphData->m_Operations.Size() > 0)
+                saveFlags |= CK_STATESAVE_BEHAVIOROPERATIONS;
+        }
+        if (m_InParameter.Size())
+            saveFlags |= CK_STATESAVE_BEHAVIORINPARAMS;
+        if (m_OutParameter.Size())
+            saveFlags |= CK_STATESAVE_BEHAVIOROUTPARAMS;
+        if (m_LocalParameter.Size())
+            saveFlags |= CK_STATESAVE_BEHAVIORLOCALPARAMS;
+        if (m_InputArray.Size())
+            saveFlags |= CK_STATESAVE_BEHAVIORINPUTS;
+        if (m_OutputArray.Size())
+            saveFlags |= CK_STATESAVE_BEHAVIOROUTPUTS;
+
+        behaviorChunk->WriteDword(saveFlags);
+
+        if (m_GraphData) {
+            if (saveFlags & CK_STATESAVE_BEHAVIORSUBBEHAV)
+                m_GraphData->m_SubBehaviors.Save(behaviorChunk);
+
+            if (saveFlags & CK_STATESAVE_BEHAVIORSUBLINKS)
+                m_GraphData->m_SubBehaviorLinks.Save(behaviorChunk);
+
+            if (saveFlags & CK_STATESAVE_BEHAVIOROPERATIONS)
+                m_GraphData->m_Operations.Save(behaviorChunk);
+        }
+
+        if (saveFlags & CK_STATESAVE_BEHAVIORINPARAMS)
+            m_InParameter.Save(behaviorChunk);
+        if (saveFlags & CK_STATESAVE_BEHAVIOROUTPARAMS)
+            m_OutParameter.Save(behaviorChunk);
+        if (saveFlags & CK_STATESAVE_BEHAVIORLOCALPARAMS)
+            m_LocalParameter.Save(behaviorChunk);
+        if (saveFlags & CK_STATESAVE_BEHAVIORINPUTS)
+            m_InputArray.Save(behaviorChunk);
+        if (saveFlags & CK_STATESAVE_BEHAVIOROUTPUTS)
+            m_OutputArray.Save(behaviorChunk);
+    } else {
+        if ((flags & CK_STATESAVE_BEHAVIORSUBBEHAV) != 0 && m_GraphData) {
+            if (m_GraphData->m_SubBehaviors.Size()) {
+                behaviorChunk->WriteIdentifier(CK_STATESAVE_BEHAVIORSUBBEHAV);
+                behaviorChunk->WriteInt(m_GraphData->m_SubBehaviors.Size());
+
+                for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin();
+                     it != m_GraphData->m_SubBehaviors.End(); ++it) {
+                    CKObject *subBehavior = *it;
+                    CKStateChunk *subChunk = subBehavior ? subBehavior->Save(NULL, flags) : NULL;
+
+                    behaviorChunk->WriteObject(subBehavior);
+                    behaviorChunk->WriteSubChunk(subChunk);
+
+                    if (subChunk) {
+                        delete subChunk;
+                    }
+                }
+            }
+        }
+
+        if ((m_Flags & CKBEHAVIOR_BUILDINGBLOCK) != 0 || !(flags & CK_STATESAVE_BEHAVIORLOCALPARAMS)) {
+            if (GetClassID() == CKCID_BEHAVIOR) {
+                behaviorChunk->CloseChunk();
+            } else {
+                behaviorChunk->UpdateDataSize();
+            }
+
+            return behaviorChunk;
+        }
+
+        behaviorChunk->WriteIdentifier(CK_STATESAVE_BEHAVIORLOCALPARAMS);
+        if (m_LocalParameter.Size() > 0) {
+            behaviorChunk->WriteInt(m_LocalParameter.Size());
+
+            for (XObjectPointerArray::Iterator it = m_LocalParameter.Begin(); it != m_LocalParameter.End(); ++it) {
+                CKObject *param = *it;
+                CKDWORD paramFlags = (flags == (CK_STATESAVE_BEHAVIORSUBBEHAV | CK_STATESAVE_BEHAVIORLOCALPARAMS))
+                                         ? CK_STATESAVE_BEHAVIORFLAGS
+                                         : -1;
+                CKStateChunk *paramChunk = param ? param->Save(NULL, paramFlags) : NULL;
+
+                behaviorChunk->WriteObject(param);
+                behaviorChunk->WriteSubChunk(paramChunk);
+
+                if (paramChunk) {
+                    delete paramChunk;
+                }
+            }
+
+            if (GetClassID() == CKCID_BEHAVIOR) {
+                behaviorChunk->CloseChunk();
+            } else {
+                behaviorChunk->UpdateDataSize();
+            }
+
+            return behaviorChunk;
+        }
+
+
+        behaviorChunk->WriteDword(0);
+    }
+
+    if (file && !file->m_SceneSaved) {
+        CKScene *scene = m_Context->GetCurrentScene();
+        if (scene) {
+            CKSceneObjectDesc *desc = scene->GetSceneObjectDesc(this);
+            if (desc) {
+                CKDWORD sceneFlags = desc->m_Global;
+                if (desc->m_InitialValue)
+                    sceneFlags |= CK_SCENEOBJECT_INTERNAL_IC;
+
+                behaviorChunk->WriteIdentifier(CK_STATESAVE_BEHAVIORSINGLEACTIVITY);
+                behaviorChunk->WriteDword(sceneFlags);
+            }
+        }
+    }
+
+    if (GetClassID() == CKCID_BEHAVIOR) {
+        behaviorChunk->CloseChunk();
+    } else {
+        behaviorChunk->UpdateDataSize();
+    }
+
+    return behaviorChunk;
 }
 
 CKERROR CKBehavior::Load(CKStateChunk *chunk, CKFile *file) {
-    return CKObject::Load(chunk, file);
+    if (!chunk)
+        return CKERR_INVALIDPARAMETER;
+
+    // Load base object data
+    CKObject::Load(chunk, file);
+
+    if (!file) {
+        // Load sub-behaviors when not in file context
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORSUBBEHAV)) {
+            int subBehaviorCount = chunk->ReadInt();
+            for (int i = 0; i < subBehaviorCount; ++i) {
+                CK_ID objId = chunk->ReadObjectID();
+                CKObject *obj = m_Context->GetObject(objId);
+                CKStateChunk *subChunk = chunk->ReadSubChunk();
+
+                if (obj && subChunk) {
+                    obj->Load(subChunk, NULL);
+                    delete subChunk;
+                }
+            }
+        }
+
+        // Load local parameters
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORLOCALPARAMS)) {
+            int paramCount = chunk->ReadInt();
+            for (int i = 0; i < paramCount; ++i) {
+                CK_ID paramId = chunk->ReadObjectID();
+                CKObject *param = m_Context->GetObject(paramId);
+                CKStateChunk *paramChunk = chunk->ReadSubChunk();
+
+                if (param && paramChunk) {
+                    param->Load(paramChunk, NULL);
+                    delete paramChunk;
+                }
+            }
+        }
+
+        CallCallbackFunction(CKM_BEHAVIORREADSTATE);
+
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORSINGLEACTIVITY)) {
+            CK_ID id = chunk->ReadDword();
+            m_Context->m_ObjectManager->AddSingleObjectActivity(this, id);
+        }
+        return CK_OK;
+    }
+
+    // Initialize behavior state
+    m_Flags = 0;
+    m_CompatibleClassID = CKCID_BEOBJECT;
+    m_Priority = 0;
+    m_InputTargetParam = 0;
+
+    if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORNEWDATA)) {
+        if (chunk->GetDataVersion() >= 5) {
+            CKDWORD flags = chunk->ReadInt();
+            m_Flags = flags & ~(CKBEHAVIOR_ACTIVE |
+                CKBEHAVIOR_PRIORITY |
+                CKBEHAVIOR_COMPATIBLECLASSID |
+                CKBEHAVIOR_EXECUTEDLASTFRAME |
+                CKBEHAVIOR_DEACTIVATENEXTFRAME |
+                CKBEHAVIOR_RESETNEXTFRAME |
+                CKBEHAVIOR_ACTIVATENEXTFRAME);
+
+            if (flags & CKBEHAVIOR_BUILDINGBLOCK) {
+                UseFunction();
+                CKGUID blockGuid = chunk->ReadGuid();
+                m_BlockData->m_Guid = blockGuid;
+                m_BlockData->m_Version = chunk->ReadInt();
+                InitFctPtrFromGuid(blockGuid);
+            } else {
+                UseGraph();
+            }
+
+            if (flags & CKBEHAVIOR_PRIORITY)
+                m_Priority = chunk->ReadInt();
+
+            if (flags & CKBEHAVIOR_COMPATIBLECLASSID)
+                m_CompatibleClassID = chunk->ReadInt();
+
+            if (flags & CKBEHAVIOR_TARGETABLE)
+                m_InputTargetParam = chunk->ReadObjectID();
+
+            CKDWORD saveFlags = chunk->ReadDword();
+            if (m_GraphData) {
+                if (saveFlags & CK_STATESAVE_BEHAVIORSUBBEHAV)
+                    m_GraphData->m_SubBehaviors.Load(m_Context, chunk);
+                if (saveFlags & CK_STATESAVE_BEHAVIORACTIVESUBLINKS)
+                    m_GraphData->m_SubBehaviorLinks.Load(m_Context, chunk);
+                if (saveFlags & CK_STATESAVE_BEHAVIOROPERATIONS)
+                    m_GraphData->m_Operations.Load(m_Context, chunk);
+            }
+
+            if (saveFlags & CK_STATESAVE_BEHAVIORINPARAMS)
+                m_InParameter.Load(m_Context, chunk);
+            if (saveFlags & CK_STATESAVE_BEHAVIOROUTPARAMS)
+                m_OutParameter.Load(m_Context, chunk);
+            if (saveFlags & CK_STATESAVE_BEHAVIORLOCALPARAMS)
+                m_LocalParameter.Load(m_Context, chunk);
+            if (saveFlags & CK_STATESAVE_BEHAVIORINPUTS)
+                m_InputArray.Load(m_Context, chunk);
+            if (saveFlags & CK_STATESAVE_BEHAVIOROUTPUTS)
+                m_OutputArray.Load(m_Context, chunk);
+        } else {
+            CKGUID guid = chunk->ReadGuid();
+            m_Flags = chunk->ReadInt();
+
+            if (m_Flags & CKBEHAVIOR_BUILDINGBLOCK) {
+                UseFunction();
+                m_BlockData->m_Guid = guid;
+                InitFctPtrFromGuid(guid);
+            } else {
+                UseGraph();
+            }
+
+            m_CompatibleClassID = chunk->ReadInt();
+            SetType((CK_BEHAVIOR_TYPE)chunk->ReadDword());
+            m_Priority = chunk->ReadInt();
+            m_Owner = chunk->ReadObjectID();
+
+            if (m_BlockData) {
+                m_BlockData->m_Version = chunk->ReadInt();
+                if (m_BlockData->m_Version == 0)
+                    m_BlockData->m_Version = 0x10000;
+            } else {
+                chunk->ReadInt();
+            }
+
+            m_InputTargetParam = chunk->ReadObjectID();
+        }
+    } else {
+        CKGUID guid;
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORPROTOGUID)) {
+            guid = chunk->ReadGuid();
+        }
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORFLAGS)) {
+            m_Flags |= chunk->ReadInt();
+            if (m_Flags & CKBEHAVIOR_USEFUNCTION) {
+                UseFunction();
+                m_BlockData->m_Guid = guid;
+                InitFctPtrFromGuid(guid);
+            } else {
+                UseGraph();
+            }
+        }
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORCOMPATIBLECID)) {
+            m_CompatibleClassID = chunk->ReadInt();
+        }
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORTYPE)) {
+            SetType((CK_BEHAVIOR_TYPE)chunk->ReadDword());
+        }
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIOROWNER)) {
+            m_Owner = chunk->ReadObjectID();
+        }
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORPRIORITY)) {
+            m_Priority = chunk->ReadInt();
+        }
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORTARGET)) {
+            m_InputTargetParam = chunk->ReadObjectID();
+        }
+    }
+
+    // Load interface chunk for editors
+    if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORINTERFACE) && m_Context->IsInInterfaceMode()) {
+        if (m_InterfaceChunk)
+            delete m_InterfaceChunk;
+        m_InterfaceChunk = chunk->ReadSubChunk();
+    }
+
+    // Handle legacy data loading
+    if (chunk->GetDataVersion() < 5) {
+        if (m_GraphData) {
+            if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORSUBBEHAV))
+                m_GraphData->m_SubBehaviors.Load(m_Context, chunk);
+            if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORSUBLINKS))
+                m_GraphData->m_SubBehaviorLinks.Load(m_Context, chunk);
+            if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIOROPERATIONS))
+                m_GraphData->m_Operations.Load(m_Context, chunk);
+        }
+
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORINPARAMS))
+            m_InParameter.Load(m_Context, chunk);
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORLOCALPARAMS))
+            m_LocalParameter.Load(m_Context, chunk);
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIOROUTPARAMS))
+            m_OutParameter.Load(m_Context, chunk);
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORINPUTS))
+            m_InputArray.Load(m_Context, chunk);
+        if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIOROUTPUTS))
+            m_OutputArray.Load(m_Context, chunk);
+    }
+
+    // Handle runtime prototypes
+    CKBehaviorPrototype *proto = GetPrototype();
+    if (proto && proto->IsRunTime()) {
+        m_Context->m_RunTime = TRUE;
+    }
+    m_Flags &= ~CKBEHAVIOR_RESETNEXTFRAME;
+
+    if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORSINGLEACTIVITY)) {
+        CK_ID id = chunk->ReadDword();
+        m_Context->m_ObjectManager->AddSingleObjectActivity(this, id);
+    }
+    return CK_OK;
 }
 
 void CKBehavior::PostLoad() {
@@ -1746,9 +2117,110 @@ void CKBehavior::Reset() {
 }
 
 void CKBehavior::ErrorMessage(CKSTRING Error, CKSTRING Context, CKBOOL ShowOwner, CKBOOL ShowScript) {
+    CKBehavior *topBehavior = NULL;
+    if (ShowScript) {
+        CKBehavior *parent = GetParent();
+        topBehavior = this;
+        while (parent) {
+            topBehavior = parent;
+            parent = topBehavior->GetParent();
+        }
+    }
+
+    char buffer[1024]; // Assume reasonable buffer size
+    const char *behaviorName = m_Name ? m_Name : "Unnamed Behavior";
+
+    strcpy(buffer, behaviorName);
+    strcat(buffer, "=>");
+    strcat(buffer, Error);
+
+    if (Context) {
+        strcat(buffer, "(");
+        strcat(buffer, Context);
+        strcat(buffer, ")");
+    }
+
+    if (ShowScript) {
+        strcat(buffer, "\n");
+        if (topBehavior) {
+            if (topBehavior->m_Name) {
+                strcat(buffer, "Script:");
+                strcat(buffer, topBehavior->m_Name);
+            } else {
+                strcat(buffer, "Unnamed Script");
+            }
+        } else {
+            strcat(buffer, "Not within a script");
+        }
+    }
+
+    if (ShowOwner) {
+        strcat(buffer, "\n");
+        CKBehavior *targetBehavior = topBehavior ? topBehavior : this;
+        CKBeObject *owner = targetBehavior->GetOwner();
+
+        if (owner) {
+            if (owner->m_Name) {
+                strcat(buffer, "Owner:");
+                strcat(buffer, owner->m_Name);
+            } else {
+                strcat(buffer, "Unnamed Owner");
+            }
+        } else {
+            strcat(buffer, "Not applied to any object");
+        }
+    }
+
+    m_Context->OutputToConsole(buffer, TRUE);
 }
 
 void CKBehavior::ErrorMessage(CKSTRING Error, CKDWORD Context, CKBOOL ShowOwner, CKBOOL ShowScript) {
+    const char *contextStr = NULL;
+    switch (Context) {
+    case CKM_BEHAVIORPRESAVE:
+        contextStr = "Pre Save";
+        break;
+    case CKM_BEHAVIORATTACH:
+        contextStr = "Attach";
+        break;
+    case CKM_BEHAVIORDETACH:
+        contextStr = "Detach";
+        break;
+    case CKM_BEHAVIORPAUSE:
+        contextStr = "Pause";
+        break;
+    case CKM_BEHAVIORRESUME:
+        contextStr = "Resume";
+        break;
+    case CKM_BEHAVIORPOSTSAVE:
+        contextStr = "Post Save";
+        break;
+    case CKM_BEHAVIORLOAD:
+        contextStr = "Load";
+        break;
+    case CKM_BEHAVIOREDITED:
+        contextStr = "Parameters Edition";
+        break;
+    case CKM_BEHAVIORSETTINGSEDITED:
+        contextStr = "Settings Edition";
+        break;
+    case CKM_BEHAVIORREADSTATE:
+        contextStr = "Read State";
+        break;
+    case CKM_BEHAVIORNEWSCENE:
+        contextStr = "New Scene";
+        break;
+    case CKM_BEHAVIORACTIVATESCRIPT:
+        contextStr = "Activate Script";
+        break;
+    case CKM_BEHAVIORDEACTIVATESCRIPT:
+        contextStr = "Deactivate Script";
+        break;
+    default:
+        contextStr = "Execution";
+        break;
+    }
+    return ErrorMessage(Error, (CKSTRING)contextStr, ShowOwner, ShowScript);
 }
 
 void CKBehavior::SetPrototypeGuid(CKGUID ckguid) {
@@ -1833,78 +2305,126 @@ int CKBehavior::ExecuteStep(float delta, CKDebugContext *Context) {
 }
 
 void CKBehavior::WarnInfiniteLoop() {
+    char buffer[512];
+
+    CKBeObject *owner = GetOwner();
+    const char *name = (owner && owner->m_Name) ? owner->m_Name : "?";
+
+    if (m_Name) {
+        sprintf(buffer, "ERROR: Infinite Loop Detected. Object %s: In Behavior %s", name, m_Name);
+    } else {
+        strcpy(buffer, "ERROR : Infinite Loop Detected. Object ? : In Behavior ?");
+    }
+
+    m_Context->OutputToConsole(buffer, true);
 }
 
 int CKBehavior::InternalGetShortestDelay(CKBehavior *beh, XObjectPointerArray &behparsed) {
-    return 0;
+    if (this == beh)
+        return 0;
+
+    // Prevent infinite recursion
+    if (behparsed.AddIfNotHere(this))
+        return 1000; // Max delay
+
+    behparsed.PushBack(this);
+
+    int shortestDelay = 1000;
+    const int outputCount = m_OutputArray.Size();
+    for (int i = 0; i < outputCount; ++i) {
+        CKBehaviorIO *output = (CKBehaviorIO *)m_OutputArray[i];
+        if (!output)
+            continue;
+
+        const int linkCount = output->m_Links.Size();
+        for (int j = 0; j < linkCount; ++j) {
+            CKBehaviorLink *link = (CKBehaviorLink *)output->m_Links[j];
+            if (!link || !link->m_OutIO)
+                continue;
+
+            CKBehaviorIO *nextIO = link->m_OutIO;
+            if (nextIO->m_ObjectFlags & CK_BEHAVIORIO_OUT)
+                continue;
+
+            CKBehavior *nextBehavior = nextIO->m_OwnerBehavior;
+            if (!nextBehavior)
+                continue;
+
+            int delay = link->m_InitialActivationDelay +
+                nextBehavior->InternalGetShortestDelay(beh, behparsed);
+
+            if (delay < shortestDelay)
+                shortestDelay = delay;
+        }
+    }
+
+    return shortestDelay;
 }
 
 void CKBehavior::CheckIOsActivation() {
-    int deactivateCount = 0;
-    int activateCount = 0;
-    XArray<CKBehaviorIO *> iosToDeactivate;
+    if (!m_GraphData)
+        return;
+
     XArray<CKBehaviorIO *> iosToActivate;
+    XArray<CKBehaviorIO *> iosToDeactivate;
+    // Process all sub-behavior links
+    for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviorLinks.Begin();
+         it != m_GraphData->m_SubBehaviorLinks.End(); ++it) {
+        CKBehaviorLink *link = (CKBehaviorLink *)*it;
+        link->m_OldFlags &= ~2;
+        CKBehaviorIO *inIO = link->m_InIO;
 
-    if (m_GraphData) {
-        // Process all sub-behavior links
-        for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviorLinks.Begin();
-             it != m_GraphData->m_SubBehaviorLinks.End(); ++it) {
-            CKBehaviorLink *link = (CKBehaviorLink *)*it;
-            link->m_OldFlags &= ~2;
-            CKBehaviorIO *inIO = link->m_InIO;
+        if (inIO->IsActive()) {
+            // Handle deactivation first
+            iosToDeactivate.PushBack(inIO);
+            link->m_OldFlags |= 2;
 
-            if (inIO->IsActive()) {
-                // Handle deactivation first
-                iosToDeactivate.PushBack(inIO);
-                link->m_OldFlags |= 2;
-
-                if (link->m_InitialActivationDelay > 0) {
-                    if (link->m_ActivationDelay == 0) {
-                        link->m_ActivationDelay = link->m_InitialActivationDelay;
-                    }
-
-                    if (!(link->m_OldFlags & 1)) {
-                        link->m_OldFlags |= 1;
-                        m_GraphData->m_Links.PushBack(link);
-                        m_Context->m_Stats.BehaviorDelayedLinks++;
-                    }
-                } else {
-                    // Immediate activation
-                    iosToActivate.PushBack(link->m_OutIO);
+            if (link->m_InitialActivationDelay > 0) {
+                if (link->m_ActivationDelay == 0) {
+                    link->m_ActivationDelay = link->m_InitialActivationDelay;
                 }
+
+                if (!(link->m_OldFlags & 1)) {
+                    link->m_OldFlags |= 1;
+                    m_GraphData->m_Links.PushBack(link);
+                    m_Context->m_Stats.BehaviorDelayedLinks++;
+                }
+            } else {
+                // Immediate activation
+                iosToActivate.PushBack(link->m_OutIO);
             }
         }
+    }
 
-        // Deactivate marked IOs
-        for (XArray<CKBehaviorIO *>::Iterator it = iosToDeactivate.Begin(); it != iosToDeactivate.End(); ++it) {
-            (*it)->Activate(FALSE);
+    // Deactivate marked IOs
+    for (XArray<CKBehaviorIO *>::Iterator it = iosToDeactivate.Begin(); it != iosToDeactivate.End(); ++it) {
+        (*it)->Activate(FALSE);
+    }
+
+    // Activate marked IOs
+    for (XArray<CKBehaviorIO *>::Iterator it = iosToActivate.Begin(); it != iosToActivate.End(); ++it) {
+        (*it)->Activate();
+        if ((*it)->GetObjectFlags() & CK_BEHAVIORIO_IN) {
+            (*it)->m_OwnerBehavior->m_Flags |= CKBEHAVIOR_ACTIVE;
         }
+    }
 
-        // Activate marked IOs
-        for (XArray<CKBehaviorIO *>::Iterator it = iosToActivate.Begin(); it != iosToActivate.End(); ++it) {
-            (*it)->Activate();
-            if ((*it)->GetObjectFlags() & CK_BEHAVIORIO_IN) {
-                (*it)->m_OwnerBehavior->m_Flags |= CKBEHAVIOR_ACTIVE;
-            }
-        }
+    // Prepare behavior iterator array
+    m_GraphData->m_BehaviorIteratorIndex = 0;
+    int subBehaviorCount = m_GraphData->m_SubBehaviors.Size();
 
-        // Prepare behavior iterator array
-        m_GraphData->m_BehaviorIteratorIndex = 0;
-        int subBehaviorCount = m_GraphData->m_SubBehaviors.Size();
+    if (subBehaviorCount > m_GraphData->m_BehaviorIteratorCount) {
+        delete[] m_GraphData->m_BehaviorIterators;
+        m_GraphData->m_BehaviorIterators = new CKBehavior *[subBehaviorCount];
+        m_GraphData->m_BehaviorIteratorCount = subBehaviorCount;
+    }
 
-        if (subBehaviorCount > m_GraphData->m_BehaviorIteratorCount) {
-            delete[] m_GraphData->m_BehaviorIterators;
-            m_GraphData->m_BehaviorIterators = new CKBehavior *[subBehaviorCount];
-            m_GraphData->m_BehaviorIteratorCount = subBehaviorCount;
-        }
-
-        // Populate active sub-behaviors in reverse order
-        for (int i = subBehaviorCount - 1; i >= 0; --i) {
-            CKBehavior *subBeh = (CKBehavior *)m_GraphData->m_SubBehaviors[i];
-            if (subBeh != this && subBeh->IsActive()) {
-                subBeh->m_Flags |= CKBEHAVIOR_RESERVED0;
-                m_GraphData->m_BehaviorIterators[m_GraphData->m_BehaviorIteratorIndex++] = subBeh;
-            }
+    // Populate active sub-behaviors in reverse order
+    for (int i = subBehaviorCount - 1; i >= 0; --i) {
+        CKBehavior *subBeh = (CKBehavior *)m_GraphData->m_SubBehaviors[i];
+        if (subBeh != this && subBeh->IsActive()) {
+            subBeh->m_Flags |= CKBEHAVIOR_RESERVED0;
+            m_GraphData->m_BehaviorIterators[m_GraphData->m_BehaviorIteratorIndex++] = subBeh;
         }
     }
 }
@@ -2172,8 +2692,8 @@ void CKBehavior::HierarchyPostLoad() {
 }
 
 int CKBehavior::BehaviorPrioritySort(CKObject *o1, CKObject *o2) {
-    CKBehavior *beh1 = static_cast<CKBehavior *>(o1);
-    CKBehavior *beh2 = static_cast<CKBehavior *>(o2);
+    CKBehavior *beh1 = (CKBehavior *)o1;
+    CKBehavior *beh2 = (CKBehavior *)o2;
     if (beh1 && beh2)
         return beh2->GetPriority() - beh1->GetPriority();
     return 0;
