@@ -89,6 +89,7 @@ CKBOOL CKBitmapData::SetSlotFileName(int Slot, CKSTRING Filename) {
         return FALSE;
 
     m_Slots[Slot]->m_FileName = Filename;
+    return TRUE;
 }
 
 CKBOOL CKBitmapData::GetImageDesc(VxImageDescEx &oDesc) {
@@ -167,6 +168,7 @@ CKBOOL CKBitmapData::SetPixel(int x, int y, CKDWORD col, int slot) {
         return FALSE;
 
     buffer[x + y * m_Width] = col;
+    return TRUE;
 }
 
 CKDWORD CKBitmapData::GetPixel(int x, int y, int slot) {

@@ -33,6 +33,8 @@ CKERROR CKMessage::RemoveParameter(CKParameter *param) {
         delete m_Parameters;
         m_Parameters = nullptr;
     }
+
+    return CK_OK;
 }
 
 int CKMessage::GetParameterCount() {

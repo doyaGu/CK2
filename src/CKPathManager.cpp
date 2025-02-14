@@ -99,6 +99,8 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         CKSTRING lastCmoLoaded = m_Context->GetLastCmoLoaded();
         CKPathSplitter splitter(lastCmoLoaded);
     }
+
+    return CK_OK;
 }
 
 CKBOOL CKPathManager::PathIsAbsolute(XString &file) {
