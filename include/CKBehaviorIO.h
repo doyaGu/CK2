@@ -115,8 +115,8 @@ public:
         return CKIsChildClassOf(iO, CKCID_BEHAVIORIO) ? (CKBehaviorIO *)iO : NULL;
     }
 
-    //--- Ensure Links that are on the same behavior are the last in the list
-    void SortLinks();
+    void SetOldFlags(CKDWORD flags);
+    CKDWORD GetOldFlags();
 
 protected:
     XSObjectPointerArray m_Links;
