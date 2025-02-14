@@ -1,5 +1,7 @@
 #include "CKScene.h"
 
+#include "CKStateChunk.h"
+
 CK_CLASSID CKScene::m_ClassID = CKCID_SCENE;
 
 void CKScene::AddObjectToScene(CKSceneObject *o, CKBOOL dependencies) {
@@ -36,7 +38,13 @@ CKSceneObjectIterator CKScene::GetObjectIterator() {
 }
 
 CKSceneObjectDesc *CKScene::GetSceneObjectDesc(CKSceneObject *o) {
-    return nullptr;
+    if (!o || !o->IsInScene(this))
+        return nullptr;
+
+    auto it = m_SceneObjects.Find(o->GetID());
+    if (it == m_SceneObjects.End())
+        return nullptr;
+    return it;
 }
 
 void CKScene::Activate(CKSceneObject *o, CKBOOL Reset) {
@@ -60,15 +68,34 @@ CK_SCENEOBJECT_FLAGS CKScene::ModifyObjectFlags(CKSceneObject *o, CKDWORD Add, C
 }
 
 CKBOOL CKScene::SetObjectInitialValue(CKSceneObject *o, CKStateChunk *chunk) {
-    return 0;
+    CKSceneObjectDesc *desc = GetSceneObjectDesc(o);
+    if (!desc)
+        return FALSE;
+
+    if (desc->m_InitialValue) {
+        delete desc->m_InitialValue;
+    }
+    if (chunk) {
+        chunk->CloseChunk();
+    }
+    desc->m_InitialValue = chunk;
+    return TRUE;
 }
 
 CKStateChunk *CKScene::GetObjectInitialValue(CKSceneObject *o) {
-    return nullptr;
+    CKSceneObjectDesc *desc = GetSceneObjectDesc(o);
+    if (!desc)
+        return nullptr;
+    return desc->m_InitialValue;
 }
 
 CKBOOL CKScene::IsObjectActive(CKSceneObject *o) {
-    return 0;
+    if (o == this)
+        return TRUE;
+    CKSceneObjectDesc *desc = GetSceneObjectDesc(o);
+    if (!desc)
+        return FALSE;
+    return desc->IsActive();
 }
 
 void CKScene::ApplyEnvironmentSettings(XObjectPointerArray *renderlist) {
