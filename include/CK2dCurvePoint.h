@@ -255,6 +255,8 @@ public:
         m_Flags = 0;
     }
 
+    static int CurvePointSortFunc(const void *a, const void *b);
+
 protected:
     void SetCurve(CK2dCurve *curve) { m_Curve = curve; }
     void SetLength(float l) { m_Length = l; }
