@@ -62,7 +62,7 @@ public:
        The Y coordinate corresponding to the X value
     See also: GetPos
     *************************************************/
-    float GetY(float X);
+    float GetY(float x);
 
     //--------------------------------------------------------------------------
     // Control points access
