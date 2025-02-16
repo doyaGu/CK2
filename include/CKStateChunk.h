@@ -355,6 +355,12 @@ public:
     CKBYTE *ReadRawBitmap(VxImageDescEx &desc);
     void WriteRawBitmap(const VxImageDescEx &desc);
 
+    IntListStruct *GetIds() { return m_Ids; }
+    IntListStruct *GetChunks() { return m_Chunks; }
+    IntListStruct *GetManagers() { return m_Managers; }
+
+    void AttributePatch(CKBOOL, int *ConversionTable, int NbEntries);
+
     //--------------------------------------------------------
     ////               Private Part
 

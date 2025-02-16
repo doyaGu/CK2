@@ -1574,8 +1574,7 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
     return nullptr;
 }
 
-CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler)
-{
+CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler) {
     return adler32(adler, (unsigned char *)m_Data, m_ChunkSize * sizeof(int));
 }
 
@@ -1608,6 +1607,54 @@ CKBOOL CKStateChunk::UnPack(int DestSize) {
     }
     delete[] buf;
     return err == Z_OK;
+}
+
+void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int NbEntries) {
+    // Skip processing if managers array already exists
+    if (m_Managers)
+        return;
+
+    // Read sequence length and store current position
+    int sequenceLength = StartReadSequence();
+    int initialPosition = GetCurrentPos();
+
+    // Skip over the sequence data
+    Skip(sequenceLength);
+
+    if (!preserveData) {
+        // Clean up subchunks if not preserving data
+        StartReadSequence();
+        while (sequenceLength-- > 0) {
+            CKStateChunk* subChunk = ReadSubChunk();
+            if (subChunk) {
+                delete subChunk;
+            }
+        }
+    }
+
+    // Initialize managers list
+    m_Managers = new IntListStruct();
+    m_Managers->AddEntries(initialPosition);
+
+    // Prepare for conversion
+    Skip(sizeof(CKDWORD) * 3); // Skip header data
+
+    if (ConversionTable && NbEntries > 0 && sequenceLength > 0) {
+        do {
+            int* currentPosPtr = &m_Data[m_ChunkParser->CurrentPos];
+            int originalValue = *currentPosPtr;
+
+            // Check if value needs conversion
+            if (!(originalValue & 0x80000000) && originalValue < NbEntries) {
+                *currentPosPtr = ConversionTable[originalValue];
+            }
+
+            m_ChunkParser->CurrentPos++;
+        } while (--sequenceLength);
+    }
+
+    // Reset chunk position to attribute section
+    SeekIdentifier(CK_STATESAVE_NEWATTRIBUTES);
 }
 
 CKBOOL CKStateChunk::ReadRawBitmapHeader(VxImageDescEx &desc) {
