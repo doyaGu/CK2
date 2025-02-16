@@ -1,8 +1,12 @@
 #include "CKSynchroObject.h"
 
+#include "CKBeObject.h"
+
 CK_CLASSID CKSynchroObject::m_ClassID = CKCID_SYNCHRO;
 
 void CKSynchroObject::Reset() {
+    m_Passed.Clear();
+    m_Arrived.Clear();
 }
 
 void CKSynchroObject::SetRendezVousNumberOfWaiters(int waiters) {
@@ -25,9 +29,11 @@ int CKSynchroObject::GetRendezVousNumberOfArrivedObjects() {
 //}
 
 CKSynchroObject::CKSynchroObject(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
+    m_MaxWaiters = 0;
 }
 
 CKSynchroObject::~CKSynchroObject() {
+    Reset();
 }
 
 CK_CLASSID CKSynchroObject::GetClassID() {
@@ -43,34 +49,42 @@ CKERROR CKSynchroObject::Load(CKStateChunk *chunk, CKFile *file) {
 }
 
 void CKSynchroObject::CheckPostDeletion() {
-    CKObject::CheckPostDeletion();
+    m_Arrived.Check(m_Context);
+    m_Passed.Check(m_Context);
 }
 
 int CKSynchroObject::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation();
+    return CKObject::GetMemoryOccupation() + 44 + 12 * m_Arrived.GetCount() + 12 * m_Passed.GetCount();
 }
 
 CKBOOL CKSynchroObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
+    if (CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
+        if (m_Arrived.PtrFind(obj) || m_Passed.PtrFind(obj))
+            return TRUE;
+    }
     return CKObject::IsObjectUsed(obj, cid);
 }
 
-CKSTRING CKSynchroObject::GetClassNameA() {
-    return nullptr;
+CKSTRING CKSynchroObject::GetClassName() {
+    return "Synchronization Object";
 }
 
 int CKSynchroObject::GetDependenciesCount(int mode) {
-    return 0;
+    return CKObject::GetDependenciesCount(mode);
 }
 
 CKSTRING CKSynchroObject::GetDependencies(int i, int mode) {
-    return nullptr;
+    return CKObject::GetDependencies(i, mode);
 }
 
 void CKSynchroObject::Register() {
+    CKClassNeedNotificationFrom(m_ClassID, CKBeObject::m_ClassID);
+    CKClassRegisterDefaultOptions(m_ClassID, 4);
+    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_SYNCHRO);
 }
 
 CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
-    return nullptr;
+    return new CKSynchroObject(Context);
 }
 
 CK_CLASSID CKStateObject::m_ClassID;
