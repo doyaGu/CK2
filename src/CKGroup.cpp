@@ -19,7 +19,10 @@ CKBeObject *CKGroup::RemoveObject(int pos) {
 }
 
 void CKGroup::RemoveObject(CKBeObject *obj) {
-
+    if (m_ObjectArray.Remove(obj)) {
+        m_Groups.Unset(m_GroupIndex);
+        m_ClassIdUpdated = FALSE;
+    }
 }
 
 void CKGroup::Clear() {
@@ -118,7 +121,7 @@ CKERROR CKGroup::Copy(CKObject &o, CKDependenciesContext &context) {
     return CKBeObject::Copy(o, context);
 }
 
-CKSTRING CKGroup::GetClassNameA() {
+CKSTRING CKGroup::GetClassName() {
     return nullptr;
 }
 
