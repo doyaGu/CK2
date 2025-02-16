@@ -125,7 +125,6 @@ public:
     // Internal functions
 
     virtual void ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects);
-    CKBeObject() {}
     CKBeObject(CKContext *Context, CKSTRING name = NULL);
     virtual ~CKBeObject();
     virtual CK_CLASSID GetClassID();
@@ -169,8 +168,8 @@ public:
 protected:
     XBitArray m_Groups;
     XObjectPointerArray *m_ScriptArray;
-    XVoidArray *m_LastFrameMessages;
-    unsigned int m_Waiting;
+    XArray<CKMessage *> *m_LastFrameMessages;
+    int m_Waiting;
     int m_Priority;
     float m_LastExecutionTime;
     XAttributeList m_Attributes;
