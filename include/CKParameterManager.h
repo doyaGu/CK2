@@ -10,7 +10,7 @@
 /********************************************************
  Kept for compatibility issues : On macintosh the
  const CKGUID& must be used to conform to Codewarrior, On PC
- we do not need to to this (and  must not to keep CK2 compatible
+ we do not need to this (and  must not to keep CK2 compatible
  with previously created DLLs) {secret}
 *********************************************************/
 #ifdef macintosh
@@ -121,9 +121,34 @@ typedef struct CKOperationDesc
     CK_PARAMETEROPERATION Fct; // Function to call to process the operation.
 } CKOperationDesc;
 
-struct TreeCell;
+struct TreeCell {
+    CKGUID Guid;
+    int ChildCount;
+    TreeCell *Children;
+};
 
-struct OperationCell;
+struct OperationCell {
+    char Name[30];
+    CKGUID OperationGuid;
+    int CellCount;
+    TreeCell* Tree;
+    CKBOOL IsActive;
+};
+
+struct CKEnumEntry {
+    XString Name;
+    int Value;
+};
+
+struct CKFlagDefinition {
+    XString Name;
+    int Value;
+};
+
+struct CKFlagEntry {
+    XString Name;
+    int Value;
+};
 
 /************************************************************************
 Name: CKParameterManager
@@ -155,7 +180,7 @@ class DLL_EXPORT CKParameterManager : public CKBaseManager
 public:
     //-----------------------------------------------------------------------
     // Parameter Types registration
-    CKERROR RegisterParameterType(CKParameterTypeDesc *param_type);
+    CKERROR RegisterParameterType(CKParameterTypeDesc *paramType);
     CKERROR UnRegisterParameterType(CKGUIDCONSTREF guid);
     CKParameterTypeDesc *GetParameterTypeDescription(int type);
     CKParameterTypeDesc *GetParameterTypeDescription(CKGUIDCONSTREF guid);
@@ -176,7 +201,7 @@ public:
     CKBOOL IsDerivedFrom(CKGUIDCONSTREF guid1, CKGUIDCONSTREF parent);
     CKBOOL IsDerivedFrom(CKParameterType child, CKParameterType parent);
     CKBOOL IsTypeCompatible(CKGUIDCONSTREF guid1, CKGUIDCONSTREF guid2);
-    CKBOOL IsTypeCompatible(CKParameterType Ptype1, CKParameterType Ptype2);
+    CKBOOL IsTypeCompatible(CKParameterType type1, CKParameterType type2);
 
     //-----------------------------------------------------------------------
     // Parameter Type to Class ID conversions functions
@@ -192,7 +217,7 @@ public:
     CKERROR RegisterNewEnum(CKGUIDCONSTREF EnumGuid, CKSTRING EnumName, CKSTRING EnumData);
     CKERROR ChangeEnumDeclaration(CKGUIDCONSTREF EnumGuid, CKSTRING EnumData);
     CKERROR ChangeFlagsDeclaration(CKGUIDCONSTREF FlagsGuid, CKSTRING FlagsData);
-    CKERROR RegisterNewStructure(CKGUIDCONSTREF StructGuid, CKSTRING StructName, CKSTRING Structdata, ...);
+    CKERROR RegisterNewStructure(CKGUIDCONSTREF StructGuid, CKSTRING StructName, CKSTRING StructData, ...);
     CKERROR RegisterNewStructure(CKGUIDCONSTREF StructGuid, CKSTRING StructName, CKSTRING StructData, XArray<CKGUID> &ListGuid);
 
     int GetNbFlagDefined();
@@ -245,7 +270,7 @@ public:
     CKBOOL m_ParameterTypeEnumUpToDate;
 
 protected:
-    XArray<CKParameterTypeDesc *> m_RegistredTypes;
+    XArray<CKParameterTypeDesc *> m_RegisteredTypes;
 
     int m_NbOperations, m_NbAllocatedOperations;
     OperationCell *m_OperationTree;
@@ -275,6 +300,8 @@ private:
     CKBOOL IsDerivedFromIntern(int child, int parent);
     CKBOOL RemoveAllParameterTypes();
     CKBOOL RemoveAllOperations();
+
+    int BuildGuidHierarchy(CKGUID guid, CKGUID* buffer, int max);
 };
 
 #endif // CKPARAMETERMANAGER_H
