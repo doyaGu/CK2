@@ -37,6 +37,7 @@ int g_MaxClassID = 55;
 ProcessorsType g_TheProcessor;
 CKPluginManager g_ThePluginManager;
 VxImageDescEx Default32Desc;
+CKBOOL WarningForOlderVersion = FALSE;
 
 typedef XHashTable<CKObjectDeclaration *, CKGUID> XObjDeclHashTable;
 XObjDeclHashTable g_PrototypeDeclarationList;
