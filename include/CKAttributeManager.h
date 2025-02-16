@@ -7,7 +7,6 @@
 
 struct CKAttributeDesc;
 struct CKAttributeCategoryDesc;
-//class XObjectPointerArray;
 
 /****************************************************************
 Summary: Function called when an attribute is set or removed on an object.
@@ -125,6 +124,8 @@ public:
 
     void RemoveAttributeFromObject(CKBeObject *beo);
 
+    void PatchRemapBeObjectFileChunk(CKStateChunk *chunk);
+
     CKAttributeManager(CKContext *Context);
 
     virtual ~CKAttributeManager();
@@ -147,11 +148,11 @@ public:
                                                      CKMANAGER_FUNC_OnSequenceRemovedFromScene; }
 
     int m_AttributeDescCount;
-    CKAttributeDesc **m_AttributeDescPtrs;
+    CKAttributeDesc **m_AttributeDescs;
     int m_AttributeCategoryCount;
     CKAttributeCategoryDesc **m_AttributeCategories;
     int *m_ConversionTable;
-    int m_ConversionTableSize;
+    int m_ConversionTableCount;
     XBitArray m_BitArray;
     CKBOOL m_Saving;
     XArray<int> m_Array;

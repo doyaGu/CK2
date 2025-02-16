@@ -1,9 +1,11 @@
 #include "CKAttributeManager.h"
 
+#include "CKContext.h"
+#include "CKStateChunk.h"
+
 CKAttributeType CKAttributeManager::RegisterNewAttributeType(CKSTRING Name, CKGUID ParameterType, CK_CLASSID CompatibleCid, CK_ATTRIBUT_FLAGS flags) {
     return 0;
 }
-
 
 void CKAttributeManager::UnRegisterAttribute(CKAttributeType AttribType) {
 }
@@ -131,7 +133,21 @@ void CKAttributeManager::RefreshList(CKObject *obj, CKScene *scene) {
 void CKAttributeManager::RemoveAttributeFromObject(CKBeObject *beo) {
 }
 
+void CKAttributeManager::PatchRemapBeObjectFileChunk(CKStateChunk *chunk) {
+    if (m_ConversionTable && m_ConversionTableCount > 0) {
+        chunk->AttributePatch(1, m_ConversionTable, m_ConversionTableCount);
+    }
+}
+
 CKAttributeManager::CKAttributeManager(CKContext *Context): CKBaseManager(Context, ATTRIBUTE_MANAGER_GUID, "Attribute Manager") {
+    m_AttributeDescCount = 0;
+    m_AttributeDescs = nullptr;
+    m_AttributeCategoryCount = 0;
+    m_AttributeCategories = nullptr;
+    m_ConversionTableCount = 0;
+    m_ConversionTable = nullptr;
+    m_Saving = FALSE;
+    m_Context->RegisterNewManager(this);
 }
 
 CKAttributeManager::~CKAttributeManager() {
