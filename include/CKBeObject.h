@@ -125,6 +125,7 @@ public:
     // Internal functions
 
     virtual void ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects);
+    CKBeObject();
     CKBeObject(CKContext *Context, CKSTRING name = NULL);
     virtual ~CKBeObject();
     virtual CK_CLASSID GetClassID();

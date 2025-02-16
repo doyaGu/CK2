@@ -181,7 +181,7 @@ CKERROR CKBeObject::AddScript(CKBehavior *script) {
     }
 
     // Handle ownership transfer
-    CKBeObject* previousOwner = script->GetOwner();
+    CKBeObject *previousOwner = script->GetOwner();
     CKERROR error = script->SetOwner(this, true);
     if (error != CK_OK) {
         script->SetOwner(previousOwner, true); // Revert owner
@@ -210,7 +210,7 @@ CKBehavior *CKBeObject::RemoveScript(CK_ID id) {
     if (!m_ScriptArray)
         return NULL;
 
-    CKBehavior* script = (CKBehavior *)m_Context->GetObject(id);
+    CKBehavior *script = (CKBehavior *)m_Context->GetObject(id);
     if (!script)
         return NULL;
 
@@ -321,9 +321,8 @@ int CKBeObject::CallBehaviorCallbackFunction(CKDWORD Message, CKGUID *behguid) {
         return result;
 
     const int scriptCount = m_ScriptArray->Size();
-    for (int i = 0; i < scriptCount; ++i)
-    {
-        CKBehavior* script = (CKBehavior*)(*m_ScriptArray)[i];
+    for (int i = 0; i < scriptCount; ++i) {
+        CKBehavior *script = (CKBehavior *)(*m_ScriptArray)[i];
         if (script)
             result = script->CallSubBehaviorsCallbackFunction(Message, behguid);
     }
@@ -348,6 +347,14 @@ void CKBeObject::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjec
             ++it;
         }
     }
+}
+
+CKBeObject::CKBeObject() : CKSceneObject(::GetCKContext(0), NULL) {
+    m_ScriptArray = NULL;
+    m_LastFrameMessages = NULL;
+    m_Waiting = 0;
+    m_LastExecutionTime = 0.0f;
+    m_Priority = 0;
 }
 
 CKBeObject::CKBeObject(CKContext *Context, CKSTRING name) : CKSceneObject(Context, name) {
@@ -387,14 +394,14 @@ void CKBeObject::PreSave(CKFile *file, CKDWORD flags) {
 
 CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
     // Save base object data
-    CKStateChunk* baseChunk = CKObject::Save(file, flags);
+    CKStateChunk *baseChunk = CKObject::Save(file, flags);
 
     if (!file && !(flags & CK_STATESAVE_BEOBJECTONLY)) {
         return baseChunk;
     }
 
     // Create new state chunk for BeObject-specific data
-    CKStateChunk* chunk = new CKStateChunk(CKCID_BEOBJECT, file);
+    CKStateChunk *chunk = new CKStateChunk(CKCID_BEOBJECT, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk); // Takes ownership of base chunk
 
@@ -416,7 +423,7 @@ CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
     // Save attributes
     if (m_Attributes.Size() > 0) {
         XArray<CKAttributeVal> attributesToSave;
-        CKAttributeManager* am = m_Context->GetAttributeManager();
+        CKAttributeManager *am = m_Context->GetAttributeManager();
 
         // Collect attributes that should be saved
         for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
@@ -432,7 +439,7 @@ CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
 
             // Write object references
             for (int i = 0; i < attributesToSave.Size(); ++i) {
-                CKObject* obj = m_Context->GetObject(attributesToSave[i].Parameter);
+                CKObject *obj = m_Context->GetObject(attributesToSave[i].Parameter);
                 chunk->WriteObjectSequence(obj);
             }
 
@@ -440,8 +447,8 @@ CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
             if (!file) {
                 chunk->StartSubChunkSequence(attributesToSave.Size());
                 for (int i = 0; i < attributesToSave.Size(); ++i) {
-                    CKObject* obj = m_Context->GetObject(attributesToSave[i].Parameter);
-                    CKStateChunk* paramChunk = obj ? obj->Save(NULL, flags) : NULL;
+                    CKObject *obj = m_Context->GetObject(attributesToSave[i].Parameter);
+                    CKStateChunk *paramChunk = obj ? obj->Save(NULL, flags) : NULL;
                     chunk->WriteSubChunkSequence(paramChunk);
                     CKDeletePointer(paramChunk);
                 }
@@ -457,8 +464,8 @@ CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
 
     // Save scene information
     if (file && !file->m_SceneSaved) {
-        if (CKScene* scene = m_Context->GetCurrentScene()) {
-            if (CKSceneObjectDesc* desc = scene->GetSceneObjectDesc(this)) {
+        if (CKScene *scene = m_Context->GetCurrentScene()) {
+            if (CKSceneObjectDesc *desc = scene->GetSceneObjectDesc(this)) {
                 CKDWORD sceneFlags = desc->m_Flags;
                 if (desc->m_InitialValue) {
                     sceneFlags |= CK_SCENEOBJECT_INTERNAL_IC;
@@ -488,8 +495,8 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
     if (error != CK_OK)
         return error;
 
-    CKContext* context = m_Context;
-    CKAttributeManager* am = context->GetAttributeManager();
+    CKContext *context = m_Context;
+    CKAttributeManager *am = context->GetAttributeManager();
     bool legacyVersion = false;
 
     if (file) {
@@ -544,7 +551,7 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
 
         int attrCount = chunk->StartReadSequence();
         XArray<CK_ID> attrObjects(attrCount);
-        XArray<CKStateChunk*> attrChunks;
+        XArray<CKStateChunk *> attrChunks;
 
         // Read attribute object references
         for (int i = 0; i < attrCount; ++i) {
@@ -566,12 +573,12 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
         if (managerGuid == ATTRIBUTE_MANAGER_GUID && seqCount == attrCount) {
             for (int i = 0; i < attrCount; ++i) {
                 CKAttributeType attrType = chunk->StartReadSequence(); // TODO: Check if this is correct
-                CKObject* paramObj = context->GetObject(attrObjects[i]);
+                CKObject *paramObj = context->GetObject(attrObjects[i]);
 
                 SetAttribute(attrType, paramObj ? paramObj->GetID() : 0);
 
                 if (!file && attrChunks[i]) {
-                    CKParameter* param = GetAttributeParameter(attrType);
+                    CKParameter *param = GetAttributeParameter(attrType);
                     if (param) {
                         param->Load(attrChunks[i], NULL);
                         CKParameterType paramType = am->GetAttributeParameterType(attrType);
@@ -626,7 +633,7 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
                 SetAttribute(attrType);
 
                 CK_ID paramId = chunk->ReadObjectID();
-                CKParameter* param = (CKParameter*)context->GetObject(paramId);
+                CKParameter *param = (CKParameter *)context->GetObject(paramId);
                 if (param) {
                     for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
                         if ((*it).AttribType == attrType) {
@@ -705,7 +712,7 @@ CKERROR CKBeObject::PrepareDependencies(CKDependenciesContext &context) {
         if (context.IsInMode(CK_DEPENDENCIES_COPY)) {
             // Incremental mode: Process each script individually
             for (int i = 0; i < GetScriptCount(); ++i) {
-                CKBehavior* script = GetScript(i);
+                CKBehavior *script = GetScript(i);
                 if (!(script->GetFlags() & CKBEHAVIOR_LOCKED)) {
                     script->PrepareDependencies(context);
                 }
@@ -720,8 +727,8 @@ CKERROR CKBeObject::PrepareDependencies(CKDependenciesContext &context) {
         if (context.IsInMode(CK_DEPENDENCIES_DELETE)) {
             CKAttributeManager *am = m_Context->GetAttributeManager();
             for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-                CKAttributeVal& val = *it;
-                if (!am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY) {
+                CKAttributeVal &val = *it;
+                if (!(am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY)) {
                     CKParameter *param = (CKParameter *)m_Context->GetObject(val.Parameter);
                     if (param) {
                         param->PrepareDependencies(context);
@@ -734,8 +741,8 @@ CKERROR CKBeObject::PrepareDependencies(CKDependenciesContext &context) {
     if (classDeps & 2) {
         CKAttributeManager *am = m_Context->GetAttributeManager();
         for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-            CKAttributeVal& val = *it;
-            if (!am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY) {
+            CKAttributeVal &val = *it;
+            if (!(am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY)) {
                 CKParameter *param = (CKParameter *)m_Context->GetObject(val.Parameter);
                 if (param) {
                     param->PrepareDependencies(context);
@@ -762,7 +769,7 @@ CKERROR CKBeObject::RemapDependencies(CKDependenciesContext &context) {
     // Remap attribute dependencies if needed
     if (classDeps & 2) {
         for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-            CKAttributeVal& val = *it;
+            CKAttributeVal &val = *it;
             val.Parameter = context.RemapID(val.Parameter);
         }
     }
@@ -775,7 +782,7 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
     if (err != CK_OK)
         return err;
 
-    CKBeObject* beo = (CKBeObject*)&o;
+    CKBeObject *beo = (CKBeObject *)&o;
 
     // Get dependency flags for BeObject class
     const CKDWORD classDeps = context.GetClassDependencies(m_ClassID);
@@ -792,7 +799,7 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
 
             // Clone valid scripts
             for (auto it = beo->m_ScriptArray->Begin(); it != beo->m_ScriptArray->End(); ++it) {
-                CKBehavior* srcScript = (CKBehavior*)*it;
+                CKBehavior *srcScript = (CKBehavior *)*it;
                 if (!(srcScript->GetFlags() & CKBEHAVIOR_LOCKED)) {
                     m_ScriptArray->PushBack(srcScript);
                 }
@@ -802,11 +809,11 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
 
     // Copy attributes if requested
     if (classDeps & 2) {
-        CKAttributeManager* am = m_Context->GetAttributeManager();
+        CKAttributeManager *am = m_Context->GetAttributeManager();
 
         for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-            CKAttributeVal& val = *it;
-            if (!am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY) {
+            CKAttributeVal &val = *it;
+            if (!(am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY)) {
                 SetAttribute(val.AttribType, val.Parameter);
             }
         }
