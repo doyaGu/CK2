@@ -1,5 +1,7 @@
 #include "CKParameterManager.h"
 
+#include <CKInterfaceManager.h>
+
 #include "CKPluginManager.h"
 #include "CKStateChunk.h"
 
@@ -7,45 +9,441 @@ extern CKPluginManager g_ThePluginManager;
 extern CKPluginEntry *g_TheCurrentPluginEntry;
 extern XClassInfoArray g_CKClassInfo;
 
-void CKInitializeParameterTypes(CKParameterManager *pm) {
+void CKInitializeParameterTypes(CKParameterManager *man) {
     // TODO: Register all built-in parameter types
 }
 
-void CK_ParameterCopier_SaveLoad(CKParameter *dest, CKParameter *src) {
-    CKStateChunk *stateChunk = nullptr;
+CKERROR CKStructCreator(CKParameter *param) {
+    if (!param)
+        return CKERR_INVALIDPARAMETER;
 
-    // First, load state from the source parameter.
-    // The SaveLoadFunction is expected to be a function pointer
-    // taking a CKParameter*, a pointer to a CKStateChunk*, and a flag.
-    src->m_ParamType->SaveLoadFunction(src, &stateChunk, 0);
+    CKContext *context = param->m_Context;
+    CKParameterManager *pm = context->GetParameterManager();
 
-    // Then, save state into the destination parameter.
-    dest->m_ParamType->SaveLoadFunction(dest, &stateChunk, 1);
+    CKParameterType type = param->GetType();
+    CKStructStruct *desc = pm->GetStructDescByType(type);
+    if (!desc)
+        return CKERR_INVALIDPARAMETER;
 
-    // If a state chunk was allocated, clean it up.
-    if (stateChunk) {
-        delete stateChunk;
+    int memberCount = desc->NbData;
+    CK_ID *memberIDs = new CK_ID[memberCount];
+    memset(memberIDs, 0, sizeof(CK_ID) * memberCount);
+
+    for (int i = 0; i < memberCount; ++i) {
+        CKParameterOut *member = context->CreateCKParameterOut(desc->Desc[i], desc->Guids[i], param->IsDynamic());
+
+        if (member) {
+            memberIDs[i] = member->GetID();
+        }
     }
+
+    param->SetValue(memberIDs, sizeof(CK_ID) * memberCount);
+
+    delete[] memberIDs;
+    return CK_OK;
+}
+
+void CKStructDestructor(CKParameter *param) {
+    if (!param)
+        return;
+
+    CKContext *context = param->m_Context;
+    if (context->IsInClearAll())
+        return;
+
+    CKParameterManager *pm = context->GetParameterManager();
+    CKStructStruct *desc = pm->GetStructDescByType(param->GetType());
+
+    if (desc) {
+        CK_ID *memberIDs = (CK_ID *)param->GetReadDataPtr();
+
+        for (int i = 0; i < desc->NbData; ++i) {
+            if (memberIDs[i] != 0) {
+                context->DestroyObject(memberIDs[i], CK_DESTROY_NONOTIFY);
+                memberIDs[i] = 0;
+            }
+        }
+    }
+}
+
+void CKStructSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
+    if (!param || !chunk)
+        return;
+
+    CKContext *context = param->m_Context;
+    CKParameterManager *pm = context->GetParameterManager();
+    CKParameterType type = param->GetType();
+    CKStructStruct *desc = pm->GetStructDescByType(type);
+
+    if (!desc)
+        return;
+
+    CK_ID *memberIDs = (CK_ID *)param->GetReadDataPtr();
+    if (!memberIDs)
+        return;
+
+    if (load) {
+        // Loading from chunk
+        CKStateChunk *loadChunk = *chunk;
+        if (!loadChunk)
+            return;
+
+        if (loadChunk->SeekIdentifier(0x12348765)) {
+            int count = loadChunk->ReadInt();
+            if (count != desc->NbData) {
+                context->OutputToConsole("Structure member count mismatch!");
+                return;
+            }
+
+            for (int i = 0; i < desc->NbData; ++i) {
+                CKStateChunk *subChunk = loadChunk->ReadSubChunk();
+                if (subChunk) {
+                    CKObject *member = context->GetObject(memberIDs[i]);
+                    if (member) {
+                        member->Load(subChunk, NULL);
+                    }
+                    delete subChunk;
+                }
+            }
+        }
+    } else {
+        // Saving to chunk
+        CKStateChunk *saveChunk = new CKStateChunk(NULL);
+        saveChunk->StartWrite();
+
+        // Write structure header
+        saveChunk->WriteIdentifier(0x12348765);
+        saveChunk->WriteInt(desc->NbData);
+
+        // Save each member
+        for (int i = 0; i < desc->NbData; ++i) {
+            CKObject *member = context->GetObject(memberIDs[i]);
+            if (member) {
+                CKStateChunk *memberChunk = member->Save(NULL, 0xFFFFFFFF);
+                if (memberChunk) {
+                    saveChunk->WriteSubChunk(memberChunk);
+                    delete memberChunk;
+                }
+            }
+        }
+
+        saveChunk->CloseChunk();
+        *chunk = saveChunk;
+    }
+}
+
+void CKStructCopier(CKParameter *dest, CKParameter *src) {
+    if (!dest || !src)
+        return;
+
+    CKContext *context = dest->m_Context;
+    CKParameterManager *pm = context->GetParameterManager();
+
+    CKParameterType type = dest->GetType();
+    CKStructStruct *desc = pm->GetStructDescByType(type);
+    if (!desc)
+        return;
+
+    CK_ID *srcMembers = (CK_ID *)src->GetReadDataPtr();
+    CK_ID *destMembers = (CK_ID *)dest->GetWriteDataPtr();
+    if (!srcMembers || !destMembers)
+        return;
+
+    for (int i = 0; i < desc->NbData; ++i) {
+        CKParameterOut *srcParam = (CKParameterOut *)context->GetObject(srcMembers[i]);
+        CKParameterOut *destParam = (CKParameterOut *)context->GetObject(destMembers[i]);
+        if (srcParam && destParam) {
+            destParam->CopyValue(srcParam, FALSE);
+        }
+    }
+}
+
+int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
+    const char DELIMITER = ';';
+    const int MAX_MEMBER_LENGTH = 256;
+    const int MAX_STRUCT_LENGTH = 2048;
+
+    if (!param)
+        return 0;
+
+    CKContext *context = param->m_Context;
+    CKParameterManager *pm = context->GetParameterManager();
+    CKParameterType type = param->GetType();
+
+    CKStructStruct *desc = pm->GetStructDescByType(type);
+    if (!desc)
+        return -1;
+
+    CK_ID *memberIDs = (CK_ID *)param->GetReadDataPtr();
+    if (!memberIDs)
+        return -1;
+
+    if (readFromStr) {
+        if (!valueStr)
+            return 0;
+
+        const char *current = valueStr;
+        for (int i = 0; i < desc->NbData; ++i) {
+            CKParameterOut *member = (CKParameterOut *)context->GetObject(memberIDs[i]);
+            if (!member)
+                continue;
+
+            // Find next delimiter
+            size_t len = strcspn(current, &DELIMITER);
+            if (len > 0) {
+                char buffer[MAX_MEMBER_LENGTH] = {0};
+                strncpy(buffer, current, XMin(len, sizeof(buffer) - 1));
+                member->SetStringValue(buffer);
+            }
+
+            // Move to next member data
+            current += len;
+            if (*current == DELIMITER) current++;
+        }
+        return 0;
+    } else {
+        // Convert structure members to string
+        char output[MAX_STRUCT_LENGTH] = {0};
+        int totalLength = 0;
+
+        for (int i = 0; i < desc->NbData; ++i) {
+            CKParameterOut *member = (CKParameterOut *)context->GetObject(memberIDs[i]);
+
+            char memberStr[MAX_MEMBER_LENGTH] = {0};
+            if (member && member->GetStringValue(memberStr, sizeof(memberStr))) {
+                // Check buffer space: existing length + member + delimiter + null
+                if (totalLength + strlen(memberStr) + 1 >= sizeof(output))
+                    break;
+
+                strcat(output, memberStr);
+                totalLength += strlen(memberStr);
+            } else {
+                strcat(output, "NULL");
+                totalLength += 4;
+            }
+
+            // Add delimiter (will remove last one later)
+            strcat(output, &DELIMITER);
+            totalLength++;
+        }
+
+        // Remove trailing delimiter if any data was added
+        if (totalLength > 0) {
+            output[totalLength - 1] = '\0';
+            totalLength--;
+        }
+
+        // Copy to output buffer if provided
+        if (valueStr) {
+            strncpy(valueStr, output, totalLength + 1);
+            valueStr[totalLength] = '\0';
+        }
+
+        return totalLength + 1;
+    }
+}
+
+void CK_ParameterCopier_Dword(CKParameter *dest, CKParameter *src) {
+    CKDWORD *srcValue = (CKDWORD *)src->m_Buffer;
+    CKDWORD *destValue = (CKDWORD *)dest->m_Buffer;
+    *destValue = *srcValue;
 }
 
 void CK_ParameterCopier_SetValue(CKParameter *dest, CKParameter *src) {
     dest->SetValue(src->m_Buffer, src->m_Size);
 }
 
+void CK_ParameterCopier_SaveLoad(CKParameter *dest, CKParameter *src) {
+    CKStateChunk *stateChunk = nullptr;
+    src->m_ParamType->SaveLoadFunction(src, &stateChunk, FALSE);
+    dest->m_ParamType->SaveLoadFunction(dest, &stateChunk, TRUE);
+    if (stateChunk) {
+        delete stateChunk;
+    }
+}
+
+int CKIntStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
+    if (!param)
+        return 0;
+
+    if (ReadFromString) {
+        if (!ValueString)
+            return 0;
+
+        int intValue = 0;
+        if (sscanf(ValueString, "%d", &intValue) == 1) {
+            param->SetValue(&intValue, sizeof(intValue));
+        }
+        return 0;
+    } else {
+        int paramValue = 0;
+        param->GetValue(&paramValue, sizeof(paramValue));
+
+        char buffer[64];
+        int written = sprintf(buffer, "%d", paramValue);
+
+        if (ValueString) {
+            strcpy(ValueString, buffer);
+        }
+
+        return written + 1;
+    }
+}
+
+int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromString) {
+    if (!param)
+        return 0;
+
+    CKContext *context = param->m_Context;
+    CKParameterType paramType = param->GetType();
+    CKParameterManager *paramManager = context->GetParameterManager();
+    CKFlagsStruct *flagsDesc = paramManager->GetFlagsDescByType(paramType);
+
+    // Fallback to integer conversion if not a flags type
+    if (!flagsDesc) {
+        return CKIntStringFunc(param, ValueString, ReadFromString);
+    }
+
+    if (ReadFromString) {
+        CKDWORD flagValue = 0;
+        const char *current = ValueString;
+
+        while (current && *current) {
+            // Find next comma or end of string
+            const char *commaPos = strchr(current, ',');
+            size_t tokenLen = commaPos ? (commaPos - current) : strlen(current);
+
+            // Extract current token
+            char tokenBuffer[256];
+            strncpy(tokenBuffer, current, tokenLen);
+            tokenBuffer[tokenLen] = '\0';
+
+            // Search for matching flag name
+            for (int i = 0; i < flagsDesc->NbData; ++i) {
+                if (flagsDesc->Desc[i] &&
+                    _stricmp(tokenBuffer, flagsDesc->Desc[i]) == 0) {
+                    flagValue |= flagsDesc->Vals[i];
+                    break;
+                }
+            }
+
+            // Move to next token
+            current = commaPos ? commaPos + 1 : NULL;
+        }
+
+        // Update parameter value
+        param->SetValue(&flagValue, sizeof(flagValue));
+        return 1;
+    } else {
+        CKDWORD currentFlags;
+        param->GetValue(&currentFlags, sizeof(currentFlags));
+
+        char outputBuffer[1024];
+        outputBuffer[0] = '\0';
+        int requiredSize = 1; // Start with null terminator
+
+        // Build comma-separated list of flag names
+        for (int i = 0; i < flagsDesc->NbData; ++i) {
+            if ((currentFlags & flagsDesc->Vals[i]) && flagsDesc->Desc[i]) {
+                strcat(outputBuffer, flagsDesc->Desc[i]);
+                strcat(outputBuffer, ",");
+                requiredSize += strlen(flagsDesc->Desc[i]) + 1;
+            }
+        }
+
+        // Remove trailing comma if any
+        size_t len = strlen(outputBuffer);
+        if (len > 0) {
+            outputBuffer[len - 1] = '\0';
+            requiredSize--;
+        }
+
+        // Copy to output if buffer provided
+        if (ValueString) {
+            strcpy(ValueString, outputBuffer);
+        }
+
+        return requiredSize;
+    }
+}
+
+int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
+    if (!param)
+        return 0;
+
+    CKContext *context = param->m_Context;
+    CKParameterManager *paramManager = context->GetParameterManager();
+
+    CKParameterType paramType = param->GetType();
+    CKEnumStruct *enumDesc = paramManager->GetEnumDescByType(paramType);
+
+    // Fallback to integer conversion if not an enum type
+    if (!enumDesc) {
+        return CKIntStringFunc(param, ValueString, ReadFromString);
+    }
+
+    if (ReadFromString) {
+        // Parse string to enum value
+        if (!ValueString)
+            return 0;
+
+        int foundValue = -1;
+        for (int i = 0; i < enumDesc->NbData; ++i) {
+            if (enumDesc->Desc[i] && strcmp(ValueString, enumDesc->Desc[i]) == 0) {
+                foundValue = enumDesc->Vals[i];
+                break;
+            }
+        }
+
+        if (foundValue == -1) {
+            // Fallback to integer parsing if no enum match
+            return CKIntStringFunc(param, ValueString, ReadFromString);
+        }
+
+        param->SetValue(&foundValue, sizeof(foundValue));
+        return 1;
+    } else {
+        // Convert enum value to string
+        int currentValue;
+        param->GetValue(&currentValue, sizeof(currentValue));
+
+        char buffer[256];
+        strcpy(buffer, "Invalid Enum Value");
+
+        // Search for matching value
+        for (int i = 0; i < enumDesc->NbData; ++i) {
+            if (enumDesc->Vals[i] == currentValue && enumDesc->Desc[i]) {
+                strncpy(buffer, enumDesc->Desc[i], sizeof(buffer) - 1);
+                buffer[sizeof(buffer) - 1] = '\0'; // Ensure null termination
+                break;
+            }
+        }
+
+        if (ValueString) {
+            strcpy(ValueString, buffer);
+        }
+        return strlen(buffer) + 1; // Include null terminator in size
+    }
+}
+
+CK_PARAMETERUICREATORFUNCTION GetUICreatorFunction(CKContext *context, CKParameterTypeDesc *desc) {
+    CKInterfaceManager *interfaceManager = (CKInterfaceManager *)context->GetManagerByGuid(INTERFACE_MANAGER_GUID);
+    if (interfaceManager) {
+        return interfaceManager->GetEditorFunctionForParameterType(desc);
+    }
+    return NULL;
+}
+
 CKERROR CKParameterManager::RegisterParameterType(CKParameterTypeDesc *paramType) {
-    // Check if GUID already exists
     if (ParameterGuidToType(paramType->Guid) >= 0)
         return CKERR_INVALIDPARAMETERTYPE;
 
-    // Mark derivation tables as needing update
     m_DerivationMasksUpToDate = FALSE;
 
-    // Find available slot in registered types array
     int freeSlot = -1;
     XArray<CKParameterTypeDesc *> &regTypes = m_RegisteredTypes;
     const int typeCount = regTypes.Size();
 
-    // Search for first empty slot
     for (int i = 0; i < typeCount; ++i) {
         if (regTypes[i] == NULL) {
             freeSlot = i;
@@ -53,26 +451,20 @@ CKERROR CKParameterManager::RegisterParameterType(CKParameterTypeDesc *paramType
         }
     }
 
-    // If no empty slot found, expand array
     if (freeSlot == -1) {
         freeSlot = regTypes.Size();
-        regTypes.Reserve(regTypes.Allocated() * 2); // Common growth strategy
         regTypes.Resize(freeSlot + 1);
     }
 
-    // Create and initialize new parameter type descriptor
     CKParameterTypeDesc *newDesc = new CKParameterTypeDesc();
-    if (!newDesc) return CKERR_OUTOFMEMORY;
+    if (!newDesc)
+        return CKERR_OUTOFMEMORY;
 
-    // Copy descriptor properties
     *newDesc = *paramType;
     newDesc->Index = freeSlot;
     newDesc->Valid = TRUE;
-
-    // Store in registered types array
     regTypes[freeSlot] = newDesc;
 
-    // Set creator information
     CKPluginEntry *creator = g_TheCurrentPluginEntry;
     if (!creator) {
         CKBaseManager *currentMgr = m_Context->m_CurrentManager;
@@ -85,118 +477,105 @@ CKERROR CKParameterManager::RegisterParameterType(CKParameterTypeDesc *paramType
     }
     newDesc->CreatorDll = creator;
 
-    // Set default copy function if needed
     if (!newDesc->CopyFunction) {
-        newDesc->CopyFunction = newDesc->SaveLoadFunction
-                                    ? CK_ParameterCopier_SaveLoad
-                                    : CK_ParameterCopier_SetValue;
+        if (newDesc->SaveLoadFunction) {
+            newDesc->CopyFunction = CK_ParameterCopier_SaveLoad;
+        } else {
+            newDesc->CopyFunction = CK_ParameterCopier_SetValue;
+        }
     }
 
-    // Update GUID lookup table
-    m_ParamGuids.Insert(paramType->Guid, freeSlot);
+    m_ParamGuids.InsertUnique(paramType->Guid, freeSlot);
 
-    // Mark type enumeration as outdated
     m_ParameterTypeEnumUpToDate = FALSE;
 
     return CK_OK;
 }
 
 CKERROR CKParameterManager::UnRegisterParameterType(CKGUID guid) {
-    // Invalidate derivation cache
     m_DerivationMasksUpToDate = FALSE;
-    CKParameterTypeDesc *targetDesc = NULL;
 
-    // Find and remove from registered types
-    for (XArray<CKParameterTypeDesc *>::Iterator it = m_RegisteredTypes.Begin();
-         it != m_RegisteredTypes.End(); ++it) {
+    CKParameterTypeDesc *foundDesc = NULL;
+    for (XArray<CKParameterTypeDesc *>::Iterator it = m_RegisteredTypes.Begin(); it != m_RegisteredTypes.End(); ++it) {
         CKParameterTypeDesc *desc = *it;
         if (desc && desc->Guid == guid) {
-            // Cleanup descriptor
-            delete desc;
+            foundDesc = desc;
+            if (desc) {
+                delete desc;
+            }
             *it = NULL;
-            targetDesc = desc;
             break;
         }
     }
 
     m_ParamGuids.Remove(guid);
 
-    if (!targetDesc)
+    if (!foundDesc)
         return CKERR_INVALIDPARAMETER;
 
-    // Cleanup parameter references in different object types
-    bool referencesCleared = false;
+    CKBOOL parametersAffected = FALSE;
 
-    // Process CKParameterIn objects
     int paramInCount = m_Context->GetObjectsCountByClassID(CKCID_PARAMETERIN);
     CK_ID *paramInList = m_Context->GetObjectsListByClassID(CKCID_PARAMETERIN);
     for (int i = 0; i < paramInCount; ++i) {
         CKParameterIn *param = (CKParameterIn *)m_Context->GetObject(paramInList[i]);
-        if (param->m_ParamType == targetDesc) {
-            param->m_ParamType = nullptr;
-            referencesCleared = true;
+        if (param->m_ParamType == foundDesc) {
+            param->m_ParamType = NULL;
+            parametersAffected = TRUE;
         }
     }
 
-    // Process CKParameter objects
     int paramCount = m_Context->GetObjectsCountByClassID(CKCID_PARAMETER);
     CK_ID *paramList = m_Context->GetObjectsListByClassID(CKCID_PARAMETER);
     for (int i = 0; i < paramCount; ++i) {
-        CKParameter *io = (CKParameter *)m_Context->GetObject(paramList[i]);
-        if (io->m_ParamType == targetDesc) {
-            io->m_ParamType = nullptr;
-            referencesCleared = true;
+        CKParameter *param = (CKParameter *)m_Context->GetObject(paramList[i]);
+        if (param->m_ParamType == foundDesc) {
+            param->m_ParamType = NULL;
+            parametersAffected = TRUE;
         }
     }
 
-    // Process CKParameterOut objects
     int paramOutCount = m_Context->GetObjectsCountByClassID(CKCID_PARAMETEROUT);
     CK_ID *paramOutList = m_Context->GetObjectsListByClassID(CKCID_PARAMETEROUT);
     for (int i = 0; i < paramOutCount; ++i) {
         CKParameterOut *param = (CKParameterOut *)m_Context->GetObject(paramOutList[i]);
-        if (param->m_ParamType == targetDesc) {
-            param->m_ParamType = nullptr;
-            referencesCleared = true;
+        if (param->m_ParamType == foundDesc) {
+            param->m_ParamType = NULL;
+            parametersAffected = TRUE;
         }
     }
 
-    // Process CKParameterLocal objects
-    int paramLocalCount = m_Context->GetObjectsCountByClassID(CKCID_PARAMETERLOCAL);
-    CK_ID *paramLocalList = m_Context->GetObjectsListByClassID(CKCID_PARAMETERLOCAL);
-    for (int i = 0; i < paramLocalCount; ++i) {
-        CKParameterLocal *param = (CKParameterLocal *)m_Context->GetObject(paramLocalList[i]);
-        if (param->m_ParamType == targetDesc) {
-            param->m_ParamType = nullptr;
-            referencesCleared = true;
+    int localParamCount = m_Context->GetObjectsCountByClassID(CKCID_PARAMETERLOCAL);
+    CK_ID *localParamList = m_Context->GetObjectsListByClassID(CKCID_PARAMETERLOCAL);
+    for (int i = 0; i < localParamCount; ++i) {
+        CKParameterLocal *param = (CKParameterLocal *)m_Context->GetObject(localParamList[i]);
+        if (param->m_ParamType == foundDesc) {
+            param->m_ParamType = NULL;
+            parametersAffected = TRUE;
         }
     }
 
-    if (referencesCleared) {
-        m_Context->OutputToConsole("Warning: Removed parameter type still in use");
+    if (parametersAffected) {
+        m_Context->OutputToConsole("Warning : Some parameters are not valid any more.");
     }
 
-    // Remove associated operations
-    for (int opIndex = 0; opIndex < m_NbOperations; ++opIndex) {
-        OperationCell &operation = m_OperationTree[opIndex];
-        //
-        // // Remove parameter type from operation's parameter lists
-        // for (int paramIndex = 0; paramIndex < operation.ParamCount1; ++paramIndex) {
-        //     RemoveOperationsUsingParameter(operation.paramList + paramIndex, guid);
-        // }
+    for (int i = 0; i < m_NbOperations; ++i) {
+        OperationCell &opCell = m_OperationTree[i];
+        if (opCell.Tree) {
+            for (int j = 0; j < opCell.CellCount; ++j) {
+                RecurseDeleteParam(&opCell.Tree[j], guid);
+            }
+        }
     }
 
-    // Recursively unregister derived types
-    for (XArray<CKParameterTypeDesc *>::Iterator it = m_RegisteredTypes.Begin();
-         it != m_RegisteredTypes.End(); ++it) {
+    for (XArray<CKParameterTypeDesc *>::Iterator it = m_RegisteredTypes.Begin(); it != m_RegisteredTypes.End(); ++it) {
         CKParameterTypeDesc *desc = *it;
         if (desc && desc->DerivedFrom == guid) {
             UnRegisterParameterType(desc->Guid);
         }
     }
 
-    // Invalidate type enumeration cache
     m_ParameterTypeEnumUpToDate = FALSE;
-
     return CK_OK;
 }
 
@@ -364,54 +743,28 @@ CKGUID CKParameterManager::ClassIDToGuid(CK_CLASSID cid) {
 }
 
 CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsName, CKSTRING FlagsData) {
-    // Validate input parameters
-    if (!FlagsData || !FlagsName) return CKERR_INVALIDPARAMETER;
+    if (!FlagsData || !FlagsName)
+        return CKERR_INVALIDPARAMETER;
 
-    // Check if GUID already registered
     if (ParameterGuidToType(FlagsGuid) >= 0) {
         return CKERR_INVALIDGUID;
     }
 
-    // Create parameter type descriptor for flags
     CKParameterTypeDesc flagDesc;
     flagDesc.Guid = FlagsGuid;
     flagDesc.TypeName = FlagsName;
-    flagDesc.DerivedFrom = CKPGUID_FLAGS; // Predefined flags base type
+    flagDesc.DerivedFrom = CKPGUID_FLAGS;
     flagDesc.DefaultSize = sizeof(CKDWORD);
-    // flagDesc.CopyFunction = CK_ParameterCopier_Dword;
-    // flagDesc.StringFunction = CKFlagsStringFunc;
-    // flagDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &flagDesc);
+    flagDesc.CopyFunction = CK_ParameterCopier_Dword;
+    flagDesc.StringFunction = CKFlagsStringFunc;
+    flagDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &flagDesc);
     flagDesc.dwParam = m_NbFlagsDefined;
     flagDesc.dwFlags = CKPARAMETERTYPE_FLAGS;
 
-    // Register the base flags type
-    CKERROR error = RegisterParameterType(&flagDesc);
-    if (error != CK_OK) return error;
+    CKERROR err = RegisterParameterType(&flagDesc);
+    if (err != CK_OK)
+        return err;
 
-    // Parse flag definitions
-    XArray<CKFlagDefinition> flagEntries;
-    char *context = NULL;
-    char *token = strtok(FlagsData, ",");
-
-    while (token) {
-        CKFlagDefinition def;
-        char *valuePos = strchr(token, '=');
-
-        // Extract flag name and value
-        if (valuePos) {
-            *valuePos = '\0';
-            def.Name = XString(token).Trim();
-            def.Value = atoi(valuePos + 1);
-        } else {
-            def.Name = XString(token).Trim();
-            def.Value = flagEntries.Size(); // Auto-increment if no value specified
-        }
-
-        flagEntries.PushBack(def);
-        token = strtok(NULL, ",");
-    }
-
-    // Reallocate flags array with new entry
     CKFlagsStruct *newFlags = new CKFlagsStruct[m_NbFlagsDefined + 1];
     if (m_Flags) {
         memcpy(newFlags, m_Flags, sizeof(CKFlagsStruct) * m_NbFlagsDefined);
@@ -419,16 +772,50 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
     }
     m_Flags = newFlags;
 
-    // Store parsed flag definitions
-    CKFlagsStruct &newFlag = m_Flags[m_NbFlagsDefined];
-    newFlag.NbData = flagEntries.Size();
-    newFlag.Vals = new int[newFlag.NbData];
-    newFlag.Desc = new CKSTRING[newFlag.NbData];
+    int flagCount = 1;
+    const char *ptr = FlagsData;
+    while ((ptr = strchr(ptr, ','))) {
+        flagCount++;
+        ptr++;
+    }
 
-    for (int i = 0; i < flagEntries.Size(); ++i) {
-        newFlag.Desc[i] = new char[flagEntries[i].Name.Length() + 1];
-        strcpy(newFlag.Desc[i], flagEntries[i].Name.CStr());
-        newFlag.Vals[i] = flagEntries[i].Value;
+    CKFlagsStruct &flagStruct = m_Flags[m_NbFlagsDefined];
+    flagStruct.NbData = flagCount;
+    flagStruct.Vals = new int[flagCount];
+    flagStruct.Desc = new CKSTRING[flagCount];
+
+    int currentValue = 0;
+    char buffer[512];
+    const char *currentPos = FlagsData;
+
+    for (int i = 0; i < flagCount; ++i) {
+        // Find next comma or end of string
+        const char *end = strchr(currentPos, ',');
+        size_t len = end ? (end - currentPos) : strlen(currentPos);
+
+        // Copy to temporary buffer
+        strncpy(buffer, currentPos, len);
+        buffer[len] = '\0';
+
+        // Check for explicit value assignment
+        char *equalSign = strchr(buffer, '=');
+        if (equalSign) {
+            *equalSign = '\0';
+            sscanf(equalSign + 1, "%d", &currentValue);
+            len = equalSign - buffer;
+        }
+
+        // Store flag name
+        flagStruct.Desc[i] = new char[len + 1];
+        strncpy(flagStruct.Desc[i], buffer, len);
+        flagStruct.Desc[i][len] = '\0';
+
+        // Store flag value
+        flagStruct.Vals[i] = currentValue;
+        currentValue++; // Auto-increment if no explicit value
+
+        // Move to next flag
+        currentPos = end ? end + 1 : currentPos + len;
     }
 
     m_NbFlagsDefined++;
@@ -436,56 +823,28 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
 }
 
 CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, CKSTRING EnumData) {
-    // Validate input parameters
-    if (!EnumData || !EnumName) return CKERR_INVALIDPARAMETER;
+    if (!EnumData || !EnumName)
+        return CKERR_INVALIDPARAMETER;
 
-    // Check if GUID already registered
     if (ParameterGuidToType(EnumGuid) >= 0) {
         return CKERR_INVALIDGUID;
     }
 
-    // Create parameter type descriptor for enum
     CKParameterTypeDesc enumDesc;
     enumDesc.Guid = EnumGuid;
     enumDesc.TypeName = EnumName;
     enumDesc.DerivedFrom = CKPGUID_INT;
+    enumDesc.Valid = TRUE;
     enumDesc.DefaultSize = sizeof(CKDWORD);
-    // enumDesc.CopyFunction = CK_ParameterCopier_Dword;
-    // enumDesc.StringFunction = CKEnumStringFunc;
-    // enumDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &enumDesc);
+    enumDesc.CopyFunction = CK_ParameterCopier_Dword;
+    enumDesc.StringFunction = CKEnumStringFunc;
+    enumDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &enumDesc);
     enumDesc.dwFlags = CKPARAMETERTYPE_ENUMS;
 
-    // Register the enum type
-    CKERROR error = RegisterParameterType(&enumDesc);
-    if (error != CK_OK) return error;
+    CKERROR err = RegisterParameterType(&enumDesc);
+    if (err != CK_OK)
+        return err;
 
-    // Parse enum definitions
-    XArray<CKEnumEntry> enumEntries;
-    char *context = NULL;
-    char *token = strtok(EnumData, ",");
-    int currentValue = 0;
-
-    while (token) {
-        CKEnumEntry entry;
-        char *valuePos = strchr(token, '=');
-
-        // Extract enum name and value
-        if (valuePos) {
-            *valuePos = '\0';
-            entry.Name = XString(token).Trim();
-            entry.Value = atoi(valuePos + 1);
-            currentValue = entry.Value; // Update current value
-        } else {
-            entry.Name = XString(token).Trim();
-            entry.Value = currentValue;
-        }
-
-        enumEntries.PushBack(entry);
-        currentValue++; // Auto-increment for next entry
-        token = strtok(NULL, ",");
-    }
-
-    // Reallocate enums array with new entry
     CKEnumStruct *newEnums = new CKEnumStruct[m_NbEnumsDefined + 1];
     if (m_Enums) {
         memcpy(newEnums, m_Enums, sizeof(CKEnumStruct) * m_NbEnumsDefined);
@@ -493,16 +852,50 @@ CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, 
     }
     m_Enums = newEnums;
 
-    // Store parsed enum entries
-    CKEnumStruct &newEnum = m_Enums[m_NbEnumsDefined];
-    newEnum.NbData = enumEntries.Size();
-    newEnum.Vals = new int[newEnum.NbData];
-    newEnum.Desc = new CKSTRING[newEnum.NbData];
+    int enumCount = 1;
+    const char *ptr = EnumData;
+    while ((ptr = strchr(ptr, ','))) {
+        enumCount++;
+        ptr++;
+    }
 
-    for (int i = 0; i < enumEntries.Size(); ++i) {
-        newEnum.Desc[i] = new char[enumEntries[i].Name.Length() + 1];
-        strcpy(newEnum.Desc[i], enumEntries[i].Name.CStr());
-        newEnum.Vals[i] = enumEntries[i].Value;
+    CKEnumStruct &enumStruct = m_Enums[m_NbEnumsDefined];
+    enumStruct.NbData = enumCount;
+    enumStruct.Vals = new int[enumCount];
+    enumStruct.Desc = new CKSTRING[enumCount];
+
+    int currentValue = 0;
+    char buffer[512];
+    const char *currentPos = EnumData;
+
+    for (int i = 0; i < enumCount; ++i) {
+        // Find next comma or end of string
+        const char *end = strchr(currentPos, ',');
+        size_t len = end ? (end - currentPos) : strlen(currentPos);
+
+        // Copy to temporary buffer
+        strncpy(buffer, currentPos, len);
+        buffer[len] = '\0';
+
+        // Check for explicit value assignment
+        char *equalSign = strchr(buffer, '=');
+        if (equalSign) {
+            *equalSign = '\0';
+            sscanf(equalSign + 1, "%d", &currentValue);
+            len = equalSign - buffer;
+        }
+
+        // Store enum name
+        enumStruct.Desc[i] = new char[len + 1];
+        strncpy(enumStruct.Desc[i], buffer, len);
+        enumStruct.Desc[i][len] = '\0';
+
+        // Store enum value
+        enumStruct.Vals[i] = currentValue;
+        currentValue++; // Auto-increment if no explicit value
+
+        // Move to next enum entry
+        currentPos = end ? end + 1 : currentPos + len;
     }
 
     m_NbEnumsDefined++;
@@ -510,170 +903,148 @@ CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, 
 }
 
 CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING EnumData) {
-    // Validate inputs
-    if (!m_Enums || !EnumData) return CKERR_INVALIDPARAMETER;
+    if (!m_Enums || !EnumData)
+        return CKERR_INVALIDPARAMETER;
 
-    // Verify enum type exists
-    CKParameterType enumType = ParameterGuidToType(EnumGuid);
-    if (enumType <= 0)
+    CKParameterType type = ParameterGuidToType(EnumGuid);
+    if (type <= 0)
         return CKERR_INVALIDGUID;
 
-    // Get enum descriptor
-    CKParameterTypeDesc *typeDesc = GetParameterTypeDescription(enumType);
+    CKParameterTypeDesc *typeDesc = GetParameterTypeDescription(type);
     if (!typeDesc)
         return CKERR_INVALIDGUID;
 
-    // Get enum index
-    const int enumIndex = typeDesc->dwParam;
-    if (enumIndex >= m_NbEnumsDefined) return CKERR_INVALIDPARAMETER;
+    const int enumIndex = (int)typeDesc->dwParam;
+    if (enumIndex >= m_NbEnumsDefined)
+        return CKERR_INVALIDPARAMETER;
+
+    int entryCount = 1;
+    const char *ptr = EnumData;
+    while ((ptr = strchr(ptr, ','))) {
+        entryCount++;
+        ptr++;
+    }
+
+    // Cleanup old data
+    CKEnumStruct &enumStruct = m_Enums[enumIndex];
+    delete[] enumStruct.Vals;
+    for (int i = 0; i < enumStruct.NbData; ++i) {
+        delete[] enumStruct.Desc[i];
+    }
+    delete[] enumStruct.Desc;
+
+    // Allocate new storage
+    enumStruct.NbData = entryCount;
+    enumStruct.Vals = new int[entryCount];
+    enumStruct.Desc = new CKSTRING[entryCount];
 
     // Parse new enum entries
-    XArray<CKEnumEntry> newEntries;
-    char *token = strtok(EnumData, ",");
     int currentValue = 0;
+    char buffer[512];
+    const char *currentPos = EnumData;
 
-    while (token) {
-        CKEnumEntry entry;
-        char *valuePos = strchr(token, '=');
+    for (int i = 0; i < entryCount; ++i) {
+        // Find entry boundaries
+        const char *end = strchr(currentPos, ',');
+        size_t len = end ? (end - currentPos) : strlen(currentPos);
 
-        // Extract name and value
-        if (valuePos) {
-            *valuePos = '\0';
-            entry.Name = XString(token).Trim();
-            entry.Value = atoi(valuePos + 1);
-            currentValue = entry.Value; // Update current value
-        } else {
-            entry.Name = XString(token).Trim();
-            entry.Value = currentValue;
+        // Extract entry to buffer
+        strncpy(buffer, currentPos, len);
+        buffer[len] = '\0';
+
+        // Handle explicit value assignment
+        char *equalSign = strchr(buffer, '=');
+        if (equalSign) {
+            *equalSign = '\0';
+            sscanf(equalSign + 1, "%d", &currentValue);
+            len = equalSign - buffer;
         }
 
-        newEntries.PushBack(entry);
-        currentValue++; // Auto-increment for next entry
-        token = strtok(NULL, ",");
-    }
+        // Allocate and store name
+        enumStruct.Desc[i] = new char[len + 1];
+        strncpy(enumStruct.Desc[i], buffer, len);
+        enumStruct.Desc[i][len] = '\0';
 
-    // Clean up old enum data
-    CKEnumStruct &oldEnum = m_Enums[enumIndex];
+        // Store value
+        enumStruct.Vals[i] = currentValue;
 
-    // Delete existing values
-    delete[] oldEnum.Vals;
-    oldEnum.Vals = NULL;
-
-    // Delete existing descriptions
-    for (int i = 0; i < oldEnum.NbData; ++i) {
-        delete[] oldEnum.Desc[i];
-    }
-    delete[] oldEnum.Desc;
-    oldEnum.Desc = NULL;
-
-    // Allocate new memory
-    try {
-        oldEnum.NbData = newEntries.Size();
-        oldEnum.Vals = new int[oldEnum.NbData];
-        oldEnum.Desc = new CKSTRING[oldEnum.NbData];
-
-        // Copy new values
-        for (int i = 0; i < oldEnum.NbData; ++i) {
-            oldEnum.Desc[i] = new char[newEntries[i].Name.Length() + 1];
-            strcpy(oldEnum.Desc[i], newEntries[i].Name.CStr());
-            oldEnum.Vals[i] = newEntries[i].Value;
-        }
-    } catch (...) {
-        // Cleanup if allocation fails
-        delete[] oldEnum.Vals;
-        if (oldEnum.Desc) {
-            for (int i = 0; i < oldEnum.NbData; ++i) {
-                delete[] oldEnum.Desc[i];
-            }
-        }
-        delete[] oldEnum.Desc;
-        oldEnum.NbData = 0;
-        return CKERR_OUTOFMEMORY;
+        // Prepare for next iteration
+        currentValue = equalSign ? currentValue : currentValue + 1;
+        currentPos = end ? end + 1 : currentPos + len;
     }
 
     return CK_OK;
 }
 
 CKERROR CKParameterManager::ChangeFlagsDeclaration(CKGUID FlagsGuid, CKSTRING FlagsData) {
-    // Validate inputs
-    if (!m_Flags || !FlagsData) return CKERR_INVALIDPARAMETER;
+    if (!m_Flags || !FlagsData)
+        return CKERR_INVALIDPARAMETER;
 
-    // Verify flags type exists
-    CKParameterType flagsType = ParameterGuidToType(FlagsGuid);
-    if (flagsType <= 0)
+    CKParameterType type = ParameterGuidToType(FlagsGuid);
+    if (type <= 0)
         return CKERR_INVALIDGUID;
 
-    // Get flags descriptor
-    CKParameterTypeDesc *typeDesc = GetParameterTypeDescription(flagsType);
-    if (!typeDesc) return CKERR_INVALIDGUID;
+    CKParameterTypeDesc *typeDesc = GetParameterTypeDescription(type);
+    if (!typeDesc)
+        return CKERR_INVALIDGUID;
 
-    // Get flags index
     const int flagsIndex = typeDesc->dwParam;
-    if (flagsIndex >= m_NbFlagsDefined) return CKERR_INVALIDPARAMETER;
+    if (flagsIndex >= m_NbFlagsDefined)
+        return CKERR_INVALIDPARAMETER;
+
+    int entryCount = 1;
+    const char *ptr = FlagsData;
+    while ((ptr = strchr(ptr, ','))) {
+        entryCount++;
+        ptr++;
+    }
+
+    // Cleanup old data
+    CKFlagsStruct &flagsStruct = m_Flags[flagsIndex];
+    delete[] flagsStruct.Vals;
+    for (int i = 0; i < flagsStruct.NbData; ++i) {
+        delete[] flagsStruct.Desc[i];
+    }
+    delete[] flagsStruct.Desc;
+
+    // Allocate new storage
+    flagsStruct.NbData = entryCount;
+    flagsStruct.Vals = new int[entryCount];
+    flagsStruct.Desc = new CKSTRING[entryCount];
 
     // Parse new flag entries
-    XArray<CKFlagEntry> newEntries;
-    // char* context = NULL;
-    // char* token = strtok_r(FlagsData, ",", &context);
-    // int currentValue = 0;
-    //
-    // while (token) {
-    //     CKFlagEntry entry;
-    //     char* valuePos = strchr(token, '=');
-    //
-    //     // Extract name and value
-    //     if (valuePos) {
-    //         *valuePos = '\0';
-    //         entry.Name = XString(token).Trim();
-    //         entry.Value = atoi(valuePos + 1);
-    //         currentValue = entry.Value; // Update current value
-    //     } else {
-    //         entry.Name = XString(token).Trim();
-    //         entry.Value = 1 << currentValue; // Auto-assign bit flag
-    //         currentValue++;
-    //     }
-    //
-    //     newEntries.PushBack(entry);
-    //     token = strtok_r(NULL, ",", &context);
-    // }
+    int currentValue = 0;
+    char buffer[512];
+    const char *currentPos = FlagsData;
 
-    // Clean up old flag data
-    CKFlagsStruct &oldFlags = m_Flags[flagsIndex];
+    for (int i = 0; i < entryCount; ++i) {
+        // Find entry boundaries
+        const char *end = strchr(currentPos, ',');
+        size_t len = end ? (end - currentPos) : strlen(currentPos);
 
-    // Delete existing values
-    delete[] oldFlags.Vals;
-    oldFlags.Vals = NULL;
+        // Extract entry to buffer
+        strncpy(buffer, currentPos, len);
+        buffer[len] = '\0';
 
-    // Delete existing descriptions
-    for (int i = 0; i < oldFlags.NbData; ++i) {
-        delete[] oldFlags.Desc[i];
-    }
-    delete[] oldFlags.Desc;
-    oldFlags.Desc = NULL;
-
-    // Allocate new memory
-    try {
-        oldFlags.NbData = newEntries.Size();
-        oldFlags.Vals = new int[oldFlags.NbData];
-        oldFlags.Desc = new CKSTRING[oldFlags.NbData];
-
-        // Copy new values
-        for (int i = 0; i < oldFlags.NbData; ++i) {
-            oldFlags.Desc[i] = new char[newEntries[i].Name.Length() + 1];
-            strcpy(oldFlags.Desc[i], newEntries[i].Name.CStr());
-            oldFlags.Vals[i] = newEntries[i].Value;
+        // Handle explicit value assignment
+        char *equalSign = strchr(buffer, '=');
+        if (equalSign) {
+            *equalSign = '\0';
+            sscanf(equalSign + 1, "%d", &currentValue);
+            len = equalSign - buffer;
         }
-    } catch (...) {
-        // Cleanup if allocation fails
-        delete[] oldFlags.Vals;
-        if (oldFlags.Desc) {
-            for (int i = 0; i < oldFlags.NbData; ++i) {
-                delete[] oldFlags.Desc[i];
-            }
-        }
-        delete[] oldFlags.Desc;
-        oldFlags.NbData = 0;
-        return CKERR_OUTOFMEMORY;
+
+        // Allocate and store name
+        flagsStruct.Desc[i] = new char[len + 1];
+        strncpy(flagsStruct.Desc[i], buffer, len);
+        flagsStruct.Desc[i][len] = '\0';
+
+        // Store value
+        flagsStruct.Vals[i] = currentValue;
+
+        // Prepare for next iteration
+        currentValue = equalSign ? currentValue : currentValue + 1;
+        currentPos = end ? end + 1 : currentPos + len;
     }
 
     return CK_OK;
@@ -691,43 +1062,21 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     structDesc.Guid = StructGuid;
     structDesc.TypeName = StructName;
     structDesc.Valid = TRUE;
-    // structDesc.StringFunction = CKStructStringFunc;
-    // structDesc.CreateDefaultFunction = CKStructCreator;
-    // structDesc.DeleteFunction = CKStructDestructor;
-    // structDesc.SaveLoadFunction = CKStructSaver;
-    // structDesc.CopyFunction = CKStructCopier;
-    // structDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &structDesc);
+    structDesc.CreateDefaultFunction = CKStructCreator;
+    structDesc.DeleteFunction = CKStructDestructor;
+    structDesc.SaveLoadFunction = CKStructSaver;
+    structDesc.CopyFunction = CKStructCopier;
+    structDesc.StringFunction = CKStructStringFunc;
+    structDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &structDesc);
     structDesc.dwFlags = CKPARAMETERTYPE_STRUCT;
 
-    // Parse member names
-    XArray<XString> memberNames;
-    // char* context = NULL;
-    // char* token = strtok_r(const_cast<char*>(StructData), ",", &context);
-    // while (token) {
-    //     memberNames.PushBack(XString(token).Trim());
-    //     token = strtok_r(NULL, ",", &context);
-    // }
-
-    // Get member GUIDs from variadic arguments
-    XArray<CKGUID> memberGuids;
-    va_list args;
-    va_start(args, StructData);
-    for (size_t i = 0; i < memberNames.Size(); ++i) {
-        memberGuids.PushBack(va_arg(args, CKGUID));
-    }
-    va_end(args);
-
-    // Verify member count matches GUID count
-    if (memberNames.Size() != memberGuids.Size()) {
-        return CKERR_INVALIDPARAMETER;
+    int memberCount = 1;
+    const char *ptr = StructData;
+    while ((ptr = strchr(ptr, ','))) {
+        memberCount++;
+        ptr++;
     }
 
-    // Register the structure type
-    structDesc.DefaultSize = sizeof(CKGUID) * memberNames.Size();
-    CKERROR err = RegisterParameterType(&structDesc);
-    if (err != CK_OK) return err;
-
-    // Allocate memory for structure description
     CKStructStruct *newStructs = new CKStructStruct[m_NbStructDefined + 1];
     if (m_Structs) {
         memcpy(newStructs, m_Structs, sizeof(CKStructStruct) * m_NbStructDefined);
@@ -735,25 +1084,37 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     }
     m_Structs = newStructs;
 
-    // Populate structure members
-    CKStructStruct &structDef = m_Structs[m_NbStructDefined];
-    structDef.NbData = memberNames.Size();
+    CKStructStruct &structStruct = m_Structs[m_NbStructDefined];
+    structStruct.NbData = memberCount;
+    structStruct.Guids = new CKGUID[memberCount];
+    structStruct.Desc = new CKSTRING[memberCount];
 
-    try {
-        structDef.Desc = new CKSTRING[structDef.NbData];
-        structDef.Guids = new CKGUID[structDef.NbData];
+    const char *currentPos = StructData;
+    for (int i = 0; i < memberCount; ++i) {
+        const char *end = strchr(currentPos, ',');
+        int len = end ? (end - currentPos) : (int)strlen(currentPos);
 
-        // Copy member names and GUIDs
-        for (int i = 0; i < structDef.NbData; ++i) {
-            structDef.Desc[i] = new char[memberNames[i].Length() + 1];
-            strcpy(structDef.Desc[i], memberNames[i].CStr());
-            structDef.Guids[i] = memberGuids[i];
-        }
-    } catch (...) {
-        // Cleanup on allocation failure
-        delete[] structDef.Desc;
-        delete[] structDef.Guids;
-        return CKERR_OUTOFMEMORY;
+        structStruct.Desc[i] = new char[len + 1];
+        strncpy(structStruct.Desc[i], currentPos, len);
+        structStruct.Desc[i][len] = '\0';
+
+        currentPos = end ? end + 1 : currentPos + len;
+    }
+
+    va_list args;
+    va_start(args, StructData);
+    for (int i = 0; i < memberCount; ++i) {
+        structStruct.Guids[i] = va_arg(args, CKGUID);
+    }
+    va_end(args);
+
+    structDesc.DefaultSize = sizeof(CKDWORD) * memberCount;
+    CKERROR err = RegisterParameterType(&structDesc);
+    if (err != CK_OK) {
+        // Cleanup if registration fails
+        delete[] structStruct.Guids;
+        delete[] structStruct.Desc;
+        return err;
     }
 
     m_NbStructDefined++;
@@ -762,49 +1123,35 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
 
 CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData,
                                                  XArray<CKGUID> &ListGuid) {
-    // Validate input parameters
     if (!StructData || !StructName[0])
         return CKERR_INVALIDPARAMETER;
 
-    // Check for existing GUID registration
     if (ParameterGuidToType(StructGuid) >= 0)
         return CKERR_INVALIDGUID;
 
-    // Create parameter type descriptor
     CKParameterTypeDesc structDesc;
     structDesc.Guid = StructGuid;
     structDesc.TypeName = StructName;
     structDesc.Valid = TRUE;
-    // structDesc.StringFunction = CKStructStringFunc;
-    // structDesc.CreateDefaultFunction = CKStructCreator;
-    // structDesc.DeleteFunction = CKStructDestructor;
-    // structDesc.SaveLoadFunction = CKStructSaver;
-    // structDesc.CopyFunction = CKStructCopier;
-    // structDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &structDesc);
+    structDesc.CreateDefaultFunction = CKStructCreator;
+    structDesc.DeleteFunction = CKStructDestructor;
+    structDesc.SaveLoadFunction = CKStructSaver;
+    structDesc.CopyFunction = CKStructCopier;
+    structDesc.StringFunction = CKStructStringFunc;
+    structDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &structDesc);
     structDesc.dwFlags = CKPARAMETERTYPE_STRUCT;
 
-    // Parse member names
-    XArray<XString> members;
-    char *copy = strdup(StructData);
-    char *token = strtok(copy, ",");
-
-    while (token) {
-        members.PushBack(XString(token).Trim());
-        token = strtok(NULL, ",");
+    int memberCount = 1;
+    const char *ptr = StructData;
+    while ((ptr = strchr(ptr, ','))) {
+        memberCount++;
+        ptr++;
     }
-    free(copy);
 
-    // Validate member count matches GUID count
-    if (members.Size() != ListGuid.Size()) {
+    if (ListGuid.Size() != memberCount) {
         return CKERR_INVALIDPARAMETER;
     }
 
-    // Register the base structure type
-    structDesc.DefaultSize = sizeof(CKGUID) * members.Size();
-    CKERROR err = RegisterParameterType(&structDesc);
-    if (err != CK_OK) return err;
-
-    // Reallocate structures array
     CKStructStruct *newStructs = new CKStructStruct[m_NbStructDefined + 1];
     if (m_Structs) {
         memcpy(newStructs, m_Structs, sizeof(CKStructStruct) * m_NbStructDefined);
@@ -812,34 +1159,32 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     }
     m_Structs = newStructs;
 
-    // Initialize new structure entry
-    CKStructStruct &newStruct = m_Structs[m_NbStructDefined];
-    newStruct.NbData = members.Size();
+    CKStructStruct &structStruct = m_Structs[m_NbStructDefined];
+    structStruct.NbData = memberCount;
+    structStruct.Guids = new CKGUID[memberCount];
+    structStruct.Desc = new CKSTRING[memberCount];
 
-    try {
-        // Allocate member arrays
-        newStruct.Desc = new CKSTRING[newStruct.NbData];
-        newStruct.Guids = new CKGUID[newStruct.NbData];
+    const char *currentPos = StructData;
+    for (int i = 0; i < memberCount; ++i) {
+        const char *end = strchr(currentPos, ',');
+        int len = end ? (end - currentPos) : (int)strlen(currentPos);
 
-        // Copy member data
-        for (int i = 0; i < newStruct.NbData; ++i) {
-            // Allocate and copy name
-            newStruct.Desc[i] = new char[members[i].Length() + 1];
-            strcpy(newStruct.Desc[i], members[i].CStr());
+        structStruct.Desc[i] = new char[len + 1];
+        strncpy(structStruct.Desc[i], currentPos, len);
+        structStruct.Desc[i][len] = '\0';
 
-            // Copy GUID
-            newStruct.Guids[i] = ListGuid[i];
-        }
-    } catch (...) {
-        // Cleanup on allocation failure
-        if (newStruct.Desc) {
-            for (int i = 0; i < newStruct.NbData; ++i) {
-                delete[] newStruct.Desc[i];
-            }
-            delete[] newStruct.Desc;
-        }
-        delete[] newStruct.Guids;
-        return CKERR_OUTOFMEMORY;
+        structStruct.Guids[i] = ListGuid[i];
+
+        currentPos = end ? end + 1 : currentPos + len;
+    }
+
+    structDesc.DefaultSize = sizeof(CKDWORD) * memberCount;
+    CKERROR err = RegisterParameterType(&structDesc);
+    if (err != CK_OK) {
+        // Cleanup if registration fails
+        delete[] structStruct.Guids;
+        delete[] structStruct.Desc;
+        return err;
     }
 
     m_NbStructDefined++;
@@ -859,67 +1204,337 @@ int CKParameterManager::GetNbStructDefined() {
 }
 
 CKFlagsStruct *CKParameterManager::GetFlagsDescByType(CKParameterType pType) {
+    CKParameterTypeDesc *desc = GetParameterTypeDescription(pType);
+    if (desc && desc->dwFlags & CKPARAMETERTYPE_FLAGS && desc->dwParam < m_NbFlagsDefined) {
+        return &m_Flags[desc->dwParam];
+    }
     return nullptr;
 }
 
 CKEnumStruct *CKParameterManager::GetEnumDescByType(CKParameterType pType) {
+    CKParameterTypeDesc *desc = GetParameterTypeDescription(pType);
+    if (desc && desc->dwFlags & CKPARAMETERTYPE_ENUMS && desc->dwParam < m_NbEnumsDefined) {
+        return &m_Enums[desc->dwParam];
+    }
     return nullptr;
 }
 
 CKStructStruct *CKParameterManager::GetStructDescByType(CKParameterType pType) {
+    CKParameterTypeDesc *desc = GetParameterTypeDescription(pType);
+    if (desc && desc->dwFlags & CKPARAMETERTYPE_STRUCT && desc->dwParam < m_NbStructDefined) {
+        return &m_Structs[desc->dwParam];
+    }
     return nullptr;
 }
 
 CKOperationType CKParameterManager::RegisterOperationType(CKGUID OpCode, CKSTRING name) {
-    return 0;
+    CKOperationType existingCode = OperationNameToCode(name);
+    if (existingCode >= 0)
+        return existingCode;
+
+    existingCode = OperationGuidToCode(OpCode);
+    if (existingCode >= 0)
+        return existingCode;
+
+    // Find available slot in operation tree
+    CKOperationType opType = 0;
+    const int currentCount = m_NbOperations;
+
+    // First try to find inactive slot
+    for (int i = 0; i < currentCount; ++i) {
+        OperationCell *cell = &m_OperationTree[i];
+        if (cell && !cell->IsActive) {
+            opType = i;
+            break;
+        }
+    }
+
+    // If no slots available, expand array
+    if (opType == 0) {
+        if (m_NbOperations >= m_NbAllocatedOperations) {
+            const int newAllocation = m_NbAllocatedOperations + 40;
+            OperationCell *newTree = new OperationCell[newAllocation];
+            if (!newTree)
+                return 0;
+
+            memset(newTree, 0, sizeof(OperationCell) * newAllocation);
+
+            if (m_OperationTree) {
+                memcpy(newTree, m_OperationTree, sizeof(OperationCell) * m_NbOperations);
+                delete[] m_OperationTree;
+            }
+
+            m_OperationTree = newTree;
+            m_NbAllocatedOperations = newAllocation;
+        }
+        opType = m_NbOperations++;
+    }
+
+    OperationCell &cell = m_OperationTree[opType];
+    cell.IsActive = TRUE;
+
+    size_t nameLen = strlen(name);
+    strncpy(cell.Name, name, (nameLen + 1 < 30) ? nameLen + 1 : 30);
+    cell.Name[29] = '\0';
+
+    cell.OperationGuid = OpCode;
+    cell.CellCount = 0;
+    cell.Tree = NULL;
+
+    m_OpGuids.InsertUnique(OpCode, opType);
+
+    return opType;
 }
 
 CKERROR CKParameterManager::UnRegisterOperationType(CKGUID opguid) {
-    return 0;
+    CKOperationType type = OperationGuidToCode(opguid);
+    return UnRegisterOperationType(type);
 }
 
 CKERROR CKParameterManager::UnRegisterOperationType(CKOperationType opcode) {
-    return 0;
+    if (opcode >= m_NbOperations || !m_OperationTree)
+        return CKERR_INVALIDOPERATION;
+
+    OperationCell &cell = m_OperationTree[opcode];
+    if (!cell.IsActive)
+        return CKERR_INVALIDOPERATION;
+
+    m_OpGuids.Remove(cell.OperationGuid);
+
+    cell.IsActive = FALSE;
+    if (cell.CellCount > 0 && cell.Tree) {
+        for (int i = 0; i < cell.CellCount; ++i) {
+            RecurseDelete(&cell.Tree[i]);
+        }
+
+        delete[] cell.Tree;
+        cell.Tree = NULL;
+        cell.CellCount = 0;
+    }
+
+    memset(cell.Name, 0, sizeof(cell.Name));
+    cell.OperationGuid = CKGUID();
+    return CK_OK;
 }
 
 CKERROR CKParameterManager::RegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1,
                                                       CKGUID &type_param2, CK_PARAMETEROPERATION op) {
-    return 0;
+    if (!m_OperationTree)
+        return CKERR_INVALIDOPERATION;
+
+    int opCode = OperationGuidToCode(operation);
+    if (opCode < 0)
+        return CKERR_INVALIDOPERATION;
+
+    OperationCell &opCell = m_OperationTree[opCode];
+
+    TreeCell *param1Cell = FindOrCreateGuidCell(
+        opCell.Tree,
+        opCell.CellCount,
+        type_param1
+    );
+    if (!param1Cell)
+        return CKERR_OUTOFMEMORY;
+
+    TreeCell *param2Cell = FindOrCreateGuidCell(
+        param1Cell->Children,
+        param1Cell->ChildCount,
+        type_param2
+    );
+    if (!param2Cell)
+        return CKERR_OUTOFMEMORY;
+
+    TreeCell *resultCell = FindOrCreateGuidCell(
+        param2Cell->Children,
+        param2Cell->ChildCount,
+        type_paramres
+    );
+    if (!resultCell)
+        return CKERR_OUTOFMEMORY;
+
+    resultCell->Operation = op;
+    return CK_OK;
 }
 
 CK_PARAMETEROPERATION
 CKParameterManager::GetOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1,
                                          CKGUID &type_param2) {
-    return nullptr;
+    CKOperationType type = OperationGuidToCode(operation);
+    if (type < 0 || type >= m_NbOperations)
+        return NULL;
+
+    if (!m_OperationTree)
+        return NULL;
+
+    // 1. Try direct lookup first
+    OperationCell &opCell = m_OperationTree[type];
+    int pos1 = DichotomicSearch(0, opCell.CellCount - 1, opCell.Tree, type_param1);
+    if (pos1 < 0)
+        return NULL;
+    TreeCell &param1Cell = opCell.Tree[pos1];
+    int pos2 = DichotomicSearch(0, param1Cell.ChildCount - 1, param1Cell.Children, type_param2);
+    if (pos2 < 0)
+        return NULL;
+    TreeCell &param2Cell = param1Cell.Children[pos2];
+    int posRes = DichotomicSearch(0, param2Cell.ChildCount - 1, param2Cell.Children, type_paramres);
+    if (posRes < 0)
+        return NULL;
+    TreeCell &resultCell = param2Cell.Children[posRes];
+    CK_PARAMETEROPERATION fct = resultCell.Operation;
+    if (fct)
+        return fct;
+
+    // 2. Prepare for type hierarchy fallback
+    CKGUID parentRes, parentP1, parentP2;
+    CKBOOL hasParentRes = GetParameterGuidParentGuid(type_paramres, parentRes);
+    CKBOOL hasParentP1 = GetParameterGuidParentGuid(type_param1, parentP1);
+    CKBOOL hasParentP2 = GetParameterGuidParentGuid(type_param2, parentP2);
+
+    // 3. Try different combinations of parent types
+    CK_PARAMETEROPERATION result = NULL;
+
+    // Combination 1: All parents
+    if (hasParentP1 && hasParentP2 && hasParentRes) {
+        result = GetOperationFunction(operation, parentRes, parentP1, parentP2);
+        if (result) return result;
+    }
+
+    // Combination 2: Parent param1 and param2
+    if (hasParentP1 && hasParentP2) {
+        result = GetOperationFunction(operation, type_paramres, parentP1, parentP2);
+        if (result) return result;
+    }
+
+    // Combination 3: Parent param1 and result
+    if (hasParentP1 && hasParentRes) {
+        result = GetOperationFunction(operation, parentRes, parentP1, type_param2);
+        if (result) return result;
+    }
+
+    // Combination 4: Parent param1
+    if (hasParentP1) {
+        result = GetOperationFunction(operation, type_paramres, parentP1, type_param2);
+        if (result) return result;
+    }
+
+    // Combination 5: Parent param2 and result
+    if (hasParentP2 && hasParentRes) {
+        result = GetOperationFunction(operation, parentRes, type_param1, parentP2);
+        if (result) return result;
+    }
+
+    // Combination 6: Parent param2
+    if (hasParentP2) {
+        result = GetOperationFunction(operation, type_paramres, type_param1, parentP2);
+        if (result) return result;
+    }
+
+    // Combination 7: Parent result
+    if (hasParentRes) {
+        result = GetOperationFunction(operation, parentRes, type_param1, type_param2);
+    }
+
+    return result;
 }
 
 CKERROR CKParameterManager::UnRegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1,
                                                         CKGUID &type_param2) {
-    return 0;
+    if (!m_OperationTree)
+        return CKERR_INVALIDOPERATION;
+
+    int opCode = OperationGuidToCode(operation);
+    if (opCode < 0 || opCode >= m_NbOperations)
+        return CKERR_INVALIDOPERATION;
+
+    OperationCell &opCell = m_OperationTree[opCode];
+    int pos1 = DichotomicSearch(0, opCell.CellCount - 1, opCell.Tree, type_param1);
+    if (pos1 < 0)
+        return NULL;
+    TreeCell &param1Cell = opCell.Tree[pos1];
+    int pos2 = DichotomicSearch(0, param1Cell.ChildCount - 1, param1Cell.Children, type_param2);
+    if (pos2 < 0)
+        return NULL;
+    TreeCell &param2Cell = param1Cell.Children[pos2];
+    int posRes = DichotomicSearch(0, param2Cell.ChildCount - 1, param2Cell.Children, type_paramres);
+    if (posRes < 0)
+        return NULL;
+    TreeCell &resultCell = param2Cell.Children[posRes];
+    resultCell.Operation = NULL;
+
+    return CK_OK;
 }
 
 CKGUID CKParameterManager::OperationCodeToGuid(CKOperationType type) {
+    if (CheckOpCodeValidity(type))
+        return m_OperationTree[type].OperationGuid;
     return CKGUID();
 }
 
 CKSTRING CKParameterManager::OperationCodeToName(CKOperationType type) {
-    return nullptr;
+    if (CheckOpCodeValidity(type))
+        return m_OperationTree[type].Name;
+    return NULL;
 }
 
 CKOperationType CKParameterManager::OperationGuidToCode(CKGUID guid) {
-    return 0;
+    XHashGuidToType::Iterator it = m_OpGuids.Find(guid);
+    if (it != m_OpGuids.End())
+        return *it;
+    return -1;
 }
 
 CKSTRING CKParameterManager::OperationGuidToName(CKGUID guid) {
-    return nullptr;
+    CKOperationType type = OperationGuidToCode(guid);
+    return OperationCodeToName(type);
 }
 
 CKGUID CKParameterManager::OperationNameToGuid(CKSTRING name) {
-    return CKGUID();
+    CKGUID outGuid;
+
+    if (!name || !m_OperationTree || m_NbOperations <= 0) {
+        return outGuid;
+    }
+
+    for (int i = 0; i < m_NbOperations; ++i) {
+        const OperationCell &cell = m_OperationTree[i];
+        if (!cell.IsActive)
+            continue;
+
+        const size_t inputLen = strlen(name) + 1;
+        const size_t compareLen = (inputLen < 30) ? inputLen : 30;
+
+        if (strncmp(name, cell.Name, compareLen) == 0) {
+            outGuid = cell.OperationGuid;
+            return outGuid;
+        }
+    }
+
+    return outGuid;
 }
 
 CKOperationType CKParameterManager::OperationNameToCode(CKSTRING name) {
-    return 0;
+    if (m_NbOperations == 0)
+        return CKERR_INVALIDOPERATION;
+    if (!name)
+        return CKERR_INVALIDPARAMETER;
+    if (!m_OperationTree)
+        return CKERR_INVALIDOPERATION;
+    if (m_NbOperations <= 0)
+        return CKERR_INVALIDOPERATION;
+
+    for (int i = 0; i < m_NbOperations; ++i) {
+        const OperationCell &cell = m_OperationTree[i];
+        if (!cell.IsActive)
+            continue;
+
+        size_t inputLen = strlen(name) + 1;
+        size_t compareLen = (inputLen < 30) ? inputLen : 30;
+        if (strncmp(name, cell.Name, compareLen) == 0) {
+            return i;
+        }
+    }
+
+    return CKERR_INVALIDOPERATION;
 }
 
 int CKParameterManager::GetAvailableOperationsDesc(const CKGUID &opGuid, CKParameterOut *res, CKParameterIn *p1,
@@ -986,12 +1601,51 @@ int CKParameterManager::GetParameterOperationCount() {
     return m_NbOperations;
 }
 
+TreeCell *CKParameterManager::FindOrCreateGuidCell(TreeCell *&cells, int &cellCount, CKGUID &guid) {
+    int pos = DichotomicSearch(0, cellCount - 1, cells, guid);
+
+    if (pos >= 0)
+        return &cells[pos];
+
+    pos = -pos - 1;
+
+    TreeCell *newCells = new TreeCell[cellCount + 1];
+    if (!newCells)
+        return NULL;
+
+    if (cells) {
+        // Copy elements before insertion point
+        if (pos > 0) {
+            memcpy(newCells, cells, sizeof(TreeCell) * pos);
+        }
+        // Copy elements after insertion point
+        if (pos < cellCount) {
+            memcpy(newCells + pos + 1,
+                   cells + pos,
+                   sizeof(TreeCell) * (cellCount - pos));
+        }
+        delete[] cells;
+    }
+
+    newCells[pos].Guid = guid;
+    newCells[pos].ChildCount = 0;
+    newCells[pos].Children = NULL;
+
+    cells = newCells;
+    cellCount++;
+
+    return &cells[pos];
+}
+
 CKBOOL CKParameterManager::IsParameterTypeToBeShown(CKParameterType type) {
-    return 0;
+    if (type < 0 || type >= m_RegisteredTypes.Size())
+        return FALSE;
+    return (m_RegisteredTypes[type]->dwFlags & CKPARAMETERTYPE_HIDDEN) == 0;
 }
 
 CKBOOL CKParameterManager::IsParameterTypeToBeShown(CKGUID guid) {
-    return 0;
+    CKParameterType type = ParameterGuidToType(guid);
+    return IsParameterTypeToBeShown(type);
 }
 
 CKParameterManager::CKParameterManager(CKContext *Context) : CKBaseManager(
@@ -1034,28 +1688,189 @@ CKBOOL CKParameterManager::GetParameterGuidParentGuid(CKGUID child, CKGUID &pare
 }
 
 void CKParameterManager::UpdateDerivationTables() {
+    for (int i = 0; i < m_RegisteredTypes.Size(); ++i) {
+        CKParameterTypeDesc *child = m_RegisteredTypes[i];
+        child->DerivationMask.Clear();
+        for (int j = 0; j < m_RegisteredTypes.Size(); ++j) {
+            if (IsDerivedFromIntern(i, j)) {
+                CKParameterTypeDesc *parent = m_RegisteredTypes[j];
+                parent->DerivationMask.Set(i);
+            }
+        }
+    }
+    m_DerivationMasksUpToDate = TRUE;
 }
 
 void CKParameterManager::RecurseDeleteParam(TreeCell *cell, CKGUID param) {
+    if (!cell || cell->ChildCount <= 0)
+        return;
+
+    int index = 0;
+    while (index < cell->ChildCount) {
+        TreeCell *child = &cell->Children[index];
+
+        if (child->Guid == param) {
+            RecurseDelete(child);
+
+            --cell->ChildCount;
+
+            TreeCell *newChildren = nullptr;
+            if (cell->ChildCount > 0) {
+                newChildren = new TreeCell[cell->ChildCount];
+
+                for (int i = 0; i < cell->ChildCount; ++i) {
+                    newChildren[i].Guid.d1 = 0;
+                    newChildren[i].Guid.d2 = 0;
+                }
+
+                if (index > 0)
+                    memcpy(newChildren, cell->Children, index * sizeof(TreeCell));
+
+                if (index < cell->ChildCount)
+                    memcpy(&newChildren[index], &cell->Children[index + 1], (cell->ChildCount - index) * sizeof(TreeCell));
+            }
+
+            delete[] cell->Children;
+            cell->Children = newChildren;
+        } else {
+            RecurseDeleteParam(child, param);
+            ++index;
+        }
+    }
 }
 
 int CKParameterManager::DichotomicSearch(int start, int end, TreeCell *tab, CKGUID key) {
-    return 0;
+    if (!tab)
+        return -1;
+
+    while (start <= end) {
+        int mid = (start + end) / 2;
+        CKGUID &current = tab[mid].Guid;
+
+        if (current == key) {
+            return mid;
+        }
+
+        if (current > key) {
+            end = mid - 1;
+        } else {
+            start = mid + 1;
+        }
+    }
+
+    return -1;
 }
 
 void CKParameterManager::RecurseDelete(TreeCell *cell) {
+    if (cell && cell->ChildCount > 0) {
+        for (int i = 0; i < cell->ChildCount; ++i) {
+            RecurseDelete(&cell->Children[i]);
+        }
+        delete[] cell->Children;
+        cell->Children = NULL;
+        cell->ChildCount = 0;
+    }
 }
 
 CKBOOL CKParameterManager::IsDerivedFromIntern(int child, int parent) {
-    return 0;
+    if (child == parent)
+        return TRUE;
+
+    CKGUID parentGuid = ParameterTypeToGuid(parent);
+
+    CKParameterTypeDesc *childDesc = GetParameterTypeDescription(child);
+    CKParameterTypeDesc *parentDesc = GetParameterTypeDescription(parent);
+    if (!childDesc || !parentDesc)
+        return FALSE;
+
+    if (childDesc->DerivedFrom == parentGuid)
+        return TRUE;
+
+    if (childDesc->DerivedFrom == CKGUID() || childDesc->DerivedFrom == CKPGUID_NONE)
+        return FALSE;
+
+    CKParameterType type = ParameterGuidToType(childDesc->DerivedFrom);
+    return IsDerivedFromIntern(type, parent);
 }
 
 CKBOOL CKParameterManager::RemoveAllParameterTypes() {
-    return 0;
+    m_ParamGuids.Clear();
+
+    if (m_Enums) {
+        for (int i = 0; i < m_NbEnumsDefined; ++i) {
+            CKEnumStruct &enumStruct = m_Enums[i];
+            if (enumStruct.Desc) {
+                for (int j = 0; j < enumStruct.NbData; ++j)
+                    delete enumStruct.Desc[j];
+                delete enumStruct.Desc;
+            }
+            if (enumStruct.Vals)
+                delete enumStruct.Vals;
+        }
+
+        delete[] m_Enums;
+        m_Enums = NULL;
+        m_NbEnumsDefined = 0;
+    }
+
+    if (m_Flags) {
+        for (int i = 0; i < m_NbFlagsDefined; ++i) {
+            CKFlagsStruct &flagStruct = m_Flags[i];
+            if (flagStruct.Desc) {
+                for (int j = 0; j < flagStruct.NbData; ++j)
+                    delete flagStruct.Desc[j];
+                delete flagStruct.Desc;
+            }
+            if (flagStruct.Vals)
+                delete flagStruct.Vals;
+        }
+
+        delete[] m_Flags;
+        m_Flags = NULL;
+        m_NbFlagsDefined = 0;
+    }
+
+    if (m_Structs) {
+        for (int i = 0; i < m_NbStructDefined; ++i) {
+            CKStructStruct &structStruct = m_Structs[i];
+            if (structStruct.Desc) {
+                for (int j = 0; j < structStruct.NbData; ++j)
+                    delete structStruct.Desc[j];
+                delete structStruct.Desc;
+            }
+            if (structStruct.Guids)
+                delete structStruct.Guids;
+        }
+
+        delete[] m_Structs;
+        m_Structs = NULL;
+        m_NbStructDefined = 0;
+    }
+
+    const int count = m_RegisteredTypes.Size();
+    for (int i = 0; i < count; ++i) {
+        CKParameterTypeDesc *typeDesc = m_RegisteredTypes[i];
+        if (typeDesc) {
+            delete typeDesc;
+        }
+    }
+
+    m_RegisteredTypes.Clear();
+    return TRUE;
 }
 
 CKBOOL CKParameterManager::RemoveAllOperations() {
-    return 0;
+    if (m_OperationTree) {
+        for (CKOperationType i = 0; i < m_NbOperations; ++i) {
+            UnRegisterOperationType(i);
+        }
+        delete m_OperationTree;
+        m_OperationTree = nullptr;
+    }
+    m_NbOperations = 0;
+    m_NbAllocatedOperations = 0;
+    m_OpGuids.Clear();
+    return TRUE;
 }
 
 int CKParameterManager::BuildGuidHierarchy(CKGUID guid, CKGUID *buffer, int max) {
@@ -1071,22 +1886,55 @@ int CKParameterManager::BuildGuidHierarchy(CKGUID guid, CKGUID *buffer, int max)
 }
 
 CKStructHelper::CKStructHelper(CKParameter *Param) {
+    m_Context = Param ? Param->GetCKContext() : NULL;
+    if (m_Context) {
+        m_StructDescription = m_Context->GetParameterManager()->GetStructDescByType(Param->GetType());
+        m_SubIDS = (CK_ID *)Param->GetReadDataPtr();
+    } else {
+        m_StructDescription = NULL;
+        m_SubIDS = NULL;
+    }
 }
 
 CKStructHelper::CKStructHelper(CKContext *ctx, CKGUID PGuid, CK_ID *Data) {
+    m_Context = ctx;
+    if (ctx) {
+        CKParameterManager *pm = ctx->GetParameterManager();
+        CKParameterType type = pm->ParameterGuidToType(PGuid);
+        m_StructDescription = ctx->GetParameterManager()->GetStructDescByType(type);
+    } else {
+        m_StructDescription = NULL;
+    }
+    m_SubIDS = Data;
 }
 
 CKStructHelper::CKStructHelper(CKContext *ctx, CKParameterType PType, CK_ID *Data) {
+    m_Context = ctx;
+    if (ctx) {
+        m_StructDescription = ctx->GetParameterManager()->GetStructDescByType(PType);
+    } else {
+        m_StructDescription = NULL;
+    }
+    m_SubIDS = Data;
 }
 
 char *CKStructHelper::GetMemberName(int Pos) {
-    return nullptr;
+    if (m_StructDescription && Pos >= 0 && Pos < m_StructDescription->NbData) {
+        return m_StructDescription->Desc[Pos];
+    }
+    return NULL;
 }
 
 CKGUID CKStructHelper::GetMemberGUID(int Pos) {
+    if (m_StructDescription && Pos >= 0 && Pos < m_StructDescription->NbData) {
+        return m_StructDescription->Guids[Pos];
+    }
     return CKGUID();
 }
 
 int CKStructHelper::GetMemberCount() {
+    if (m_StructDescription) {
+        return m_StructDescription->NbData;
+    }
     return 0;
 }

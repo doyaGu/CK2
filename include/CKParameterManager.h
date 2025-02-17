@@ -124,30 +124,18 @@ typedef struct CKOperationDesc
 struct TreeCell {
     CKGUID Guid;
     int ChildCount;
-    TreeCell *Children;
+    union {
+        TreeCell *Children;
+        CK_PARAMETEROPERATION Operation;
+    };
 };
 
 struct OperationCell {
     char Name[30];
     CKGUID OperationGuid;
     int CellCount;
-    TreeCell* Tree;
+    TreeCell *Tree;
     CKBOOL IsActive;
-};
-
-struct CKEnumEntry {
-    XString Name;
-    int Value;
-};
-
-struct CKFlagDefinition {
-    XString Name;
-    int Value;
-};
-
-struct CKFlagEntry {
-    XString Name;
-    int Value;
 };
 
 /************************************************************************
@@ -259,8 +247,9 @@ public:
 
     int GetParameterOperationCount();
 
-    CKBOOL IsParameterTypeToBeShown(CKParameterType type);
+    TreeCell *FindOrCreateGuidCell(TreeCell *&cells, int &cellCount, CKGUID &guid);
 
+    CKBOOL IsParameterTypeToBeShown(CKParameterType type);
     CKBOOL IsParameterTypeToBeShown(CKGUIDCONSTREF guid);
 
     CKParameterManager(CKContext *Context);
