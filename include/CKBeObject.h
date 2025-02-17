@@ -148,6 +148,9 @@ public:
     virtual void AddToScene(CKScene *scene, CKBOOL dependencies = TRUE);
     virtual void RemoveFromScene(CKScene *scene, CKBOOL dependencies = TRUE);
 
+    void AddToGroup(CKGroup *group);
+    void RemoveFromGroup(CKGroup *group);
+
     //--------------------------------------------
     // Class Registering
     static CKSTRING GetClassName();

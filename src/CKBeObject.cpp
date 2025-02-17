@@ -37,7 +37,6 @@ void CKBeObject::ExecuteBehaviors(float delta) {
 
     if (!executed && GetClassID() != CKCID_CHARACTER) {
         m_Context->GetBehaviorManager()->RemoveObjectNextFrame(this);
-        return;
     }
 }
 
@@ -861,6 +860,16 @@ void CKBeObject::RemoveFromScene(CKScene *scene, CKBOOL dependencies) {
         }
     }
     CKSceneObject::RemoveFromScene(scene, dependencies);
+}
+
+void CKBeObject::AddToGroup(CKGroup *group) {
+    if (group)
+        m_Groups.Set(group->m_GroupIndex);
+}
+
+void CKBeObject::RemoveFromGroup(CKGroup *group) {
+    if (group)
+        m_Groups.Unset(group->m_GroupIndex);
 }
 
 CKSTRING CKBeObject::GetClassName() {
