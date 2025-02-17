@@ -1705,36 +1705,35 @@ void CKParameterManager::RecurseDeleteParam(TreeCell *cell, CKGUID param) {
     if (!cell || cell->ChildCount <= 0)
         return;
 
-    int index = 0;
-    while (index < cell->ChildCount) {
-        TreeCell *child = &cell->Children[index];
+    for (int i = 0; i < cell->ChildCount;) {
+        TreeCell &child = cell->Children[i];
 
-        if (child->Guid == param) {
-            RecurseDelete(child);
+        if (child.Guid == param) {
+            RecurseDelete(&child);
 
-            --cell->ChildCount;
+            if (i < 0 || i >= cell->ChildCount)
+                continue;
 
-            TreeCell *newChildren = nullptr;
-            if (cell->ChildCount > 0) {
-                newChildren = new TreeCell[cell->ChildCount];
+            const int newCount = cell->ChildCount - 1;
+            TreeCell *newChildren = newCount > 0 ? new TreeCell[newCount] : NULL;
 
-                for (int i = 0; i < cell->ChildCount; ++i) {
-                    newChildren[i].Guid.d1 = 0;
-                    newChildren[i].Guid.d2 = 0;
+            if (newChildren) {
+                if (i > 0) {
+                    memcpy(newChildren, cell->Children, i * sizeof(TreeCell));
                 }
-
-                if (index > 0)
-                    memcpy(newChildren, cell->Children, index * sizeof(TreeCell));
-
-                if (index < cell->ChildCount)
-                    memcpy(&newChildren[index], &cell->Children[index + 1], (cell->ChildCount - index) * sizeof(TreeCell));
+                if (i < newCount) {
+                    memcpy(newChildren + i,
+                           cell->Children + i + 1,
+                           (newCount - i) * sizeof(TreeCell));
+                }
             }
 
             delete[] cell->Children;
             cell->Children = newChildren;
+            cell->ChildCount = newCount;
         } else {
-            RecurseDeleteParam(child, param);
-            ++index;
+            RecurseDeleteParam(&child, param);
+            i++;
         }
     }
 }

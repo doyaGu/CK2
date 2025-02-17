@@ -128,6 +128,8 @@ struct TreeCell {
         TreeCell *Children;
         CK_PARAMETEROPERATION Operation;
     };
+
+    TreeCell() : ChildCount(0), Children(NULL) {}
 };
 
 struct OperationCell {
