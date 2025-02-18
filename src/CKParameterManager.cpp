@@ -1544,61 +1544,192 @@ int CKParameterManager::GetAvailableOperationsDesc(const CKGUID &opGuid, CKParam
     }
 
     // Initialize GUID buffers for parameter hierarchies
-    CKGUID p1Guids[128], p2Guids[128], resGuids[128];
-    int numP1Guids = 0, numP2Guids = 0, numResGuids = 0;
+    CKGUID resParents[128], p1Parents[128], p2Parents[128];
+    int resParentCount = 0, p1ParentCount = 0, p2ParentCount = 0;
 
-    // Process p1 parameter GUID hierarchy
-    if (p1) {
-        CKParameterTypeDesc *p1Type = p1->m_ParamType;
-        CKGUID p1Guid = ParameterTypeToGuid(p1Type ? p1Type->Index : -1);
-        numP1Guids = BuildGuidHierarchy(p1Guid, p1Guids, 128);
+    // 1. Build parameter type hierarchies
+    if (p1)
+        BuildParameterHierarchy(p1->GetType(), p1Parents, p1ParentCount);
+    if (p2)
+        BuildParameterHierarchy(p2->GetType(), p2Parents, p2ParentCount);
+    if (res)
+        BuildParameterHierarchy(res->GetType(), resParents, resParentCount);
+
+    // 2. Find target operation code
+    int opCount = 0;
+    int startOp = OperationGuidToCode(opGuid);
+    if (startOp < 0) startOp = 0;
+
+    // 3. Iterate through relevant operations
+    for (int opIdx = startOp; opIdx < m_NbOperations; ++opIdx) {
+        OperationCell &opCell = m_OperationTree[opIdx];
+        if (!opCell.IsActive)
+            continue;
+
+        // 4. Handle parameter type combinations
+        ProcessParameterCombinations(
+            opCell,
+            (p1 ? p1Parents : NULL), p1ParentCount,
+            (p2 ? p2Parents : NULL), p2ParentCount,
+            (res ? resParents : NULL), resParentCount,
+            list,
+            opCount
+        );
     }
 
-    // Process p2 parameter GUID hierarchy
-    if (p2) {
-        CKParameterTypeDesc *p2Type = p2->m_ParamType;
-        CKGUID p2Guid = ParameterTypeToGuid(p2Type ? p2Type->Index : -1);
-        numP2Guids = BuildGuidHierarchy(p2Guid, p2Guids, 128);
-    }
-
-    // Process result parameter GUID hierarchy
-    if (res) {
-        CKParameterType resType = res->GetType();
-        CKGUID resGuid = ParameterTypeToGuid(resType);
-        numResGuids = BuildGuidHierarchy(resGuid, resGuids, 128);
-    }
-
-    // Convert operation GUID to operation code
-    CKOperationType opCode = OperationGuidToCode(opGuid);
-    int operationCount = 0;
-
-    // // Iterate through relevant operations
-    // for (CKOperationType currentOp = opCode; currentOp < m_NbOperations; ++currentOp) {
-    //     OperationCell* operation = &m_OperationTree[currentOp];
-    //
-    //     // Check input parameter compatibility
-    //     bool p1Compatible = CheckParameterCompatibility(operation->param1, p1Guids, numP1Guids);
-    //     bool p2Compatible = CheckParameterCompatibility(operation->param2, p2Guids, numP2Guids);
-    //     bool resCompatible = CheckParameterCompatibility(operation->result, resGuids, numResGuids);
-    //
-    //     if (p1Compatible && p2Compatible && resCompatible) {
-    //         if (list) {
-    //             FillOperationDesc(list[operationCount], operation, currentOp);
-    //         }
-    //         operationCount++;
-    //
-    //         // Handle derived types when parameters are null
-    //         if (!res) AddDerivedOperations(operation, list, operationCount, currentOp);
-    //         if (!p1) AddDerivedOperations(operation, list, operationCount, currentOp);
-    //         if (!p2) AddDerivedOperations(operation, list, operationCount, currentOp);
-    //     }
-    // }
-
-    return operationCount;
+    return opCount;
 }
 
 int CKParameterManager::GetParameterOperationCount() {
     return m_NbOperations;
+}
+
+void CKParameterManager::BuildParameterHierarchy(CKParameterType type, CKGUID *parents, int &count) {
+    if (type <= 0)
+        return;
+
+    CKParameterTypeDesc *typeDesc = GetParameterTypeDescription(type);
+    if (!typeDesc)
+        return;
+
+    parents[0] = typeDesc->Guid;
+    count = 1;
+
+    CKGUID current = typeDesc->Guid;
+    while (GetParameterGuidParentGuid(current, parents[count])) {
+        current = parents[count];
+        count++;
+    }
+}
+
+void CKParameterManager::ProcessParameterCombinations(
+    OperationCell &opCell,
+    CKGUID *p1Hierarchy, int p1Count,
+    CKGUID *p2Hierarchy, int p2Count,
+    CKGUID *resHierarchy, int resCount,
+    CKOperationDesc *list,
+    int &opCount) {
+    int p1Start = p1Hierarchy ? 0 : -1;
+    int p1End = p1Hierarchy ? p1Count : opCell.CellCount;
+
+    for (int p1Idx = p1Start; p1Idx < p1End; ++p1Idx) {
+        TreeCell *p1Cell = p1Hierarchy
+                               ? FindOrCreateGuidCell(opCell.Tree, opCell.CellCount, p1Hierarchy[p1Idx])
+                               : &opCell.Tree[p1Idx];
+
+        if (!p1Cell)
+            continue;
+
+        ProcessSecondParameterLevel(
+            *p1Cell,
+            p2Hierarchy, p2Count,
+            resHierarchy, resCount,
+            list,
+            opCount,
+            opCell.OperationGuid,
+            p1Cell->Guid
+        );
+    }
+}
+
+void CKParameterManager::ProcessSecondParameterLevel(
+    TreeCell &p1Cell,
+    CKGUID *p2Hierarchy, int p2Count,
+    CKGUID *resHierarchy, int resCount,
+    CKOperationDesc *list,
+    int &opCount,
+    const CKGUID &opGuid,
+    const CKGUID &p1Guid) {
+    int p2Start = p2Hierarchy ? 0 : -1;
+    int p2End = p2Hierarchy ? p2Count : p1Cell.ChildCount;
+
+    for (int p2Idx = p2Start; p2Idx < p2End; ++p2Idx) {
+        TreeCell *p2Cell = p2Hierarchy
+                               ? FindOrCreateGuidCell(p1Cell.Children, p1Cell.ChildCount, p2Hierarchy[p2Idx])
+                               : &p1Cell.Children[p2Idx];
+
+        if (!p2Cell)
+            continue;
+
+        // Process result type level
+        ProcessResultTypeLevel(
+            *p2Cell,
+            resHierarchy, resCount,
+            list,
+            opCount,
+            opGuid,
+            p1Guid,
+            p2Cell->Guid
+        );
+    }
+}
+
+void CKParameterManager::ProcessResultTypeLevel(
+    TreeCell &p2Cell,
+    CKGUID *resHierarchy, int resCount,
+    CKOperationDesc *list,
+    int &opCount,
+    const CKGUID &opGuid,
+    const CKGUID &p1Guid,
+    const CKGUID &p2Guid) {
+    int resStart = resHierarchy ? 0 : -1;
+    int resEnd = resHierarchy ? resCount : p2Cell.ChildCount;
+
+    for (int resIdx = resStart; resIdx < resEnd; ++resIdx) {
+        TreeCell *resCell = resHierarchy
+                                ? FindOrCreateGuidCell(p2Cell.Children, p2Cell.ChildCount, resHierarchy[resIdx])
+                                : &p2Cell.Children[resIdx];
+
+        if (!resCell || !resCell->Operation)
+            continue;
+
+        if (list) {
+            CKOperationDesc &desc = list[opCount];
+            desc.OpGuid = opGuid;
+            desc.P1Guid = p1Guid;
+            desc.P2Guid = p2Guid;
+            desc.ResGuid = resCell->Guid;
+            desc.Fct = resCell->Operation;
+        }
+        opCount++;
+
+        if (!resHierarchy) {
+            AddCompatibleDerivedOperations(
+                *resCell,
+                list,
+                opCount,
+                opGuid,
+                p1Guid,
+                p2Guid
+            );
+        }
+    }
+}
+
+void CKParameterManager::AddCompatibleDerivedOperations(
+    TreeCell &resCell,
+    CKOperationDesc *list,
+    int &opCount,
+    const CKGUID &opGuid,
+    const CKGUID &p1Guid,
+    const CKGUID &p2Guid) {
+    for (int i = 0; i < m_RegisteredTypes.Size(); ++i) {
+        CKParameterTypeDesc *typeDesc = m_RegisteredTypes[i];
+        if (typeDesc->dwFlags & 0x2C)
+            continue;
+
+        if (IsDerivedFrom(typeDesc->Guid, resCell.Guid)) {
+            if (list) {
+                CKOperationDesc &desc = list[opCount];
+                desc.OpGuid = opGuid;
+                desc.P1Guid = p1Guid;
+                desc.P2Guid = p2Guid;
+                desc.ResGuid = typeDesc->Guid;
+                desc.Fct = resCell.Operation;
+            }
+            opCount++;
+        }
+    }
 }
 
 TreeCell *CKParameterManager::FindOrCreateGuidCell(TreeCell *&cells, int &cellCount, CKGUID &guid) {

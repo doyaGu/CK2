@@ -249,6 +249,38 @@ public:
 
     int GetParameterOperationCount();
 
+    void BuildParameterHierarchy(CKParameterType type, CKGUID *parents, int &count);
+    void ProcessParameterCombinations(
+        OperationCell &opCell,
+        CKGUID *p1Hierarchy, int p1Count,
+        CKGUID *p2Hierarchy, int p2Count,
+        CKGUID *resHierarchy, int resCount,
+        CKOperationDesc *list,
+        int &opCount);
+    void ProcessSecondParameterLevel(
+        TreeCell &p1Cell,
+        CKGUID *p2Hierarchy, int p2Count,
+        CKGUID *resHierarchy, int resCount,
+        CKOperationDesc *list,
+        int &opCount,
+        const CKGUID &opGuid,
+        const CKGUID &p1Guid);
+    void ProcessResultTypeLevel(
+        TreeCell &p2Cell,
+        CKGUID *resHierarchy, int resCount,
+        CKOperationDesc *list,
+        int &opCount,
+        const CKGUID &opGuid,
+        const CKGUID &p1Guid,
+        const CKGUID &p2Guid);
+    void AddCompatibleDerivedOperations(
+        TreeCell &resCell,
+        CKOperationDesc *list,
+        int &opCount,
+        const CKGUID &opGuid,
+        const CKGUID &p1Guid,
+        const CKGUID &p2Guid);
+
     TreeCell *FindOrCreateGuidCell(TreeCell *&cells, int &cellCount, CKGUID &guid);
 
     CKBOOL IsParameterTypeToBeShown(CKParameterType type);
