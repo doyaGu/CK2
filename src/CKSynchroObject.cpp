@@ -24,9 +24,9 @@ int CKSynchroObject::GetRendezVousNumberOfArrivedObjects() {
     return 0;
 }
 
-//CKBeObject *CKSynchroObject::GetRendezVousArrivedObject(int pos) {
-//    return nullptr;
-//}
+CKBeObject *CKSynchroObject::GetRendezVousArrivedObject(int pos) {
+    return nullptr;
+}
 
 CKSynchroObject::CKSynchroObject(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
     m_MaxWaiters = 0;
