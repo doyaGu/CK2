@@ -145,6 +145,7 @@ set(CK2_SOURCES
         CKParameterOut.cpp
         CKParameterLocal.cpp
         CKParameterOperation.cpp
+        CKCallbackFunctions.cpp
 
         # Behaviors
         CKBehaviorIO.cpp
