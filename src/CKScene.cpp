@@ -1,5 +1,6 @@
 #include "CKScene.h"
 
+#include "CKAttributeManager.h"
 #include "CKStateChunk.h"
 #include "CKLevel.h"
 #include "CKBehavior.h"
@@ -7,6 +8,7 @@
 #include "CKTexture.h"
 #include "CKMaterial.h"
 #include "CKCamera.h"
+#include "CKFile.h"
 
 CK_CLASSID CKScene::m_ClassID = CKCID_SCENE;
 
@@ -80,9 +82,110 @@ int CKScene::GetObjectCount() {
     return m_SceneObjects.Size();
 }
 
+void CKScene::AddObject(CKSceneObject *o) {
+    if (!o)
+        return;
+
+    // Check if object is valid type and not already in scene
+    if (o->GetClassID() == CKCID_SCENE || GetSceneObjectDesc(o))
+        return;
+
+    // Create new scene object descriptor
+    CKSceneObjectDesc* desc = AddObjectDesc(o);
+    if (!desc)
+        return;
+
+    CK_ID id = 0;
+    if (m_Context->m_ObjectManager->GetSingleObjectActivity(o, id))
+    {
+        if (id < 0) {
+            desc->m_InitialValue = CKSaveObjectState(o, CK_STATESAVE_ALL);
+            desc->m_Flags &= ~CK_SCENEOBJECT_START_ACTIVATE;
+        }
+
+        desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+
+        // Handle initial activation state
+        if (desc->m_Flags & CK_SCENEOBJECT_START_ACTIVATE) {
+            Activate(o, (desc->m_Flags & CK_SCENEOBJECT_START_RESET) != 0);
+        } else if (desc->m_Flags & CK_SCENEOBJECT_START_DEACTIVATE) {
+            DeActivate(o);
+        }
+    }
+
+    // Batch add or immediate processing
+    if (m_AddObjectCount > 0) {
+        m_AddObjectList.PushBack(desc->m_Object);
+    } else {
+        m_Context->ExecuteManagersOnSequenceAddedToScene(this, &desc->m_Object, 1);
+    }
+}
+
+void CKScene::RemoveObject(CKSceneObject *o) {
+    if (!o)
+        return;
+
+    CKSceneObjectDesc* desc = GetSceneObjectDesc(o);
+    if (!desc)
+        return;
+
+    desc->Clear();
+    m_SceneObjects.Remove(o->GetID());
+
+    o->RemoveSceneIn(this);
+
+    if (m_RemoveObjectCount > 0) {
+        m_RemoveObjectList.PushBack(o->GetID());
+    } else {
+        CK_ID id = o->GetID();
+        m_Context->ExecuteManagersOnSequenceRemovedFromScene(this, &id, 1);
+    }
+}
+
+void CKScene::RemoveAllObjects() {
+    for (CKSceneObjectIterator it = GetObjectIterator(); !it.End(); it++) {
+        CKSceneObjectDesc *desc = it.GetObjectDesc();
+        if (desc) {
+            desc->Clear();
+        }
+    }
+    m_SceneObjects.Clear();
+}
+
 const XObjectPointerArray &CKScene::ComputeObjectList(CK_CLASSID cid, CKBOOL derived) {
-    static XObjectPointerArray array;
-    return array;
+    m_ObjectList.Clear();
+
+    for (CKSceneObjectIterator it = GetObjectIterator(); !it.End(); it++) {
+        CK_ID objID = it.GetObjectID();
+        CKObject *obj = m_Context->GetObject(objID);
+
+        if (obj) {
+            CKBOOL shouldInclude = derived ? CKIsChildClassOf(obj, cid) : (obj->GetClassID() == cid);
+            if (shouldInclude) {
+                m_ObjectList.PushBack(obj);
+            }
+        }
+    }
+
+    return m_ObjectList;
+}
+
+CKERROR CKScene::ComputeObjectList(CKObjectArray *array, CK_CLASSID cid, CKBOOL derived) {
+    if (!array)
+        return CKERR_INVALIDPARAMETER;
+    for (CKSceneObjectIterator it = GetObjectIterator(); !it.End(); it++) {
+        CK_ID objID = it.GetObjectID();
+        CKObject *obj = m_Context->GetObject(objID);
+
+        if (obj) {
+            CKBOOL shouldInclude = derived ? CKIsChildClassOf(obj, cid) : (obj->GetClassID() == cid);
+            if (shouldInclude) {
+                array->InsertRear(obj);
+            }
+        }
+    }
+
+    return CK_OK;
 }
 
 CKSceneObjectIterator CKScene::GetObjectIterator() {
@@ -116,9 +219,108 @@ void CKScene::DeActivate(CKSceneObject *o) {
 }
 
 void CKScene::ActivateBeObject(CKBeObject *beo, CKBOOL activate, CKBOOL reset) {
+    if (!beo)
+        return;
+
+    const int scriptCount = beo->GetScriptCount();
+    CKSceneObjectDesc *desc = GetSceneObjectDesc(beo);
+    if (!desc)
+        return;
+
+    CKScene *currentScene = m_Context->GetCurrentScene();
+    CKDWORD flags = desc->m_Flags;
+
+    if (activate) {
+        if (currentScene != this || (flags & CK_SCENEOBJECT_ACTIVE)) {
+            desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+        } else {
+            desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+
+            if (scriptCount > 0 || CKIsChildClassOf(beo, CKCID_CHARACTER)) {
+                m_Context->GetBehaviorManager()->AddObjectNextFrame(beo);
+            }
+
+            if (reset && (desc->m_Flags & CK_SCENEOBJECT_START_RESET)) {
+                CKStateChunk *chunk = desc->m_InitialValue;
+                if (chunk) {
+                    beo->Load(chunk, NULL);
+                }
+            }
+
+            for (int i = 0; i < scriptCount; ++i) {
+                CKBehavior *beh = beo->GetScript(i);
+                if (beh) {
+                    beh->CallSubBehaviorsCallbackFunction(CKM_BEHAVIORACTIVATESCRIPT);
+                }
+            }
+        }
+    } else {
+        if (currentScene == this && (flags & CK_SCENEOBJECT_ACTIVE)) {
+            desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+
+            if (scriptCount > 0 || CKIsChildClassOf(beo, CKCID_CHARACTER)) {
+                m_Context->GetBehaviorManager()->RemoveObjectNextFrame(beo);
+            }
+
+            for (int i = 0; i < scriptCount; ++i) {
+                CKBehavior *beh = beo->GetScript(i);
+                if (beh) {
+                    beh->CallSubBehaviorsCallbackFunction(CKM_BEHAVIORDEACTIVATESCRIPT);
+                }
+            }
+        } else {
+            desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+        }
+    }
 }
 
 void CKScene::ActivateScript(CKBehavior *beh, CKBOOL activate, CKBOOL reset) {
+    if (!beh)
+        return;
+
+    if (beh->GetType() != CKBEHAVIORTYPE_SCRIPT)
+        return;
+
+    CKSceneObjectDesc *desc = GetSceneObjectDesc(beh);
+    if (!desc)
+        return;
+
+    if (activate) {
+        CKBeObject *owner = beh->GetOwner();
+        CKScene *currentScene = m_Context->GetCurrentScene();
+
+        if (currentScene == this) {
+            if (owner && (owner->IsActiveInCurrentScene() ||
+                owner->GetClassID() == CKCID_LEVEL)) {
+                m_Context->GetBehaviorManager()->AddObjectNextFrame(owner);
+            }
+
+            CKDWORD addFlags = CKBEHAVIOR_ACTIVATENEXTFRAME;
+            if (reset) {
+                addFlags |= CKBEHAVIOR_RESETNEXTFRAME;
+            }
+            beh->ModifyFlags(addFlags, CKBEHAVIOR_DEACTIVATENEXTFRAME);
+
+            if (!(desc->m_Flags & CK_SCENEOBJECT_ACTIVE)) {
+                desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+                beh->CallSubBehaviorsCallbackFunction(CKM_BEHAVIORACTIVATESCRIPT);
+            }
+        } else {
+            desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+        }
+    } else {
+        if (m_Context->GetCurrentScene() == this) {
+            beh->ModifyFlags(CKBEHAVIOR_DEACTIVATENEXTFRAME,
+                             CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME);
+
+            if (desc->m_Flags & CK_SCENEOBJECT_ACTIVE) {
+                desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+                beh->CallSubBehaviorsCallbackFunction(CKM_BEHAVIORDEACTIVATESCRIPT);
+            }
+        } else {
+            desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+        }
+    }
 }
 
 void CKScene::SetObjectFlags(CKSceneObject *o, CK_SCENEOBJECT_FLAGS flags) {
@@ -413,42 +615,299 @@ CK_CLASSID CKScene::GetClassID() {
 
 void CKScene::PreSave(CKFile *file, CKDWORD flags) {
     CKBeObject::PreSave(file, flags);
+    CKSceneObjectIterator it = GetObjectIterator();
+    while (!it.End()) {
+        CKSceneObject *obj = (CKSceneObject *)m_Context->GetObject(it.GetObjectID());
+        if (obj) {
+            file->SaveObject(obj);
+        }
+    }
 }
 
 CKStateChunk *CKScene::Save(CKFile *file, CKDWORD flags) {
-    return CKBeObject::Save(file, flags);
+    CKStateChunk *baseChunk = CKBeObject::Save(file, flags);
+
+    CKStateChunk *chunk = new CKStateChunk(CKCID_SCENE, file);
+    chunk->StartWrite();
+
+    chunk->AddChunkAndDelete(baseChunk);
+
+    chunk->WriteIdentifier(CK_STATESAVE_SCENENEWDATA);
+
+    CKLevel *level = GetLevel();
+    chunk->WriteObject(level);
+
+    XArray<CKSceneObjectDesc *> descArray;
+    CKSceneObjectIterator oit = GetObjectIterator();
+    int missingObjects = 0;
+
+    while (!oit.End()) {
+        CK_ID objID = oit.GetObjectID();
+        CKObject *obj = m_Context->GetObject(objID);
+        if (obj) {
+            // Filter out hidden and non-persistent objects
+            if (!obj->IsDynamic() && !obj->IsPrivate()) {
+                descArray.PushBack(oit.GetObjectDesc());
+            }
+        } else {
+            missingObjects++;
+        }
+        oit++;
+    }
+
+    int descCount = descArray.Size();
+    chunk->WriteInt(descCount);
+    if (descCount > 0) {
+        chunk->StartObjectIDSequence(descCount);
+        for (auto it = descArray.Begin(); it != descArray.End(); ++it) {
+            CKObject *obj = m_Context->GetObject((*it)->m_Object);
+            chunk->WriteObjectSequence(obj);
+        }
+
+        chunk->StartSubChunkSequence(descCount * 2);
+        for (auto it = descArray.Begin(); it != descArray.End(); ++it) {
+            CKSceneObjectDesc *desc = *it;
+            chunk->WriteSubChunkSequence(desc ? desc->m_InitialValue : NULL);
+            chunk->WriteSubChunkSequence(NULL);
+        }
+
+        for (auto it = descArray.Begin(); it != descArray.End(); ++it) {
+            CKSceneObjectDesc *desc = *it;
+            chunk->WriteDword(desc ? desc->m_Flags : 0);
+        }
+    }
+
+    chunk->WriteIdentifier(CK_STATESAVE_SCENELAUNCHED);
+    chunk->WriteDword(m_EnvironmentSettings);
+
+    chunk->WriteIdentifier(CK_STATESAVE_SCENERENDERSETTINGS);
+    chunk->WriteDword(m_BackgroundColor);
+    chunk->WriteDword(m_AmbientLightColor);
+
+    chunk->WriteDword(m_FogMode);
+    chunk->WriteDword(m_FogColor);
+    chunk->WriteFloat(m_FogStart);
+    chunk->WriteFloat(m_FogEnd);
+    chunk->WriteFloat(m_FogDensity);
+
+    CKTexture *bgTex = GetBackgroundTexture();
+    chunk->WriteObject(bgTex);
+
+    CKCamera *startCam = GetStartingCamera();
+    chunk->WriteObject(startCam);
+
+    if (missingObjects > 0) {
+        CheckSceneObjectList();
+    }
+
+    chunk->CloseChunk();
+    return chunk;
 }
 
 CKERROR CKScene::Load(CKStateChunk *chunk, CKFile *file) {
-    return CKBeObject::Load(chunk, file);
+    if (!chunk)
+        return CKERR_INVALIDPARAMETER;
+
+    chunk->StartRead();
+    m_EnvironmentSettings &= ~CK_SCENE_LAUNCHEDONCE;
+
+    const int dataVersion = chunk->GetDataVersion();
+    if (dataVersion >= 1) {
+        // Load base class data
+        CKERROR err = CKBeObject::Load(chunk, file);
+        if (err != CK_OK)
+            return err;
+
+        if (chunk->SeekIdentifier(CK_STATESAVE_SCENENEWDATA)) {
+            m_Level = chunk->ReadObjectID();
+
+            RemoveAllObjects();
+
+            // Load scene objects
+            const int descCount = chunk->ReadInt();
+            CKSceneObjectDesc *descList = new CKSceneObjectDesc[descCount];
+
+            // Read object IDs
+            chunk->StartReadSequence();
+            for (int i = 0; i < descCount; ++i) {
+                CKSceneObjectDesc *desc = &descList[i];
+                desc->Init(NULL);
+                desc->m_Object = chunk->ReadObjectID();
+            }
+
+            CKAttributeManager *am = m_Context->GetAttributeManager();
+
+            chunk->StartReadSequence();
+            for (int i = 0; i < descCount; ++i) {
+                CKStateChunk *objChunk = chunk->ReadSubChunk();
+                descList[i].m_InitialValue = objChunk;
+                if (objChunk && CKIsChildClassOf(objChunk->GetChunkClassID(), CKCID_BEOBJECT)) {
+                    if (objChunk->GetChunkVersion() < 6 && !objChunk->GetManagers()) {
+                        objChunk->StartRead();
+                        if (objChunk->SeekIdentifier(CK_STATESAVE_NEWATTRIBUTES)) {
+                            am->PatchRemapBeObjectStateChunk(objChunk);
+                        }
+                    }
+                }
+
+                CKStateChunk *subChunk = chunk->ReadSubChunk();
+                if (subChunk) {
+                    delete subChunk;
+                }
+            }
+
+            if (dataVersion >= 8) {
+                for (int i = 0; i < descCount; ++i) {
+                    CKSceneObjectDesc *desc = &descList[i];
+                    desc->m_Flags = chunk->ReadDword();
+                }
+
+                for (int i = 0; i < descCount; ++i) {
+                    CKSceneObjectDesc *desc = &descList[i];
+                    CKSceneObject *obj = (CKSceneObject *)m_Context->GetObject(desc->m_Object);
+                    if (obj && CKIsChildClassOf(obj, CKCID_SCENEOBJECT)) {
+                        m_SceneObjects.InsertUnique(obj->GetID(), *desc);
+                        obj->AddSceneIn(this);
+                    }
+                }
+            } else {
+                for (int i = 0; i < descCount; ++i) {
+                    CKSceneObjectDesc *desc = &descList[i];
+                    desc->m_Flags = chunk->ReadDword() & CK_SCENEOBJECT_ACTIVE;
+                    if (desc->m_Flags & 2) {
+                        desc->m_Flags |= CK_SCENEOBJECT_START_RESET;
+                    }
+                    if (desc->m_Flags & 1) {
+                        desc->m_Flags |= CK_SCENEOBJECT_START_ACTIVATE;
+                    } else {
+                        desc->m_Flags |= CK_SCENEOBJECT_START_DEACTIVATE;
+                    }
+                }
+                AddObjectToScene(GetLevel());
+            }
+
+            delete[] descList;
+        }
+
+        if (chunk->SeekIdentifier(CK_STATESAVE_SCENELAUNCHED)) {
+            m_EnvironmentSettings = chunk->ReadInt();
+        }
+
+        if (chunk->SeekIdentifier(CK_STATESAVE_SCENERENDERSETTINGS)) {
+            m_BackgroundColor = chunk->ReadInt();
+            m_AmbientLightColor = chunk->ReadInt();
+
+            m_FogMode = (VXFOG_MODE)chunk->ReadDword();
+            m_FogColor = chunk->ReadDword();
+            m_FogStart = chunk->ReadFloat();
+            m_FogEnd = chunk->ReadFloat();
+            m_FogDensity = chunk->ReadFloat();
+            m_BackgroundTexture = chunk->ReadObjectID();
+            m_StartingCamera = chunk->ReadObjectID();
+
+            if (file && file->m_FileInfo.ProductBuild < 0x2010000) {
+                if (m_FogMode == VXFOG_EXP || m_FogMode == VXFOG_EXP2) {
+                    m_FogMode = VXFOG_LINEAR;
+                }
+            }
+        }
+    } else {
+        // Old data version is not supported yet
+        return CKERR_OBSOLETEVIRTOOLS;
+    }
+
+    const int scriptCount = GetScriptCount();
+    for (int i = 0; i < scriptCount; ++i) {
+        CKBehavior *beh = GetScript(i);
+        if (beh && !GetSceneObjectDesc(beh)) {
+            AddObjectDesc(beh);
+        }
+    }
+
+    return CK_OK;
 }
 
 void CKScene::PreDelete() {
-    CKBeObject::PreDelete();
+    for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End(); ++it) {
+        CKSceneObject *obj = (CKSceneObject *)m_Context->GetObject(it.GetKey());
+        if (obj) {
+            obj->RemoveSceneIn(this);
+        }
+        CKSceneObjectDesc &desc = *it;
+        desc.Clear();
+    }
 }
 
 void CKScene::CheckPostDeletion() {
     CKObject::CheckPostDeletion();
+    CheckSceneObjectList();
 }
 
 int CKScene::GetMemoryOccupation() {
-    return CKBeObject::GetMemoryOccupation();
+    int size = CKBeObject::GetMemoryOccupation() + 116;
+    size += m_SceneObjects.GetMemoryOccupation();
+    return size;
 }
 
 int CKScene::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
+    if (m_SceneObjects.IsHere(o->GetID()))
+        return TRUE;
     return CKBeObject::IsObjectUsed(o, cid);
 }
 
 CKERROR CKScene::PrepareDependencies(CKDependenciesContext &context) {
-    return CKBeObject::PrepareDependencies(context);
+    CKERROR err = CKBeObject::PrepareDependencies(context);
+    if (err != CK_OK)
+        return err;
+
+    if (context.IsInMode(CK_DEPENDENCIES_COPY)) {
+        context.GetClassDependencies(m_ClassID);
+        for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End(); ++it) {
+            CKSceneObjectDesc &desc = *it;
+            CKSceneObject *obj = (CKSceneObject *)m_Context->GetObject(it.GetKey());
+            if (obj) {
+                obj->PrepareDependencies(context);
+            }
+        }
+
+        CKTexture *bgTexture = GetBackgroundTexture();
+        if (bgTexture) {
+            bgTexture->PrepareDependencies(context);
+        }
+    }
+
+    return context.FinishPrepareDependencies(this, m_ClassID);;
 }
 
 CKERROR CKScene::RemapDependencies(CKDependenciesContext &context) {
-    return CKBeObject::RemapDependencies(context);
+    CKERROR err = CKBeObject::RemapDependencies(context);
+    if (err != CK_OK)
+        return err;
+    m_Level = context.RemapID(m_Level);
+    return CK_OK;
 }
 
 CKERROR CKScene::Copy(CKObject &o, CKDependenciesContext &context) {
-    return CKBeObject::Copy(o, context);
+    CKERROR err = CKBeObject::Copy(o, context);
+    if (err != CK_OK)
+        return err;
+
+    CKScene &scene = (CKScene &)o;
+    if (&m_SceneObjects != &scene.m_SceneObjects) {
+        m_SceneObjects = scene.m_SceneObjects;
+    }
+
+    m_EnvironmentSettings = scene.m_EnvironmentSettings;
+    m_BackgroundColor = scene.m_BackgroundColor;
+    m_BackgroundTexture = scene.m_BackgroundTexture;
+    m_StartingCamera = scene.m_StartingCamera;
+    m_AmbientLightColor = scene.m_AmbientLightColor;
+    m_FogMode = scene.m_FogMode;
+    m_FogStart = scene.m_FogStart;
+    m_FogEnd = scene.m_FogEnd;
+    m_FogColor = scene.m_FogColor;
+    m_FogDensity = scene.m_FogDensity;
+    return CK_OK;
 }
 
 CKSTRING CKScene::GetClassName() {
@@ -472,19 +931,42 @@ CKScene *CKScene::CreateInstance(CKContext *Context) {
     return new CKScene(Context, nullptr);
 }
 
-CKERROR CKScene::ComputeObjectList(CKObjectArray *array, CK_CLASSID cid, CKBOOL derived) {
-    return 0;
-}
-
-void CKScene::AddObject(CKSceneObject *o) {
-}
-
-void CKScene::RemoveObject(CKSceneObject *o) {
-}
-
-void CKScene::RemoveAllObjects() {
+void CKScene::CheckSceneObjectList() {
+    for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End();) {
+        CK_ID objID = it.GetKey();
+        CKObject *obj = m_Context->GetObject(objID);
+        if (!obj && objID != -4) {
+            CKSceneObjectDesc &desc = *it;
+            desc.Clear();
+            it = m_SceneObjects.Remove(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 CKSceneObjectDesc *CKScene::AddObjectDesc(CKSceneObject *o) {
-    return NULL;
+    if (!o)
+        return nullptr;
+
+    CKDWORD removeFlags = 0;
+    if (o->GetClassID() == CKCID_BEHAVIOR) {
+        CKBehavior *beh = (CKBehavior *)o;
+        if (beh->GetType() != CKBEHAVIORTYPE_SCRIPT)
+            return nullptr;
+
+        CKBeObject *owner = beh->GetOwner();
+        if (!owner)
+            return nullptr;
+        if (CKIsChildClassOf(owner, CKCID_LEVEL)) {
+            if (GetLevel() != m_Context->GetCurrentLevel())
+                removeFlags = CK_SCENEOBJECT_START_RESET;
+        }
+    }
+
+    CKSceneObjectDesc desc;
+    desc.Init(o);
+    desc.m_Flags &= ~removeFlags;
+    CKSODHashIt it = m_SceneObjects.InsertUnique(o->GetID(), desc);
+    return it;
 }

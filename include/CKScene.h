@@ -101,7 +101,11 @@ public:
     //-----------------------------------------------------------
     // Object List
     int GetObjectCount();
+    void AddObject(CKSceneObject *o);
+    void RemoveObject(CKSceneObject *o);
+    void RemoveAllObjects();
     const XObjectPointerArray &ComputeObjectList(CK_CLASSID cid, CKBOOL derived = TRUE);
+    CKERROR ComputeObjectList(CKObjectArray *array, CK_CLASSID cid, CKBOOL derived = TRUE);
 
     //-----------------------------------------------------------
     // Object Settings by index in list
@@ -210,10 +214,7 @@ public:
         return CKIsChildClassOf(iO, CKCID_SCENE) ? (CKScene *)iO : NULL;
     }
 
-    CKERROR ComputeObjectList(CKObjectArray *array, CK_CLASSID cid, CKBOOL derived = TRUE);
-    void AddObject(CKSceneObject *o);
-    void RemoveObject(CKSceneObject *o);
-    void RemoveAllObjects();
+    void CheckSceneObjectList();
 
     CKSceneObjectDesc *AddObjectDesc(CKSceneObject *o);
 
@@ -235,7 +236,7 @@ protected:
     int m_RemoveObjectCount;
     XObjectArray m_AddObjectList;
     XObjectArray m_RemoveObjectList;
-    XObjectArray m_ObjectList;
+    XObjectPointerArray m_ObjectList;
 };
 
 #endif // CKSCENE_H

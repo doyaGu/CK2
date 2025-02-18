@@ -125,6 +125,7 @@ public:
     void RemoveAttributeFromObject(CKBeObject *beo);
 
     void PatchRemapBeObjectFileChunk(CKStateChunk *chunk);
+    void PatchRemapBeObjectStateChunk(CKStateChunk *chunk);
 
     CKAttributeManager(CKContext *Context);
 

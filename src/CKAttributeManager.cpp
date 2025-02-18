@@ -139,6 +139,12 @@ void CKAttributeManager::PatchRemapBeObjectFileChunk(CKStateChunk *chunk) {
     }
 }
 
+void CKAttributeManager::PatchRemapBeObjectStateChunk(CKStateChunk *chunk) {
+    if (m_ConversionTable && m_ConversionTableCount > 0) {
+        chunk->AttributePatch(0, m_ConversionTable, m_ConversionTableCount);
+    }
+}
+
 CKAttributeManager::CKAttributeManager(CKContext *Context): CKBaseManager(Context, ATTRIBUTE_MANAGER_GUID, "Attribute Manager") {
     m_AttributeDescCount = 0;
     m_AttributeDescs = nullptr;
