@@ -534,6 +534,10 @@ CKLevel *CKScene::GetLevel() {
     return (CKLevel *)m_Context->GetObject(m_Level);
 }
 
+void CKScene::SetLevel(CKLevel *level) {
+    m_Level = level ? level->GetID() : 0;
+}
+
 CKERROR CKScene::Merge(CKScene *mergedScene, CKLevel *fromLevel) {
     if (!mergedScene)
         return CKERR_INVALIDPARAMETER;

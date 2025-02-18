@@ -169,6 +169,7 @@ public:
     //-----------------------------------------------------------
     // Level functions
     CKLevel *GetLevel();
+    void SetLevel(CKLevel *level);
 
     //-----------------------------------------------------------
     // Merge functions
