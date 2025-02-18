@@ -883,6 +883,28 @@ void CKContext::DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies
 
 }
 
+VxMemoryPool *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
+    int newIndex = m_MemoryPoolMask.GetUnsetBitPosition(0);
+    while (m_MemoryPools.Size() < index) {
+        m_MemoryPools.PushBack(new VxMemoryPool());
+    }
+
+    VxMemoryPool* pool = m_MemoryPools[newIndex];
+    if (pool) {
+        pool->Allocate(count);
+        m_MemoryPoolMask.Set(newIndex);
+        index = newIndex;
+    } else {
+        index = -1;
+    }
+    return pool;
+}
+
+void CKContext::ReleaseMemoryPoolGlobalIndex(int index) {
+    if (index >= 0)
+        m_MemoryPoolMask.Unset(index);
+}
+
 CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags)
     : m_DependenciesContext(this) {
     field_498 = 0;

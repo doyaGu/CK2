@@ -263,6 +263,9 @@ public:
     void BuildSortedLists();
     void DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies *Dependencies, CKDWORD Flags);
 
+    VxMemoryPool *GetMemoryPoolGlobalIndex(int count, int &index);
+    void ReleaseMemoryPoolGlobalIndex(int index);
+
     CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags);
 
     XManagerHashTable m_ManagerTable;
@@ -371,7 +374,7 @@ public:
     CKDWORD m_RenameDialogOption;
     int m_CompressionLevel;
     XArray<VxMemoryPool *> m_MemoryPools;
-    XBitArray m_BitArray;
+    XBitArray m_MemoryPoolMask;
     XObjectPointerArray m_GlobalAttributeList;
     XArray<CKGUID> field_488;
     void *field_494;

@@ -10,7 +10,7 @@ public:
     CKMemoryPool(CKContext *Context, int ByteCount = 0);
     ~CKMemoryPool();
 
-    //CKObject &operator=(const CKObject &);
+    CKMemoryPool &operator=(const CKMemoryPool &rhs);
 
     VxMemoryPool *Mem() const;
 
