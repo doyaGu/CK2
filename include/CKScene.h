@@ -112,6 +112,9 @@ public:
     void Activate(CKSceneObject *o, CKBOOL Reset);
     void DeActivate(CKSceneObject *o);
 
+    void ActivateBeObject(CKBeObject *beo, CKBOOL activate, CKBOOL reset);
+    void ActivateScript(CKBehavior *beh, CKBOOL activate, CKBOOL reset);
+
     //-----------------------------------------------------------
     // Object Settings by object
     void SetObjectFlags(CKSceneObject *o, CK_SCENEOBJECT_FLAGS flags);
@@ -123,7 +126,7 @@ public:
 
     //-----------------------------------------------------------
     // Render Settings
-    void ApplyEnvironmentSettings(XObjectPointerArray *renderlist = NULL);
+    void ApplyEnvironmentSettings(XObjectPointerArray *renderContexts = NULL);
     void UseEnvironmentSettings(CKBOOL use = TRUE);
     CKBOOL EnvironmentSettings();
 
@@ -210,6 +213,9 @@ public:
     CKERROR ComputeObjectList(CKObjectArray *array, CK_CLASSID cid, CKBOOL derived = TRUE);
     void AddObject(CKSceneObject *o);
     void RemoveObject(CKSceneObject *o);
+    void RemoveAllObjects();
+
+    CKSceneObjectDesc *AddObjectDesc(CKSceneObject *o);
 
 protected:
     int m_SceneGlobalIndex;
@@ -227,9 +233,9 @@ protected:
     float m_FogDensity;
     int m_AddObjectCount;
     int m_RemoveObjectCount;
-    XObjectPointerArray m_AddObjectList;
-    XObjectPointerArray m_RemoveObjectList;
-    XObjectPointerArray m_ObjectList;
+    XObjectArray m_AddObjectList;
+    XObjectArray m_RemoveObjectList;
+    XObjectArray m_ObjectList;
 };
 
 #endif // CKSCENE_H
