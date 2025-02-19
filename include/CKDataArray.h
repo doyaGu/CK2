@@ -149,6 +149,8 @@ public:
     void SwapRows(int i1, int i2);
     // Clear the entire array
     void Clear(CKBOOL Params = TRUE);
+    // Delete the data
+    void DataDelete(CKBOOL Params = TRUE);
 
     ///////////////////////////
     // Algorithm
@@ -224,6 +226,12 @@ public:
     {
         return CKIsChildClassOf(iO, CKCID_DATAARRAY) ? (CKDataArray *)iO : NULL;
     }
+
+    CKFormatArray m_FormatArray;
+    CKDataMatrix m_DataMatrix;
+    int m_KeyColumn;
+    CKBOOL m_Order;
+    CKDWORD m_ColumnIndex;
 };
 
 #endif // CKDATAARRAY_H

@@ -27,7 +27,9 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE type, CKGUID paramguid) {
 }
 
 CK_ARRAYTYPE CKDataArray::GetColumnType(int c) {
-    return CKARRAYTYPE_OBJECT;
+    if (c < 0 || c >= m_FormatArray.Size())
+        return CK_ARRAYTYPE(0);
+    return m_FormatArray[c]->m_Type;
 }
 
 CKGUID CKDataArray::GetColumnParameterGuid(int c) {
@@ -35,15 +37,17 @@ CKGUID CKDataArray::GetColumnParameterGuid(int c) {
 }
 
 int CKDataArray::GetKeyColumn() {
-    return 0;
+    return m_KeyColumn;
 }
 
 void CKDataArray::SetKeyColumn(int c) {
-
+    if (c < 0 || c >= m_FormatArray.Size())
+        return;
+    m_KeyColumn = c;
 }
 
 int CKDataArray::GetColumnCount() {
-    return 0;
+    return m_FormatArray.Size();
 }
 
 CKDWORD *CKDataArray::GetElement(int i, int c) {
@@ -99,11 +103,13 @@ CKBOOL CKDataArray::WriteElements(CKSTRING string, int column, int number, CKBOO
 }
 
 int CKDataArray::GetRowCount() {
-    return 0;
+    return m_DataMatrix.Size();
 }
 
 CKDataRow *CKDataArray::GetRow(int n) {
-    return nullptr;
+    if (n < 0 || n >= m_DataMatrix.Size())
+        return nullptr;
+    return m_DataMatrix[n];
 }
 
 void CKDataArray::AddRow() {
@@ -140,6 +146,9 @@ void CKDataArray::SwapRows(int i1, int i2) {
 
 void CKDataArray::Clear(CKBOOL Params) {
 
+}
+
+void CKDataArray::DataDelete(CKBOOL Params) {
 }
 
 CKBOOL CKDataArray::GetHighest(int c, int &row) {
@@ -195,11 +204,13 @@ void CKDataArray::CreateGroup(int mc, CK_COMPOPERATOR op, CKDWORD key, int size,
 }
 
 CKDataArray::CKDataArray(CKContext *Context, CKSTRING Name) : CKBeObject(Context, Name) {
-
+    m_KeyColumn = -1;
+    m_Order = FALSE;
+    m_ColumnIndex = 0;
 }
 
 CKDataArray::~CKDataArray() {
-
+    DataDelete();
 }
 
 CK_CLASSID CKDataArray::GetClassID() {
@@ -250,22 +261,33 @@ CKERROR CKDataArray::Copy(CKObject &o, CKDependenciesContext &context) {
     return CKBeObject::Copy(o, context);
 }
 
-CKSTRING CKDataArray::GetClassNameA() {
-    return nullptr;
+CKSTRING CKDataArray::GetClassName() {
+    return "Array";
 }
 
 int CKDataArray::GetDependenciesCount(int mode) {
-    return 0;
+    if (mode == 1) {
+        return 2;
+    }
+    return mode == 2 ? 1 : 0;
 }
 
 CKSTRING CKDataArray::GetDependencies(int i, int mode) {
+    if (i == 0) {
+        return "Objects";
+    }
+    if (mode == 1 && i == 1) {
+        return "Data";
+    }
     return nullptr;
 }
 
 void CKDataArray::Register() {
-
+    CKClassNeedNotificationFrom(m_ClassID, CKObject::m_ClassID);
+    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_DATAARRAY);
+    CKClassRegisterDefaultDependencies(m_ClassID, 2, 1);
 }
 
 CKDataArray *CKDataArray::CreateInstance(CKContext *Context) {
-    return nullptr;
+    return new CKDataArray(Context);
 }
