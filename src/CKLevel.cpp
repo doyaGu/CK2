@@ -3,7 +3,11 @@
 #include "CKFile.h"
 #include "CKScene.h"
 #include "CKPlace.h"
+#include "CKCamera.h"
 #include "CKObjectArray.h"
+#include "CKRenderContext.h"
+#include "CKRenderManager.h"
+#include "CKAttributeManager.h"
 
 CK_CLASSID CKLevel::m_ClassID = CKCID_LEVEL;
 
@@ -104,11 +108,62 @@ CKERROR CKLevel::SetNextActiveScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS
 }
 
 CKERROR CKLevel::LaunchScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS Active, CK_SCENEOBJECTRESET_FLAGS Reset) {
-    return 0;
+    CKScene *sceneToLaunch = scene ? scene :(CKScene *)m_Context->GetObject(m_DefaultScene);
+    if (!sceneToLaunch)
+        return CKERR_INVALIDPARAMETER;
+
+    CKRenderContext *renderContext = GetRenderContext(0);
+    CKCamera *previousCamera = renderContext ? renderContext->GetAttachedCamera() : nullptr;
+    CKScene *previousScene = GetCurrentScene();
+
+    m_Context->ExecuteManagersPreLaunchScene(previousScene, sceneToLaunch);
+    m_Context->m_BehaviorManager->RemoveAllObjects();
+
+    if (previousScene)
+        previousScene->Stop(m_RenderContextList, previousScene != sceneToLaunch);
+
+    m_NextActiveScene = 0;
+    m_CurrentScene = sceneToLaunch ? sceneToLaunch->m_ID : 0;
+
+    if (GetScriptCount() > 0)
+        m_Context->m_BehaviorManager->AddObject(this);
+
+    if (sceneToLaunch)
+        sceneToLaunch->Init(m_RenderContextList, Active, Reset);
+
+    m_Context->m_AttributeManager->NewActiveScene(sceneToLaunch);
+
+    if (m_Context->m_RenderManager)
+        m_Context->m_RenderManager->FlushTextures();
+
+    m_Context->m_BehaviorContext.CurrentScene = sceneToLaunch;
+    m_Context->m_BehaviorContext.PreviousScene = previousScene;
+
+    m_Context->WarnAllBehaviors(CKM_BEHAVIORNEWSCENE);
+
+    if (renderContext && !renderContext->GetAttachedCamera() && sceneToLaunch)
+    {
+        CKCamera* startingCamera = sceneToLaunch->GetStartingCamera();
+        if (startingCamera)
+        {
+            renderContext->AttachViewpointToCamera(startingCamera);
+        }
+        else if (previousCamera && previousCamera->IsInScene(sceneToLaunch))
+        {
+            renderContext->AttachViewpointToCamera(previousCamera);
+        }
+    }
+
+    m_Context->ExecuteManagersPostLaunchScene(previousScene, sceneToLaunch);
+
+    if (sceneToLaunch->EnvironmentSettings())
+        sceneToLaunch->ApplyEnvironmentSettings(&m_RenderContextList);
+
+    return CK_OK;
 }
 
 CKScene *CKLevel::GetCurrentScene() {
-    return (CKScene *) m_Context->GetObject(m_CurrentScene);
+    return (CKScene *)m_Context->GetObject(m_CurrentScene);
 }
 
 void CKLevel::AddRenderContext(CKRenderContext *dev, CKBOOL Main) {
@@ -236,7 +291,7 @@ void CKLevel::Register() {
 }
 
 CKLevel *CKLevel::CreateInstance(CKContext *Context) {
-    return new CKLevel(Context, nullptr);
+    return new CKLevel(Context);
 }
 
 void CKLevel::AddToScene(CKScene *scene, CKBOOL dependencies) {
@@ -260,9 +315,19 @@ void CKLevel::CheckForNextScene() {
 }
 
 void CKLevel::CreateLevelScene() {
-
+    if (!m_Context->GetObject(m_DefaultScene)) {
+        CKScene *scene = (CKScene *)m_Context->CreateObject(CKCID_SCENE, m_Name, CK_OBJECTCREATION_Dynamic(m_Context->IsInDynamicCreationMode()), nullptr);
+        if (scene) {
+            scene->SetLevel(this);
+            scene->AddObjectToScene(this, TRUE);
+            m_DefaultScene = scene->GetID();
+            m_CurrentScene = m_DefaultScene;
+        }
+    }
 }
 
 void CKLevel::PreProcess() {
-
+    CKScene *scene = (CKScene *)m_Context->GetObject(m_NextActiveScene);
+    if (scene)
+        LaunchScene(scene, m_NextSceneActivityFlags, m_NextSceneResetFlags);
 }
