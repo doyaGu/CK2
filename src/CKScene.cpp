@@ -47,7 +47,7 @@ CKBOOL CKScene::IsObjectHere(CKObject *o) {
 void CKScene::BeginAddSequence(CKBOOL Begin) {
     if (Begin) {
         if (m_AddObjectCount == 0) {
-            m_AddObjectList.Resize(0);
+            m_AddObjectList.Clear();
         }
         ++m_AddObjectCount;
     } else if (--m_AddObjectCount <= 0) {
@@ -56,7 +56,7 @@ void CKScene::BeginAddSequence(CKBOOL Begin) {
             m_Context->ExecuteManagersOnSequenceAddedToScene(this, m_AddObjectList.Begin(), objectCount);
         }
 
-        m_AddObjectList.Resize(0);
+        m_AddObjectList.Clear();
         m_AddObjectCount = 0;
     }
 }
@@ -64,7 +64,7 @@ void CKScene::BeginAddSequence(CKBOOL Begin) {
 void CKScene::BeginRemoveSequence(CKBOOL Begin) {
     if (Begin) {
         if (m_RemoveObjectCount == 0) {
-            m_RemoveObjectList.Resize(0);
+            m_RemoveObjectList.Clear();
         }
         ++m_RemoveObjectCount;
     } else if (--m_RemoveObjectCount <= 0) {
@@ -73,7 +73,7 @@ void CKScene::BeginRemoveSequence(CKBOOL Begin) {
             m_Context->ExecuteManagersOnSequenceRemovedFromScene(this, m_RemoveObjectList.Begin(), objectCount);
         }
 
-        m_RemoveObjectList.Resize(0);
+        m_RemoveObjectList.Clear();
         m_RemoveObjectCount = 0;
     }
 }

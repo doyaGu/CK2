@@ -680,7 +680,7 @@ CKERROR CKFile::StartSave(CKSTRING filename, CKDWORD Flags) {
 
     m_Flags = Flags;
     m_SceneSaved = TRUE;
-    m_FileObjects.Resize(0);
+    m_FileObjects.Clear();
     m_IndexByClassId.Resize(g_MaxClassID);
     delete[] m_FileName;
     if (!filename) {
