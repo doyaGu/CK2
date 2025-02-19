@@ -585,6 +585,12 @@ CKERROR CKScene::Merge(CKScene *mergedScene, CKLevel *fromLevel) {
     return CK_OK;
 }
 
+void CKScene::Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_FLAGS activityFlags, CK_SCENEOBJECTRESET_FLAGS resetFlags) {
+}
+
+void CKScene::Stop(XObjectPointerArray &renderContexts, CKBOOL reset) {
+}
+
 CKScene::CKScene(CKContext *Context, CKSTRING name) : CKBeObject(Context, name) {
     m_Level = 0;
     m_Priority = 30000;

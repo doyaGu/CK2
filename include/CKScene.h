@@ -173,10 +173,12 @@ public:
 
     //-----------------------------------------------------------
     // Merge functions
-
     CKERROR Merge(CKScene *mergedScene, CKLevel *fromLevel = NULL);
 
     //-------------------------------------------------------------------
+
+    void Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_FLAGS activityFlags, CK_SCENEOBJECTRESET_FLAGS resetFlags);
+    void Stop(XObjectPointerArray &renderContexts, CKBOOL reset = TRUE);
 
     //-----------------------------------------------------------
     // Virtual functions
