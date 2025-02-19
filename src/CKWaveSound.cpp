@@ -12,7 +12,7 @@ CKERROR CKWaveSound::SetSoundFileName(const CKSTRING FileName) {
 }
 
 CKSTRING CKWaveSound::GetSoundFileName() {
-    return nullptr;
+    return m_FileName;
 }
 
 int CKWaveSound::GetSoundLength() {

@@ -259,7 +259,7 @@ typedef enum CK_STATESAVEFLAGS_WAVSOUND
 } CK_STATESAVEFLAGS_WAVSOUND;
 
 //------------------------------------------------
-// Wave Sound
+// Midi Sound
 typedef enum CK_STATESAVEFLAGS_MIDISOUND
 {
     CK_STATESAVE_MIDISOUNDFILE      = 0x00100000,   // Save sound filename
