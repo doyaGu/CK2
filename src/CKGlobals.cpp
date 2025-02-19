@@ -2,6 +2,8 @@
 
 #include <time.h>
 
+#include <miniz.h>
+
 #include "VxMath.h"
 #include "CKContext.h"
 #include "CKPluginManager.h"
@@ -25,6 +27,7 @@
 #include "CKWaveSound.h"
 #include "CKMidiSound.h"
 #include "CKObjectDeclaration.h"
+#include "CKBehaviorPrototype.h"
 
 extern INSTANCE_HANDLE g_CKModule;
 
@@ -32,6 +35,10 @@ XString g_PluginPath;
 XString g_StartPath;
 XArray<CKContext*> g_Contextes;
 XClassInfoArray g_CKClassInfo;
+CKDependencies g_DefaultCopyDependencies;
+CKDependencies g_DefaultReplaceDependencies;
+CKDependencies g_DefaultDeleteDependencies;
+CKDependencies g_DefaultSaveDependencies;
 CKStats g_MainStats;
 int g_MaxClassID = 55;
 ProcessorsType g_TheProcessor;
@@ -105,15 +112,32 @@ CKERROR CKStartUp() {
 }
 
 CKERROR CKShutdown() {
-    return 0;
+    for (auto it = g_PrototypeDeclarationList.Begin(); it != g_PrototypeDeclarationList.End(); ++it) {
+        CKObjectDeclaration *decl = *it;
+        if (decl) {
+            if (decl->m_Proto)
+                delete decl->m_Proto;
+            delete decl;
+        }
+    }
+
+    g_ThePluginManager.ReleaseAllPlugins();
+    g_StartPath = "";
+    g_PluginPath = "";
+    g_CKClassInfo.Clear();
+    g_Contextes.Clear();
+    g_PrototypeDeclarationList.Clear();
+    return CK_OK;
 }
 
 CKContext *GetCKContext(int pos) {
-    return nullptr;
+    if (pos < 0 || pos >= g_Contextes.Size())
+        return nullptr;
+    return g_Contextes[pos];
 }
 
 CKObject *CKGetObject(CKContext *iCtx, CK_ID iID) {
-    return nullptr;
+    return iCtx->GetObject(iID);
 }
 
 CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) {
@@ -130,28 +154,129 @@ CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine
     return CK_OK;
 }
 
-CKERROR CKCloseContext(CKContext *) {
-    return 0;
+CKERROR CKCloseContext(CKContext *ctx) {
+    if (!ctx)
+        return CKERR_INVALIDPARAMETER;
+    g_Contextes.Remove(ctx);
+    CKERROR err = ctx->ClearAll();
+    delete ctx;
+    return err;
 }
 
 CKSTRING CKGetStartPath() {
-    return nullptr;
+    return g_StartPath.Str();
 }
 
 CKSTRING CKGetPluginsPath() {
-    return nullptr;
+    return g_PluginPath.Str();
 }
 
 void CKDestroyObject(CKObject *o, CKDWORD Flags, CKDependencies *dep) {
-
+    if (o)
+        o->m_Context->DestroyObject(o, Flags, dep);
 }
 
 CKDWORD CKGetVersion() {
-    return 0;
+    return CKVERSION;
+}
+
+void ComputeParentsTable(CK_CLASSID cid) {
+    CKClassDesc &info = g_CKClassInfo[cid];
+    if (info.Done)
+        return;
+
+    ComputeParentsTable(info.Parent);
+
+    // TODO: Maybe need fix
+    CKClassDesc &parentInfo = g_CKClassInfo[info.Parent];
+    info.Parents = parentInfo.Parents;
+    info.Parents.Set(cid);
+    info.DerivationLevel = parentInfo.DerivationLevel + 1;
+    info.Done = TRUE;
+}
+
+void ComputeParentsNotifyTable(CK_CLASSID cid) {
+    CKClassDesc &info = g_CKClassInfo[cid];
+    if (info.Done)
+        return;
+
+    ComputeParentsNotifyTable(info.Parent);
+
+    // TODO: Maybe need fix
+    CKClassDesc &parentInfo = g_CKClassInfo[info.Parent];
+    info.CommonToBeNotify = info.ToBeNotify;
+    info.CommonToBeNotify.Or(parentInfo.CommonToBeNotify);
+    info.Done = TRUE;
 }
 
 void CKBuildClassHierarchyTable() {
+    const int classCount = g_CKClassInfo.Size();
 
+    // 1. Initialize class information structures
+    for(int i = 0; i < classCount; ++i) {
+        CKClassDesc& info = g_CKClassInfo[i];
+        info.Done = FALSE;
+        info.CommonToBeNotify.Clear();
+        info.ToBeNotify.Clear();
+        info.Parameter = CKGUID();
+        info.Parents.Clear();
+        info.Children.Clear();
+    }
+
+    // 2. Compute parent-child relationships
+    for(int i = 0; i < classCount; ++i) {
+        ComputeParentsTable(i);
+    }
+
+    // 3. Build inverse child relationships
+    for(CK_CLASSID cls = 0; cls < classCount; ++cls) {
+        g_CKClassInfo[cls].Children.Set(cls);
+
+        for(CK_CLASSID parent = 0; parent < classCount; ++parent) {
+            if(g_CKClassInfo[cls].Parents.IsSet(parent)) {
+                g_CKClassInfo[parent].Children.Set(cls);
+            }
+        }
+    }
+
+    // 4. Call registration functions
+    for(CK_CLASSID i = 0; i < classCount; ++i) {
+        if(g_CKClassInfo[i].RegisterFct) {
+            g_CKClassInfo[i].RegisterFct();
+        }
+    }
+
+    // 5. Initialize global dependencies
+    g_DefaultCopyDependencies.Resize(classCount);
+    g_DefaultCopyDependencies.m_Flags = CK_DEPENDENCIES_CUSTOM;
+
+    g_DefaultDeleteDependencies.Resize(classCount);
+    g_DefaultDeleteDependencies.m_Flags = CK_DEPENDENCIES_NONE;
+
+    g_DefaultReplaceDependencies.Resize(classCount);
+    g_DefaultSaveDependencies.Resize(classCount);
+
+    // 6. Copy dependency information
+    for(CK_CLASSID i = 0; i < classCount; ++i) {
+        g_DefaultCopyDependencies[i] = g_CKClassInfo[i].DefaultCopyDependencies;
+        g_DefaultDeleteDependencies[i] = g_CKClassInfo[i].DefaultDeleteDependencies;
+        g_DefaultReplaceDependencies[i] = g_CKClassInfo[i].DefaultReplaceDependencies;
+        g_DefaultSaveDependencies[i] = g_CKClassInfo[i].DefaultSaveDependencies;
+    }
+
+    // 7. Compute notification tables
+    for(CK_CLASSID i = 0; i < classCount; ++i) {
+        ComputeParentsNotifyTable(i);
+    }
+
+    // 8. Build common notification lists
+    for(CK_CLASSID cls = 0; cls < classCount; ++cls) {
+        for(CK_CLASSID target = 0; target < classCount; ++target) {
+            if(g_CKClassInfo[cls].CommonToBeNotify.IsSet(target)) {
+                g_CKClassInfo[cls].ToNotify.Insert(g_CKClassInfo[cls].Parent, target);
+            }
+        }
+    }
 }
 
 CKPluginManager *CKGetPluginManager() {
@@ -163,19 +288,24 @@ int CKGetPrototypeDeclarationCount() {
 }
 
 CKObjectDeclaration *CKGetPrototypeDeclaration(int n) {
+    int i = 0;
+    for (auto it = g_PrototypeDeclarationList.Begin(); it != g_PrototypeDeclarationList.End(); ++it) {
+        if (i++ == n)
+            return *it;
+    }
     return nullptr;
 }
 
 XObjDeclHashTableIt CKGetPrototypeDeclarationStartIterator() {
-    return XObjDeclHashTableIt();
+    return g_PrototypeDeclarationList.Begin();
 }
 
 XObjDeclHashTableIt CKGetPrototypeDeclarationEndIterator() {
-    return XObjDeclHashTableIt();
+    return g_PrototypeDeclarationList.End();
 }
 
 CKObjectDeclaration *CKGetObjectDeclarationFromGuid(CKGUID guid) {
-    return nullptr;
+    return g_PrototypeDeclarationList[guid];
 }
 
 CKBehaviorPrototype *CKGetPrototypeFromGuid(CKGUID guid) {
@@ -191,63 +321,104 @@ CKObjectDeclaration *CreateCKObjectDeclaration(CKSTRING Name) {
 }
 
 CKBehaviorPrototype *CreateCKBehaviorPrototype(CKSTRING Name) {
-    return nullptr;
+    return new CKBehaviorPrototype(Name);
 }
 
 CKBehaviorPrototype *CreateCKBehaviorPrototypeRunTime(CKSTRING Name) {
-    return nullptr;
+    return new CKBehaviorPrototype(Name);
 }
 
 int CKGetClassCount() {
-    return 0;
+    return g_CKClassInfo.Size();
 }
 
 CKClassDesc *CKGetClassDesc(CK_CLASSID cid) {
-    return nullptr;
+    return &g_CKClassInfo[cid];
 }
 
 CKSTRING CKClassIDToString(CK_CLASSID cid) {
-    return nullptr;
+    if (cid >= 0 && cid < g_CKClassInfo.Size()) {
+        CKSTRING name = g_CKClassInfo[cid].NameFct();
+        if (name)
+            return name;
+    }
+    return "Invalid Class Identifier";
 }
 
 CK_CLASSID CKStringToClassID(CKSTRING classname) {
+    if (!classname)
+        return 0;
+
+    for (CK_CLASSID i = 0; i < g_CKClassInfo.Size(); ++i) {
+        CKSTRING name = g_CKClassInfo[i].NameFct();
+        if (name && !strcmp(name, classname))
+            return i;
+    }
+
     return 0;
 }
 
 CKBOOL CKIsChildClassOf(CK_CLASSID child, CK_CLASSID parent) {
-    return 0;
+    if (child >= 0 && child < g_CKClassInfo.Size() && parent >= 0 && parent < g_CKClassInfo.Size()) {
+        return g_CKClassInfo[child].Parents.IsSet(parent);
+    }
+    return FALSE;
 }
 
 CKBOOL CKIsChildClassOf(CKObject *obj, CK_CLASSID parent) {
-    return 0;
+    if (obj)
+        return g_CKClassInfo[obj->GetClassID()].Parents.IsSet(parent);
+    return FALSE;
 }
 
 CK_CLASSID CKGetParentClassID(CK_CLASSID child) {
+    if (child >= 0 && child < g_CKClassInfo.Size())
+        return g_CKClassInfo[child].Parent;
     return 0;
 }
 
 CK_CLASSID CKGetParentClassID(CKObject *obj) {
+    if (obj)
+        return g_CKClassInfo[obj->GetClassID()].Parent;
     return 0;
 }
 
+// TODO: Maybe need fix
 CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2) {
+    while (cid1 != 0 && cid2 != 0) {
+        if (CKIsChildClassOf(cid1, cid2))
+            return cid2;
+        if (CKIsChildClassOf(cid2, cid1))
+            return cid1;
+
+        cid1 = g_CKClassInfo[cid1].Parent;
+        cid2 = g_CKClassInfo[cid2].Parent;
+    }
+
     return 0;
 }
 
 CKObjectArray *CreateCKObjectArray() {
-    return nullptr;
+    return new CKObjectArray();
 }
 
 void DeleteCKObjectArray(CKObjectArray *obj) {
-
+    if (obj) {
+        obj->Clear();
+        delete obj;
+    }
 }
 
 CKStateChunk *CKSaveObjectState(CKObject *obj, CKDWORD Flags) {
-    return nullptr;
+    if (!obj)
+        return nullptr;
+    obj->Save(NULL, Flags);
 }
 
 CKERROR CKReadObjectState(CKObject *obj, CKStateChunk *chunk) {
-    return 0;
+    if (!obj || !chunk)
+        return CKERR_INVALIDPARAMETER;
+    return obj->Load(chunk, NULL);
 }
 
 BITMAP_HANDLE CKLoadBitmap(CKSTRING filename) {
@@ -263,11 +434,11 @@ CKBOOL CKSaveBitmap(CKSTRING filename, VxImageDescEx &desc) {
 }
 
 void CKConvertEndianArray32(void *buf, int DwordCount) {
-
+    // EMPTY
 }
 
 void CKConvertEndianArray16(void *buf, int DwordCount) {
-
+    // EMPTY
 }
 
 CKDWORD CKConvertEndian32(CKDWORD dw) {
@@ -279,15 +450,28 @@ CKWORD CKConvertEndian16(CKWORD w) {
 }
 
 CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC) {
-    return 0;
+    return adler32(PreviousCRC, (const Bytef *)data, size);
 }
 
-char *CKPackData(char *Data, int size, int &NewSize, int compressionlevel) {
+char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel) {
+    char *buffer = new char[size];
+    if (buffer && compress2((Bytef *)buffer, (uLongf *)&NewSize, (const Bytef *)Data, size, compressionLevel) == Z_OK) {
+        char *buffer2 = new char[NewSize];
+        if (buffer2) {
+            memcpy(buffer2, buffer, NewSize);
+            delete[] buffer;
+            return buffer2;
+        }
+    }
     return nullptr;
 }
 
 char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize) {
-    return nullptr;
+    char *buffer = new char[DestSize];
+    if (buffer && uncompress((Bytef *)buffer, (uLongf *)&DestSize, (const Bytef *)SrcBuffer, SrcSize) == Z_OK){
+        return buffer;
+    }
+    return NULL;
 }
 
 CKSTRING CKStrdup(CKSTRING string) {
@@ -343,7 +527,7 @@ CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode) {
 }
 
 void CKDeletePointer(void *ptr) {
-    //VxDelete(ptr);
+    delete ptr;
 }
 
 CKERROR CKCopyAllAttributes(CKBeObject *Src, CKBeObject *Dest) {

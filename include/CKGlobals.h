@@ -113,7 +113,7 @@ DLL_EXPORT CKWORD CKConvertEndian16(CKWORD w);
 // Compression utilities
 
 DLL_EXPORT CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC = 0);
-DLL_EXPORT char *CKPackData(char *Data, int size, int &NewSize, int compressionlevel);
+DLL_EXPORT char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel);
 DLL_EXPORT char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize);
 
 //-------------------------------------------------
