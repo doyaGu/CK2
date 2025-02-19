@@ -313,6 +313,7 @@ CKERROR CKGroup::Copy(CKObject &o, CKDependenciesContext &context) {
     if (err != CK_OK)
         return err;
     m_ObjectArray = ((CKGroup &)o).m_ObjectArray;
+    return CK_OK;
 }
 
 CKSTRING CKGroup::GetClassName() {
