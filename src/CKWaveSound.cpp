@@ -194,11 +194,28 @@ int CKWaveSound::GetPlayedMs() {
 }
 
 CKERROR CKWaveSound::Create(CKBOOL FileStreaming, CKSTRING Filename) {
-    return 0;
+    if (FileStreaming) {
+        m_State |= CK_WAVESOUND_FILESTREAMED;
+    } else {
+        m_State &= ~CK_WAVESOUND_FILESTREAMED;
+    }
+    SetSoundFileName(Filename);
+    SaveSettings();
+    return Recreate();
 }
 
 CKERROR CKWaveSound::Create(CK_WAVESOUND_TYPE Type, CKWaveFormat *Format, int Size) {
-    return 0;
+    if (!Format || !m_SoundManager)
+        return CKERR_INVALIDPARAMETER;
+    Release();
+
+    m_Source = m_SoundManager->CreateSource(Type, Format, Size, GetFileStreaming());
+    if (!m_Source)
+        return CKERR_INVALIDPARAMETER;
+
+    m_BufferSize = Size;
+    m_WaveFormat = *Format;
+    return CK_OK;
 }
 
 CKERROR CKWaveSound::SetReader(CKSoundReader *Reader) {
@@ -246,11 +263,29 @@ void CKWaveSound::InternalStop() {
 }
 
 CKWaveSound::CKWaveSound(CKContext *Context, CKSTRING Name): CKSound(Context, Name) {
-
+    m_Source = nullptr;
+    m_FinalGain = 1.0;
+    m_FadeTime = 0.0;
+    m_CurrentTime = 0.0;
+    m_State = 1;
+    m_Position = VxVector();
+    m_OldPosition = VxVector();
+    m_OldPosition = VxVector(0.0f, 0.0f, 1.0f);
+    m_BufferPos = -1;
+    m_SoundReader = nullptr;
+    m_DataRead = 0;
+    m_DataPlayed = 0;
+    m_OldCursorPos = 0;
+    m_DataToRead = 0;
+    m_BufferSize = 0;
+    m_AttachedObject = 0;
+    m_Duration = 0;
+    memset(&m_WaveFormat, 0, sizeof(m_WaveFormat));
+    m_SoundManager = (CKSoundManager *)m_Context->GetManagerByGuid(SOUND_MANAGER_GUID);
 }
 
 CKWaveSound::~CKWaveSound() {
-
+    Release();
 }
 
 CK_CLASSID CKWaveSound::GetClassID() {
@@ -281,24 +316,25 @@ int CKWaveSound::GetMemoryOccupation() {
     return CKSound::GetMemoryOccupation();
 }
 
-CKSTRING CKWaveSound::GetClassNameA() {
-    return nullptr;
+CKSTRING CKWaveSound::GetClassName() {
+    return "Wave Sound";
 }
 
 int CKWaveSound::GetDependenciesCount(int Mode) {
-    return 0;
+    return CKObject::GetDependenciesCount(Mode);
 }
 
 CKSTRING CKWaveSound::GetDependencies(int i, int Mode) {
-    return nullptr;
+    return CKObject::GetDependencies(i, Mode);
 }
 
 void CKWaveSound::Register() {
-
+    CKClassNeedNotificationFrom(m_ClassID, CKBeObject::m_ClassID);
+    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_WAVESOUND);
 }
 
 CKWaveSound *CKWaveSound::CreateInstance(CKContext *Context) {
-    return nullptr;
+    return new CKWaveSound(Context);
 }
 
 int CKWaveSound::GetDistanceFromCursor() {
