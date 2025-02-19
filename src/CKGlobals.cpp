@@ -412,7 +412,7 @@ void DeleteCKObjectArray(CKObjectArray *obj) {
 CKStateChunk *CKSaveObjectState(CKObject *obj, CKDWORD Flags) {
     if (!obj)
         return nullptr;
-    obj->Save(NULL, Flags);
+    return obj->Save(NULL, Flags);
 }
 
 CKERROR CKReadObjectState(CKObject *obj, CKStateChunk *chunk) {
