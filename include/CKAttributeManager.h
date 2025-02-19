@@ -5,9 +5,6 @@
 #include "CKBaseManager.h"
 #include "XObjectArray.h"
 
-struct CKAttributeDesc;
-struct CKAttributeCategoryDesc;
-
 /****************************************************************
 Summary: Function called when an attribute is set or removed on an object.
 
@@ -18,6 +15,43 @@ Remarks:
 See Also:CKAttributeManager::SetAttributeCallbackFunction,Using Attributes
 *****************************************************/
 typedef void (*CKATTRIBUTECALLBACK)(CKAttributeType AttribType, CKBOOL Set, CKBeObject *obj, void *arg);
+
+struct CKAttributeDesc
+{
+    CKDWORD field_0;
+    CKDWORD field_4;
+    CKDWORD field_8;
+    CKDWORD field_C;
+    CKDWORD field_10;
+    CKDWORD field_14;
+    CKDWORD field_18;
+    CKDWORD field_1C;
+    CKDWORD field_20;
+    CKDWORD field_24;
+    CKDWORD field_28;
+    CKDWORD field_2C;
+    CKDWORD field_30;
+    CKDWORD field_34;
+    CKDWORD field_38;
+    CKDWORD field_3C;
+    CKGUID ParameterType;
+    XObjectPointerArray AttributeList;
+    XObjectPointerArray AttributeList2;
+    CKDWORD AttributeCategory;
+    CKDWORD CompatibleCid;
+    CKATTRIBUTECALLBACK CallbackFct;
+    void *CallbackArg;
+    CKSTRING DefaultValue;
+    CKDWORD Flags;
+    CKPluginEntry *CreatorDll;
+};
+
+struct CKAttributeCategoryDesc
+{
+  char *Name;
+  CKDWORD Flags;
+};
+
 
 /*********************************************************************
 Name: CKAttributeManager
@@ -122,6 +156,13 @@ public:
     //-------------------------------------------------------------------
     //-------------------------------------------------------------------
 
+    CKPluginEntry *GetCreatorDll(int pos);
+
+    void NewActiveScene(CKScene *scene);
+
+    void ObjectAddedToScene(CKBeObject *beo, CKScene *scene);
+    void ObjectRemovedFromScene(CKBeObject *beo, CKScene *scene);
+
     void RemoveAttributeFromObject(CKBeObject *beo);
 
     void PatchRemapBeObjectFileChunk(CKStateChunk *chunk);
@@ -149,7 +190,7 @@ public:
                                                      CKMANAGER_FUNC_OnSequenceRemovedFromScene; }
 
     int m_AttributeDescCount;
-    CKAttributeDesc **m_AttributeDescs;
+    CKAttributeDesc **m_AttributeInfos;
     int m_AttributeCategoryCount;
     CKAttributeCategoryDesc **m_AttributeCategories;
     int *m_ConversionTable;

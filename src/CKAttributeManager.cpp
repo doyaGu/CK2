@@ -130,6 +130,19 @@ void CKAttributeManager::AddAttributeToObject(CKAttributeType AttribType, CKBeOb
 void CKAttributeManager::RefreshList(CKObject *obj, CKScene *scene) {
 }
 
+CKPluginEntry *CKAttributeManager::GetCreatorDll(int pos) {
+    if (pos >= 0 && pos < m_AttributeDescCount) {
+        return m_AttributeInfos[pos]->CreatorDll;
+    }
+    return nullptr;
+}
+
+void CKAttributeManager::NewActiveScene(CKScene *scene) {
+}
+
+void CKAttributeManager::ObjectAddedToScene(CKBeObject *beo, CKScene *scene) {
+}
+
 void CKAttributeManager::RemoveAttributeFromObject(CKBeObject *beo) {
 }
 
@@ -147,7 +160,7 @@ void CKAttributeManager::PatchRemapBeObjectStateChunk(CKStateChunk *chunk) {
 
 CKAttributeManager::CKAttributeManager(CKContext *Context): CKBaseManager(Context, ATTRIBUTE_MANAGER_GUID, "Attribute Manager") {
     m_AttributeDescCount = 0;
-    m_AttributeDescs = nullptr;
+    m_AttributeInfos = nullptr;
     m_AttributeCategoryCount = 0;
     m_AttributeCategories = nullptr;
     m_ConversionTableCount = 0;
