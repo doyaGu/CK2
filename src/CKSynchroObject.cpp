@@ -1,6 +1,7 @@
 #include "CKSynchroObject.h"
 
 #include "CKBeObject.h"
+#include "CKStateChunk.h"
 
 CK_CLASSID CKSynchroObject::m_ClassID = CKCID_SYNCHRO;
 
@@ -10,22 +11,42 @@ void CKSynchroObject::Reset() {
 }
 
 void CKSynchroObject::SetRendezVousNumberOfWaiters(int waiters) {
+    m_MaxWaiters = waiters;
 }
 
 int CKSynchroObject::GetRendezVousNumberOfWaiters() {
-    return 0;
+    return m_MaxWaiters;
 }
 
 CKBOOL CKSynchroObject::CanIPassRendezVous(CKBeObject *asker) {
-    return 0;
+    if (!asker)
+        return FALSE;
+
+    int count = m_Arrived.GetCount();
+    if (count == m_MaxWaiters) {
+        if (!m_Arrived.PtrSeek(asker))
+            return FALSE;
+    } else {
+        if (m_Arrived.PtrSeek(asker))
+            return FALSE;
+        m_Arrived.InsertRear(asker);
+        if (m_Arrived.GetCount() != m_MaxWaiters) {
+            return FALSE;
+        }
+    }
+    m_Passed.AddIfNotHere(asker);
+    if (m_Passed.GetCount() == m_MaxWaiters) {
+        Reset();
+    }
+    return TRUE;
 }
 
 int CKSynchroObject::GetRendezVousNumberOfArrivedObjects() {
-    return 0;
+    return m_Arrived.GetCount();
 }
 
 CKBeObject *CKSynchroObject::GetRendezVousArrivedObject(int pos) {
-    return nullptr;
+    return (CKBeObject *)m_Context->GetObject(m_Arrived.Seek(pos));
 }
 
 CKSynchroObject::CKSynchroObject(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
@@ -41,11 +62,42 @@ CK_CLASSID CKSynchroObject::GetClassID() {
 }
 
 CKStateChunk *CKSynchroObject::Save(CKFile *file, CKDWORD flags) {
-    return CKObject::Save(file, flags);
+    CKStateChunk* chunk = new CKStateChunk(CKCID_SYNCHRO, file);
+
+    CKStateChunk* baseChunk = CKObject::Save(file, flags);
+
+    chunk->StartWrite();
+    chunk->AddChunkAndDelete(baseChunk);
+
+    chunk->WriteIdentifier(CK_STATESAVE_SYNCHRODATA);
+    chunk->WriteInt(m_MaxWaiters);
+
+    chunk->WriteObjectArray(&m_Arrived, m_Context);
+    chunk->WriteObjectArray(&m_Passed, m_Context);
+
+    chunk->CloseChunk();
+    return chunk;
 }
 
 CKERROR CKSynchroObject::Load(CKStateChunk *chunk, CKFile *file) {
-    return CKObject::Load(chunk, file);
+    if (!chunk)
+        return CKERR_INVALIDPARAMETER;
+
+    // Load base CKObject data
+    CKObject::Load(chunk, file);
+
+    if (chunk->SeekIdentifier(CK_STATESAVE_SYNCHRODATA))
+    {
+        m_MaxWaiters = chunk->ReadInt();
+
+        chunk->ReadObjectArray(&m_Arrived);
+        m_Arrived.Check(m_Context);
+
+        chunk->ReadObjectArray(&m_Passed);
+        m_Passed.Check(m_Context);
+    }
+
+    return CK_OK;
 }
 
 void CKSynchroObject::CheckPostDeletion() {
@@ -54,7 +106,7 @@ void CKSynchroObject::CheckPostDeletion() {
 }
 
 int CKSynchroObject::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + 44 + 12 * m_Arrived.GetCount() + 12 * m_Passed.GetCount();
+    return CKObject::GetMemoryOccupation() + 44 + m_Arrived.GetCount() + 12 * m_Passed.GetCount();
 }
 
 CKBOOL CKSynchroObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
@@ -87,116 +139,169 @@ CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
     return new CKSynchroObject(Context);
 }
 
-CK_CLASSID CKStateObject::m_ClassID;
+CK_CLASSID CKStateObject::m_ClassID = CKCID_STATE;
 
 CKBOOL CKStateObject::IsStateActive() {
-    return FALSE;
+    return m_Event;
 }
 
 void CKStateObject::EnterState() {
+    m_Event = TRUE;
 }
 
 void CKStateObject::LeaveState() {
+    m_Event = FALSE;
 }
 
-CKStateObject::CKStateObject(CKContext *Context, CKSTRING name) {
+CKStateObject::CKStateObject(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
+    m_Event = FALSE;
 }
 
-CKStateObject::~CKStateObject() {
-}
+CKStateObject::~CKStateObject() {}
 
 CK_CLASSID CKStateObject::GetClassID() {
     return m_ClassID;
 }
 
 CKStateChunk *CKStateObject::Save(CKFile *file, CKDWORD flags) {
-    return nullptr;
+    CKStateChunk* chunk = new CKStateChunk(CKCID_STATE, file);
+
+    CKStateChunk* baseChunk = CKObject::Save(file, flags);
+
+    chunk->StartWrite();
+    chunk->AddChunkAndDelete(baseChunk);
+
+    chunk->WriteIdentifier(0x10);
+    chunk->WriteInt(m_Event);
+
+    chunk->CloseChunk();
+    return chunk;
 }
 
 CKERROR CKStateObject::Load(CKStateChunk *chunk, CKFile *file) {
-    return CKERROR();
+    if (!chunk)
+        return CKERR_INVALIDPARAMETER;
+    CKObject::Load(chunk, file);
+    if (chunk->SeekIdentifier(0x10)) {
+        m_Event = chunk->ReadInt();
+    }
+    return CK_OK;
 }
 
 int CKStateObject::GetMemoryOccupation() {
-    return 0;
+    return CKObject::GetMemoryOccupation() + 4;
 }
 
 CKSTRING CKStateObject::GetClassName() {
-    return CKSTRING();
+    return "State";
 }
 
 int CKStateObject::GetDependenciesCount(int mode) {
-    return 0;
+    return CKObject::GetDependenciesCount(mode);
 }
 
 CKSTRING CKStateObject::GetDependencies(int i, int mode) {
-    return CKSTRING();
+    return CKObject::GetDependencies(i, mode);
 }
 
 void CKStateObject::Register() {
+    CKClassRegisterDefaultOptions(m_ClassID, 4);
+    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_STATE);
 }
 
 CKStateObject *CKStateObject::CreateInstance(CKContext *Context) {
-    return nullptr;
+    return new CKStateObject(Context);
 }
 
-CK_CLASSID CKCriticalSectionObject::m_ClassID;
+CK_CLASSID CKCriticalSectionObject::m_ClassID = CKCID_CRITICALSECTION;
 
 void CKCriticalSectionObject::Reset() {
+    m_ObjectInSection = 0;
 }
 
 CKBOOL CKCriticalSectionObject::EnterCriticalSection(CKBeObject *asker) {
-    return CKBOOL();
+    if (!asker || m_ObjectInSection != 0)
+        return FALSE;
+    m_ObjectInSection = asker->GetID();
+    return TRUE;
 }
 
 CKBOOL CKCriticalSectionObject::LeaveCriticalSection(CKBeObject *asker) {
-    return CKBOOL();
+    if (!asker || m_ObjectInSection != asker->GetID())
+        return FALSE;
+    m_ObjectInSection = 0;
+    return TRUE;
 }
 
-CKCriticalSectionObject::CKCriticalSectionObject(CKContext *Context, CKSTRING name) {
+CKCriticalSectionObject::CKCriticalSectionObject(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
+    m_ObjectInSection = 0;
 }
 
-CKCriticalSectionObject::~CKCriticalSectionObject() {
-}
+CKCriticalSectionObject::~CKCriticalSectionObject() {}
 
 CK_CLASSID CKCriticalSectionObject::GetClassID() {
     return m_ClassID;
 }
 
 CKStateChunk *CKCriticalSectionObject::Save(CKFile *file, CKDWORD flags) {
-    return nullptr;
+    CKStateChunk* chunk = new CKStateChunk(CKCID_CRITICALSECTION, file);
+
+    CKStateChunk* baseChunk = CKObject::Save(file, flags);
+
+    chunk->StartWrite();
+    chunk->AddChunkAndDelete(baseChunk);
+
+    chunk->WriteIdentifier(0x10);
+    chunk->WriteObject(m_Context->GetObject(m_ObjectInSection));
+
+    chunk->CloseChunk();
+    return chunk;
 }
 
 CKERROR CKCriticalSectionObject::Load(CKStateChunk *chunk, CKFile *file) {
-    return CKERROR();
+    if (!chunk)
+        return CKERR_INVALIDPARAMETER;
+    CKObject::Load(chunk, file);
+    if (chunk->SeekIdentifier(0x10)) {
+        m_ObjectInSection = chunk->ReadObjectID();
+    }
+    return CK_OK;
 }
 
 void CKCriticalSectionObject::CheckPostDeletion() {
+    CKObject *obj = m_Context->GetObject(m_ObjectInSection);
+    if (!obj)
+        m_ObjectInSection = 0;
 }
 
 int CKCriticalSectionObject::GetMemoryOccupation() {
-    return 0;
+    return CKObject::GetMemoryOccupation() + 4;
 }
 
 CKBOOL CKCriticalSectionObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
-    return CKBOOL();
+    if (m_ObjectInSection == obj->GetID())
+        return TRUE;
+    return CKObject::IsObjectUsed(obj, cid);
 }
 
 CKSTRING CKCriticalSectionObject::GetClassName() {
-    return CKSTRING();
+    return "Critical Section";
 }
 
 int CKCriticalSectionObject::GetDependenciesCount(int mode) {
-    return 0;
+    return CKObject::GetDependenciesCount(mode);
 }
 
 CKSTRING CKCriticalSectionObject::GetDependencies(int i, int mode) {
-    return CKSTRING();
+    return CKObject::GetDependencies(i, mode);
 }
 
 void CKCriticalSectionObject::Register() {
+    CKClassNeedNotificationFrom(m_ClassID, CKBeObject::m_ClassID);
+    CKClassRegisterDefaultOptions(m_ClassID, 4);
+    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_CRITICALSECTION);
 }
 
 CKCriticalSectionObject *CKCriticalSectionObject::CreateInstance(CKContext *Context) {
-    return nullptr;
+    return new CKCriticalSectionObject(Context);
 }
