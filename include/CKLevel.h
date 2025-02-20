@@ -127,7 +127,6 @@ public:
 
     void Reset();
     void ActivateAllScript();
-    void CheckForNextScene();
     void CreateLevelScene();
     void PreProcess();
 
