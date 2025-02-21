@@ -10,17 +10,17 @@ CK_ID XObjectPointerArray::GetObjectID(unsigned int i) const {
 
 CKBOOL XObjectPointerArray::Check() {
     CKObject **it = m_Begin;
-    int size = Size();
+    const int size = Size();
     int i;
     for (i = 0; i < size; ++i) {
         CKObject *obj = *it++;
-        if (obj->m_ObjectFlags & CK_OBJECT_TOBEDELETED)
+        if (obj->IsToBeDeleted())
             break;
     }
 
     if (i + 1 < size) {
         for (int j = size - 1; j > 0; --j) {
-            if (((*it)->m_ObjectFlags & CK_OBJECT_TOBEDELETED) == 0)
+            if (!(*it)->IsToBeDeleted())
                 m_Begin[i++] = *it;
             ++it;
         }
@@ -56,78 +56,246 @@ void XObjectPointerArray::Remap(CKDependenciesContext &context) {
     }
 }
 
+void XSObjectArray::ConvertFromObjects(const XSArray<CKObject *> &array) {
+    Clear();
+    Resize(array.Size());
+    for (auto it = array.Begin(); it != array.End(); ++it) {
+        PushBack((*it)->GetID());
+    }
+}
+
 CKBOOL XSObjectArray::Check(CKContext *Context) {
-    return CKBOOL();
+    if (!Context)
+        return FALSE;
+
+    const int size = Size();
+    const int newSize = Context->m_ObjectManager->CheckIDArray(Begin(), size);
+    Resize(newSize);
+    return newSize != size;
 }
 
 CKObject *XSObjectArray::GetObject(CKContext *Context, unsigned int i) const {
-    return nullptr;
+    if (!Context || i >= Size())
+        return nullptr;
+    return Context->GetObject(m_Begin[i]);
 }
 
 CKBOOL XSObjectArray::RemoveObject(CKObject *obj) {
-    return CKBOOL();
+    if (!obj)
+        return FALSE;
+    for (CK_ID *it = m_Begin; it != m_End; ++it) {
+        if (*it == obj->GetID()) {
+            RemoveAt(it - m_Begin);
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 void XSObjectArray::Load(CKStateChunk *chunk) {
+    const int count = chunk->StartReadSequence();
+    if (count == 0)
+        return;
+
+    if (chunk->GetChunkVersion() >= 4) {
+        Resize(count);
+        for (int i = 0; i < count; ++i) {
+            m_Begin[i] = chunk->ReadObjectID();
+        }
+    } else {
+        chunk->Skip(sizeof(CKDWORD));
+
+        const int objectCount = chunk->ReadInt();
+        Resize(objectCount);
+        for (int i = 0; i < objectCount; ++i) {
+            m_Begin[i] = chunk->ReadInt();
+        }
+    }
 }
 
 void XSObjectArray::Save(CKStateChunk *chunk, CKContext *ctx) const {
+    if (!chunk)
+        return;
+
+    chunk->StartObjectIDSequence(Size());
+    if (ctx) {
+        for (CK_ID *it = Begin(); it != End(); ++it) {
+            chunk->WriteObjectSequence(ctx->GetObject(*it));
+        }
+    } else {
+        for (CK_ID *it = Begin(); it != End(); ++it) {
+            chunk->WriteObjectIDSequence(*it);
+        }
+    }
 }
 
 void XSObjectArray::Prepare(CKDependenciesContext &context) const {
+    for (CK_ID *it = Begin(); it != End(); ++it) {
+        CKObject *obj = context.m_CKContext->GetObject(*it);
+        if (obj)
+            obj->PrepareDependencies(context);
+    }
 }
 
 void XSObjectArray::Remap(CKDependenciesContext &context) {
+    for (CK_ID *it = Begin(); it != End(); ++it) {
+        *it = context.RemapID(*it);
+    }
 }
 
 CKBOOL XObjectArray::Check(CKContext *Context) {
-    return CKBOOL();
+    if (!Context)
+        return FALSE;
+
+    const int size = Size();
+    const int newSize = Context->m_ObjectManager->CheckIDArray(Begin(), Size());
+    return size != newSize;
 }
 
 CKBOOL XObjectArray::AddIfNotHere(CK_ID id) {
-    return CKBOOL();
+    for (CK_ID *it = m_Begin; it != m_End; ++it) {
+        if (*it == id)
+            return FALSE;
+    }
+    PushBack(id);
+    return TRUE;
 }
 
 CKBOOL XObjectArray::AddIfNotHere(CKObject *obj) {
-    return CKBOOL();
+    CK_ID id = obj->GetID();
+    for (CK_ID *it = m_Begin; it != m_End; ++it) {
+        if (*it == id)
+            return FALSE;
+    }
+    PushBack(id);
+    return TRUE;
 }
 
 CKObject *XObjectArray::GetObject(CKContext *Context, unsigned int i) const {
-    return nullptr;
+    if (!Context || i >= Size())
+        return nullptr;
+    return Context->GetObject(m_Begin[i]);
 }
 
 CKBOOL XObjectArray::RemoveObject(CKObject *obj) {
-    return CKBOOL();
+    if (!obj)
+        return FALSE;
+    return Remove(obj->GetID()) != nullptr;
 }
 
 CKBOOL XObjectArray::FindObject(CKObject *obj) const {
-    return CKBOOL();
+    if (!obj)
+        return FALSE;
+    for (CK_ID *it = m_Begin; it != m_End; ++it) {
+        if (*it == obj->GetID())
+            return TRUE;
+    }
+    return FALSE;
 }
 
 void XObjectArray::Load(CKStateChunk *chunk) {
+    if (chunk) {
+        *this = chunk->ReadXObjectArray();
+    }
 }
 
 void XObjectArray::Save(CKStateChunk *chunk, CKContext *ctx) const {
+    chunk->StartObjectIDSequence(Size());
+    if (ctx) {
+        for (CK_ID *it = Begin(); it != End(); ++it) {
+            chunk->WriteObjectSequence(ctx->GetObject(*it));
+        }
+    } else {
+        for (CK_ID *it = Begin(); it != End(); ++it) {
+            chunk->WriteObjectIDSequence(*it);
+        }
+    }
 }
 
 void XObjectArray::Prepare(CKDependenciesContext &context) const {
+    for (CK_ID *it = Begin(); it != End(); ++it) {
+        CKObject *obj = context.m_CKContext->GetObject(*it);
+        if (obj)
+            obj->PrepareDependencies(context);
+    }
 }
 
 void XObjectArray::Remap(CKDependenciesContext &context) {
+    for (CK_ID *it = Begin(); it != End(); ++it) {
+        *it = context.RemapID(*it);
+    }
 }
 
 CKBOOL XSObjectPointerArray::Check() {
-    return CKBOOL();
+    CKObject **it = m_Begin;
+    const int size = Size();
+    int i;
+    for (i = 0; i < size; ++i) {
+        CKObject *obj = *it++;
+        if (obj->IsToBeDeleted())
+            break;
+    }
+
+    if (i + 1 < size) {
+        for (int j = size - 1; j > 0; --j) {
+            if (!(*it)->IsToBeDeleted())
+                m_Begin[i++] = *it;
+            ++it;
+        }
+    }
+
+    Resize(i);
+    return i != size;
 }
 
 void XSObjectPointerArray::Load(CKContext *Context, CKStateChunk *chunk) {
+    if (!Context || !chunk)
+        return;
+
+    const int count = chunk->StartReadSequence();
+    if (count == 0)
+        return;
+
+    if (chunk->GetChunkVersion() >= 4) {
+        for (int i = 0; i < count; ++i) {
+            CKObject *obj = chunk->ReadObject(Context);
+            if (obj)
+                PushBack(obj);
+        }
+    } else {
+        chunk->Skip(sizeof(CKDWORD));
+
+        const int objectCount = chunk->ReadInt();
+        for (int i = 0; i < objectCount; ++i) {
+            CK_ID id = chunk->ReadDword();
+            CKObject *obj = Context->GetObject(id);
+            if (obj)
+                PushBack(obj);
+        }
+    }
 }
 
 void XSObjectPointerArray::Save(CKStateChunk *chunk) const {
+    if (!chunk)
+        return;
+
+    chunk->StartObjectIDSequence(Size());
+    for (CKObject **it = Begin(); it != End(); ++it) {
+        chunk->WriteObjectSequence(*it);
+    }
 }
 
 void XSObjectPointerArray::Prepare(CKDependenciesContext &context) const {
+    for (CKObject **it = m_Begin; it != m_End; ++it) {
+        CKObject *obj = *it;
+        if (obj)
+            obj->PrepareDependencies(context);
+    }
 }
 
 void XSObjectPointerArray::Remap(CKDependenciesContext &context) {
+    for (CKObject **it = m_Begin; it != m_End; ++it) {
+        if (*it)
+            *it = context.Remap(*it);
+    }
 }

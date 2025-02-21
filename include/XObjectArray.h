@@ -59,7 +59,7 @@ public:
 
     See Also: ConvertFromObjects
     *******************************************************/
-    inline void ConvertToObjects(CKContext *Context, XSArray<CKObject *> &array) const
+    void ConvertToObjects(CKContext *Context, XSArray<CKObject *> &array) const
     {
         array.Clear();
         for (CK_ID *ids = m_Begin; ids != m_End; ++ids)
