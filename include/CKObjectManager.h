@@ -10,11 +10,9 @@ typedef XHashTable<void *, CK_ID> XObjectAppDataTable;
 
 class CKDeferredDeletion {
 public:
-    CKDWORD field_0;
-    CKDWORD field_4;
-    CKDWORD field_8;
-    CKDependencies *m_Dependencies;
-    CKDWORD m_Flag;
+    CKDependencies m_Dependencies;
+    CKDependencies *m_DependenciesPtr;
+    CKDWORD m_Flags;
 };
 
 class CKObjectManager : public CKBaseManager
@@ -82,7 +80,6 @@ public:
 
     CKObjectManager(CKContext *Context);
 
-public:
     CKDWORD GetGroupGlobalIndex();
     void ReleaseGroupGlobalIndex(CKDWORD index);
 

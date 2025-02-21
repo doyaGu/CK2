@@ -538,7 +538,7 @@ int CKObjectManager::CheckIDArrayPredeleted(CK_ID *obj_ids, int Count) {
 CKDeferredDeletion *CKObjectManager::MatchDeletion(CKDependencies *depoptions, CKDWORD Flags) {
     XArray<CKDeferredDeletion *> &deletions = m_DeferredDeletions[Flags];
     for (XArray<CKDeferredDeletion *>::Iterator it = deletions.Begin(); it != deletions.End(); ++it) {
-        if ((*it)->m_Dependencies == depoptions)
+        if ((*it)->m_DependenciesPtr == depoptions)
             return *it;
     }
     return nullptr;
@@ -546,7 +546,7 @@ CKDeferredDeletion *CKObjectManager::MatchDeletion(CKDependencies *depoptions, C
 
 void CKObjectManager::RegisterDeletion(CKDeferredDeletion *deletion) {
     if (deletion) {
-        m_DeferredDeletions[deletion->m_Flag].PushBack(deletion);
+        m_DeferredDeletions[deletion->m_Flags].PushBack(deletion);
     }
 }
 

@@ -530,8 +530,8 @@ CKERROR CKPluginManager::Load(CKContext *context, CKSTRING FileName, CKObjectArr
     if (!FileName || !context)
         return CKERR_INVALIDPARAMETER;
 
-    context->m_RenameOption = 0;
-    context->m_RenameDialogOption = 0;
+    context->m_GeneralRenameOption = 0;
+    context->m_MatTexturesRenameOption = 0;
 
     CKPathSplitter ps(FileName);
     CKFileExtension ext(ps.GetExtension());
