@@ -1,6 +1,6 @@
 #include "CKContext.h"
-#include "CKLevel.h"
-#include "CKRenderContext.h"
+
+#include "CKPluginManager.h"
 #include "CKBaseManager.h"
 #include "CKObjectManager.h"
 #include "CKParameterManager.h"
@@ -8,22 +8,29 @@
 #include "CKTimeManager.h"
 #include "CKMessageManager.h"
 #include "CKBehaviorManager.h"
+#include "CKRenderManager.h"
 #include "CKPathManager.h"
-#include "CKDebugContext.h"
-#include "CKBitmapReader.h"
-#include "CKParameterOperation.h"
-#include "CKFile.h"
 #include "CKGlobals.h"
+#include "CKFile.h"
+#include "CKBitmapReader.h"
+#include "CKDebugContext.h"
+#include "CKLevel.h"
+#include "CKRenderContext.h"
+#include "CKCharacter.h"
+#include "CKSynchroObject.h"
+#include "CKParameterOperation.h"
 
 //XArray<CKContext*> g_Contextes;
 extern XClassInfoArray g_CKClassInfo;
+extern CKPluginManager g_ThePluginManager;
 
-CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATION_OPTIONS Options, CK_CREATIONMODE *Res) {
-    CKObject* obj = nullptr;
+CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATION_OPTIONS Options,
+                                  CK_CREATIONMODE *Res) {
+    CKObject *obj = nullptr;
     CK_CREATIONMODE mode = CKLOAD_OK;
-    char* buffer = GetStringBuffer(512);
+    char *buffer = GetStringBuffer(512);
     unsigned int objectCreationOption = (Options & CK_OBJECTCREATION_FLAGSMASK);
-    CKClassDesc& classDesc = g_CKClassInfo[cid];
+    CKClassDesc &classDesc = g_CKClassInfo[cid];
     CKDWORD defaultOptions = classDesc.DefaultOptions;
     if (defaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
         objectCreationOption = CK_OBJECTCREATION_NONAMECHECK;
@@ -31,33 +38,32 @@ CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATI
         objectCreationOption = CK_OBJECTCREATION_USECURRENT;
 
     switch (objectCreationOption) {
-        case CK_OBJECTCREATION_RENAME: {
-            obj = GetObjectByNameAndClass(Name, cid);
-            if (!obj)
-                break;
-            GetSecureName(buffer, Name, cid);
-            mode = CKLOAD_RENAME;
+    case CK_OBJECTCREATION_RENAME: {
+        obj = GetObjectByNameAndClass(Name, cid);
+        if (!obj)
             break;
-        }
-        case CK_OBJECTCREATION_USECURRENT: {
-            obj = GetObjectByNameAndClass(Name, cid);
-            if (!obj)
-                break;
-            mode = CKLOAD_USECURRENT;
+        GetSecureName(buffer, Name, cid);
+        mode = CKLOAD_RENAME;
+        break;
+    }
+    case CK_OBJECTCREATION_USECURRENT: {
+        obj = GetObjectByNameAndClass(Name, cid);
+        if (!obj)
             break;
-        }
-        case CK_OBJECTCREATION_ASK: {
-            mode = LoadVerifyObjectUnicity(Name, cid, buffer, &obj);
-            break;
-        }
-        case CK_OBJECTCREATION_NONAMECHECK:
-        case CK_OBJECTCREATION_REPLACE:
-        default:
-            break;
+        mode = CKLOAD_USECURRENT;
+        break;
+    }
+    case CK_OBJECTCREATION_ASK: {
+        mode = LoadVerifyObjectUnicity(Name, cid, buffer, &obj);
+        break;
+    }
+    case CK_OBJECTCREATION_NONAMECHECK:
+    case CK_OBJECTCREATION_REPLACE:
+    default:
+        break;
     }
 
-    if (mode != CKLOAD_USECURRENT)
-    {
+    if (mode != CKLOAD_USECURRENT) {
         if (classDesc.CreationFct) {
             m_InDynamicCreationMode = !!(Options & CK_OBJECTCREATION_ASK);
             obj = classDesc.CreationFct(this);
@@ -82,7 +88,8 @@ CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATI
     return obj;
 }
 
-CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKSTRING AppendName, CK_OBJECTCREATION_OPTIONS Options) {
+CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKSTRING AppendName,
+                                CK_OBJECTCREATION_OPTIONS Options) {
     if (!src)
         return nullptr;
 
@@ -96,7 +103,8 @@ CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKS
     return depContext.Remap(src);
 }
 
-const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies, CK_OBJECTCREATION_OPTIONS Options, CKSTRING AppendName) {
+const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies,
+                                           CK_OBJECTCREATION_OPTIONS Options, CKSTRING AppendName) {
     CKDependenciesContext depContext(this);
     depContext.SetCreationMode(Options);
     depContext.SetOperationMode(CK_DEPENDENCIES_COPY);
@@ -125,10 +133,9 @@ int CKContext::GetObjectCount() {
 }
 
 int CKContext::GetObjectSize(CKObject *obj) {
-    if (!obj)
-        return 0;
-
-    return obj->GetMemoryOccupation();
+    if (obj)
+        return obj->GetMemoryOccupation();
+    return 0;
 }
 
 CKERROR CKContext::DestroyObject(CKObject *obj, CKDWORD Flags, CKDependencies *depoptions) {
@@ -182,17 +189,17 @@ const XObjectPointerArray &CKContext::CKFillObjectsUnused() {
     objects.Prepare(depContext);
     m_ObjectsUnused.Clear();
 
-    CKScene* currentScene = GetCurrentScene();
+    CKScene *currentScene = GetCurrentScene();
 
     const int count = m_ObjectManager->GetObjectsCount();
     for (int i = 0; i < count; ++i) {
-        CKObject* obj = m_ObjectManager->GetObject(i);
+        CKObject *obj = m_ObjectManager->GetObject(i);
         if (!obj)
             continue;
 
         if (!depContext.IsDependenciesHere(obj->GetID())) {
             if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT) ||
-                ((CKSceneObject*)obj)->IsInScene(currentScene)) {
+                ((CKSceneObject *)obj)->IsInScene(currentScene)) {
                 m_ObjectsUnused.PushBack(obj);
             }
         }
@@ -229,15 +236,93 @@ CK_ID *CKContext::GetObjectsListByClassID(CK_CLASSID cid) {
 }
 
 CKERROR CKContext::Play() {
-    return 0;
+    if (m_Playing)
+        return CK_OK;
+
+    CKLevel *currentLevel = nullptr;
+    if (m_Reseted) {
+        currentLevel = GetCurrentLevel();
+        if (currentLevel) {
+            if (!currentLevel->m_IsReseted)
+                Reset();
+            currentLevel->ActivateAllScript();
+        }
+    }
+
+    m_Playing = TRUE;
+
+    ExecuteManagersOnCKPlay();
+
+    if (!currentLevel)
+        return CKERR_NOCURRENTLEVEL;
+
+    m_Reseted = FALSE;
+    return CK_OK;
 }
 
 CKERROR CKContext::Pause() {
-    return 0;
+    if (m_Playing) {
+        ExecuteManagersOnCKPause();
+        m_Playing = FALSE;
+    }
+    return CK_OK;
 }
 
 CKERROR CKContext::Reset() {
-    return 0;
+    ExecuteManagersOnCKReset();
+
+    m_Playing = FALSE;
+    m_Reseted = TRUE;
+
+    CKLevel *currentLevel = GetCurrentLevel();
+    if (!currentLevel)
+        return CKERR_NOCURRENTLEVEL;
+    m_BehaviorContext.CurrentLevel = currentLevel;
+
+    WarnAllBehaviors(CKM_BEHAVIORRESET);
+
+    int characterCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_CHARACTER);
+    CK_ID *characterList = m_ObjectManager->GetObjectsListByClassID(CKCID_CHARACTER);
+    for (int i = 0; i < characterCount; ++i) {
+        CKCharacter *character = (CKCharacter *)m_ObjectManager->m_Objects[characterList[i]];
+        if (character)
+            character->FlushSecondaryAnimations();
+    }
+
+    int synchroCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_SYNCHRO);
+    CK_ID *synchroList = m_ObjectManager->GetObjectsListByClassID(CKCID_SYNCHRO);
+    for (int i = 0; i < synchroCount; ++i) {
+        CKSynchroObject *synchro = (CKSynchroObject *)m_ObjectManager->m_Objects[synchroList[i]];
+        if (synchro)
+            synchro->Reset();
+    }
+
+    int criticalSectionCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_CRITICALSECTION);
+    CK_ID *criticalSectionList = m_ObjectManager->GetObjectsListByClassID(CKCID_CRITICALSECTION);
+    for (int i = 0; i < criticalSectionCount; ++i) {
+        CKCriticalSectionObject *criticalSection = (CKCriticalSectionObject *)m_ObjectManager->m_Objects[
+            criticalSectionList[i]];
+        if (criticalSection)
+            criticalSection->Reset();
+    }
+
+    int stateCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_STATE);
+    CK_ID *stateList = m_ObjectManager->GetObjectsListByClassID(CKCID_STATE);
+    for (int i = 0; i < stateCount; ++i) {
+        CKCriticalSectionObject *stateObject = (CKCriticalSectionObject *)m_ObjectManager->m_Objects[stateList[i]];
+        if (stateObject)
+            stateObject->Reset();
+    }
+
+    currentLevel->SetNextActiveScene(nullptr, CK_SCENEOBJECTACTIVITY_SCENEDEFAULT, CK_SCENEOBJECTRESET_RESET);
+    currentLevel->Reset();
+
+    CKScene *currentScene = currentLevel->GetCurrentScene();
+    if (currentScene)
+        currentLevel->LaunchScene(currentScene);
+
+    ExecuteManagersOnCKPostReset();
+    return CK_OK;
 }
 
 CKBOOL CKContext::IsPlaying() {
@@ -249,11 +334,40 @@ CKBOOL CKContext::IsReseted() {
 }
 
 CKERROR CKContext::Process() {
-    return 0;
+    if (m_Playing) {
+        VxTimeProfiler profiler;
+
+        ExecuteManagersPreProcess();
+
+        CKLevel *currentLevel = GetCurrentLevel();
+        if (currentLevel) {
+            currentLevel->PreProcess();
+        }
+
+        m_BehaviorManager->Execute(m_TimeManager->GetLastDeltaTime());
+
+        ExecuteManagersPostProcess();
+
+        m_Stats.ProcessTime = profiler.Current();
+    }
+
+    return CK_OK;
 }
 
 CKERROR CKContext::ClearAll() {
-    return 0;
+    m_RunTime = FALSE;
+    m_InClearAll = TRUE;
+    ExecuteManagersPreClearAll();
+    m_CurrentLevel = 0;
+    m_PVInformation = m_VirtoolsVersion;
+    ExecuteManagersPostClearAll();
+
+    XManagerArray managers = m_InactiveManagers;
+    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+        CKBaseManager *manager = *it;
+        ActivateManager(manager, TRUE);
+    }
+    return CK_OK;
 }
 
 CKBOOL CKContext::IsInClearAll() {
@@ -261,7 +375,7 @@ CKBOOL CKContext::IsInClearAll() {
 }
 
 CKLevel *CKContext::GetCurrentLevel() {
-    return (CKLevel *) GetObject(m_CurrentLevel);
+    return (CKLevel *)GetObject(m_CurrentLevel);
 }
 
 CKRenderContext *CKContext::GetPlayerRenderContext() {
@@ -283,7 +397,8 @@ void CKContext::SetCurrentLevel(CKLevel *level) {
 CKParameterIn *CKContext::CreateCKParameterIn(CKSTRING Name, CKParameterType type, CKBOOL Dynamic) {
     CKParameterIn *pIn = NULL;
     if (m_ParameterManager->CheckParamTypeValidity(type)) {
-        pIn = (CKParameterIn *) CreateObject(CKCID_PARAMETERIN, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
+        pIn = (CKParameterIn *)CreateObject(
+            CKCID_PARAMETERIN, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
         pIn->SetType(type);
     }
     return pIn;
@@ -301,10 +416,12 @@ CKParameterIn *CKContext::CreateCKParameterIn(CKSTRING Name, CKSTRING TypeName, 
 
 CKParameterOut *CKContext::CreateCKParameterOut(CKSTRING Name, CKParameterType type, CKBOOL Dynamic) {
     if (!m_ParameterManager->CheckParamTypeValidity(type)) {
-        return (CKParameterOut *) CreateObject(CKCID_PARAMETEROUT, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
+        return (CKParameterOut *)CreateObject(
+            CKCID_PARAMETEROUT, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
     }
 
-    CKParameterOut *pOut = (CKParameterOut *) CreateObject(CKCID_PARAMETEROUT, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
+    CKParameterOut *pOut = (CKParameterOut *)CreateObject(
+        CKCID_PARAMETEROUT, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
     pOut->SetType(type);
     return pOut;
 }
@@ -322,7 +439,8 @@ CKParameterOut *CKContext::CreateCKParameterOut(CKSTRING Name, CKSTRING TypeName
 CKParameterLocal *CKContext::CreateCKParameterLocal(CKSTRING Name, CKParameterType type, CKBOOL Dynamic) {
     CKParameterLocal *pLocal = NULL;
     if (m_ParameterManager->CheckParamTypeValidity(type)) {
-        pLocal = (CKParameterLocal *) CreateObject(CKCID_PARAMETERLOCAL, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
+        pLocal = (CKParameterLocal *)CreateObject(
+            CKCID_PARAMETERLOCAL, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
         pLocal->SetType(type);
     }
     return pLocal;
@@ -340,7 +458,7 @@ CKParameterLocal *CKContext::CreateCKParameterLocal(CKSTRING Name, CKSTRING Type
 
 CKParameterOperation *
 CKContext::CreateCKParameterOperation(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid) {
-    CKParameterOperation *pOperation = (CKParameterOperation *) CreateObject(CKCID_PARAMETEROPERATION, Name);
+    CKParameterOperation *pOperation = (CKParameterOperation *)CreateObject(CKCID_PARAMETEROPERATION, Name);
     pOperation->Reconstruct(Name, opguid, ResGuid, p1Guid, p2Guid);
     return pOperation;
 }
@@ -367,52 +485,144 @@ CKBOOL CKContext::IsInInterfaceMode() {
 }
 
 CKERROR CKContext::OutputToConsole(CKSTRING str, CKBOOL bBeep) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_OUTTOCONSOLE;
+    cbs.DoBeep = bBeep;
+    cbs.ConsoleString = str;
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
 CKERROR CKContext::OutputToConsoleEx(CKSTRING format, ...) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    char *buf = GetStringBuffer(256);
+    if (!buf)
+        return CKERR_INVALIDPARAMETER;
+
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, 256, format, args);
+    va_end(args);
+    return OutputToConsole(buf, FALSE);
 }
 
 CKERROR CKContext::OutputToConsoleExBeep(CKSTRING format, ...) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    char *buf = GetStringBuffer(256);
+    if (!buf)
+        return CKERR_INVALIDPARAMETER;
+
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, 256, format, args);
+    va_end(args);
+    return OutputToConsole(buf, TRUE);
 }
 
 CKERROR CKContext::OutputToInfo(CKSTRING format, ...) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    char *buf = GetStringBuffer(256);
+    if (!buf)
+        return CKERR_INVALIDPARAMETER;
+
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, 256, format, args);
+    va_end(args);
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_OUTTOINFOBAR;
+    cbs.Param1 = 0;
+    cbs.ConsoleString = buf;
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
 CKERROR CKContext::RefreshBuildingBlocks(const XArray<CKGUID> &iGuids) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_REFRESHBUILDINGBLOCKS;
+    cbs.Param1 = (CKDWORD)iGuids.Begin();
+    cbs.Param2 = iGuids.Size();
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
-CKERROR CKContext::ShowSetup(CK_ID) {
-    return 0;
+CKERROR CKContext::ShowSetup(CK_ID id) {
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_SHOWSETUP;
+    cbs.ObjectID = id;
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
 CK_ID CKContext::ChooseObject(void *dialogParentWnd) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_CHOOSEOBJECT;
+    cbs.Param1 = (CKDWORD)dialogParentWnd;
+    m_UICallBackFct(cbs, m_InterfaceModeData);
+    return cbs.ObjectID;
 }
 
 CKERROR CKContext::Select(const XObjectArray &o, CKBOOL clearSelection) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_SELECT;
+    cbs.Objects = (XObjectArray *)&o;
+    cbs.ClearSelection = clearSelection;
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
 CKDWORD CKContext::SendInterfaceMessage(CKDWORD reason, CKDWORD param1, CKDWORD param2) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = reason;
+    cbs.Param1 = param1;
+    cbs.Param2 = param2;
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
 CKERROR CKContext::UICopyObjects(const XObjectArray &iObjects, CKBOOL iClearClipboard) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_COPYOBJECTS;
+    cbs.Objects = (XObjectArray *)&iObjects;
+    cbs.ClearSelection = iClearClipboard;
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
 CKERROR CKContext::UIPasteObjects(const XObjectArray &oObjects) {
-    return 0;
+    if (!m_UICallBackFct)
+        return CK_OK;
+
+    CKUICallbackStruct cbs;
+    cbs.Reason = CKUIM_PASTEOBJECTS;
+    cbs.Objects = (XObjectArray *)&oObjects;
+    return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
 
 CKRenderManager *CKContext::GetRenderManager() {
     if (!m_RenderManager)
-        m_RenderManager = (CKRenderManager *) GetManagerByGuid(RENDER_MANAGER_GUID);
+        m_RenderManager = (CKRenderManager *)GetManagerByGuid(RENDER_MANAGER_GUID);
     return m_RenderManager;
 }
 
@@ -452,7 +662,17 @@ CKBaseManager *CKContext::GetManagerByGuid(CKGUID guid) {
 }
 
 CKBaseManager *CKContext::GetManagerByName(CKSTRING ManagerName) {
-    return nullptr;
+    for (XManagerHashTableIt it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+        CKBaseManager *manager = *it;
+        if (!strcmp(manager->GetName(), ManagerName))
+            return manager;
+    }
+    for (int i = 0; i < m_InactiveManagers.Size(); ++i) {
+        CKBaseManager *manager = m_InactiveManagers[i];
+        if (!strcmp(manager->GetName(), ManagerName))
+            return manager;
+    }
+    return NULL;
 }
 
 int CKContext::GetManagerCount() {
@@ -460,19 +680,60 @@ int CKContext::GetManagerCount() {
 }
 
 CKBaseManager *CKContext::GetManager(int index) {
-    return nullptr;
+    int i = 0;
+    for (XManagerHashTableIt it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+        if (i++ == index)
+            return *it;
+        if (i > index)
+            break;
+    }
+    return NULL;
 }
 
-CKBOOL CKContext::IsManagerActive(CKBaseManager *bm) {
-    return bm && bm == GetManagerByGuid(bm->GetGuid());
+CKBOOL CKContext::IsManagerActive(CKBaseManager *manager) {
+    return manager && manager == GetManagerByGuid(manager->GetGuid());
 }
 
-CKBOOL CKContext::HasManagerDuplicates(CKBaseManager *bm) {
-    return 0;
+CKBOOL CKContext::HasManagerDuplicates(CKBaseManager *manager) {
+    if (m_InactiveManagers.Size() == 0)
+        return FALSE;
+    for (auto it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
+        if (*it == manager)
+            return TRUE;
+    }
+    return FALSE;
 }
 
-void CKContext::ActivateManager(CKBaseManager *bm, CKBOOL active) {
+void CKContext::ActivateManager(CKBaseManager *manager, CKBOOL activate) {
+    if (!manager)
+        return;
 
+    CKGUID managerGuid = manager->m_ManagerGuid;
+    CKBaseManager *existingManager = GetManagerByGuid(managerGuid);
+
+    if (activate) {
+        if (manager == existingManager)
+            return;
+
+        if (existingManager) {
+            existingManager->OnCKEnd();
+            m_ManagerTable.Remove(managerGuid);
+            m_InactiveManagers.PushBack(existingManager);
+        }
+
+        m_ManagerTable.Insert(managerGuid, manager);
+        m_InactiveManagers.Remove(manager);
+        manager->OnCKInit();
+    } else {
+        if (existingManager != manager)
+            return;
+
+        manager->OnCKEnd();
+        m_ManagerTable.Remove(managerGuid);
+        m_InactiveManagers.PushBack(manager);
+    }
+
+    BuildSortedLists();
 }
 
 int CKContext::GetInactiveManagerCount() {
@@ -484,7 +745,19 @@ CKBaseManager *CKContext::GetInactiveManager(int index) {
 }
 
 CKERROR CKContext::RegisterNewManager(CKBaseManager *manager) {
-    return 0;
+    if (!manager)
+        return CKERR_INVALIDPARAMETER;
+
+    XManagerHashTablePair pair = m_ManagerTable.TestInsert(manager->GetGuid(), manager);
+    if (!pair.m_New) {
+        m_InactiveManagers.PushBack(manager);
+        return CKERR_ALREADYPRESENT;
+    }
+
+    BuildSortedLists();
+    if (m_InitManagerOnRegister)
+        manager->OnCKInit();
+    return CK_OK;
 }
 
 void CKContext::EnableProfiling(CKBOOL enable) {
@@ -501,15 +774,25 @@ void CKContext::GetProfileStats(CKStats *stats) {
 }
 
 void CKContext::UserProfileStart(CKDWORD UserSlot) {
-
+    if (UserSlot < 8) {
+        m_UserProfileTimers[UserSlot].Reset();
+    }
 }
 
 float CKContext::UserProfileEnd(CKDWORD UserSlot) {
-    return 0;
+    if (UserSlot < 8) {
+        float time = m_UserProfileTime[UserSlot] + m_UserProfileTimers[UserSlot].Current();
+        m_UserProfileTime[UserSlot] = time;
+        m_Stats.UserProfiles[UserSlot] = time;
+        return time;
+    }
+    return 0.0f;
 }
 
 float CKContext::GetLastUserProfileTime(CKDWORD UserSlot) {
-    return 0;
+    if (UserSlot < 8)
+        return m_UserProfileTime[UserSlot];
+    return 0.0f;
 }
 
 CKSTRING CKContext::GetStringBuffer(int size) {
@@ -520,11 +803,22 @@ CKSTRING CKContext::GetStringBuffer(int size) {
 }
 
 CKGUID CKContext::GetSecureGuid() {
-    return CKGUID();
+    CKGUID guid;
+
+    do {
+        guid.d1 = (rand() & 0xFFFF) | ((rand() & 0xFFFF) << 16);
+        guid.d2 = (rand() & 0xFFFF) | ((rand() & 0xFFFF) << 16);
+    } while (!CKGetObjectDeclarationFromGuid(guid) &&
+        (m_ParameterManager->OperationGuidToCode(guid) >= 0 ||
+            m_ParameterManager->ParameterGuidToType(guid) >= 0 ||
+            GetManagerByGuid(guid) != NULL));
+
+
+    return guid;
 }
 
 CKDWORD CKContext::GetStartOptions() {
-    return 0;
+    return m_StartOptions;
 }
 
 WIN_HANDLE CKContext::GetMainWindow() {
@@ -549,11 +843,11 @@ void CKContext::SetFileWriteMode(CK_FILE_WRITEMODE mode) {
 }
 
 CK_FILE_WRITEMODE CKContext::GetFileWriteMode() {
-    return CKFILE_UNCOMPRESSED;
+    return m_FileWriteMode;
 }
 
 CK_TEXTURE_SAVEOPTIONS CKContext::GetGlobalImagesSaveOptions() {
-    return CKTEXTURE_EXTERNAL;
+    return m_GlobalImagesSaveOptions;
 }
 
 void CKContext::SetGlobalImagesSaveOptions(CK_TEXTURE_SAVEOPTIONS Options) {
@@ -573,7 +867,7 @@ void CKContext::SetGlobalImagesSaveFormat(CKBitmapProperties *Format) {
 }
 
 CK_SOUND_SAVEOPTIONS CKContext::GetGlobalSoundsSaveOptions() {
-    return CKSOUND_EXTERNAL;
+    return m_GlobalSoundsSaveOptions;
 }
 
 void CKContext::SetGlobalSoundsSaveOptions(CK_SOUND_SAVEOPTIONS Options) {
@@ -582,19 +876,31 @@ void CKContext::SetGlobalSoundsSaveOptions(CK_SOUND_SAVEOPTIONS Options) {
 }
 
 CKERROR CKContext::Load(CKSTRING FileName, CKObjectArray *liste, CK_LOAD_FLAGS LoadFlags, CKGUID *ReaderGuid) {
-    return 0;
+    if (!FileName)
+        return CKERR_INVALIDPARAMETER;
+    m_LastFileLoaded = FileName;
+    return g_ThePluginManager.Load(this, FileName, liste, LoadFlags, NULL, ReaderGuid);
 }
 
 CKERROR CKContext::Load(int BufferSize, void *MemoryBuffer, CKObjectArray *ckarray, CK_LOAD_FLAGS LoadFlags) {
-    return 0;
+    if (!MemoryBuffer || !ckarray)
+        return CKERR_INVALIDPARAMETER;
+
+    CKFile *file = CreateCKFile();
+    if (!file)
+        return CKERR_INVALIDFILE;
+    CKERROR err = file->Load(MemoryBuffer, BufferSize, ckarray, LoadFlags);
+    file->UpdateAndApplyAnimationsTo(NULL);
+    DeleteCKFile(file);
+    return err;
 }
 
 CKSTRING CKContext::GetLastFileLoaded() {
-    return (CKSTRING) m_LastFileLoaded.CStr();
+    return (CKSTRING)m_LastFileLoaded.CStr();
 }
 
 CKSTRING CKContext::GetLastCmoLoaded() {
-    return (CKSTRING) m_LastCmoLoaded.CStr();
+    return (CKSTRING)m_LastCmoLoaded.CStr();
 }
 
 void CKContext::SetLastCmoLoaded(CKSTRING str) {
@@ -605,26 +911,123 @@ void CKContext::SetLastCmoLoaded(CKSTRING str) {
 }
 
 CKERROR CKContext::GetFileInfo(CKSTRING FileName, CKFileInfo *FileInfo) {
-    return 0;
+    if (!FileInfo)
+        return CKERR_INVALIDPARAMETER;
+    if (!FileName)
+        return CKERR_INVALIDFILE;
+
+    VxMemoryMappedFile file(FileName);
+    if (!file.IsValid())
+        return CKERR_INVALIDFILE;
+
+    return GetFileInfo(file.GetFileSize(), file.GetBase(), FileInfo);
 }
 
 CKERROR CKContext::GetFileInfo(int BufferSize, void *MemoryBuffer, CKFileInfo *FileInfo) {
-    return 0;
+    if (!MemoryBuffer || !FileInfo)
+        return CKERR_INVALIDPARAMETER;
+
+    if (BufferSize < 64)
+        return CKERR_INVALIDFILE;
+
+    int header1[8];
+    int header2[8];
+
+    memcpy(header1, MemoryBuffer, sizeof(header1));
+    memcpy(header2, (char *)MemoryBuffer + 32, sizeof(header2));
+
+    if (header1[5]) {
+        memset(header1, 0, sizeof(header1));
+        memset(header2, 0, sizeof(header2));
+    }
+
+    if (header1[4] < 5)
+        memset(header2, 0, sizeof(header2));
+
+    FileInfo->ProductVersion = header2[5];
+    FileInfo->ProductBuild = header2[6];
+    FileInfo->FileWriteMode = header1[6];
+    FileInfo->CKVersion = header1[3];
+    FileInfo->FileVersion = header1[4];
+    FileInfo->FileSize = BufferSize;
+    FileInfo->ManagerCount = header2[2];
+    FileInfo->ObjectCount = header2[3];
+    FileInfo->MaxIDSaved = header2[4];
+    FileInfo->Hdr1PackSize = header1[7];
+    FileInfo->Hdr1UnPackSize = header2[1];
+    FileInfo->DataUnPackSize = header2[1];
+    FileInfo->DataPackSize = header2[0];
+    FileInfo->Crc = header1[2];
+    return CK_OK;
 }
 
-CKERROR CKContext::Save(CKSTRING FileName, CKObjectArray *liste, CKDWORD SaveFlags, CKDependencies *dependencies, CKGUID *ReaderGuid) {
-    return 0;
+CKERROR CKContext::Save(CKSTRING FileName, CKObjectArray *liste, CKDWORD SaveFlags, CKDependencies *dependencies,
+                        CKGUID *ReaderGuid) {
+    CKObjectArray *saveList = nullptr;
+    CKObjectArray *tempObjectArray = nullptr;
+
+    if (dependencies) {
+        CKDependenciesContext depContext(this);
+        depContext.SetOperationMode(CK_DEPENDENCIES_SAVE);
+
+        liste->Reset();
+        while (!liste->EndOfList()) {
+            CK_ID objectId = liste->GetDataId();
+            depContext.AddObjects(&objectId, 1);
+            liste->Next();
+        }
+
+        depContext.StartDependencies(dependencies);
+
+        depContext.m_Objects.Prepare(depContext);
+
+        tempObjectArray = CreateCKObjectArray();
+
+        // TODO: Need fix
+        for (auto it = depContext.m_MapID.Begin(); it != depContext.m_MapID.End(); ++it) {
+            tempObjectArray->InsertRear(it.GetKey());
+        }
+
+        saveList = tempObjectArray;
+    } else {
+        saveList = liste;
+    }
+
+    CKERROR result = g_ThePluginManager.Save(this, FileName, saveList, SaveFlags, ReaderGuid);
+
+    if (tempObjectArray)
+        DeleteCKObjectArray(tempObjectArray);
+
+    return result;
 }
 
-CKERROR CKContext::LoadAnimationOnCharacter(CKSTRING FileName, CKObjectArray *liste, CKCharacter *carac, CKGUID *ReaderGuid, CKBOOL AsDynamicObjects) {
-    return 0;
+CKERROR CKContext::LoadAnimationOnCharacter(CKSTRING FileName, CKObjectArray *liste, CKCharacter *carac,
+                                            CKGUID *ReaderGuid, CKBOOL AsDynamicObjects) {
+    CKDWORD flags = CK_LOAD_ANIMATION;
+    if (AsDynamicObjects)
+        flags |= CK_LOAD_AS_DYNAMIC_OBJECT;
+    return g_ThePluginManager.Load(this, FileName, liste, (CK_LOAD_FLAGS)flags, carac, ReaderGuid);
 }
 
-CKERROR CKContext::LoadAnimationOnCharacter(int BufferSize, void *MemoryBuffer, CKObjectArray *ckarray, CKCharacter *carac, CKBOOL AsDynamicObjects) {
-    return 0;
+CKERROR CKContext::LoadAnimationOnCharacter(int BufferSize, void *MemoryBuffer, CKObjectArray *ckarray,
+                                            CKCharacter *carac, CKBOOL AsDynamicObjects) {
+    if (!MemoryBuffer || !ckarray)
+        return CKERR_INVALIDPARAMETER;
+    CKFile *file = CreateCKFile();
+    if (!file)
+        return CKERR_INVALIDFILE;
+
+    CKDWORD flags = CK_LOAD_ANIMATION;
+    if (AsDynamicObjects)
+        flags |= CK_LOAD_AS_DYNAMIC_OBJECT;
+    CKERROR err = file->Load(MemoryBuffer, BufferSize, ckarray, (CK_LOAD_FLAGS)flags);
+    file->UpdateAndApplyAnimationsTo(carac);
+    DeleteCKFile(file);
+    return err;
 }
 
-void CKContext::SetAutomaticLoadMode(CK_LOADMODE GeneralMode, CK_LOADMODE _3DObjectsMode, CK_LOADMODE MeshMode, CK_LOADMODE MatTexturesMode) {
+void CKContext::SetAutomaticLoadMode(CK_LOADMODE GeneralMode, CK_LOADMODE _3DObjectsMode, CK_LOADMODE MeshMode,
+                                     CK_LOADMODE MatTexturesMode) {
     m_GeneralLoadMode = GeneralMode;
     m_3DObjectsLoadMode = _3DObjectsMode;
     m_MeshLoadMode = MeshMode;
@@ -636,15 +1039,16 @@ void CKContext::SetUserLoadCallback(CK_USERLOADCALLBACK fct, void *Arg) {
     m_UserLoadCallBackArgs = Arg;
 }
 
-CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, const CKSTRING NewName, CKObject **newobj) {
+CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, const CKSTRING NewName,
+                                               CKObject **newobj) {
     if (OldName == nullptr)
         return CKLOAD_OK;
 
-    auto& classDesc = g_CKClassInfo[Cid];
+    auto &classDesc = g_CKClassInfo[Cid];
     if (classDesc.DefaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
         return CKLOAD_OK;
 
-    auto* obj = GetObjectByNameAndClass(OldName, Cid);
+    auto *obj = GetObjectByNameAndClass(OldName, Cid);
     if (!obj)
         return CKLOAD_OK;
     if (newobj != nullptr)
@@ -655,39 +1059,35 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
         return m_UserLoadCallBack(Cid, OldName, NewName, newobj, m_UserLoadCallBackArgs);
     if ((classDesc.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT) == 0) {
         if (CKIsChildClassOf(Cid, CKCID_3DENTITY)) {
-            if (m_3DObjectsLoadMode != CKLOAD_INVALID)
-            {
+            if (m_3DObjectsLoadMode != CKLOAD_INVALID) {
                 if (m_3DObjectsLoadMode == CKLOAD_RENAME)
                     GetSecureName(NewName, OldName, Cid);
                 return m_3DObjectsLoadMode;
             }
-        }
-        else {
-            if (m_GeneralLoadMode != CKLOAD_INVALID)
-            {
+        } else {
+            if (m_GeneralLoadMode != CKLOAD_INVALID) {
                 if (m_GeneralLoadMode == CKLOAD_RENAME)
                     GetSecureName(NewName, OldName, Cid);
                 return m_GeneralLoadMode;
             }
         }
 
-        switch (m_RenameOption)
-        {
-            case CKLOAD_REPLACE:
-                return CKLOAD_OK;
-            case CKLOAD_USECURRENT: {
-                if (newobj != nullptr) // This check does not present in original version
-                    *newobj = obj;
-                return CKLOAD_USECURRENT;
-            }
-            case CKLOAD_RENAME: {
-                GetSecureName(NewName, OldName, Cid);
-                if (newobj != nullptr) // This check does not present in original version
-                    *newobj = nullptr;
-                return CKLOAD_RENAME;
-            }
-            default:
-                break;
+        switch (m_RenameOption) {
+        case CKLOAD_REPLACE:
+            return CKLOAD_OK;
+        case CKLOAD_USECURRENT: {
+            if (newobj != nullptr) // This check does not present in original version
+                *newobj = obj;
+            return CKLOAD_USECURRENT;
+        }
+        case CKLOAD_RENAME: {
+            GetSecureName(NewName, OldName, Cid);
+            if (newobj != nullptr) // This check does not present in original version
+                *newobj = nullptr;
+            return CKLOAD_RENAME;
+        }
+        default:
+            break;
         }
     }
 
@@ -708,133 +1108,265 @@ CKBOOL CKContext::IsRunTime() {
 }
 
 void CKContext::ClearManagersData() {
+    CKRenderManager *renderManager = GetRenderManager();
+    if (renderManager) {
+        int count = renderManager->GetRenderContextCount();
+        for (int i = 0; i < count; ++i) {
+            CKRenderContext *renderContext = renderManager->GetRenderContext(i);
+            renderManager->RemoveRenderContext(renderContext);
+        }
+    }
+    m_ObjectManager->DeleteAllObjects();
+    ExecuteManagersOnCKEnd();
 
+    // TODO: Maybe need to clear m_ManagerTable and m_InactiveManagers
+    for (auto it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+        CKBaseManager *manager = *it;
+        delete manager;
+    }
+    for (auto it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
+        CKBaseManager *manager = *it;
+        delete manager;
+    }
 }
 
 void CKContext::ExecuteManagersOnCKInit() {
-
+    for (auto it = m_ManagersOnCKInit.Begin(); it != m_ManagersOnCKInit.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnCKInit();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnCKEnd() {
-
+    for (auto it = m_ManagersOnCKEnd.Begin(); it != m_ManagersOnCKEnd.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnCKEnd();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPreProcess() {
-
+    for (auto it = m_ManagersPreProcess.Begin(); it != m_ManagersPreProcess.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PreProcess();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPostProcess() {
-
+    for (auto it = m_ManagersPostProcess.Begin(); it != m_ManagersPostProcess.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PostProcess();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPreClearAll() {
-
+    for (auto it = m_ManagersPreClearAll.Begin(); it != m_ManagersPreClearAll.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PreClearAll();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPostClearAll() {
-
+    for (auto it = m_ManagersPostClearAll.Begin(); it != m_ManagersPostClearAll.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PostClearAll();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnSequenceDeleted(CK_ID *objids, int count) {
-
+    for (auto it = m_ManagersOnSequenceDeleted.Begin(); it != m_ManagersOnSequenceDeleted.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->SequenceDeleted(objids, count);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnSequenceToBeDeleted(CK_ID *objids, int count) {
-
+    for (auto it = m_ManagersOnSequenceToBeDeleted.Begin(); it != m_ManagersOnSequenceToBeDeleted.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->SequenceToBeDeleted(objids, count);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnCKReset() {
-
+    for (auto it = m_ManagersOnCKReset.Begin(); it != m_ManagersOnCKReset.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnCKReset();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnCKPostReset() {
-
+    for (auto it = m_ManagersOnCKPostReset.Begin(); it != m_ManagersOnCKPostReset.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnCKPostReset();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnCKPause() {
-
+    for (auto it = m_ManagersOnCKPause.Begin(); it != m_ManagersOnCKPause.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnCKPause();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnCKPlay() {
-
+    for (auto it = m_ManagersOnCKPlay.Begin(); it != m_ManagersOnCKPlay.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnCKPlay();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPreLaunchScene(CKScene *OldScene, CKScene *NewScene) {
-
+    for (auto it = m_ManagersPreLaunchScene.Begin(); it != m_ManagersPreLaunchScene.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PreLaunchScene(OldScene, NewScene);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPostLaunchScene(CKScene *OldScene, CKScene *NewScene) {
-
+    for (auto it = m_ManagersPostLaunchScene.Begin(); it != m_ManagersPostLaunchScene.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PostLaunchScene(OldScene, NewScene);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPreLoad() {
-
+    for (auto it = m_ManagersPreLoad.Begin(); it != m_ManagersPreLoad.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PreLoad();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPostLoad() {
-
+    for (auto it = m_ManagersPostLoad.Begin(); it != m_ManagersPostLoad.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PostLoad();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPreSave() {
-
+    for (auto it = m_ManagersPreSave.Begin(); it != m_ManagersPreSave.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PreSave();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersPostSave() {
-
+    for (auto it = m_ManagersPostSave.Begin(); it != m_ManagersPostSave.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->PostSave();
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnSequenceAddedToScene(CKScene *scn, CK_ID *objids, int coun) {
-
+    for (auto it = m_ManagersOnSequenceAddedToScene.Begin(); it != m_ManagersOnSequenceAddedToScene.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->SequenceAddedToScene(scn, objids, coun);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnSequenceRemovedFromScene(CKScene *scn, CK_ID *objids, int coun) {
-
+    for (auto it = m_ManagersOnSequenceRemovedFromScene.Begin(); it != m_ManagersOnSequenceRemovedFromScene.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->SequenceRemovedFromScene(scn, objids, coun);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnPreCopy(CKDependenciesContext *context) {
-
+    for (auto it = m_ManagersOnPreCopy.Begin(); it != m_ManagersOnPreCopy.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnPreCopy(*context);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnPostCopy(CKDependenciesContext *context) {
-
+    for (auto it = m_ManagersOnPostCopy.Begin(); it != m_ManagersOnPostCopy.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnPostCopy(*context);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnPreRender(CKRenderContext *dev) {
-
+    for (auto it = m_ManagersOnPreRender.Begin(); it != m_ManagersOnPreRender.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnPreRender(dev);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnPostRender(CKRenderContext *dev) {
-
+    for (auto it = m_ManagersOnPostRender.Begin(); it != m_ManagersOnPostRender.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnPostRender(dev);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::ExecuteManagersOnPostSpriteRender(CKRenderContext *dev) {
-
+    for (auto it = m_ManagersOnPostSpriteRender.Begin(); it != m_ManagersOnPostSpriteRender.End(); ++it) {
+        m_CurrentManager = *it;
+        m_CurrentManager->OnPostSpriteRender(dev);
+    }
+    m_CurrentManager = nullptr;
 }
 
 void CKContext::AddProfileTime(CK_PROFILE_CATEGORY cat, float time) {
     switch (cat) {
-        case CK_PROFILE_RENDERTIME:
-            m_Stats.RenderTime += time;
-            break;
-        case CK_PROFILE_IKTIME:
-            m_Stats.IKManagement += time;
-            break;
-        case CK_PROFILE_ANIMATIONTIME:
-            m_Stats.AnimationManagement += time;
-            break;
+    case CK_PROFILE_RENDERTIME:
+        m_Stats.RenderTime += time;
+        break;
+    case CK_PROFILE_IKTIME:
+        m_Stats.IKManagement += time;
+        break;
+    case CK_PROFILE_ANIMATIONTIME:
+        m_Stats.AnimationManagement += time;
+        break;
     }
 }
 
 CKERROR CKContext::ProcessDebugStart(float delta_time) {
-    return 0;
+    ExecuteManagersPreProcess();
+    CKLevel *level = GetCurrentLevel();
+    if (level)
+        level->PreProcess();
+    return m_BehaviorManager->ExecuteDebugStart(delta_time);
 }
 
 CKBOOL CKContext::ProcessDebugStep() {
-    return 0;
+    if (m_Playing)
+        return m_DebugContext->DebugStep();
+    else
+        return FALSE;
 }
 
 CKERROR CKContext::ProcessDebugEnd() {
-    return 0;
+    if (!m_Playing)
+        return CKERR_PAUSED;
+    if (!m_DebugContext->InDebug)
+        return CKERR_PAUSED;
+    m_DebugContext->Clear();
+    ExecuteManagersPostProcess();
+    return CK_OK;
 }
 
 CKDebugContext *CKContext::GetDebugContext() {
@@ -860,11 +1392,9 @@ int CKContext::WarnAllBehaviors(CKDWORD Message) {
 }
 
 void CKContext::GetSecureName(CKSTRING secureName, const char *name, CK_CLASSID cid) {
-
 }
 
 void CKContext::GetObjectSecureName(XString &secureName, CKSTRING name, CK_CLASSID cid) {
-
 }
 
 int CKContext::PrepareDestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, CKDependencies *Dependencies) {
@@ -876,11 +1406,9 @@ int CKContext::FinishDestroyObjects(CKDWORD Flags) {
 }
 
 void CKContext::BuildSortedLists() {
-
 }
 
 void CKContext::DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies *Dependencies, CKDWORD Flags) {
-
 }
 
 VxMemoryPool *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
@@ -889,7 +1417,7 @@ VxMemoryPool *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
         m_MemoryPools.PushBack(new VxMemoryPool());
     }
 
-    VxMemoryPool* pool = m_MemoryPools[newIndex];
+    VxMemoryPool *pool = m_MemoryPools[newIndex];
     if (pool) {
         pool->Allocate(count);
         m_MemoryPoolMask.Set(newIndex);
@@ -931,7 +1459,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags)
     m_InDynamicCreationMode = FALSE;
     m_GlobalImagesSaveOptions = CKTEXTURE_RAWDATA;
     m_GlobalSoundsSaveOptions = CKSOUND_EXTERNAL;
-    m_FileWriteMode = 0;
+    m_FileWriteMode = CKFILE_UNCOMPRESSED;
     m_GlobalImagesSaveFormat = new CKBitmapProperties;
     memset(m_GlobalImagesSaveFormat, 0, sizeof(CKBitmapProperties));
     m_GlobalImagesSaveFormat->m_Ext = CKFileExtension("bmp");
@@ -942,8 +1470,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags)
     m_UserLoadCallBack = NULL;
     m_UserLoadCallBackArgs = NULL;
 
-//    field_3C8 = (DWORD)operator new(0x104u);
-//    field_3CC = (DWORD)operator new(0x104u);
+    //    field_3C8 = (DWORD)operator new(0x104u);
+    //    field_3CC = (DWORD)operator new(0x104u);
     m_RenameOption = 0;
     m_RenameDialogOption = 0;
 

@@ -119,7 +119,7 @@ public:
     CKERROR OutputToInfo(CKSTRING format, ...);
     CKERROR RefreshBuildingBlocks(const XArray<CKGUID> &iGuids);
 
-    CKERROR ShowSetup(CK_ID);
+    CKERROR ShowSetup(CK_ID id);
     CK_ID ChooseObject(void *dialogParentWnd);
     CKERROR Select(const XObjectArray &o, CKBOOL clearSelection = TRUE);
     CKDWORD SendInterfaceMessage(CKDWORD reason, CKDWORD param1, CKDWORD param2);
@@ -143,9 +143,9 @@ public:
     int GetManagerCount();
     CKBaseManager *GetManager(int index);
 
-    CKBOOL IsManagerActive(CKBaseManager *bm);
-    CKBOOL HasManagerDuplicates(CKBaseManager *bm);
-    void ActivateManager(CKBaseManager *bm, CKBOOL active);
+    CKBOOL IsManagerActive(CKBaseManager *manager);
+    CKBOOL HasManagerDuplicates(CKBaseManager *manager);
+    void ActivateManager(CKBaseManager *manager, CKBOOL activate);
     int GetInactiveManagerCount();
     CKBaseManager *GetInactiveManager(int index);
 
@@ -331,7 +331,7 @@ public:
     CK_TEXTURE_SAVEOPTIONS m_GlobalImagesSaveOptions;
     CK_SOUND_SAVEOPTIONS m_GlobalSoundsSaveOptions;
     CKBitmapProperties *m_GlobalImagesSaveFormat;
-    CKDWORD m_FileWriteMode;
+    CK_FILE_WRITEMODE m_FileWriteMode;
     XString m_LastFileLoaded;
     XString m_LastCmoLoaded;
     void *field_2CC;
@@ -355,7 +355,7 @@ public:
     CKBOOL m_InClearAll;
     CKBOOL m_RunTime;
     VxTimeProfiler m_UserProfileTimers[8];
-    float m_UserProfile[8];
+    float m_UserProfileTime[8];
     XString m_StringBuffer;
     CKDWORD m_StartOptions;
     CKDWORD field_3C8;

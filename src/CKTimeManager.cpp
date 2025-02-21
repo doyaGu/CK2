@@ -81,7 +81,7 @@ CKERROR CKTimeManager::PreProcess() {
     stats.ActiveObjectsExecuted = 0;
     stats.BehaviorDelayedLinks = 0;
     memset(stats.UserProfiles, 0, sizeof(stats.UserProfiles));
-    memset(m_Context->m_UserProfile, 0, sizeof(m_Context->m_UserProfile));
+    memset(m_Context->m_UserProfileTime, 0, sizeof(m_Context->m_UserProfileTime));
 
     if (m_Paused)
         return CKERR_PAUSED;
