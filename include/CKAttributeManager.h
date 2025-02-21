@@ -18,27 +18,12 @@ typedef void (*CKATTRIBUTECALLBACK)(CKAttributeType AttribType, CKBOOL Set, CKBe
 
 struct CKAttributeDesc
 {
-    CKDWORD field_0;
-    CKDWORD field_4;
-    CKDWORD field_8;
-    CKDWORD field_C;
-    CKDWORD field_10;
-    CKDWORD field_14;
-    CKDWORD field_18;
-    CKDWORD field_1C;
-    CKDWORD field_20;
-    CKDWORD field_24;
-    CKDWORD field_28;
-    CKDWORD field_2C;
-    CKDWORD field_30;
-    CKDWORD field_34;
-    CKDWORD field_38;
-    CKDWORD field_3C;
+    char Name[64];
     CKGUID ParameterType;
+    XObjectPointerArray GlobalAttributeList;
     XObjectPointerArray AttributeList;
-    XObjectPointerArray AttributeList2;
-    CKDWORD AttributeCategory;
-    CKDWORD CompatibleCid;
+    CKAttributeCategory AttributeCategory;
+    CK_CLASSID CompatibleCid;
     CKATTRIBUTECALLBACK CallbackFct;
     void *CallbackArg;
     CKSTRING DefaultValue;
@@ -189,15 +174,15 @@ public:
                                                      CKMANAGER_FUNC_OnSequenceAddedToScene |
                                                      CKMANAGER_FUNC_OnSequenceRemovedFromScene; }
 
-    int m_AttributeDescCount;
+    int m_AttributeInfoCount;
     CKAttributeDesc **m_AttributeInfos;
     int m_AttributeCategoryCount;
     CKAttributeCategoryDesc **m_AttributeCategories;
     int *m_ConversionTable;
     int m_ConversionTableCount;
-    XBitArray m_BitArray;
+    XBitArray m_AttributeMask;
     CKBOOL m_Saving;
-    XArray<int> m_Array;
+    XObjectPointerArray m_AttributeList;
 };
 
 #endif // CKATTRIBUTEMANAGER_H
