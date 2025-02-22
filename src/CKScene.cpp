@@ -8,6 +8,7 @@
 #include "CKTexture.h"
 #include "CKMaterial.h"
 #include "CKCamera.h"
+#include "CKPlace.h"
 #include "CKFile.h"
 
 CK_CLASSID CKScene::m_ClassID = CKCID_SCENE;
@@ -91,13 +92,12 @@ void CKScene::AddObject(CKSceneObject *o) {
         return;
 
     // Create new scene object descriptor
-    CKSceneObjectDesc* desc = AddObjectDesc(o);
+    CKSceneObjectDesc *desc = AddObjectDesc(o);
     if (!desc)
         return;
 
     CK_ID id = 0;
-    if (m_Context->m_ObjectManager->GetSingleObjectActivity(o, id))
-    {
+    if (m_Context->m_ObjectManager->GetSingleObjectActivity(o, id)) {
         if (id < 0) {
             desc->m_InitialValue = CKSaveObjectState(o, CK_STATESAVE_ALL);
             desc->m_Flags &= ~CK_SCENEOBJECT_START_ACTIVATE;
@@ -125,7 +125,7 @@ void CKScene::RemoveObject(CKSceneObject *o) {
     if (!o)
         return;
 
-    CKSceneObjectDesc* desc = GetSceneObjectDesc(o);
+    CKSceneObjectDesc *desc = GetSceneObjectDesc(o);
     if (!desc)
         return;
 
@@ -585,10 +585,136 @@ CKERROR CKScene::Merge(CKScene *mergedScene, CKLevel *fromLevel) {
     return CK_OK;
 }
 
-void CKScene::Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_FLAGS activityFlags, CK_SCENEOBJECTRESET_FLAGS resetFlags) {
+void CKScene::Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_FLAGS activityFlags,
+                   CK_SCENEOBJECTRESET_FLAGS resetFlags) {
+    if (GetScriptCount() > 0) {
+        m_Context->GetBehaviorManager()->AddObject(this);
+    }
+
+    if (EnvironmentSettings()) {
+        ApplyEnvironmentSettings(&renderContexts);
+    }
+
+    for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
+        CKRenderContext *rc = (CKRenderContext *)*rit;
+        rc->AddRemoveSequence(TRUE);
+    }
+
+    CKSceneObjectIterator it = GetObjectIterator();
+    while (!it.End()) {
+        CK_ID objID = it.GetObjectID();
+        CKSceneObjectDesc *desc = it.GetObjectDesc();
+        CKObject *obj = m_Context->GetObject(objID);
+        if (!obj)
+            continue;
+
+        if (CKIsChildClassOf(obj, CKCID_RENDEROBJECT)) {
+            CKRenderObject *renderObj = (CKRenderObject *)obj;
+            for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
+                CKRenderContext *rc = (CKRenderContext *)*rit;
+                rc->AddObject(renderObj);
+            }
+        }
+
+        CKBOOL active = activityFlags == CK_SCENEOBJECT_ACTIVE;
+        CKBOOL doNothing = activityFlags == CK_SCENEOBJECTACTIVITY_DONOTHING;
+        CKBOOL reset = resetFlags == CK_SCENEOBJECTRESET_RESET;
+
+        if (resetFlags == CK_SCENEOBJECTRESET_SCENEDEFAULT)
+            reset = (desc->m_Flags & CK_SCENEOBJECT_START_RESET) != 0;
+
+        if (activityFlags == CK_SCENEOBJECTACTIVITY_SCENEDEFAULT) {
+            active = (desc->m_Flags & CK_SCENEOBJECT_START_ACTIVATE) != 0;
+            doNothing = (desc->m_Flags & CK_SCENEOBJECT_START_LEAVE) != 0;
+        }
+
+        if (reset && desc->m_InitialValue) {
+            obj->Load(desc->m_InitialValue, nullptr);
+        }
+
+        if (!doNothing) {
+            if (active) {
+                desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+            } else {
+                desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+            }
+        }
+
+        reset = FALSE;
+
+        if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
+            CKBehavior *beh = (CKBehavior *)obj;
+
+            if (beh->IsActive()) {
+                desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+            } else {
+                desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+            }
+
+            beh->ModifyFlags(
+                0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME);
+            beh->Activate((desc->m_Flags & CK_SCENEOBJECT_ACTIVE) != 0, reset);
+        }
+
+        if (desc->m_Flags & CK_SCENEOBJECT_ACTIVE) {
+            m_Context->GetBehaviorManager()->AddObject((CKBeObject *)obj);
+        }
+
+        it++;
+    }
+
+    for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
+        CKRenderContext *rc = (CKRenderContext *)*rit;
+        rc->AddRemoveSequence(FALSE);
+    }
+
+    m_EnvironmentSettings |= CK_SCENE_LAUNCHEDONCE;
 }
 
 void CKScene::Stop(XObjectPointerArray &renderContexts, CKBOOL reset) {
+    for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
+        CKRenderContext *rc = (CKRenderContext *)*rit;
+        rc->AddRemoveSequence(TRUE);
+    }
+
+    CKSceneObjectIterator it = GetObjectIterator();
+    while (!it.End()) {
+        CK_ID objID = it.GetObjectID();
+        CKObject *obj = m_Context->GetObject(objID);
+        if (!obj)
+            continue;
+
+        if (CKIsChildClassOf(obj, CKCID_RENDEROBJECT)) {
+            CKRenderObject *renderObj = (CKRenderObject *)obj;
+            for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
+                CKRenderContext *rc = (CKRenderContext *)*rit;
+                rc->RemoveObject(renderObj);
+            }
+
+            if (obj->GetClassID() == CKCID_PLACE) {
+                CKPlace *place = (CKPlace *)obj;
+                const int childCount = place->GetChildrenCount();
+                for (int i = 0; i < childCount; ++i) {
+                    CK3dEntity *child = place->GetChild(i);
+                    if (child) {
+                        for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++
+                             rit) {
+                            CKRenderContext *rc = (CKRenderContext *)*rit;
+                            rc->RemoveObject(child);
+                        }
+                    }
+                }
+            }
+        }
+        it++;
+    }
+
+    if (reset) {
+        for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
+            CKRenderContext *rc = (CKRenderContext *)*rit;
+            rc->AddRemoveSequence(FALSE);
+        }
+    }
 }
 
 CKScene::CKScene(CKContext *Context, CKSTRING name) : CKBeObject(Context, name) {
