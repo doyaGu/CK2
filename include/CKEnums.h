@@ -778,7 +778,7 @@ enum CK_OBJECTCREATION_OPTIONS
 Summary: Specify the mode of operation of a CKDependenciesContext.
 
 Remarks:
-    A CKDependenciesContext class is always used when it come to work
+    A CKDependenciesContext class is always used when it comes to work
     with object dependencies (A mesh if a dependencies of a CK3dEntity for example)
 See also: CKCreateObject
 *************************************************/
