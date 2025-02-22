@@ -174,7 +174,7 @@ public:
     virtual ~CKWaveSound();
     virtual CK_CLASSID GetClassID();
 
-    virtual CKStateChunk *Save(CKFile *File, CKDWORD Flags);
+    virtual CKStateChunk *Save(CKFile *file, CKDWORD flags);
     virtual CKERROR Load(CKStateChunk *Chunk, CKFile *File);
 
     virtual CKERROR RemapDependencies(CKDependenciesContext &context);
