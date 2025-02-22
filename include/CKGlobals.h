@@ -133,7 +133,7 @@ DLL_EXPORT CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp);
 //-------------------------------------------------
 // Class Dependencies utilities
 
-DLL_EXPORT void CKCopyDefaultClassDependencies(CKDependencies &d, CK_DEPENDENCIES_OPMODE mode);
+DLL_EXPORT void CKCopyDefaultClassDependencies(CKDependencies &deps, CK_DEPENDENCIES_OPMODE mode);
 DLL_EXPORT CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode);
 
 DLL_EXPORT void CKDeletePointer(void *ptr);

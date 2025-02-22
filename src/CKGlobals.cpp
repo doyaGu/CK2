@@ -28,12 +28,13 @@
 #include "CKMidiSound.h"
 #include "CKObjectDeclaration.h"
 #include "CKBehaviorPrototype.h"
+#include "CKStateChunk.h"
 
 extern INSTANCE_HANDLE g_CKModule;
 
 XString g_PluginPath;
 XString g_StartPath;
-XArray<CKContext*> g_Contextes;
+XArray<CKContext *> g_Contextes;
 XClassInfoArray g_CKClassInfo;
 CKDependencies g_DefaultCopyDependencies;
 CKDependencies g_DefaultReplaceDependencies;
@@ -108,7 +109,7 @@ CKERROR CKStartUp() {
     CKCLASSREGISTER(CKMidiSound, CKSound);
     CKBuildClassHierarchyTable();
 
-    return 0;
+    return CK_OK;
 }
 
 CKERROR CKShutdown() {
@@ -144,7 +145,7 @@ CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine
     if (iRenderEngine < 0 || iRenderEngine >= g_ThePluginManager.GetPluginCount(CKPLUGIN_RENDERENGINE_DLL))
         iRenderEngine = 0;
 
-    auto* ctx = new CKContext(iWin, iRenderEngine, Flags);
+    auto *ctx = new CKContext(iWin, iRenderEngine, Flags);
     g_Contextes.PushBack(ctx);
     g_ThePluginManager.InitializePlugins(ctx);
     memset(&g_MainStats, 0, sizeof(g_MainStats));
@@ -213,8 +214,8 @@ void CKBuildClassHierarchyTable() {
     const int classCount = g_CKClassInfo.Size();
 
     // 1. Initialize class information structures
-    for(int i = 0; i < classCount; ++i) {
-        CKClassDesc& info = g_CKClassInfo[i];
+    for (int i = 0; i < classCount; ++i) {
+        CKClassDesc &info = g_CKClassInfo[i];
         info.Done = FALSE;
         info.CommonToBeNotify.Clear();
         info.ToBeNotify.Clear();
@@ -224,24 +225,24 @@ void CKBuildClassHierarchyTable() {
     }
 
     // 2. Compute parent-child relationships
-    for(int i = 0; i < classCount; ++i) {
+    for (int i = 0; i < classCount; ++i) {
         ComputeParentsTable(i);
     }
 
     // 3. Build inverse child relationships
-    for(CK_CLASSID cls = 0; cls < classCount; ++cls) {
+    for (CK_CLASSID cls = 0; cls < classCount; ++cls) {
         g_CKClassInfo[cls].Children.Set(cls);
 
-        for(CK_CLASSID parent = 0; parent < classCount; ++parent) {
-            if(g_CKClassInfo[cls].Parents.IsSet(parent)) {
+        for (CK_CLASSID parent = 0; parent < classCount; ++parent) {
+            if (g_CKClassInfo[cls].Parents.IsSet(parent)) {
                 g_CKClassInfo[parent].Children.Set(cls);
             }
         }
     }
 
     // 4. Call registration functions
-    for(CK_CLASSID i = 0; i < classCount; ++i) {
-        if(g_CKClassInfo[i].RegisterFct) {
+    for (CK_CLASSID i = 0; i < classCount; ++i) {
+        if (g_CKClassInfo[i].RegisterFct) {
             g_CKClassInfo[i].RegisterFct();
         }
     }
@@ -257,7 +258,7 @@ void CKBuildClassHierarchyTable() {
     g_DefaultSaveDependencies.Resize(classCount);
 
     // 6. Copy dependency information
-    for(CK_CLASSID i = 0; i < classCount; ++i) {
+    for (CK_CLASSID i = 0; i < classCount; ++i) {
         g_DefaultCopyDependencies[i] = g_CKClassInfo[i].DefaultCopyDependencies;
         g_DefaultDeleteDependencies[i] = g_CKClassInfo[i].DefaultDeleteDependencies;
         g_DefaultReplaceDependencies[i] = g_CKClassInfo[i].DefaultReplaceDependencies;
@@ -265,14 +266,14 @@ void CKBuildClassHierarchyTable() {
     }
 
     // 7. Compute notification tables
-    for(CK_CLASSID i = 0; i < classCount; ++i) {
+    for (CK_CLASSID i = 0; i < classCount; ++i) {
         ComputeParentsNotifyTable(i);
     }
 
     // 8. Build common notification lists
-    for(CK_CLASSID cls = 0; cls < classCount; ++cls) {
-        for(CK_CLASSID target = 0; target < classCount; ++target) {
-            if(g_CKClassInfo[cls].CommonToBeNotify.IsSet(target)) {
+    for (CK_CLASSID cls = 0; cls < classCount; ++cls) {
+        for (CK_CLASSID target = 0; target < classCount; ++target) {
+            if (g_CKClassInfo[cls].CommonToBeNotify.IsSet(target)) {
                 g_CKClassInfo[cls].ToNotify.Insert(g_CKClassInfo[cls].Parent, target);
             }
         }
@@ -309,11 +310,71 @@ CKObjectDeclaration *CKGetObjectDeclarationFromGuid(CKGUID guid) {
 }
 
 CKBehaviorPrototype *CKGetPrototypeFromGuid(CKGUID guid) {
-    return nullptr;
+    XObjDeclHashTableIt it = g_PrototypeDeclarationList.Find(guid);
+    if (!it)
+        return nullptr;
+
+    CKBehaviorPrototype *proto = (*it)->m_Proto;
+    if (proto)
+        return proto;
+
+    CKDLL_CREATEPROTOFUNCTION creationFct = (*it)->m_CreationFunction;
+    if (!creationFct)
+        return nullptr;
+
+    if (creationFct(&proto) != CK_OK)
+        return nullptr;
+
+    proto->SetGuid(guid);
+    proto->SetApplyToClassID((*it)->m_CompatibleClassID);
+    (*it)->m_Proto = proto;
+    return proto;
 }
 
-CKERROR CKRemovePrototypeDeclaration(CKObjectDeclaration *objdecl) {
-    return 0;
+CKERROR CKRemovePrototypeDeclaration(CKObjectDeclaration *decl) {
+    if (!decl)
+        return CKERR_INVALIDPARAMETER;
+
+    CKGUID declGuid = decl->GetGuid();
+    g_PrototypeDeclarationList.Remove(declGuid);
+
+    CKBehaviorPrototype *prototype = decl->m_Proto;
+    if (prototype) {
+        CKGUID protoGuid = prototype->GetGuid();
+
+        for (CKContext **contextIter = g_Contextes.Begin();
+             contextIter != g_Contextes.End();
+             ++contextIter) {
+            CKContext *ctx = *contextIter;
+            if (!ctx) continue;
+
+            int behaviorCount = ctx->GetObjectsCountByClassID(CKCID_BEHAVIOR);
+            CK_ID *behaviorIds = ctx->GetObjectsListByClassID(CKCID_BEHAVIOR);
+
+            for (int i = 0; i < behaviorCount; ++i) {
+                CKBehavior *behavior = (CKBehavior *)ctx->GetObject(behaviorIds[i]);
+                if (!behavior)
+                    continue;
+
+                CKGUID behaviorGuid = behavior->GetPrototypeGuid();
+
+                if (behaviorGuid == protoGuid) {
+                    // Reset behavior configuration
+                    behavior->SetFunction(NULL);
+                    behavior->SetCallbackFunction(NULL);
+
+                    ctx->OutputToConsoleExBeep(
+                        "Warning: Behavior %s no longer has a valid prototype!",
+                        behavior->GetName());
+                }
+            }
+        }
+
+        delete prototype;
+    }
+
+    delete decl;
+    return CK_OK;
 }
 
 CKObjectDeclaration *CreateCKObjectDeclaration(CKSTRING Name) {
@@ -468,7 +529,7 @@ char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel) {
 
 char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize) {
     char *buffer = new char[DestSize];
-    if (buffer && uncompress((Bytef *)buffer, (uLongf *)&DestSize, (const Bytef *)SrcBuffer, SrcSize) == Z_OK){
+    if (buffer && uncompress((Bytef *)buffer, (uLongf *)&DestSize, (const Bytef *)SrcBuffer, SrcSize) == Z_OK) {
         return buffer;
     }
     return NULL;
@@ -513,17 +574,48 @@ CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp) {
         return NULL;
     if (bp->m_Size <= 0 || bp->m_Size >= 256)
         return NULL;
-    CKBitmapProperties* nbp = nullptr;// (CKBitmapProperties*)VxNew(bp->m_Size);
+    CKBitmapProperties *nbp = (CKBitmapProperties *)new CKBYTE[bp->m_Size];
     memcpy(nbp, bp, bp->m_Size);
     return nbp;
 }
 
-void CKCopyDefaultClassDependencies(CKDependencies &d, CK_DEPENDENCIES_OPMODE mode) {
-
+void CKCopyDefaultClassDependencies(CKDependencies &deps, CK_DEPENDENCIES_OPMODE mode) {
+    switch (mode) {
+    case CK_DEPENDENCIES_COPY:
+        deps = g_DefaultCopyDependencies;
+        break;
+    case CK_DEPENDENCIES_DELETE:
+        deps = g_DefaultDeleteDependencies;
+        break;
+    case CK_DEPENDENCIES_REPLACE:
+        deps = g_DefaultReplaceDependencies;
+        break;
+    case CK_DEPENDENCIES_SAVE:
+        deps = g_DefaultSaveDependencies;
+        break;
+    case CK_DEPENDENCIES_BUILD:
+        deps = g_DefaultCopyDependencies;
+        break;
+    default:
+        break;
+    }
 }
 
 CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode) {
-    return nullptr;
+    switch (mode) {
+    case CK_DEPENDENCIES_COPY:
+        return &g_DefaultCopyDependencies;
+    case CK_DEPENDENCIES_DELETE:
+        return &g_DefaultDeleteDependencies;
+    case CK_DEPENDENCIES_REPLACE:
+        return &g_DefaultReplaceDependencies;
+    case CK_DEPENDENCIES_SAVE:
+        return &g_DefaultSaveDependencies;
+    case CK_DEPENDENCIES_BUILD:
+        return &g_DefaultCopyDependencies;
+    default:
+        return nullptr;
+    }
 }
 
 void CKDeletePointer(void *ptr) {
@@ -531,25 +623,115 @@ void CKDeletePointer(void *ptr) {
 }
 
 CKERROR CKCopyAllAttributes(CKBeObject *Src, CKBeObject *Dest) {
-    return 0;
+    if (!Src || !Dest)
+        return CKERR_INVALIDPARAMETER;
+
+    int attributeCount = Src->GetAttributeCount();
+    if (attributeCount <= 0)
+        return CK_OK;
+
+    for (int i = 0; i < attributeCount; ++i) {
+        int attributeType = Src->GetAttributeType(i);
+
+        if (Dest->HasAttribute(attributeType))
+            return CKERR_ALREADYPRESENT;
+
+        if (!Dest->SetAttribute(attributeType))
+            return CKERR_INVALIDOPERATION;
+
+        CKParameter *sourceParam = Src->GetAttributeParameter(attributeType);
+        CKParameter *destParam = Dest->GetAttributeParameter(attributeType);
+
+        if (sourceParam && destParam) {
+            destParam->CopyValue(sourceParam);
+        }
+    }
+
+    return CK_OK;
 }
 
 CKERROR CKMoveAllScripts(CKBeObject *Src, CKBeObject *Dest) {
-    return 0;
+    if (!Src || !Dest)
+        return CKERR_INVALIDPARAMETER;
+
+    const int count = Src->GetScriptCount();
+    for (int i = 0; i < count; ++i) {
+        CKBehavior *beh = Src->GetScript(i);
+        if (beh) {
+            CKMoveScript(Src, Dest, beh);
+        }
+    }
+
+    return CK_OK;
 }
 
 CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh) {
-    return 0;
+    CKScene *sourceLevelScene = NULL;
+    CKScene *targetLevelScene = NULL;
+    CKBOOL isLevelOperation = FALSE;
+
+    if (CKIsChildClassOf(Src, CKCID_LEVEL) && CKIsChildClassOf(Dest, CKCID_LEVEL)) {
+        isLevelOperation = TRUE;
+        sourceLevelScene = ((CKLevel *)Src)->GetLevelScene();
+        targetLevelScene = ((CKLevel *)Dest)->GetLevelScene();
+    }
+
+    XHashTable<CKSceneObjectDesc, CK_ID> sceneDescMap;
+    int sceneCount = Beh->GetSceneInCount();
+    for (int sceneIdx = 0; sceneIdx < sceneCount; ++sceneIdx) {
+        CKScene *currentScene = Beh->GetSceneIn(sceneIdx);
+        if (!currentScene)
+            continue;
+
+        CKSceneObjectDesc *sceneDesc = currentScene->GetSceneObjectDesc(Beh);
+        if (!sceneDesc)
+            continue;
+
+        CKSceneObjectDesc desc;
+        desc.m_Object = sceneDesc->m_Object;
+        desc.m_InitialValue = NULL;
+        desc.m_Flags = sceneDesc->m_Flags;
+        if (sceneDesc->m_InitialValue) {
+            desc.m_InitialValue = new CKStateChunk(*sceneDesc->m_InitialValue);
+        }
+
+        if (isLevelOperation && targetLevelScene && currentScene == sourceLevelScene) {
+            sceneDescMap.Insert(targetLevelScene->GetID(), desc);
+        } else {
+            sceneDescMap.Insert(currentScene->GetID(), desc);
+        }
+    }
+
+    Src->RemoveScript(Beh->GetID());
+    if (Dest->AddScript(Beh) != CK_OK) {
+        Src->AddScript(Beh);
+    }
+
+    const int updatedSceneCount = Beh->GetSceneInCount();
+    for (int sceneIdx = 0; sceneIdx < updatedSceneCount; ++sceneIdx) {
+        CKScene *currentScene = Beh->GetSceneIn(sceneIdx);
+        if (!currentScene)
+            continue;
+
+        CKSceneObjectDesc *sceneDesc = currentScene->GetSceneObjectDesc(Beh);
+        if (!sceneDesc)
+            continue;
+
+        CKSceneObjectDesc *desc = sceneDescMap.FindPtr(currentScene->GetID());
+        if (desc) {
+            *sceneDesc = *desc;
+        }
+    }
+
+    return CK_OK;
 }
 
 void CKRemapObjectParameterValue(CKContext *ckContext, CK_ID oldID, CK_ID newID, CK_CLASSID cid, CKBOOL derived) {
     const XObjectPointerArray &params = ckContext->GetObjectListByType(CKCID_PARAMETEROUT, TRUE);
-    for (XObjectPointerArray::Iterator it = params.Begin(); it != params.End(); ++it)
-    {
+    for (XObjectPointerArray::Iterator it = params.Begin(); it != params.End(); ++it) {
         CKParameter *param = (CKParameter *)*it;
         CK_CLASSID pcid = param->GetParameterClassID();
-        if (pcid == cid || (derived && CKIsChildClassOf(pcid, cid)))
-        {
+        if (pcid == cid || (derived && CKIsChildClassOf(pcid, cid))) {
             if (*(CK_ID *)param->GetReadDataPtr(TRUE) == oldID)
                 param->SetValue(&newID);
         }
@@ -570,20 +752,20 @@ void CKClassRegisterAssociatedParameter(CK_CLASSID Cid, CKGUID pguid) {
 
 void CKClassRegisterDefaultDependencies(CK_CLASSID Cid, CKDWORD depend_Mask, int mode) {
     switch (mode) {
-        case CK_DEPENDENCIES_COPY:
-            g_CKClassInfo[Cid].DefaultCopyDependencies = depend_Mask;
-            break;
-        case CK_DEPENDENCIES_DELETE:
-            g_CKClassInfo[Cid].DefaultDeleteDependencies = depend_Mask;
-            break;
-        case CK_DEPENDENCIES_REPLACE:
-            g_CKClassInfo[Cid].DefaultReplaceDependencies = depend_Mask;
-            break;
-        case CK_DEPENDENCIES_SAVE:
-            g_CKClassInfo[Cid].DefaultSaveDependencies = depend_Mask;
-            break;
-        default:
-            break;
+    case CK_DEPENDENCIES_COPY:
+        g_CKClassInfo[Cid].DefaultCopyDependencies = depend_Mask;
+        break;
+    case CK_DEPENDENCIES_DELETE:
+        g_CKClassInfo[Cid].DefaultDeleteDependencies = depend_Mask;
+        break;
+    case CK_DEPENDENCIES_REPLACE:
+        g_CKClassInfo[Cid].DefaultReplaceDependencies = depend_Mask;
+        break;
+    case CK_DEPENDENCIES_SAVE:
+        g_CKClassInfo[Cid].DefaultSaveDependencies = depend_Mask;
+        break;
+    default:
+        break;
     }
 }
 
@@ -600,8 +782,19 @@ CK_CLASSID CKClassGetNewIdentifier() {
     return cid;
 }
 
-void CKClassRegister(CK_CLASSID Cid, CK_CLASSID Parent_Cid, CKCLASSREGISTERFCT registerfct, CKCLASSCREATIONFCT creafct,
+void CKClassRegister(CK_CLASSID Cid, CK_CLASSID ParentCid, CKCLASSREGISTERFCT RegisterFct,
+                     CKCLASSCREATIONFCT CreationFct,
                      CKCLASSNAMEFCT NameFct, CKCLASSDEPENDENCIESFCT DependsFct,
                      CKCLASSDEPENDENCIESCOUNTFCT DependsCountFct) {
+    if (Cid >= g_CKClassInfo.Size())
+        g_CKClassInfo.Resize(Cid + 1);
 
+    CKClassDesc desc;
+    desc.Parent = ParentCid != Cid ? ParentCid : 0;
+    desc.RegisterFct = RegisterFct;
+    desc.CreationFct = CreationFct;
+    desc.NameFct = NameFct;
+    desc.DependsFct = DependsFct;
+    desc.DependsCountFct = DependsCountFct;
+    g_CKClassInfo[Cid] = desc;
 }
