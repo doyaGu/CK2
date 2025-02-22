@@ -5,7 +5,7 @@
 
 typedef XSArray<CKDWORD> CKDataRow;
 
-typedef CKBOOL (*ArraySortFunction)(CKDataRow *, CKDataRow *);
+typedef int (*ArraySortFunction)(CKDataRow *, CKDataRow *);
 
 typedef CKBOOL (*ArrayEqualFunction)(CKDataRow *);
 
@@ -65,7 +65,7 @@ class DLL_EXPORT CKDataArray : public CKBeObject
 public:
     // Column/Format Functions
     // Insert Column before column cdest (-1 means move at the end)
-    void InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramguid = CKGUID(0, 0));
+    void InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramGuid = CKGUID(0, 0));
     // Move Column csrc before column cdest (-1 means move at the end)
     void MoveColumn(int csrc, int cdest);
     // Remove Column
@@ -75,7 +75,7 @@ public:
     // Get Column Name
     char *GetColumnName(int c);
     // Get Column Format
-    void SetColumnType(int c, CK_ARRAYTYPE type, CKGUID paramguid = CKGUID(0, 0));
+    void SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid = CKGUID(0, 0));
     // Get Column Format
     CK_ARRAYTYPE GetColumnType(int c);
     // Get Column Format
@@ -122,9 +122,9 @@ public:
     // Load / Write
 
     // load elements into an array from a formatted file
-    CKBOOL LoadElements(CKSTRING string, CKBOOL append, int column);
+    CKBOOL LoadElements(CKSTRING filename, CKBOOL append, int column);
     // write elements from an array to a file
-    CKBOOL WriteElements(CKSTRING string, int column, int number, CKBOOL iAppend = FALSE);
+    CKBOOL WriteElements(CKSTRING filename, int column, int number, CKBOOL append = FALSE);
 
     // Rows Functions
     // Get row Count
@@ -138,9 +138,9 @@ public:
     // Test a row on a column
     CKBOOL TestRow(int row, int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
     // Find a line with the current key : search in the column c and return the line index (-1) if none
-    int FindRowIndex(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startingindex = 0);
+    int FindRowIndex(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
     // Find a line with the current key : search in the column c and return the line itself (NULL if none)
-    CKDataRow *FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startindex = 0);
+    CKDataRow *FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
     // Remove the nth line
     void RemoveRow(int n);
     // Move a row
@@ -231,7 +231,14 @@ public:
     CKDataMatrix m_DataMatrix;
     int m_KeyColumn;
     CKBOOL m_Order;
-    CKDWORD m_ColumnIndex;
+    int m_ColumnIndex;
+
+    static int g_ColumnIndex;
+    static CKBOOL g_Order;
+    static CK_COMPOPERATOR g_Operator;
+    static CKDWORD g_Value;
+    static CKDWORD g_ValueSize;
+    static ArraySortFunction g_SortFunction;
 };
 
 #endif // CKDATAARRAY_H
