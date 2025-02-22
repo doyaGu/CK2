@@ -1064,7 +1064,7 @@ void CKScene::Register() {
 }
 
 CKScene *CKScene::CreateInstance(CKContext *Context) {
-    return new CKScene(Context, nullptr);
+    return new CKScene(Context);
 }
 
 void CKScene::CheckSceneObjectList() {

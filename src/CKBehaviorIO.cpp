@@ -130,7 +130,7 @@ void CKBehaviorIO::Register() {
 }
 
 CKBehaviorIO *CKBehaviorIO::CreateInstance(CKContext *Context) {
-    return new CKBehaviorIO(Context, nullptr);
+    return new CKBehaviorIO(Context);
 }
 
 void CKBehaviorIO::SetOldFlags(CKDWORD flags) {

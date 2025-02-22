@@ -2063,7 +2063,7 @@ void CKBehavior::Register() {
 }
 
 CKBehavior *CKBehavior::CreateInstance(CKContext *Context) {
-    return new CKBehavior(Context, nullptr);
+    return new CKBehavior(Context);
 }
 
 void CKBehavior::Reset() {

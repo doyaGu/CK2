@@ -197,5 +197,5 @@ void CKParameterLocal::Register() {
 }
 
 CKParameterLocal *CKParameterLocal::CreateInstance(CKContext *Context) {
-    return new CKParameterLocal(Context, nullptr, -1);
+    return new CKParameterLocal(Context);
 }

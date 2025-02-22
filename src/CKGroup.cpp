@@ -334,7 +334,7 @@ void CKGroup::Register() {
 }
 
 CKGroup *CKGroup::CreateInstance(CKContext *Context) {
-    return new CKGroup(Context, nullptr);
+    return new CKGroup(Context);
 }
 
 void CKGroup::ComputeClassID() {

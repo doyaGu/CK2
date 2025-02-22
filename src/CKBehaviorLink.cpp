@@ -186,5 +186,5 @@ void CKBehaviorLink::Register() {
 }
 
 CKBehaviorLink *CKBehaviorLink::CreateInstance(CKContext *Context) {
-    return new CKBehaviorLink(Context, nullptr);
+    return new CKBehaviorLink(Context);
 }

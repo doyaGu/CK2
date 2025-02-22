@@ -590,7 +590,7 @@ void CKParameter::Register() {
 }
 
 CKParameter *CKParameter::CreateInstance(CKContext *Context) {
-    return new CKParameter(Context, nullptr, -1);
+    return new CKParameter(Context);
 }
 
 void CKParameter::MessageDeleteAfterUse(CKBOOL act) {

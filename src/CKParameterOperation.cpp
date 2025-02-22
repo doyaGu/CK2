@@ -383,5 +383,5 @@ void CKParameterOperation::Register() {
 }
 
 CKParameterOperation *CKParameterOperation::CreateInstance(CKContext *Context) {
-    return new CKParameterOperation(Context, nullptr);
+    return new CKParameterOperation(Context);
 }
