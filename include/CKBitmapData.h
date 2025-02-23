@@ -561,12 +561,12 @@ public:
         return m_BitmapFlags & CKBITMAPDATA_FORCERESTORE;
     }
 
-    CKBOOL LoadSlotImage(XString, int Slot = 0);
+    CKBOOL LoadSlotImage(XString Name, int Slot = 0);
     //CKBOOL LoadSlotImage(const XString &Name, int Slot = 0);
     CKBOOL LoadMovieFile(XString Name);
     //CKBOOL LoadMovieFile(const XString &Name);
 
-    CKMovieInfo *CreateMovieInfo(const XString &s, CKMovieProperties **mp);
+    CKMovieInfo *CreateMovieInfo(XString s, CKMovieProperties **mp);
     void SetMovieInfo(CKMovieInfo *mi);
 
     CKBitmapData();
