@@ -1354,6 +1354,41 @@ CKBOOL CKParameterManager::IsParameterTypeToBeShown(CKGUID guid) {
     return IsParameterTypeToBeShown(type);
 }
 
+void CKParameterManager::UpdateParameterEnum() {
+    XString enumString;
+
+    int paramCount = GetParameterTypesCount();
+    XClassArray<XString> paramNames(paramCount);
+
+    for (int i = 0; i < paramCount; ++i) {
+        CKParameterTypeDesc* typeDesc = GetParameterTypeDescription(i);
+        if (!typeDesc || !typeDesc->TypeName.CStr())
+            continue;
+
+        if (!typeDesc->Valid || (typeDesc->dwFlags & CKPARAMETERTYPE_HIDDEN))
+            continue;
+
+        XString formattedName = typeDesc->TypeName;
+        formattedName << "=" << i;
+        paramNames.PushBack(formattedName);
+    }
+
+    paramNames.Sort();
+
+    for (int i = 0; i < paramNames.Size(); ++i) {
+        enumString << paramNames[i];
+        if (i < paramNames.Size() - 1)
+            enumString << ",";
+    }
+
+    if (enumString.Length() == 0)
+        enumString = "";
+
+    ChangeEnumDeclaration(CKPGUID_PARAMETERTYPE, enumString.Str());
+
+    m_ParameterTypeEnumUpToDate = TRUE;
+}
+
 CKParameterManager::CKParameterManager(CKContext *Context) : CKBaseManager(
     Context, PARAMETER_MANAGER_GUID, "Parameter Manager") {
     m_NbOperations = 0;

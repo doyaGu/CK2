@@ -286,6 +286,8 @@ public:
     CKBOOL IsParameterTypeToBeShown(CKParameterType type);
     CKBOOL IsParameterTypeToBeShown(CKGUIDCONSTREF guid);
 
+    void UpdateParameterEnum();
+
     CKParameterManager(CKContext *Context);
 
     ~CKParameterManager();
