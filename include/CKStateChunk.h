@@ -25,7 +25,7 @@ struct ChunkIteratorData
     CKDependenciesContext *DepContext;
     CKContext *Context;
 
-    ChunkIteratorData() : Guid() {
+    ChunkIteratorData() {
         memset(this, 0, sizeof(ChunkIteratorData));
     }
 
@@ -253,8 +253,8 @@ public:
     void WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *reader, CKBitmapProperties *bp);
     void WriteManagerInt(CKGUID Manager, int val);
 
-    void WriteArray_LEndian(int, int, void*);
-    void WriteArray_LEndian16(int, int, void*);
+    void WriteArray_LEndian(int elementCount, int elementSize, void *srcData);
+    void WriteArray_LEndian16(int elementCount, int elementSize, void *srcData);
 
     // No assumptions are made about contents
     // items should be converted to little-endian (PC) format before calling these if necessary
@@ -266,7 +266,6 @@ public:
 
     void WriteBuffer_LEndian(int size, void *buf);
     void WriteBuffer_LEndian16(int size, void *buf);
-
 
     void WriteBufferNoSize_LEndian(int size, void *buf);   // Do not store size
     void WriteBufferNoSize_LEndian16(int size, void *buf); // Do not store size
@@ -306,8 +305,8 @@ public:
     void ReadMatrix(VxMatrix &mat);
     int ReadManagerInt(CKGUID *guid);
 
-    int ReadArray_LEndian(void**);
-    int ReadArray_LEndian16(void**);
+    int ReadArray_LEndian(void **array);
+    int ReadArray_LEndian16(void **array);
 
     const XObjectArray &ReadXObjectArray();
     const XObjectPointerArray &ReadXObjectArray(CKContext *context);
@@ -325,10 +324,12 @@ public:
     CKStateChunk *ReadSubChunk();
     int ReadBuffer(void **buffer); // returns the size in bytes of the allocated buffer (// Use CKDeletePointer to delete allocated pointer)
     int ReadString(CKSTRING *str); // returns the length of the string including the terminating null character (// Use CKDeletePointer to delete allocated string)
+    void ReadString(XString &str);
 
     //----------------------------------------------------------
     // Bitmaps functions
     BITMAP_HANDLE ReadBitmap();
+    CKBYTE *ReadBitmap2(VxImageDescEx &desc);
     CKBOOL ReadReaderBitmap(const VxImageDescEx &desc);
 
     //----------------------------------------------------------
@@ -363,9 +364,6 @@ public:
 
     //--------------------------------------------------------
     ////               Private Part
-
-    CKBOOL ReadRawBitmapHeader(VxImageDescEx &desc);
-    CKBOOL ReadRawBitmapData(VxImageDescEx &desc);
 
     CKStateChunk(CKStateChunk *chunk);
     CKStateChunk(CK_CLASSID Cid, CKFile *f);

@@ -1,6 +1,9 @@
 #include "CKStateChunk.h"
-#include "CKFile.h"
+
 #include "VxMatrix.h"
+#include "VxWindowFunctions.h"
+#include "CKFile.h"
+#include "CKPluginManager.h"
 
 #include <miniz.h>
 
@@ -208,7 +211,7 @@ void CKStateChunk::WriteIdentifier(CKDWORD id) {
     if (m_ChunkParser->PrevIdentifierPos < m_ChunkParser->CurrentPos)
         m_Data[m_ChunkParser->PrevIdentifierPos + 1] = m_ChunkParser->CurrentPos;
     m_ChunkParser->PrevIdentifierPos = m_ChunkParser->CurrentPos;
-    m_Data[m_ChunkParser->CurrentPos++] = (int) id;
+    m_Data[m_ChunkParser->CurrentPos++] = (int)id;
     m_Data[m_ChunkParser->CurrentPos++] = 0;
 }
 
@@ -414,37 +417,83 @@ void CKStateChunk::WriteManagerInt(CKGUID Manager, int val) {
     m_Data[m_ChunkParser->CurrentPos++] = val;
 }
 
-void CKStateChunk::WriteArray_LEndian(int, int, void*)
-{
+void CKStateChunk::WriteArray_LEndian(int elementCount, int elementSize, void *srcData) {
+    if (srcData && elementCount > 0 && elementSize > 0) {
+        // Calculate total bytes and required dword count (rounding up)
+        const int totalBytes = elementSize * elementCount;
+        const int dwordCount = (totalBytes + 3) / 4; // Convert bytes to 4-byte dwords
+
+        // Ensure buffer has space for: [totalBytes (int)] + [count (int)] + data
+        CheckSize(8 + (dwordCount * 4)); // 8 bytes header + data size
+
+        // Write array header
+        m_Data[m_ChunkParser->CurrentPos++] = totalBytes;
+        m_Data[m_ChunkParser->CurrentPos++] = elementCount;
+
+        // Copy array data
+        memcpy(&m_Data[m_ChunkParser->CurrentPos], srcData, totalBytes);
+        m_ChunkParser->CurrentPos += dwordCount;
+    } else {
+        // Write empty array marker
+        CheckSize(8); // Space for two zero ints
+        m_Data[m_ChunkParser->CurrentPos++] = 0;
+        m_Data[m_ChunkParser->CurrentPos++] = 0;
+    }
 }
 
-void CKStateChunk::WriteArray_LEndian16(int, int, void*)
-{
+void CKStateChunk::WriteArray_LEndian16(int elementCount, int elementSize, void *srcData) {
+    WriteArray_LEndian(elementCount, elementSize, srcData);
 }
 
 int CKStateChunk::StartManagerReadSequence(CKGUID *guid) {
     int i = m_Data[m_ChunkParser->CurrentPos++];
     if (guid)
-        *guid = *(CKGUID *) &m_Data[m_ChunkParser->CurrentPos];
+        *guid = *(CKGUID *)&m_Data[m_ChunkParser->CurrentPos];
     m_ChunkParser->CurrentPos += 2;
     return i;
 }
 
 int CKStateChunk::ReadManagerInt(CKGUID *guid) {
     if (guid)
-        *guid = *(CKGUID *) &m_Data[m_ChunkParser->CurrentPos];
+        *guid = *(CKGUID *)&m_Data[m_ChunkParser->CurrentPos];
     m_ChunkParser->CurrentPos += 2;
     return m_Data[m_ChunkParser->CurrentPos++];
 }
 
-int CKStateChunk::ReadArray_LEndian(void**)
-{
-    return CK_OK;
+int CKStateChunk::ReadArray_LEndian(void **array) {
+    ChunkParser* parser = m_ChunkParser;
+    if (parser && parser->CurrentPos < m_ChunkSize) {
+        // Read array metadata
+        const int dataSizeBytes = m_Data[parser->CurrentPos++];
+        const int elementCount = m_Data[parser->CurrentPos++];
+
+        if (dataSizeBytes > 0 && elementCount > 0) {
+            // Calculate needed dwords (4-byte chunks)
+            const int dwordCount = (dataSizeBytes + 3) / 4;
+
+            // Allocate and copy array data
+            void* arrayData = operator new(dataSizeBytes);
+            memcpy(arrayData, &m_Data[parser->CurrentPos], dataSizeBytes);
+
+            // Update parser position
+            parser->CurrentPos += dwordCount;
+
+            *array = arrayData;
+            return elementCount;
+        }
+
+        // Invalid size parameters
+        *array = NULL;
+    } else if (m_File) {
+        // Report read error through context
+        m_File->m_Context->OutputToConsole("Chunk Read Error", true);
+    }
+
+    return 0;
 }
 
-int CKStateChunk::ReadArray_LEndian16(void**)
-{
-    return CK_OK;
+int CKStateChunk::ReadArray_LEndian16(void **array) {
+    return ReadArray_LEndian(array);
 }
 
 int CKStateChunk::ReadManagerIntSequence() {
@@ -459,7 +508,7 @@ void CKStateChunk::WriteObjectID(CK_ID obj) {
         if (!m_Ids)
             m_Ids = new IntListStruct;
         m_Ids->AddEntry(m_ChunkParser->CurrentPos);
-        m_Data[m_ChunkParser->CurrentPos] = (int) obj;
+        m_Data[m_ChunkParser->CurrentPos] = (int)obj;
     } else {
         m_Data[m_ChunkParser->CurrentPos] = 0;
     }
@@ -478,7 +527,7 @@ void CKStateChunk::WriteObjectIDSequence(CK_ID id) {
     if (m_File)
         m_Data[m_ChunkParser->CurrentPos] = m_File->SaveFindObjectIndex(id);
     else
-        m_Data[m_ChunkParser->CurrentPos] = (int) id;
+        m_Data[m_ChunkParser->CurrentPos] = (int)id;
     ++m_ChunkParser->CurrentPos;
 }
 
@@ -537,32 +586,24 @@ void CKStateChunk::WriteObjectArray(CKObjectArray *array, CKContext *context) {
     int objectCount = (array) ? array->GetCount() : 0;
     CheckSize(objectCount * sizeof(int));
     StartObjectIDSequence(objectCount);
-    if (array)
-    {
+    if (array) {
         array->Reset();
-        while (!array->EndOfList())
-        {
+        while (!array->EndOfList()) {
             CK_ID id = 0;
-            if (context)
-            {
+            if (context) {
                 CKObject *object = array->GetData(context);
                 if (object && (m_ChunkClassID == -1 || m_Dynamic || object->IsDynamic()))
                     id = object->GetID();
-            }
-            else
-            {
+            } else {
                 id = array->GetDataId();
             }
-            if (m_File)
-            {
+            if (m_File) {
                 int index = -1;
                 XFileObjectsTableIt it = m_File->m_ObjectsHashTable.Find(id);
                 if (it != m_File->m_ObjectsHashTable.End())
                     index = *it;
                 m_Data[m_ChunkParser->CurrentPos++] = index;
-            }
-            else
-            {
+            } else {
                 m_Data[m_ChunkParser->CurrentPos++] = id;
             }
             array->Next();
@@ -571,23 +612,20 @@ void CKStateChunk::WriteObjectArray(CKObjectArray *array, CKContext *context) {
 }
 
 void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
-    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
-    {
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
         return;
     }
 
     int count = m_Data[m_ChunkParser->CurrentPos++];
-    if (count == 0)
-    {
+    if (count == 0) {
         if (array)
             array->Clear();
         return;
     }
 
-    if (m_ChunkVersion < 4)
-    {
+    if (m_ChunkVersion < 4) {
         m_ChunkParser->CurrentPos += 4;
         count = m_Data[m_ChunkParser->CurrentPos++];
     }
@@ -596,21 +634,15 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
         m_ChunkParser->CurrentPos += count;
 
     array->Clear();
-    if (count + m_ChunkParser->CurrentPos <= m_ChunkSize)
-    {
-        if (m_File)
-        {
-            for (int i = 0; i < count; ++i)
-            {
+    if (count + m_ChunkParser->CurrentPos <= m_ChunkSize) {
+        if (m_File) {
+            for (int i = 0; i < count; ++i) {
                 int index = m_Data[m_ChunkParser->CurrentPos++];
                 CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
                 array->InsertRear(id);
             }
-        }
-        else
-        {
-            for (int i = 0; i < count; ++i)
-            {
+        } else {
+            for (int i = 0; i < count; ++i) {
                 CK_ID id = m_Data[m_ChunkParser->CurrentPos++];
                 array->InsertRear(id);
             }
@@ -620,40 +652,30 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
 
 const XObjectArray &CKStateChunk::ReadXObjectArray() {
     m_TempXOA.Clear();
-    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
-    {
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
         return m_TempXOA;
     }
 
     int count = StartReadSequence();
-    if (count != 0)
-    {
-        if (m_ChunkVersion < 4)
-        {
+    if (count != 0) {
+        if (m_ChunkVersion < 4) {
             m_ChunkParser->CurrentPos += 4;
             count = ReadInt();
             m_TempXOA.Resize(count);
             for (int i = 0; i < count; ++i)
                 m_TempXOA[i] = m_Data[m_ChunkParser->CurrentPos++];
-        }
-        else
-        {
+        } else {
             m_TempXOA.Resize(count);
-            if (count + m_ChunkParser->CurrentPos <= m_ChunkSize)
-            {
-                if (m_File)
-                {
-                    for (int i = 0; i < count; ++i)
-                    {
+            if (count + m_ChunkParser->CurrentPos <= m_ChunkSize) {
+                if (m_File) {
+                    for (int i = 0; i < count; ++i) {
                         int index = m_Data[m_ChunkParser->CurrentPos++];
                         CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
                         m_TempXOA[i] = id;
                     }
-                }
-                else
-                {
+                } else {
                     for (int i = 0; i < count; ++i)
                         m_TempXOA[i] = m_Data[m_ChunkParser->CurrentPos++];
                 }
@@ -666,49 +688,37 @@ const XObjectArray &CKStateChunk::ReadXObjectArray() {
 
 const XObjectPointerArray &CKStateChunk::ReadXObjectArray(CKContext *context) {
     m_TempXOPA.Clear();
-    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
-    {
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
         return m_TempXOPA;
     }
 
     int count = StartReadSequence();
-    if (count != 0)
-    {
-        if (m_ChunkVersion < 4)
-        {
+    if (count != 0) {
+        if (m_ChunkVersion < 4) {
             m_ChunkParser->CurrentPos += 4;
             count = ReadInt();
             m_TempXOPA.Reserve(count);
-            for (int i = 0; i < count; ++i)
-            {
+            for (int i = 0; i < count; ++i) {
                 CK_ID id = m_Data[m_ChunkParser->CurrentPos++];
                 CKObject *obj = context->GetObject(id);
                 if (obj)
                     m_TempXOPA.PushBack(obj);
             }
-        }
-        else
-        {
+        } else {
             m_TempXOPA.Reserve(count);
-            if (count + m_ChunkParser->CurrentPos <= m_ChunkSize)
-            {
-                if (m_File)
-                {
-                    for (int i = 0; i < count; ++i)
-                    {
+            if (count + m_ChunkParser->CurrentPos <= m_ChunkSize) {
+                if (m_File) {
+                    for (int i = 0; i < count; ++i) {
                         int index = m_Data[m_ChunkParser->CurrentPos++];
                         CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
                         CKObject *obj = context->GetObject(id);
                         if (obj)
                             m_TempXOPA.PushBack(obj);
                     }
-                }
-                else
-                {
-                    for (int i = 0; i < count; ++i)
-                    {
+                } else {
+                    for (int i = 0; i < count; ++i) {
                         CK_ID id = m_Data[m_ChunkParser->CurrentPos++];
                         CKObject *obj = context->GetObject(id);
                         if (obj)
@@ -723,8 +733,7 @@ const XObjectPointerArray &CKStateChunk::ReadXObjectArray(CKContext *context) {
 }
 
 CKObjectArray *CKStateChunk::ReadObjectArray() {
-    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
-    {
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
         return NULL;
@@ -734,38 +743,29 @@ CKObjectArray *CKStateChunk::ReadObjectArray() {
     if (count == 0)
         return NULL;
 
-    if (m_ChunkVersion < 4)
-    {
+    if (m_ChunkVersion < 4) {
         m_ChunkParser->CurrentPos += 4;
         count = m_Data[m_ChunkParser->CurrentPos++];
         if (count == 0)
             return NULL;
-
     }
 
     CKObjectArray *array = NULL;
-    if (count + m_ChunkParser->CurrentPos <= m_ChunkSize)
-    {
+    if (count + m_ChunkParser->CurrentPos <= m_ChunkSize) {
         array = new CKObjectArray;
-        if (!array)
-        {
+        if (!array) {
             m_ChunkParser->CurrentPos += count;
             return NULL;
         }
 
-        if (m_File)
-        {
-            for (int i = 0; i < count; ++i)
-            {
+        if (m_File) {
+            for (int i = 0; i < count; ++i) {
                 int index = m_Data[m_ChunkParser->CurrentPos++];
                 CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
                 array->InsertRear(id);
             }
-        }
-        else
-        {
-            for (int i = 0; i < count; ++i)
-            {
+        } else {
+            for (int i = 0; i < count; ++i) {
                 CK_ID id = m_Data[m_ChunkParser->CurrentPos++];
                 array->InsertRear(id);
             }
@@ -777,8 +777,7 @@ CKObjectArray *CKStateChunk::ReadObjectArray() {
 
 void CKStateChunk::WriteSubChunk(CKStateChunk *sub) {
     int size = 4;
-    if (sub)
-    {
+    if (sub) {
         size = 8 * sizeof(int);
         if (sub->m_ChunkSize != 0)
             size += sub->m_ChunkSize * sizeof(int);
@@ -791,8 +790,7 @@ void CKStateChunk::WriteSubChunk(CKStateChunk *sub) {
     }
     CheckSize(size);
     m_Data[m_ChunkParser->CurrentPos++] = size / sizeof(int) - 1;
-    if (sub)
-    {
+    if (sub) {
         if (!m_Chunks)
             m_Chunks = new IntListStruct;
         m_Chunks->AddEntry(m_ChunkParser->CurrentPos - 1);
@@ -828,8 +826,7 @@ int CKStateChunk::StartReadSequence() {
 
 void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
     int size = 4;
-    if (sub)
-    {
+    if (sub) {
         size = 8 * sizeof(int);
         if (sub->m_ChunkSize != 0)
             size += sub->m_ChunkSize * sizeof(int);
@@ -842,8 +839,7 @@ void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
     }
     CheckSize(size);
     m_Data[m_ChunkParser->CurrentPos++] = size / sizeof(int) - 1;
-    if (sub)
-    {
+    if (sub) {
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkClassID;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion << 16 | sub->m_ChunkVersion;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkSize;
@@ -862,9 +858,8 @@ void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
     }
 }
 
-CKStateChunk* CKStateChunk::ReadSubChunk() {
-   if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
-    {
+CKStateChunk *CKStateChunk::ReadSubChunk() {
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
         return NULL;
@@ -877,25 +872,20 @@ CKStateChunk* CKStateChunk::ReadSubChunk() {
     int classID = m_Data[m_ChunkParser->CurrentPos++];
     CKStateChunk *sub = new CKStateChunk(classID, NULL);
 
-    if (m_ChunkVersion < 4)
-    {
+    if (m_ChunkVersion < 4) {
         sub->m_ChunkSize = m_Data[m_ChunkParser->CurrentPos++];
         ++m_ChunkParser->CurrentPos;
         if (sub->m_ChunkSize == 0)
             return sub;
         sub->m_Data = new int[sub->m_ChunkSize];
-        if (sub->m_Data)
-        {
+        if (sub->m_Data) {
             memcpy(sub->m_Data, &m_Data[m_ChunkParser->CurrentPos], sub->m_ChunkSize * sizeof(int));
             m_ChunkParser->CurrentPos += sub->m_ChunkSize;
             return sub;
         }
-    }
-    else
-    {
+    } else {
         int count = m_Data[m_ChunkParser->CurrentPos];
-        if (count + sizeof(int) != size)
-        {
+        if (count + sizeof(int) != size) {
             int val = m_Data[m_ChunkParser->CurrentPos++];
             sub->m_ChunkVersion = (short int)(val & 0x0000FFFF);
             sub->m_DataVersion = (short int)((val & 0xFFFF0000) >> 16);
@@ -906,15 +896,13 @@ CKStateChunk* CKStateChunk::ReadSubChunk() {
             int managerCount = 0;
             if (m_ChunkVersion > 4)
                 managerCount = m_Data[m_ChunkParser->CurrentPos++];
-            if (sub->m_ChunkSize != 0)
-            {
+            if (sub->m_ChunkSize != 0) {
                 sub->m_Data = new int[sub->m_ChunkSize];
                 if (sub->m_Data)
                     ReadAndFillBuffer_LEndian(sub->m_ChunkSize * sizeof(int), sub->m_Data);
             }
 
-            if (idCount > 0)
-            {
+            if (idCount > 0) {
                 sub->m_Ids = new IntListStruct;
                 sub->m_Ids->AllocatedSize = idCount;
                 sub->m_Ids->Size = idCount;
@@ -923,8 +911,7 @@ CKStateChunk* CKStateChunk::ReadSubChunk() {
                     ReadAndFillBuffer_LEndian(idCount * sizeof(int), sub->m_Ids->Data);
             }
 
-            if (chunkCount > 0)
-            {
+            if (chunkCount > 0) {
                 sub->m_Chunks = new IntListStruct;
                 sub->m_Chunks->AllocatedSize = chunkCount;
                 sub->m_Chunks->Size = chunkCount;
@@ -933,8 +920,7 @@ CKStateChunk* CKStateChunk::ReadSubChunk() {
                     ReadAndFillBuffer_LEndian(chunkCount * sizeof(int), sub->m_Chunks->Data);
             }
 
-            if (managerCount > 0)
-            {
+            if (managerCount > 0) {
                 sub->m_Managers = new IntListStruct;
                 sub->m_Managers->AllocatedSize = managerCount;
                 sub->m_Managers->Size = managerCount;
@@ -1021,7 +1007,7 @@ CKGUID CKStateChunk::ReadGuid() {
 }
 
 void CKStateChunk::WriteFloat(float data) {
-    WriteInt(*(int *) &data);
+    WriteInt(*(int *)&data);
 }
 
 float CKStateChunk::ReadFloat() {
@@ -1030,7 +1016,7 @@ float CKStateChunk::ReadFloat() {
             m_File->m_Context->OutputToConsole("Chunk Read error");
         return 0;
     }
-    return *(float *) &m_Data[m_ChunkParser->CurrentPos++];
+    return *(float *)&m_Data[m_ChunkParser->CurrentPos++];
 }
 
 void CKStateChunk::WriteBuffer(int size, void *buf) {
@@ -1138,20 +1124,16 @@ void CKStateChunk::ReadAndFillBuffer_LEndian16(int size, void *buffer) {
 }
 
 void CKStateChunk::WriteString(char *str) {
-    if (!str)
-    {
+    if (!str) {
         CheckSize(sizeof(int));
         m_Data[m_ChunkParser->CurrentPos++] = 0;
-    }
-    else
-    {
+    } else {
         int len = strlen(str);
         int size = len + 1;
         int sz = (size + sizeof(int)) / sizeof(int);
         CheckSize((sz + 1) * sizeof(int));
         m_Data[this->m_ChunkParser->CurrentPos++] = size;
-        if (size > 0)
-        {
+        if (size > 0) {
             memcpy(&m_Data[m_ChunkParser->CurrentPos], str, size);
             m_ChunkParser->CurrentPos += size;
         }
@@ -1185,6 +1167,30 @@ int CKStateChunk::ReadString(CKSTRING *str) {
 
     *str = NULL;
     return 0;
+}
+
+void CKStateChunk::ReadString(XString &str) {
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
+        str = "";
+        return;
+    }
+
+    CKDWORD length = m_Data[m_ChunkParser->CurrentPos++];
+
+    CKDWORD dwordCount = (length + 3) >> 2; // (length+3)/4
+
+    if ((m_ChunkParser->CurrentPos + dwordCount) > m_ChunkSize) {
+        str = "";
+        return;
+    }
+
+    if (length == 0) {
+        str = "";
+        return;
+    }
+
+    str = (char *)&m_Data[m_ChunkParser->CurrentPos];
+    m_ChunkParser->CurrentPos += dwordCount;
 }
 
 void CKStateChunk::WriteVector(const VxVector &v) {
@@ -1250,26 +1256,22 @@ int CKStateChunk::ConvertToBuffer(void *buffer) {
         chunkOptions |= CHNK_OPTION_FILE;
     }
 
-    if (buffer)
-    {
+    if (buffer) {
         int pos = 0;
         int *buf = (int *)buffer;
         buf[pos++] = (((m_ChunkClassID << 8) | m_DataVersion) << 16) | ((chunkOptions << 8) | m_ChunkVersion);
         buf[pos++] = m_ChunkSize;
         memcpy(&buf[pos], m_Data, m_ChunkSize * sizeof(int));
         pos += m_ChunkSize;
-        if (m_Ids)
-        {
+        if (m_Ids) {
             memcpy(&buf[pos], m_Ids->Data, m_Ids->Size * sizeof(int));
             pos += m_Ids->Size;
         }
-        if (m_Chunks)
-        {
+        if (m_Chunks) {
             memcpy(&buf[pos], m_Chunks->Data, m_Chunks->Size * sizeof(int));
             pos += m_Chunks->Size;
         }
-        if (m_Managers)
-        {
+        if (m_Managers) {
             memcpy(&buf[pos], m_Managers->Data, m_Managers->Size * sizeof(int));
             pos += m_Managers->Size;
         }
@@ -1292,16 +1294,14 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
     m_ChunkVersion = (short)((val & 0xFFFF0000) >> 16);
     m_ChunkVersion &= 0x00FF;
 
-    if (m_ChunkVersion < CHUNK_VERSION2)
-    {
+    if (m_ChunkVersion < CHUNK_VERSION2) {
         m_ChunkClassID = buf[pos++];
         m_ChunkSize = buf[pos++];
         ++pos;
         int idCount = buf[pos++];
         int chunkCount = buf[pos++];
 
-        if (m_ChunkSize != 0)
-        {
+        if (m_ChunkSize != 0) {
             m_Data = new int[m_ChunkSize];
             if (m_Data) {
                 memcpy(m_Data, &buf[pos], m_ChunkSize * sizeof(int));
@@ -1309,27 +1309,23 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
             }
         }
 
-        if (idCount > 0)
-        {
+        if (idCount > 0) {
             m_Ids = new IntListStruct;
             m_Ids->AllocatedSize = idCount;
             m_Ids->Size = idCount;
             m_Ids->Data = new int[idCount];
-            if (m_Ids->Data)
-            {
+            if (m_Ids->Data) {
                 memcpy(m_Ids->Data, &buf[pos], idCount * sizeof(int));
                 pos += idCount;
             }
         }
 
-        if (chunkCount > 0)
-        {
+        if (chunkCount > 0) {
             m_Chunks = new IntListStruct;
             m_Chunks->AllocatedSize = chunkCount;
             m_Chunks->Size = chunkCount;
             m_Chunks->Data = new int[chunkCount];
-            if (m_Chunks->Data)
-            {
+            if (m_Chunks->Data) {
                 memcpy(m_Chunks->Data, &buf[pos], chunkCount * sizeof(int));
                 pos += chunkCount;
             }
@@ -1345,8 +1341,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
         int chunkCount = buf[pos++];
         int managerCount = buf[pos++];
 
-        if (m_ChunkSize != 0)
-        {
+        if (m_ChunkSize != 0) {
             m_Data = new int[m_ChunkSize];
             if (m_Data) {
                 memcpy(m_Data, &buf[pos], m_ChunkSize * sizeof(int));
@@ -1354,40 +1349,34 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
             }
         }
 
-        if (idCount > 0)
-        {
+        if (idCount > 0) {
             m_Ids = new IntListStruct;
             m_Ids->AllocatedSize = idCount;
             m_Ids->Size = idCount;
             m_Ids->Data = new int[idCount];
-            if (m_Ids->Data)
-            {
+            if (m_Ids->Data) {
                 memcpy(m_Ids->Data, &buf[pos], idCount * sizeof(int));
                 pos += idCount;
             }
         }
 
-        if (chunkCount > 0)
-        {
+        if (chunkCount > 0) {
             m_Chunks = new IntListStruct;
             m_Chunks->AllocatedSize = chunkCount;
             m_Chunks->Size = chunkCount;
             m_Chunks->Data = new int[chunkCount];
-            if (m_Chunks->Data)
-            {
+            if (m_Chunks->Data) {
                 memcpy(m_Chunks->Data, &buf[pos], chunkCount * sizeof(int));
                 pos += chunkCount;
             }
         }
 
-        if (managerCount > 0)
-        {
+        if (managerCount > 0) {
             m_Managers = new IntListStruct;
             m_Managers->AllocatedSize = managerCount;
             m_Managers->Size = managerCount;
             m_Managers->Data = new int[managerCount];
-            if (m_Managers->Data)
-            {
+            if (m_Managers->Data) {
                 memcpy(m_Managers->Data, &buf[pos], managerCount * sizeof(int));
                 pos += managerCount;
             }
@@ -1401,8 +1390,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
         m_ChunkClassID = (m_DataVersion & 0xFF00) >> 8;
         m_ChunkSize = buf[pos++];
 
-        if (m_ChunkSize != 0)
-        {
+        if (m_ChunkSize != 0) {
             m_Data = new int[m_ChunkSize];
             if (m_Data) {
                 memcpy(m_Data, &buf[pos], m_ChunkSize * sizeof(int));
@@ -1413,51 +1401,42 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
         if ((chunkOptions & CHNK_OPTION_FILE) == 0)
             m_File = NULL;
 
-        if ((chunkOptions & CHNK_OPTION_IDS) != 0)
-        {
+        if ((chunkOptions & CHNK_OPTION_IDS) != 0) {
             int idCount = buf[pos++];
-            if (idCount > 0)
-            {
+            if (idCount > 0) {
                 m_Ids = new IntListStruct;
                 m_Ids->AllocatedSize = idCount;
                 m_Ids->Size = idCount;
                 m_Ids->Data = new int[idCount];
-                if (m_Ids->Data)
-                {
+                if (m_Ids->Data) {
                     memcpy(m_Ids->Data, &buf[pos], idCount * sizeof(int));
                     pos += idCount;
                 }
             }
         }
 
-        if ((chunkOptions & CHNK_OPTION_CHN) != 0)
-        {
+        if ((chunkOptions & CHNK_OPTION_CHN) != 0) {
             int chunkCount = buf[pos++];
-            if (chunkCount > 0)
-            {
+            if (chunkCount > 0) {
                 m_Chunks = new IntListStruct;
                 m_Chunks->AllocatedSize = chunkCount;
                 m_Chunks->Size = chunkCount;
                 m_Chunks->Data = new int[chunkCount];
-                if (m_Chunks->Data)
-                {
+                if (m_Chunks->Data) {
                     memcpy(m_Chunks->Data, &buf[pos], chunkCount * sizeof(int));
                     pos += chunkCount;
                 }
             }
         }
 
-        if ((chunkOptions & CHNK_OPTION_MAN) != 0)
-        {
+        if ((chunkOptions & CHNK_OPTION_MAN) != 0) {
             int managerCount = buf[pos++];
-            if (managerCount > 0)
-            {
+            if (managerCount > 0) {
                 m_Managers = new IntListStruct;
                 m_Managers->AllocatedSize = managerCount;
                 m_Managers->Size = managerCount;
                 m_Managers->Data = new int[managerCount];
-                if (m_Managers->Data)
-                {
+                if (m_Managers->Data) {
                     memcpy(m_Managers->Data, &buf[pos], managerCount * sizeof(int));
                     pos += managerCount;
                 }
@@ -1487,13 +1466,11 @@ int CKStateChunk::RemapParameterInt(CKGUID ParameterType, int *ConversionTable, 
     data.ChunkVersion = m_ChunkVersion;
     data.Data = m_Data;
     data.ChunkSize = m_ChunkSize;
-    if (m_Chunks)
-    {
+    if (m_Chunks) {
         data.Chunks = m_Chunks->Data;
         data.ChunkCount = m_Chunks->Size;
     }
-    if (m_Ids)
-    {
+    if (m_Ids) {
         data.Ids = m_Ids->Data;
         data.IdCount = m_Ids->Size;
     }
@@ -1511,13 +1488,11 @@ int CKStateChunk::RemapManagerInt(CKGUID Manager, int *ConversionTable, int NbEn
     data.ChunkVersion = m_ChunkVersion;
     data.Data = m_Data;
     data.ChunkSize = m_ChunkSize;
-    if (m_Chunks)
-    {
+    if (m_Chunks) {
         data.Chunks = m_Chunks->Data;
         data.ChunkCount = m_Chunks->Size;
     }
-    if (m_Managers)
-    {
+    if (m_Managers) {
         data.Managers = m_Managers->Data;
         data.ManagerCount = m_Managers->Size;
     }
@@ -1532,13 +1507,11 @@ int CKStateChunk::RemapObjects(CKContext *context, CKDependenciesContext *Depcon
     data.ChunkVersion = m_ChunkVersion;
     data.Data = m_Data;
     data.ChunkSize = m_ChunkSize;
-    if (m_Chunks)
-    {
+    if (m_Chunks) {
         data.Chunks = m_Chunks->Data;
         data.ChunkCount = m_Chunks->Size;
     }
-    if (m_Ids)
-    {
+    if (m_Ids) {
         data.Ids = m_Ids->Data;
         data.IdCount = m_Ids->Size;
     }
@@ -1546,6 +1519,7 @@ int CKStateChunk::RemapObjects(CKContext *context, CKDependenciesContext *Depcon
 }
 
 void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *reader, CKBitmapProperties *bp) {
+
 }
 
 CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
@@ -1553,14 +1527,6 @@ CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
 }
 
 void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
-}
-
-CKBOOL ReadRawBitmapHeader(VxImageDescEx &desc) {
-    return FALSE;
-}
-
-CKBOOL ReadRawBitmapData(VxImageDescEx &desc) {
-    return FALSE;
 }
 
 CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
@@ -1571,7 +1537,167 @@ void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
 }
 
 BITMAP_HANDLE CKStateChunk::ReadBitmap() {
-    return nullptr;
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
+        return NULL;
+
+    // Bitmap format identifiers
+    const char* CK_TGA_HEADER = "CKTGA";
+    const char* CK_JPG_HEADER = "CKJPG";
+    const char* CK_BMP_HEADER = "CKBMP";
+    const char* CK_TIF_HEADER = "CKTIF";
+    const char* CK_GIF_HEADER = "CKGIF";
+    const char* CK_PCX_HEADER = "CKPCX";
+
+    BITMAP_HANDLE bitmapHandle = NULL;
+    void* buffer = NULL;
+    CKBitmapProperties* bitmapProps = NULL;
+
+    // Read bitmap header information
+    ReadInt(); // Skip version/flags field
+    int bufferSize = ReadBuffer(&buffer);
+
+    if (!buffer || bufferSize < 5) {
+        delete[] (CKBYTE *)buffer;
+        return NULL;
+    }
+
+    // Detect file format from header
+    char formatHeader[6] = {0};
+    memcpy(formatHeader, buffer, 5);
+
+    const char* fileExtension = NULL;
+    bool hasCustomHeader = true;
+
+    if (!stricmp(formatHeader, CK_TGA_HEADER)) {
+        fileExtension = "TGA";
+    } else if (!stricmp(formatHeader, CK_JPG_HEADER)) {
+        fileExtension = "JPG";
+    } else if (!stricmp(formatHeader, CK_BMP_HEADER)) {
+        fileExtension = "BMP";
+    } else if (!stricmp(formatHeader, CK_TIF_HEADER)) {
+        fileExtension = "TIF";
+    } else if (!stricmp(formatHeader, CK_GIF_HEADER)) {
+        fileExtension = "GIF";
+    } else if (!stricmp(formatHeader, CK_PCX_HEADER)) {
+        fileExtension = "PCX";
+    } else {
+        fileExtension = "TGA";
+        hasCustomHeader = false;
+    }
+
+    // Get appropriate bitmap reader
+    CKFileExtension ext(fileExtension);
+    CKBitmapReader* reader = CKGetPluginManager()->GetBitmapReader(ext);
+
+    if (reader) {
+        char* dataStart = static_cast<char*>(buffer);
+        int dataSize = bufferSize;
+
+        // Skip custom header if present
+        if (hasCustomHeader) {
+            dataStart += 5;
+            dataSize -= 5;
+        }
+
+        // Read bitmap from memory
+        if (reader->ReadMemory(dataStart, dataSize, &bitmapProps)) {
+            // Create bitmap from decoded data
+            bitmapProps->m_Format.Image = (XBYTE *)bitmapProps->m_Data;
+            bitmapHandle = VxCreateBitmap(bitmapProps->m_Format);
+
+            // Cleanup reader allocations
+            reader->ReleaseMemory(bitmapProps->m_Data);
+            reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
+            bitmapProps->m_Data = NULL;
+            bitmapProps->m_Format.ColorMap = NULL;
+        }
+        reader->Release();
+    }
+
+    delete[] (CKBYTE *)buffer;
+    return bitmapHandle;
+}
+
+CKBYTE * CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
+        if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
+        return NULL;
+
+    // Bitmap format identifiers
+    const char* CK_TGA_HEADER = "CKTGA";
+    const char* CK_JPG_HEADER = "CKJPG";
+    const char* CK_BMP_HEADER = "CKBMP";
+    const char* CK_TIF_HEADER = "CKTIF";
+    const char* CK_GIF_HEADER = "CKGIF";
+    const char* CK_PCX_HEADER = "CKPCX";
+
+    CKBYTE* bitmapData = NULL;
+    void* buffer = NULL;
+    CKBitmapProperties* bitmapProps = NULL;
+
+    // Read bitmap header information
+    ReadInt(); // Skip version/flags field
+    int bufferSize = ReadBuffer(&buffer);
+
+    if (!buffer || bufferSize < 5) {
+        delete[] (CKBYTE *)buffer;
+        return NULL;
+    }
+
+    // Detect file format from header
+    char formatHeader[6] = {0};
+    memcpy(formatHeader, buffer, 5);
+
+    const char* fileExtension = NULL;
+    bool hasCustomHeader = true;
+
+    if (!_stricmp(formatHeader, CK_TGA_HEADER)) {
+        fileExtension = "TGA";
+    } else if (!_stricmp(formatHeader, CK_JPG_HEADER)) {
+        fileExtension = "JPG";
+    } else if (!_stricmp(formatHeader, CK_BMP_HEADER)) {
+        fileExtension = "BMP";
+    } else if (!_stricmp(formatHeader, CK_TIF_HEADER)) {
+        fileExtension = "TIF";
+    } else if (!_stricmp(formatHeader, CK_GIF_HEADER)) {
+        fileExtension = "GIF";
+    } else if (!_stricmp(formatHeader, CK_PCX_HEADER)) {
+        fileExtension = "PCX";
+    } else {
+        fileExtension = "TGA";
+        hasCustomHeader = false;
+    }
+
+    // Get appropriate bitmap reader
+    CKFileExtension ext(fileExtension);
+    CKBitmapReader* reader = CKGetPluginManager()->GetBitmapReader(ext);
+    if (reader) {
+        char* dataStart = static_cast<char*>(buffer);
+        int dataSize = bufferSize;
+
+        // Skip custom header if present
+        if (hasCustomHeader) {
+            dataStart += 5;
+            dataSize -= 5;
+        }
+
+        // Read bitmap from memory
+        if (reader->ReadMemory(dataStart, dataSize, &bitmapProps)) {
+            // Copy image description to output
+            memcpy(&desc, &bitmapProps->m_Format, sizeof(VxImageDescEx));
+
+            // Transfer ownership of bitmap data
+            bitmapData = (CKBYTE *)bitmapProps->m_Data;
+            bitmapProps->m_Data = NULL; // Prevent double-free
+
+            // Cleanup format resources
+            reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
+            bitmapProps->m_Format.ColorMap = NULL;
+        }
+        reader->Release();
+    }
+
+    delete[] (CKBYTE *)buffer;
+    return bitmapData;
 }
 
 CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler) {
@@ -1581,8 +1707,7 @@ CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler) {
 void CKStateChunk::Pack(int CompressionLevel) {
     uLongf size = m_ChunkSize * sizeof(int);
     Bytef *buf = new Bytef[size];
-    if (compress2(buf, &size, (const Bytef *)m_Data, size, CompressionLevel) == Z_OK)
-    {
+    if (compress2(buf, &size, (const Bytef *)m_Data, size, CompressionLevel) == Z_OK) {
         Bytef *data = new Bytef[size];
         memcpy(data, m_Data, size);
         delete[] m_Data;
@@ -1596,8 +1721,7 @@ CKBOOL CKStateChunk::UnPack(int DestSize) {
     uLongf size = DestSize;
     Bytef *buf = new Bytef[DestSize];
     int err = uncompress(buf, &size, (const Bytef *)m_Data, m_ChunkSize);
-    if (err == Z_OK)
-    {
+    if (err == Z_OK) {
         int sz = DestSize / sizeof(int);
         int *data = new int [sz];
         memcpy(data, buf, DestSize);
@@ -1625,7 +1749,7 @@ void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int
         // Clean up subchunks if not preserving data
         StartReadSequence();
         while (sequenceLength-- > 0) {
-            CKStateChunk* subChunk = ReadSubChunk();
+            CKStateChunk *subChunk = ReadSubChunk();
             if (subChunk) {
                 delete subChunk;
             }
@@ -1641,7 +1765,7 @@ void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int
 
     if (ConversionTable && NbEntries > 0 && sequenceLength > 0) {
         do {
-            int* currentPosPtr = &m_Data[m_ChunkParser->CurrentPos];
+            int *currentPosPtr = &m_Data[m_ChunkParser->CurrentPos];
             int originalValue = *currentPosPtr;
 
             // Check if value needs conversion
@@ -1657,27 +1781,313 @@ void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int
     SeekIdentifier(CK_STATESAVE_NEWATTRIBUTES);
 }
 
-CKBOOL CKStateChunk::ReadRawBitmapHeader(VxImageDescEx &desc) {
-    return 0;
-}
-
-CKBOOL CKStateChunk::ReadRawBitmapData(VxImageDescEx &desc) {
-    return 0;
-}
-
 int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
-    fct(it);
-    return 0;
+    int totalResult = fct(it);  // Process current chunk first
+
+    if (!it->Chunks || it->ChunkCount <= 0) {
+        return totalResult;
+    }
+
+    const int CHUNK_VERSION_MANAGER_CHANGE = 4;
+
+    for (int chunkIndex = 0; chunkIndex < it->ChunkCount;) {
+        ChunkIteratorData subChunkData;
+        subChunkData.CopyFctData(it);  // Inherit context data
+
+        const int chunkPos = it->Chunks[chunkIndex];
+
+        if (chunkPos >= 0) {  // Single sub-chunk processing
+            int* data = it->Data;
+            int chunkSize = data[chunkPos + 3];
+            int headerSize = 7 + (it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE ? 1 : 0);
+
+            // Configure sub-chunk parameters
+            subChunkData.ChunkVersion = data[chunkPos + 2] & 0xFF;
+            subChunkData.ChunkSize = chunkSize;
+            subChunkData.IdCount = data[chunkPos + 5];
+            subChunkData.ChunkCount = data[chunkPos + 6];
+            subChunkData.ManagerCount = it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE ?
+                                      data[chunkPos + 7] : 0;
+
+            // Calculate data pointers
+            const int dataOffset = chunkPos + headerSize;
+            subChunkData.Data = &data[dataOffset];
+
+            if (subChunkData.IdCount > 0) {
+                subChunkData.Ids = &data[dataOffset + chunkSize];
+            }
+            if (subChunkData.ChunkCount > 0) {
+                subChunkData.Chunks = &data[dataOffset + chunkSize + subChunkData.IdCount];
+            }
+            if (subChunkData.ManagerCount > 0) {
+                subChunkData.Managers = &data[dataOffset + chunkSize + subChunkData.IdCount +
+                                          subChunkData.ChunkCount];
+            }
+
+            totalResult += IterateAndDo(fct, &subChunkData);
+            chunkIndex++;
+        } else {  // Sequence of sub-chunks
+            chunkIndex++;  // Move to sequence count
+            const int sequenceCount = it->Data[it->Chunks[chunkIndex]];
+            int dataPosition = it->Chunks[chunkIndex] + 1;
+
+            for (int i = 0; i < sequenceCount; i++) {
+                const int chunkHeaderPos = dataPosition;
+                const int chunkSize = it->Data[chunkHeaderPos + 3];
+                const int headerSize = 6 + (it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE ? 1 : 0);
+
+                // Configure sub-chunk parameters
+                subChunkData.ChunkVersion = it->Data[chunkHeaderPos + 2] & 0xFF;
+                subChunkData.ChunkSize = chunkSize;
+                subChunkData.IdCount = it->Data[chunkHeaderPos + 4];
+                subChunkData.ChunkCount = it->Data[chunkHeaderPos + 5];
+                subChunkData.ManagerCount = it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE ?
+                                          it->Data[chunkHeaderPos + 6] : 0;
+
+                // Calculate data pointers
+                const int dataOffset = chunkHeaderPos + headerSize;
+                subChunkData.Data = &it->Data[dataOffset];
+
+                if (subChunkData.IdCount > 0) {
+                    subChunkData.Ids = &it->Data[dataOffset + chunkSize];
+                }
+                if (subChunkData.ChunkCount > 0) {
+                    subChunkData.Chunks = &it->Data[dataOffset + chunkSize + subChunkData.IdCount];
+                }
+                if (subChunkData.ManagerCount > 0) {
+                    subChunkData.Managers = &it->Data[dataOffset + chunkSize + subChunkData.IdCount +
+                                               subChunkData.ChunkCount];
+                }
+
+                totalResult += IterateAndDo(fct, &subChunkData);
+                dataPosition = dataOffset + chunkSize + subChunkData.IdCount +
+                              subChunkData.ChunkCount + subChunkData.ManagerCount;
+            }
+            chunkIndex++;
+        }
+    }
+
+    return totalResult;
 }
 
 int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
-    return 0;
+    ChunkIteratorData *iterData = it;
+    int remappedCount = 0;
+
+    if (iterData->ChunkVersion >= 4) {
+        // Handle new chunk format with ID lists
+        if (!iterData->Ids || iterData->IdCount <= 0)
+            return remappedCount;
+
+        for (int i = 0; i < iterData->IdCount;) {
+            int currentIdPos = iterData->Ids[i];
+
+            if (currentIdPos >= 0) {
+                // Single object ID remapping
+                CK_ID &oldId = (CK_ID &)iterData->Data[currentIdPos];
+                CK_ID newId = 0;
+
+                if (iterData->DepContext) {
+                    // Use dependency context mapping
+                    auto it = iterData->DepContext->m_MapID.Find(oldId);
+                    newId = (it) ? *it : 0;
+                } else {
+                    // Use direct object manager resolution
+                    newId = iterData->Context->m_ObjectManager->RealId(oldId);
+                }
+
+                if (newId) {
+                    oldId = newId;
+                    remappedCount++;
+                }
+                i++;
+            } else {
+                // Sequence of object IDs (negative marker followed by count)
+                int sequenceCount = iterData->Ids[i + 1];
+                int startPos = i + 2;
+                int endPos = startPos + sequenceCount;
+
+                for (int j = startPos; j < endPos; j++) {
+                    CK_ID &oldId = (CK_ID &)iterData->Data[j];
+                    CK_ID newId = 0;
+
+                    if (iterData->DepContext) {
+                        auto it = iterData->DepContext->m_MapID.Find(oldId);
+                        newId = (it) ? *it : 0;
+                    } else {
+                        newId = iterData->Context->m_ObjectManager->RealId(oldId);
+                    }
+
+                    if (newId) {
+                        oldId = newId;
+                        remappedCount++;
+                    }
+                }
+                i = endPos;
+            }
+        }
+    } else {
+        // Handle legacy chunk formats
+        const CKDWORD OBJID_MARKER[] = {0xE32BC4C9, 0x134212E3, 0xFCBAE9DC};
+        const CKDWORD SEQ_MARKER[] = {0xE192BD47, 0x13246628, 0x13EAB3CE, 0x7891AEFC, 0x13984562};
+
+        // Process single object ID markers
+        for (int pos = 3; pos < iterData->ChunkSize; pos++) {
+            if (pos >= 3 &&
+                iterData->Data[pos - 3] == OBJID_MARKER[0] &&
+                iterData->Data[pos - 2] == OBJID_MARKER[1] &&
+                iterData->Data[pos - 1] == OBJID_MARKER[2]) {
+                CK_ID &oldId = (CK_ID &)iterData->Data[pos];
+                CK_ID newId = 0;
+
+                if (iterData->DepContext) {
+                    auto it = iterData->DepContext->m_MapID.Find(oldId);
+                    newId = (it) ? *it : 0;
+                } else {
+                    newId = iterData->Context->m_ObjectManager->RealId(oldId);
+                }
+
+                if (newId) {
+                    oldId = newId;
+                    remappedCount++;
+                }
+            }
+        }
+
+        // Process sequence markers
+        for (int pos = 2; pos < iterData->ChunkSize - 5; pos++) {
+            if (iterData->Data[pos] == SEQ_MARKER[0] &&
+                iterData->Data[pos + 1] == SEQ_MARKER[1] &&
+                iterData->Data[pos + 2] == SEQ_MARKER[2] &&
+                iterData->Data[pos + 3] == SEQ_MARKER[3] &&
+                iterData->Data[pos + 4] == SEQ_MARKER[4]) {
+                int sequenceCount = iterData->Data[pos + 5];
+                int startPos = pos + 6;
+                int endPos = startPos + sequenceCount;
+
+                if (endPos > iterData->ChunkSize)
+                    break;
+
+                for (int j = startPos; j < endPos; j++) {
+                    CK_ID &oldId = (CK_ID &)iterData->Data[j];
+                    CK_ID newId = 0;
+
+                    if (iterData->DepContext) {
+                        auto it = iterData->DepContext->m_MapID.Find(oldId);
+                        newId = (it) ? *it : 0;
+                    } else {
+                        newId = iterData->Context->m_ObjectManager->RealId(oldId);
+                    }
+
+                    if (newId) {
+                        oldId = newId;
+                        remappedCount++;
+                    }
+                }
+                pos = endPos - 1;
+            }
+        }
+    }
+
+    return remappedCount;
 }
 
 int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
-    return 0;
+    int remappedCount = 0;
+    int currentIndex = 0;
+
+    if (!it->Managers || it->ManagerCount <= 0)
+        return remappedCount;
+
+    while (currentIndex < it->ManagerCount) {
+        int *managers = it->Managers;
+        int dataPosition = managers[currentIndex];
+
+        if (dataPosition >= 0) {
+            // Single manager entry processing
+            int *data = it->Data;
+            int guidPart1 = data[dataPosition];
+            int guidPart2 = data[dataPosition + 1];
+            int valuePosition = dataPosition + 2;
+
+            if (it->Guid.d1 == guidPart1 && it->Guid.d2 == guidPart2) {
+                int &valueRef = data[valuePosition];
+                if (valueRef >= 0 && valueRef < it->NbEntries) {
+                    valueRef = it->ConversionTable[valueRef];
+                    remappedCount++;
+                }
+            }
+            currentIndex++;
+        } else {
+            // Sequence of manager entries processing
+            int *data = it->Data;
+            currentIndex++; // Move to sequence count position
+            int sequenceStart = managers[currentIndex];
+
+            int sequenceCount = data[sequenceStart];
+            int guidPart1 = data[sequenceStart + 1];
+            int guidPart2 = data[sequenceStart + 2];
+
+            if (it->Guid.d1 == guidPart1 && it->Guid.d2 == guidPart2) {
+                int valueStartPos = sequenceStart + 3;
+                int valueEndPos = valueStartPos + sequenceCount;
+
+                for (int valuePos = valueStartPos; valuePos < valueEndPos; valuePos++) {
+                    int &valueRef = data[valuePos];
+                    if (valueRef >= 0 && valueRef < it->NbEntries) {
+                        valueRef = it->ConversionTable[valueRef];
+                    }
+                }
+                remappedCount += sequenceCount;
+            }
+            currentIndex++;
+        }
+    }
+
+    return remappedCount;
 }
 
 int CKStateChunk::ParameterRemapper(ChunkIteratorData *it) {
-    return 0;
+    int *data = it->Data;
+    if (!data) return 0;
+
+    // Search for parameter marker sequence
+    int currentPos = 0;
+    while (true) {
+        if (data[currentPos] == 0x40) {
+            // PARAMETER_MARKER
+            break;
+        }
+
+        // Follow linked list pointer
+        int nextPos = data[currentPos + 1];
+        if (nextPos >= it->ChunkSize || nextPos <= currentPos || nextPos == 0) {
+            return 0; // Invalid pointer structure
+        }
+        currentPos = nextPos;
+    }
+
+    // Verify parameter header structure
+    const int headerStart = currentPos + 2;
+    if (headerStart <= 0) return 0;
+
+    const int guidPart1 = data[headerStart];
+    const int guidPart2 = data[headerStart + 1];
+    const int paramType = data[headerStart + 2];
+
+    // Validate GUID and parameter type
+    if (it->Guid.d1 != guidPart1 ||
+        it->Guid.d2 != guidPart2 ||
+        paramType != 1) {
+        return 0;
+    }
+
+    // Get and convert parameter value
+    int &paramValueRef = data[headerStart + 4];
+    if (paramValueRef >= 0 && paramValueRef < it->NbEntries) {
+        paramValueRef = it->ConversionTable[paramValueRef];
+        return 1; // Successfully remapped
+    }
+
+    return 0; // Invalid parameter index
 }
