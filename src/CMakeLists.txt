@@ -131,6 +131,7 @@ set(CK2_SOURCES
         CKAttributeManager.cpp
         CKPluginManager.cpp
         CKPathManager.cpp
+        CKGridManager.cpp
 
         # Misc
         CKDebugContext.cpp

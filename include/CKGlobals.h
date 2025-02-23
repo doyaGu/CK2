@@ -34,12 +34,12 @@ DLL_EXPORT CKPluginManager *CKGetPluginManager();
 //----------------------------------------------------------
 // Behavior prototype declaration functions
 
-int CKGetPrototypeDeclarationCount();
-CKObjectDeclaration *CKGetPrototypeDeclaration(int n);
+DLL_EXPORT int CKGetPrototypeDeclarationCount();
+DLL_EXPORT CKObjectDeclaration *CKGetPrototypeDeclaration(int n);
 
-XObjDeclHashTableIt CKGetPrototypeDeclarationStartIterator();
+DLL_EXPORT XObjDeclHashTableIt CKGetPrototypeDeclarationStartIterator();
 
-XObjDeclHashTableIt CKGetPrototypeDeclarationEndIterator();
+DLL_EXPORT XObjDeclHashTableIt CKGetPrototypeDeclarationEndIterator();
 
 DLL_EXPORT CKObjectDeclaration *CKGetObjectDeclarationFromGuid(CKGUID guid);
 DLL_EXPORT CKBehaviorPrototype *CKGetPrototypeFromGuid(CKGUID guid);

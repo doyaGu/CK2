@@ -111,7 +111,7 @@ Remarks:
 
 See Also:CKPluginManager::GetPluginInfo
 ********************************************************/
-struct CKPluginEntry
+struct DLL_EXPORT CKPluginEntry
 {
     int m_PluginDllIndex;      // Index of the owner Dll in the list of Dlls
     int m_PositionInDll;       // Position of the PluginInfo inside the DLL (when there are several plugins inside a same DLL)

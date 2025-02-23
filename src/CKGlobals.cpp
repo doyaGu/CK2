@@ -182,6 +182,9 @@ CKDWORD CKGetVersion() {
 }
 
 void ComputeParentsTable(CK_CLASSID cid) {
+    if (cid == 0)
+        return;
+
     CKClassDesc &info = g_CKClassInfo[cid];
     if (info.Done)
         return;
@@ -197,6 +200,9 @@ void ComputeParentsTable(CK_CLASSID cid) {
 }
 
 void ComputeParentsNotifyTable(CK_CLASSID cid) {
+    if (cid == 0)
+        return;
+
     CKClassDesc &info = g_CKClassInfo[cid];
     if (info.Done)
         return;
@@ -214,7 +220,7 @@ void CKBuildClassHierarchyTable() {
     const int classCount = g_CKClassInfo.Size();
 
     // 1. Initialize class information structures
-    for (int i = 0; i < classCount; ++i) {
+    for (CK_CLASSID i = 0; i < classCount; ++i) {
         CKClassDesc &info = g_CKClassInfo[i];
         info.Done = FALSE;
         info.CommonToBeNotify.Clear();
@@ -225,7 +231,7 @@ void CKBuildClassHierarchyTable() {
     }
 
     // 2. Compute parent-child relationships
-    for (int i = 0; i < classCount; ++i) {
+    for (CK_CLASSID i = 0; i < classCount; ++i) {
         ComputeParentsTable(i);
     }
 
@@ -797,4 +803,8 @@ void CKClassRegister(CK_CLASSID Cid, CK_CLASSID ParentCid, CKCLASSREGISTERFCT Re
     desc.DependsFct = DependsFct;
     desc.DependsCountFct = DependsCountFct;
     g_CKClassInfo[Cid] = desc;
+}
+
+CKSTRING CKErrorToString(CKERROR err) {
+    return "Unknown Error";
 }

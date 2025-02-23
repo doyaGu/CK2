@@ -74,6 +74,25 @@ CKBOOL XSObjectArray::Check(CKContext *Context) {
     return newSize != size;
 }
 
+CKBOOL XSObjectArray::AddIfNotHere(CK_ID id) {
+    for (CK_ID *it = m_Begin; it != m_End; ++it) {
+        if (*it == id)
+            return FALSE;
+    }
+    PushBack(id);
+    return TRUE;
+}
+
+CKBOOL XSObjectArray::AddIfNotHere(CKObject *obj) {
+    CK_ID id = obj->GetID();
+    for (CK_ID *it = m_Begin; it != m_End; ++it) {
+        if (*it == id)
+            return FALSE;
+    }
+    PushBack(id);
+    return TRUE;
+}
+
 CKObject *XSObjectArray::GetObject(CKContext *Context, unsigned int i) const {
     if (!Context || i >= Size())
         return nullptr;
@@ -88,6 +107,15 @@ CKBOOL XSObjectArray::RemoveObject(CKObject *obj) {
             RemoveAt(it - m_Begin);
             return TRUE;
         }
+    }
+    return FALSE;
+}
+
+CKBOOL XSObjectArray::FindObject(CKObject *obj) const {
+    CK_ID id = obj ? obj->GetID() : 0;
+    for (CK_ID *it = m_Begin; it != m_End; ++it) {
+        if (*it == id)
+            return TRUE;
     }
     return FALSE;
 }
@@ -140,6 +168,14 @@ void XSObjectArray::Prepare(CKDependenciesContext &context) const {
 void XSObjectArray::Remap(CKDependenciesContext &context) {
     for (CK_ID *it = Begin(); it != End(); ++it) {
         *it = context.RemapID(*it);
+    }
+}
+
+void XObjectArray::ConvertFromObjects(const XObjectPointerArray &array) {
+    Clear();
+    Resize(array.Size());
+    for (auto it = array.Begin(); it != array.End(); ++it) {
+        PushBack((*it)->GetID());
     }
 }
 

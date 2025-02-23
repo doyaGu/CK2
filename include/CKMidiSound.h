@@ -14,7 +14,7 @@ Remarks:
 + Its class id is CKCID_MIDISOUND
 See also: CKWaveSound,CKSoundManager
 ******************************************************************************/
-class CKMidiSound : public CKSound
+class DLL_EXPORT CKMidiSound : public CKSound
 {
 public:
     //---------------------------------------------------

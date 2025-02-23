@@ -17,8 +17,13 @@ CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
         return -1;
 
     m_RegisteredMessageTypes.PushBack(MsgName);
-    m_MsgWaitingList->Resize(m_RegisteredMessageTypes.Size());
-    return 0;
+    CKWaitingObjectArray *waitingList = new CKWaitingObjectArray(m_RegisteredMessageTypes.Size());
+    if (m_MsgWaitingList) {
+        *waitingList = *m_MsgWaitingList;
+        delete m_MsgWaitingList;
+    }
+    m_MsgWaitingList = waitingList;
+    return m_RegisteredMessageTypes.Size() - 1;
 }
 
 CKSTRING CKMessageManager::GetMessageTypeName(CKMessageType MsgType) {
@@ -366,9 +371,9 @@ CKERROR CKMessageManager::PostProcess() {
 
 CKERROR CKMessageManager::OnCKReset() {
     for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingArray = &m_MsgWaitingList[i];
-        if (waitingArray) {
-            waitingArray->Clear();
+        CKWaitingObjectArray *waitingList = &m_MsgWaitingList[i];
+        if (waitingList) {
+            waitingList->Clear();
         }
     }
 
@@ -431,6 +436,8 @@ CKMessageManager::~CKMessageManager() {
 }
 
 CKMessageManager::CKMessageManager(CKContext *Context) : CKBaseManager(Context, MESSAGE_MANAGER_GUID, (CKSTRING)"Message Manager") {
+    m_MsgWaitingList = NULL;
+
     RegisterDefaultMessages();
     Context->RegisterNewManager(this);
 }

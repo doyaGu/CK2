@@ -190,6 +190,14 @@ CKBufferParser *CKBufferParser::Pack(int Size, int CompressionLevel) {
 
 void CKBufferParser::Encode(int Size, CKDWORD *Key) {}
 
+CKDWORD GetCurrentFileLoadOption() {
+    return CurrentFileWriteMode;
+}
+
+CKDWORD GetCurrentFileVersion() {
+    return CurrentFileVersion;
+}
+
 CKERROR CKFile::OpenFile(CKSTRING filename, CK_LOAD_FLAGS Flags) {
     ClearData();
 

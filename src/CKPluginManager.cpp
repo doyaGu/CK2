@@ -48,8 +48,7 @@ CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
 }
 
 CKPluginEntry::CKPluginEntry()
-        : m_PluginInfo(),
-          m_PluginDllIndex(0),
+        : m_PluginDllIndex(0),
           m_PositionInDll(0),
           m_ReadersInfo(nullptr),
           m_BehaviorsInfo(nullptr),
@@ -57,7 +56,7 @@ CKPluginEntry::CKPluginEntry()
           m_IndexInCategory(0),
           m_NeededByFile(FALSE) {}
 
-CKPluginEntry::CKPluginEntry(const CKPluginEntry &ent) : m_PluginInfo() {
+CKPluginEntry::CKPluginEntry(const CKPluginEntry &ent) {
     m_PluginDllIndex = ent.m_PluginDllIndex;
     m_PositionInDll = ent.m_PositionInDll;
     m_PluginInfo = ent.m_PluginInfo;
@@ -238,6 +237,7 @@ int CKPluginManager::AddCategory(CKSTRING cat) {
         CKPluginCategory category;
         category.m_Name = cat;
         m_PluginCategories.PushBack(category);
+        idx = m_PluginCategories.Size() - 1;
     }
 
     return idx;

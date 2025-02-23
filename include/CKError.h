@@ -3,7 +3,7 @@
 
 #include "CKTypes.h"
 
-CKSTRING CKErrorToString(CKERROR err);
+DLL_EXPORT CKSTRING CKErrorToString(CKERROR err);
 
 //----------------------------------------------------------////
 //			Error Codes										////

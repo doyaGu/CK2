@@ -160,8 +160,8 @@ public:
     int m_Size;
 };
 
-CKDWORD GetCurrentFileLoadOption();
-CKDWORD GetCurrentFileVersion();
+DLL_EXPORT CKDWORD GetCurrentFileLoadOption();
+DLL_EXPORT CKDWORD GetCurrentFileVersion();
 
 /*************************************************
 Summary: CKFile provides functions to save/load files in Virtools format.
