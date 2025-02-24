@@ -618,7 +618,7 @@ CKObjectManager::CKObjectManager(CKContext *Context) : CKBaseManager(Context, OB
     m_LoadSession = nullptr;
     m_InLoadSession = 0;
     m_NeedDeleteAllDynamicObjects = 0;
-    m_ObjectLists.Reserve(g_MaxClassID);
+    m_ObjectLists.Resize(g_MaxClassID);
     m_Context->RegisterNewManager(this);
 }
 
