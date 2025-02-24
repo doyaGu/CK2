@@ -452,14 +452,29 @@ CK_CLASSID CKGetParentClassID(CKObject *obj) {
 
 // TODO: Maybe need fix
 CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2) {
-    while (cid1 != 0 && cid2 != 0) {
-        if (CKIsChildClassOf(cid1, cid2))
-            return cid2;
-        if (CKIsChildClassOf(cid2, cid1))
-            return cid1;
+    if (cid1 == 0 || cid2 == 0) {
+        return 0;
+    }
 
-        cid1 = g_CKClassInfo[cid1].Parent;
-        cid2 = g_CKClassInfo[cid2].Parent;
+    while (cid1 != 0 && cid2 != 0) {
+        if (CKIsChildClassOf(cid1, cid2)) {
+            return cid2;
+        }
+        if (CKIsChildClassOf(cid2, cid1)) {
+            return cid1;
+        }
+
+        if (cid1 < g_CKClassInfo.Size()) {
+            cid1 = g_CKClassInfo[cid1].Parent;
+        } else {
+            cid1 = 0;
+        }
+
+        if (cid2 < g_CKClassInfo.Size()) {
+            cid2 = g_CKClassInfo[cid2].Parent;
+        } else {
+            cid2 = 0;
+        }
     }
 
     return 0;
