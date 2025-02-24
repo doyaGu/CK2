@@ -1713,8 +1713,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     field_49C = NULL;
 
     m_MainWindow = iWin;
-    m_InitManagerOnRegister = 0;
-    m_RunTime = 0;
+    m_InitManagerOnRegister = FALSE;
+    m_RunTime = FALSE;
     m_StartOptions = Flags;
     m_InterfaceMode = 0;
     m_VirtoolsBuild = 0x2010001;
