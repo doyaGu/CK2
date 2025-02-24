@@ -4,6 +4,7 @@
 #include <Windows.h>
 
 #include "VxMathDefines.h"
+#include "XString.h"
 
 INSTANCE_HANDLE g_CKModule;
 
@@ -17,4 +18,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID lpReserved) {
             break;
     }
     return TRUE;
+}
+
+XString CKGetTempPath() {
+    XString path(512);
+    GetTempPathA(512, path.Str());
+    return path;
 }

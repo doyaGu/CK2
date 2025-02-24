@@ -4,6 +4,8 @@
 
 #include "CKContext.h"
 
+extern XString CKGetTempPath();
+
 CKPathManager::CKPathManager(CKContext *Context) : CKBaseManager(Context, PATH_MANAGER_GUID, "Path Manager") {
     XString bitmap = "Bitmap Paths";
     AddCategory(bitmap);
@@ -12,7 +14,7 @@ CKPathManager::CKPathManager(CKContext *Context) : CKBaseManager(Context, PATH_M
     XString sound = "Sound Paths";
     AddCategory(sound);
 
-    XString path = VxGetTempPath();
+    XString path = CKGetTempPath();
     char dir[64];
     sprintf(dir, "VTmp%d", rand());
     char buf[CKMAX_PATH];
