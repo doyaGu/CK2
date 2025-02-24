@@ -5,6 +5,13 @@
 #include "CKDirectoryParser.h"
 #include "CKObjectDeclaration.h"
 #include "CKParameterManager.h"
+#include "CKAttributeManager.h"
+#include "CKBehavior.h"
+#include "CKTexture.h"
+#include "CKSprite.h"
+#include "CKWaveSound.h"
+#include "CKBehavior.h"
+#include "CKFile.h"
 
 extern XArray<CKContext *> g_Contextes;
 extern XObjDeclHashTable g_PrototypeDeclarationList;
@@ -599,7 +606,205 @@ void CKPluginManager::InitializePlugins(CKContext *context) {
 }
 
 void CKPluginManager::ComputeDependenciesList(CKFile *file) {
+    if (!file)
+        return;
 
+    CKContext *context = file->m_Context;
+
+    for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
+        for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
+            CKPluginEntry *entry = *eit;
+            entry->m_NeededByFile = FALSE;
+        }
+    }
+
+    for (auto it = file->m_IncludedFiles.Begin(); it != file->m_IncludedFiles.End(); ++it) {
+        XString &includedFile = *it;
+        CKPathSplitter ps(includedFile.Str());
+        CKFileExtension ext(ps.GetExtension());
+        CKPluginEntry *entry = EXTFindEntry(ext, CKPLUGIN_BITMAP_READER);
+        if (entry) {
+            entry->m_NeededByFile = TRUE;
+            continue;
+        }
+        entry = EXTFindEntry(ext, CKPLUGIN_SOUND_READER);
+        if (entry) {
+            entry->m_NeededByFile = TRUE;
+            continue;
+        }
+        entry = EXTFindEntry(ext, CKPLUGIN_MOVIE_READER);
+        if (entry) {
+            entry->m_NeededByFile = TRUE;
+        }
+    }
+
+    CKBOOL useGlobal = FALSE;
+    XIntArray &textures = file->m_IndexByClassId[CKCID_TEXTURE];
+    for (auto it = textures.Begin(); it != textures.End(); ++it) {
+        CKTexture *texture = (CKTexture *) file->m_FileObjects[*it].ObjPtr;
+        if (texture) {
+            CKMovieInfo *movieInfo = texture->m_MovieInfo;
+            if (movieInfo) {
+                CKMovieReader *movieReader = movieInfo->m_MovieReader;
+                if (movieReader) {
+                    CKPluginInfo *info = movieReader->GetReaderInfo();
+                    if (info) {
+                        MarkComponentAsNeeded(info->m_GUID, info->m_Type);
+                    }
+                } else {
+                    if (texture->m_SaveOptions == CKTEXTURE_IMAGEFORMAT) {
+                        CKBitmapProperties *prop = texture->m_SaveProperties;
+                        if (prop) {
+                            MarkComponentAsNeeded(prop->m_ReaderGuid, CKPLUGIN_BITMAP_READER);
+                        }
+                    } else if (texture->m_SaveOptions == CKTEXTURE_USEGLOBAL) {
+                        useGlobal = TRUE;
+                    }
+                }
+            }
+        }
+    }
+
+    XIntArray &sprites = file->m_IndexByClassId[CKCID_SPRITE];
+    for (auto it = sprites.Begin(); it != sprites.End(); ++it) {
+        CKSprite *sprite = (CKSprite *) file->m_FileObjects[*it].ObjPtr;
+        if (sprite) {
+            CKMovieReader *movieReader = sprite->GetMovieReader();
+            if (movieReader) {
+                CKPluginInfo *info = movieReader->GetReaderInfo();
+                if (info) {
+                    MarkComponentAsNeeded(info->m_GUID, info->m_Type);
+                }
+            } else {
+                if (sprite->GetSaveOptions() == CKTEXTURE_IMAGEFORMAT) {
+                    CKBitmapProperties *prop = sprite->GetSaveFormat();
+                    if (prop) {
+                        MarkComponentAsNeeded(prop->m_ReaderGuid, CKPLUGIN_BITMAP_READER);
+                    }
+                } else if (sprite->GetSaveOptions() == CKTEXTURE_USEGLOBAL) {
+                    useGlobal = TRUE;
+                }
+            }
+        }
+    }
+
+    if (useGlobal && context->GetGlobalImagesSaveOptions() == CKTEXTURE_IMAGEFORMAT) {
+        CKBitmapProperties *prop = context->GetGlobalImagesSaveFormat();
+        if (prop) {
+            MarkComponentAsNeeded(prop->m_ReaderGuid, CKPLUGIN_BITMAP_READER);
+        }
+    }
+
+    XIntArray &sounds = file->m_IndexByClassId[CKCID_WAVESOUND];
+    for (auto it = sounds.Begin(); it != sounds.End(); ++it) {
+        CKWaveSound *sound = (CKWaveSound *) file->m_FileObjects[*it].ObjPtr;
+        if (sound) {
+            CKSoundReader *soundReader = sound->GetReader();
+            if (soundReader) {
+                CKPluginInfo *info = soundReader->GetReaderInfo();
+                if (info) {
+                    MarkComponentAsNeeded(info->m_GUID, info->m_Type);
+                }
+            }
+        }
+    }
+
+    XIntArray &paramLocal = file->m_IndexByClassId[CKCID_PARAMETERLOCAL];
+    for (auto it = paramLocal.Begin(); it != paramLocal.End(); ++it) {
+        CKParameterLocal *param = (CKParameterLocal *) file->m_FileObjects[*it].ObjPtr;
+        if (param) {
+            CKParameterTypeDesc *desc = param->GetParameterType();
+            if (desc && desc->CreatorDll) {
+                desc->CreatorDll->m_NeededByFile = TRUE;
+            }
+        }
+    }
+
+    XIntArray &paramOut = file->m_IndexByClassId[CKCID_PARAMETEROUT];
+    for (auto it = paramOut.Begin(); it != paramOut.End(); ++it) {
+        CKParameterOut *param = (CKParameterOut *) file->m_FileObjects[*it].ObjPtr;
+        if (param) {
+            CKParameterTypeDesc *desc = param->GetParameterType();
+            if (desc && desc->CreatorDll) {
+                desc->CreatorDll->m_NeededByFile = TRUE;
+            }
+        }
+    }
+
+    XIntArray &param = file->m_IndexByClassId[CKCID_PARAMETER];
+    for (auto it = param.Begin(); it != param.End(); ++it) {
+        CKParameter *param = (CKParameter *) file->m_FileObjects[*it].ObjPtr;
+        if (param) {
+            CKParameterTypeDesc *desc = param->GetParameterType();
+            if (desc && desc->CreatorDll) {
+                desc->CreatorDll->m_NeededByFile = TRUE;
+            }
+        }
+    }
+
+    CKAttributeManager *am = context->GetAttributeManager();
+    for (int i = 0; i < am->GetAttributeCount(); ++i) {
+        CKPluginEntry *entry = am->GetCreatorDll(i);
+        if (entry) {
+            if (am->m_AttributeMask.IsSet(i)) {
+                entry->m_NeededByFile = TRUE;
+            }
+        }
+    }
+
+    XHashTable<CKObjectDeclaration *, CKGUID> decls;
+    XIntArray &behaviors = file->m_IndexByClassId[CKCID_BEHAVIOR];
+    for (auto it = behaviors.Begin(); it != behaviors.End(); ++it) {
+        CKBehavior *beh = (CKBehavior *) file->m_FileObjects[*it].ObjPtr;
+        if (beh && beh->GetFlags() & CKBEHAVIOR_BUILDINGBLOCK) {
+            CKGUID guid = beh->GetPrototypeGuid();
+            CKObjectDeclaration *decl = CKGetObjectDeclarationFromGuid(guid);
+            if (decl) {
+                decls.InsertUnique(guid, decl);
+
+                CKPluginEntry *entry = GetPluginInfo(CKPLUGIN_BEHAVIOR_DLL, decl->m_PluginIndex);
+                if (entry) {
+                    entry->m_NeededByFile = TRUE;
+                }
+
+                XArray<CKGUID> &managers = decl->m_ManagersGuid;
+                for (XArray<CKGUID>::Iterator mit = managers.Begin(); mit != managers.End(); ++mit) {
+                    MarkComponentAsNeeded(*mit, CKPLUGIN_MANAGER_DLL);
+                }
+            }
+        }
+    }
+
+    XArray<CKFileManagerData> &managersData = file->m_ManagersData;
+    for (XArray<CKFileManagerData>::Iterator mit = managersData.Begin(); mit != managersData.End(); ++mit) {
+        MarkComponentAsNeeded(mit->Manager, CKPLUGIN_MANAGER_DLL);
+    }
+
+    file->m_PluginsDep.Clear();
+    for (int i = 0; i < m_PluginCategories.Size(); ++i) {
+        CKPluginCategory &cat = m_PluginCategories[i];
+
+        CKFilePluginDependencies deps;
+        deps.m_PluginCategory = i;
+
+        for (XArray<CKPluginEntry *>::Iterator eit = cat.m_Entries.Begin(); eit != cat.m_Entries.End(); ++eit) {
+            CKPluginEntry *entry = *eit;
+            if (entry->m_NeededByFile) {
+                deps.m_Guids.PushBack(entry->m_PluginInfo.m_GUID);
+            }
+        }
+
+        int nameCmp = cat.m_Name.ICompare("BuildingBlocks");
+        if (nameCmp == 0) {
+            for (XHashTable<CKObjectDeclaration *, CKGUID>::Iterator dit = decls.Begin(); dit != decls.End(); ++dit) {
+                deps.m_Guids.PushBack(dit.GetKey());
+            }
+        }
+
+        if (deps.m_Guids.Size() > 0) {
+            file->m_PluginsDep.PushBack(deps);
+        }
+    }
 }
 
 void CKPluginManager::MarkComponentAsNeeded(CKGUID Component, int catIdx) {
