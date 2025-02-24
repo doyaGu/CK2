@@ -183,6 +183,8 @@ set(CK2_SOURCES
         CKDependencies.cpp
         CKInterfaceObjectManager.cpp
 
+        CKRenderContext.cpp
+
         # Containers
         XObjectArray.cpp
         CKDataArray.cpp
