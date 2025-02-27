@@ -1,7 +1,7 @@
 #include "CKPathManager.h"
 
 #include "VxWindowFunctions.h"
-
+#include "CKGlobals.h"
 #include "CKContext.h"
 
 extern XString CKGetTempPath();
@@ -239,7 +239,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     baseName += fileSplitter.GetExtension();
 
     // Get category information
-    CKPATHCATEGORY& category = m_Categories[catIdx];
+    CKPATHCATEGORY &category = m_Categories[catIdx];
     const int pathCount = category.m_Entries.Size();
 
     // Search through category paths
@@ -318,13 +318,13 @@ CKBOOL CKPathManager::PathIsFile(XString &file) {
 
 void CKPathManager::RemoveEscapedSpace(char *str) {
     XString tmp = str;
-    VxUnEscapeUrl(tmp);
+    CKUnEscapeUrl(tmp);
     strcpy(str, tmp.Str());
 }
 
 void CKPathManager::AddEscapedSpace(XString &str) {
     XString tmp = str;
-    VxEscapeURL(tmp.Str(), str);
+    CKEscapeURL(tmp.Str(), str);
 }
 
 XString CKPathManager::GetVirtoolsTemporaryFolder() {
