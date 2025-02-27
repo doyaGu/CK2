@@ -123,6 +123,9 @@ DLL_EXPORT CKSTRING CKStrdup(CKSTRING string);
 DLL_EXPORT CKSTRING CKStrupr(CKSTRING string);
 DLL_EXPORT CKSTRING CKStrlwr(CKSTRING string);
 
+DLL_EXPORT CKDWORD CKEscapeURL(const char *InURL, XString &OutURL);
+void CKUnEscapeUrl(XString &str);
+
 //-------------------------------------------------
 // CKBitmapProperties Utilities
 
