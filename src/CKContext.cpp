@@ -1653,9 +1653,9 @@ void CKContext::BuildSortedLists() {
         m_ManagerList[i].Clear();
     }
 
-    for (auto it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
-        CKBaseManager *manager = *it;
-        for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < 32; ++i) {
+        for (auto it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+            CKBaseManager *manager = *it;
             if (manager->GetValidFunctionsMask() & (1 << i)) {
                 m_ManagerList[i].PushBack(manager);
             }
