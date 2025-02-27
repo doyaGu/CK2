@@ -117,7 +117,7 @@ protected:
     CKMessage *CreateMessageBroadcast(CKMessageType type, CK_CLASSID objType, CKBeObject *sender);
 
     CKStringArray m_RegisteredMessageTypes;
-    CKWaitingObjectArray *m_MsgWaitingList;
+    CKWaitingObjectArray **m_MsgWaitingList;
     XArray<CKMessage *> m_ReceivedMsgThisFrame;
     XObjectPointerArray m_LastFrameObjects;
 };

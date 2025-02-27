@@ -16,12 +16,18 @@ CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
     if (!MsgName || MsgName[0] == '\0')
         return -1;
 
-    m_RegisteredMessageTypes.PushBack(MsgName);
-    CKWaitingObjectArray *waitingList = new CKWaitingObjectArray(m_RegisteredMessageTypes.Size());
+    XString name = MsgName;
+    CKStringArray::Iterator it = m_RegisteredMessageTypes.Find(name);
+    if (it != m_RegisteredMessageTypes.End())
+        return it - m_RegisteredMessageTypes.Begin();
+
+    m_RegisteredMessageTypes.PushBack(name);
+    CKWaitingObjectArray **waitingList = new CKWaitingObjectArray *[m_RegisteredMessageTypes.Size()];
     if (m_MsgWaitingList) {
-        *waitingList = *m_MsgWaitingList;
+        memcpy(waitingList, m_MsgWaitingList, (m_RegisteredMessageTypes.Size() - 1) * sizeof(CKWaitingObjectArray));
         delete m_MsgWaitingList;
     }
+    waitingList[m_RegisteredMessageTypes.Size() - 1] = nullptr;
     m_MsgWaitingList = waitingList;
     return m_RegisteredMessageTypes.Size() - 1;
 }
@@ -113,7 +119,7 @@ CKERROR CKMessageManager::RegisterWait(CKMessageType MsgType, CKBehavior *behav,
 
     behav->ModifyFlags(CKBEHAVIOR_WAITSFORMESSAGE, 0);
 
-    CKWaitingObjectArray *waitList = &m_MsgWaitingList[MsgType];
+    CKWaitingObjectArray *waitList = m_MsgWaitingList[MsgType];
     if (waitList) {
         for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End(); ++it) {
             if (it->m_Behavior == behav && it->m_Output == output)
@@ -121,6 +127,7 @@ CKERROR CKMessageManager::RegisterWait(CKMessageType MsgType, CKBehavior *behav,
         }
     } else {
         waitList = new CKWaitingObjectArray;
+        m_MsgWaitingList[MsgType] = waitList;
     }
 
     CKWaitingObject newEntry = {};
@@ -140,7 +147,7 @@ CKERROR CKMessageManager::UnRegisterWait(CKMessageType MsgType, CKBehavior *beha
     if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
         return CKERR_INVALIDMESSAGE;
 
-    XArray<CKWaitingObject> *waitList = &m_MsgWaitingList[MsgType];
+    XArray<CKWaitingObject> *waitList = m_MsgWaitingList[MsgType];
     if (!waitList || waitList->IsEmpty())
         return CK_OK;
 
@@ -255,14 +262,13 @@ CKERROR CKMessageManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
 
 CKERROR CKMessageManager::PreClearAll() {
     for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingArray = &m_MsgWaitingList[i];
+        CKWaitingObjectArray *waitingArray = m_MsgWaitingList[i];
         if (waitingArray) {
-            waitingArray->Clear();
             delete waitingArray;
         }
     }
 
-    delete[] m_MsgWaitingList;
+    delete m_MsgWaitingList;
     m_MsgWaitingList = nullptr;
 
     m_RegisteredMessageTypes.Clear();
@@ -317,7 +323,7 @@ CKERROR CKMessageManager::PostProcess() {
         }
 
         if (msgType >= 0 && msgType < m_RegisteredMessageTypes.Size()) {
-            CKWaitingObjectArray *waitingList = &m_MsgWaitingList[msgType];
+            CKWaitingObjectArray *waitingList = m_MsgWaitingList[msgType];
             if (!waitingList)
                 continue;
 
@@ -371,7 +377,7 @@ CKERROR CKMessageManager::PostProcess() {
 
 CKERROR CKMessageManager::OnCKReset() {
     for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingList = &m_MsgWaitingList[i];
+        CKWaitingObjectArray *waitingList = m_MsgWaitingList[i];
         if (waitingList) {
             waitingList->Clear();
         }
@@ -392,7 +398,7 @@ CKERROR CKMessageManager::OnCKReset() {
 
 CKERROR CKMessageManager::SequenceToBeDeleted(CK_ID *objids, int count) {
     for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingList = &m_MsgWaitingList[i];
+        CKWaitingObjectArray *waitingList = m_MsgWaitingList[i];
         if (!waitingList)
             continue;
 
@@ -412,7 +418,7 @@ CKERROR CKMessageManager::SequenceToBeDeleted(CK_ID *objids, int count) {
 
 CKMessageManager::~CKMessageManager() {
     for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingList = &m_MsgWaitingList[i];
+        CKWaitingObjectArray *waitingList = m_MsgWaitingList[i];
         if (waitingList) {
             waitingList->Clear();
             delete waitingList;
