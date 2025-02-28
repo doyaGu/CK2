@@ -267,6 +267,7 @@ public:
     void ReleaseMemoryPoolGlobalIndex(int index);
 
     CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags);
+    ~CKContext();
 
     XManagerHashTable m_ManagerTable;
     XManagerArray m_InactiveManagers;
@@ -289,9 +290,7 @@ public:
     CK_FILE_WRITEMODE m_FileWriteMode;
     XString m_LastFileLoaded;
     XString m_LastCmoLoaded;
-    void *field_2CC;
-    CKDWORD field_2D0;
-    CKDWORD field_2D4;
+    XArray<CKGUID> field_2CC;
     CKDebugContext *m_DebugContext;
     WIN_HANDLE m_MainWindow;
     CKDWORD m_InterfaceMode;
@@ -313,8 +312,8 @@ public:
     float m_UserProfileTime[8];
     XString m_StringBuffer;
     CKDWORD m_StartOptions;
-    CKDWORD field_3C8;
-    CKDWORD field_3CC;
+    char *field_3C8;
+    char *field_3CC;
     CK_LOADMODE m_GeneralLoadMode;
     CK_LOADMODE m_3DObjectsLoadMode;
     CK_LOADMODE m_MeshLoadMode;

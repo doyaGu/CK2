@@ -1742,8 +1742,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_UserLoadCallBack = NULL;
     m_UserLoadCallBackArgs = NULL;
 
-    //    field_3C8 = (DWORD)operator new(0x104u);
-    //    field_3CC = (DWORD)operator new(0x104u);
+    field_3C8 = new char[260];
+    field_3CC = new char[260];
     m_GeneralRenameOption = 0;
     m_MatTexturesRenameOption = 0;
 
@@ -1778,4 +1778,25 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
 
     memset(&m_Stats, 0, sizeof(CKStats));
     memset(&m_ProfileStats, 0, sizeof(CKStats));
+}
+
+CKContext::~CKContext() {
+    m_Init = TRUE;
+    CKDeletePointer(m_GlobalImagesSaveFormat);
+
+    delete[] field_3C8;
+    field_3C8 = NULL;
+    delete[] field_3CC;
+    field_3CC = NULL;
+
+    if (m_DebugContext)
+        delete m_DebugContext;
+    m_DebugContext = NULL;
+
+    for (XArray<VxMemoryPool *>::Iterator it = m_MemoryPools.Begin();
+         it != m_MemoryPools.End(); ++it) {
+        delete *it;
+    }
+
+    ClearManagersData();
 }
