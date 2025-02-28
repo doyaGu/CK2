@@ -75,9 +75,8 @@ CKERROR CKBehaviorManager::ExecuteDebugStart(float delta) {
 }
 
 void CKBehaviorManager::ManageObjectsActivity() {
-    if (m_BeObjectNextFrame.Size() == 0) {
+    if (m_BeObjectNextFrame.Size() == 0)
         return;
-    }
 
     CKBOOL changed = FALSE;
     for (auto it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End();) {
@@ -105,11 +104,10 @@ CKBeObject *CKBehaviorManager::GetObject(int pos) {
 }
 
 CKERROR CKBehaviorManager::AddObject(CKBeObject *beo) {
-    if (!beo) {
+    if (!beo)
         return CKERR_INVALIDPARAMETER;
-    }
-    if (m_BeObjects.Find(beo) == m_BeObjects.End()) {
-        m_BeObjects.PushBack(beo);
+
+    if (m_BeObjects.AddIfNotHere(beo)) {
         SortObjects();
     }
     return CK_OK;
@@ -139,20 +137,26 @@ void CKBehaviorManager::SetBehaviorMaxIteration(int n) {
 }
 
 int CKBehaviorManager::AddObjectNextFrame(CKBeObject *beo) {
-    if (!beo) {
+    if (!beo)
         return CKERR_INVALIDOBJECT;
-    }
 
-    m_BeObjectNextFrame[beo->GetID()] = 1;
+    if (!m_BeObjectNextFrame.Insert(beo->GetID(), 1, FALSE)) {
+        int *it = m_BeObjectNextFrame.FindPtr(beo->GetID());
+        if (it)
+            *it += 1;
+    }
     return CK_OK;
 }
 
 int CKBehaviorManager::RemoveObjectNextFrame(CKBeObject *beo) {
-    if (!beo) {
+    if (!beo)
         return CKERR_INVALIDOBJECT;
-    }
 
-    m_BeObjectNextFrame.Remove(beo->GetID());
+    if (!m_BeObjectNextFrame.Insert(beo->GetID(), -1, FALSE)) {
+        int *it = m_BeObjectNextFrame.FindPtr(beo->GetID());
+        if (it)
+            *it -= 1;
+    }
     return CK_OK;
 }
 
@@ -221,9 +225,10 @@ CKERROR CKBehaviorManager::SequenceToBeDeleted(CK_ID *objids, int count) {
     return CK_OK;
 }
 
-CKBehaviorManager::CKBehaviorManager(CKContext *Context) : CKBaseManager(
-    Context, BEHAVIOR_MANAGER_GUID, "Behavior Manager") {
+CKBehaviorManager::CKBehaviorManager(CKContext *Context) : CKBaseManager(Context, BEHAVIOR_MANAGER_GUID, "Behavior Manager") {
     m_CurrentBehavior = nullptr;
     m_BehaviorMaxIteration = 8000;
     m_Context->RegisterNewManager(this);
 }
+
+CKBehaviorManager::~CKBehaviorManager() {}

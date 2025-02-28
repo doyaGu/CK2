@@ -54,6 +54,7 @@ public:
     //-------------------------------------------------------------------------
     // Internal functions
     CKBehaviorManager(CKContext *Context);
+    virtual ~CKBehaviorManager();
 
     virtual CKStateChunk *SaveData(CKFile *SavedFile);
     virtual CKERROR LoadData(CKStateChunk *chunk, CKFile *LoadedFile);
