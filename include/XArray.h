@@ -21,7 +21,7 @@ You mustn't store classes of variable size into an XArray. Use XClassArray for t
 See Also : XClassArray, XSArray
 ************************************************/
 template <class T>
-class DLL_EXPORT XArray
+class XArray
 {
 public:
     // Types

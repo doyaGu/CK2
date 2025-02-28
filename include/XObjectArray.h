@@ -42,7 +42,7 @@ Remarks:
     + Supports for Check, Load, Save, Add, Remove, Find functions in the XObjectArray.
 See Also: XSObjectPointerArray,XObjectArray,CKObjectArray, XSArray
 ****************************************************************************/
-class DLL_EXPORT XSObjectArray : public XSArray<CK_ID>
+class XSObjectArray : public XSArray<CK_ID>
 {
 public:
     /***************************************************************************
@@ -102,7 +102,7 @@ public:
 
     See Also: XObjectArray::Check
     *******************************************************/
-    CKBOOL Check(CKContext *Context);
+    DLL_EXPORT CKBOOL Check(CKContext *Context);
 
     /*******************************************************
     Summary: Adds given object's ID to the array only if it is not already present.
@@ -118,8 +118,8 @@ public:
         + Addition is done only if the given Object is not already in the array.
     See Also: FindObject, RemoveObject
     *******************************************************/
-    CKBOOL AddIfNotHere(CK_ID id);
-    CKBOOL AddIfNotHere(CKObject *obj);
+    DLL_EXPORT CKBOOL AddIfNotHere(CK_ID id);
+    DLL_EXPORT CKBOOL AddIfNotHere(CKObject *obj);
 
     /*******************************************************
     Summary: Gets an object from CK_ID's array.
@@ -133,7 +133,7 @@ public:
 
     See Also: GetObjectID
     *******************************************************/
-    CKObject *GetObject(CKContext *Context, unsigned int i) const;
+    DLL_EXPORT CKObject *GetObject(CKContext *Context, unsigned int i) const;
 
     /***************************************************************************
     Summary: Gives Object Id at given position in the Object Id Array.
@@ -166,7 +166,7 @@ public:
 
     See Also: FindObject, AddIfNotHere
     *******************************************************/
-    CKBOOL RemoveObject(CKObject *obj);
+    DLL_EXPORT CKBOOL RemoveObject(CKObject *obj);
 
     /*******************************************************
     Summary: Checks if given object is in CK_ID's array.
@@ -179,7 +179,7 @@ public:
 
     See Also: AddIfNotHere, RemoveObject, FindID
     *******************************************************/
-    CKBOOL FindObject(CKObject *obj) const;
+    DLL_EXPORT CKBOOL FindObject(CKObject *obj) const;
 
     /***************************************************************************
     Summary: Finds whether the given Object Id is in the Object Id Array.
@@ -194,10 +194,10 @@ public:
     *******************************************************/
     CKBOOL FindID(CK_ID id) const { return Find(id) != m_End; }
 
-    void Load(CKStateChunk *chunk);
-    void Save(CKStateChunk *chunk, CKContext *ctx) const;
-    void Prepare(CKDependenciesContext &context) const;
-    void Remap(CKDependenciesContext &context);
+    DLL_EXPORT void Load(CKStateChunk *chunk);
+    DLL_EXPORT void Save(CKStateChunk *chunk, CKContext *ctx) const;
+    DLL_EXPORT void Prepare(CKDependenciesContext &context) const;
+    DLL_EXPORT void Remap(CKDependenciesContext &context);
 };
 
 /***************************************************************************
@@ -210,7 +210,7 @@ Remarks:
     + Supports for Check, Load, Save, Add, Remove, Find functions in the CKObject Pointer array.
 See Also:XSObjectPointerArray,XObjectArray,CKObjectArray
 ****************************************************************************/
-class DLL_EXPORT XObjectPointerArray : public XArray<CKObject *>
+class XObjectPointerArray : public XArray<CKObject *>
 {
 public:
     XObjectPointerArray(const int iSize = 0) : XArray<CKObject *>(iSize) {}
@@ -298,7 +298,7 @@ public:
 
     See Also: GetObject
     *******************************************************/
-    CK_ID GetObjectID(unsigned int i) const;
+    DLL_EXPORT CK_ID GetObjectID(unsigned int i) const;
 
     /*******************************************************
     Summary: Checks the CKObject*'s array to remove objects that don't
@@ -315,12 +315,12 @@ public:
 
     See Also: XSObjectPointerArray::Check
     *******************************************************/
-    CKBOOL Check();
+    DLL_EXPORT CKBOOL Check();
 
-    void Load(CKContext *Context, CKStateChunk *chunk);
-    void Save(CKStateChunk *chunk) const;
-    void Prepare(CKDependenciesContext &context) const;
-    void Remap(CKDependenciesContext &context);
+    DLL_EXPORT void Load(CKContext *Context, CKStateChunk *chunk);
+    DLL_EXPORT void Save(CKStateChunk *chunk) const;
+    DLL_EXPORT void Prepare(CKDependenciesContext &context) const;
+    DLL_EXPORT void Remap(CKDependenciesContext &context);
 };
 
 /***************************************************************************
@@ -332,7 +332,7 @@ Remarks:
     + Supports for Check, Load, Save, Add, Remove, Find functions in the Object CK_ID array.
 See Also: XSObjectPointerArray,XObjectArray,CKObjectArray
 ****************************************************************************/
-class DLL_EXPORT XObjectArray : public XArray<CK_ID>
+class XObjectArray : public XArray<CK_ID>
 {
 public:
     XObjectArray(const int iSize = 0) : XArray<CK_ID>(iSize) {}
@@ -351,7 +351,7 @@ public:
 
     See Also: ConvertFromObjects
     *******************************************************/
-    inline void ConvertToObjects(CKContext *Context, XObjectPointerArray &array) const
+    void ConvertToObjects(CKContext *Context, XObjectPointerArray &array) const
     {
         array.Resize(Size());
         array.Resize(0);
@@ -375,7 +375,7 @@ public:
 
     See Also: ConvertFromObjects
     *******************************************************/
-    void ConvertFromObjects(const XObjectPointerArray &array);
+    DLL_EXPORT void ConvertFromObjects(const XObjectPointerArray &array);
 
     /*******************************************************
     Summary: Checks the CK_ID's array to remove objects that do not
@@ -395,7 +395,7 @@ public:
 
     See Also: XSObjectArray::Check
     *******************************************************/
-    CKBOOL Check(CKContext *Context);
+    DLL_EXPORT CKBOOL Check(CKContext *Context);
 
     /*******************************************************
     Summary: Adds given object's ID to the array if it is not already present..
@@ -412,8 +412,8 @@ public:
 
     See Also: FindObject, RemoveObject
     *******************************************************/
-    CKBOOL AddIfNotHere(CK_ID id);
-    CKBOOL AddIfNotHere(CKObject *obj);
+    DLL_EXPORT CKBOOL AddIfNotHere(CK_ID id);
+    DLL_EXPORT CKBOOL AddIfNotHere(CKObject *obj);
 
     /*******************************************************
     Summary: Gets an object from CK_ID's array.
@@ -427,7 +427,7 @@ public:
 
     See Also: GetObjectID
     *******************************************************/
-    CKObject *GetObject(CKContext *Context, unsigned int i) const;
+    DLL_EXPORT CKObject *GetObject(CKContext *Context, unsigned int i) const;
 
     /***************************************************************************
     Summary: Returns Object Id at given position in the Object Id Array.
@@ -460,7 +460,7 @@ public:
 
     See Also: FindObject, AddIfNotHere
     *******************************************************/
-    CKBOOL RemoveObject(CKObject *obj);
+    DLL_EXPORT CKBOOL RemoveObject(CKObject *obj);
 
     /*******************************************************
     Summary: Checks if given object is in CK_ID's array.
@@ -473,7 +473,7 @@ public:
 
     See Also: AddIfNotHere, RemoveObject, FindID
     *******************************************************/
-    CKBOOL FindObject(CKObject *obj) const;
+    DLL_EXPORT CKBOOL FindObject(CKObject *obj) const;
 
     /***************************************************************************
     Summary: Finds whether the given Object Id is in the Object Id Array.
@@ -488,10 +488,10 @@ public:
     *******************************************************/
     CKBOOL FindID(CK_ID id) const { return Find(id) != m_End; }
 
-    void Load(CKStateChunk *chunk);
-    void Save(CKStateChunk *chunk, CKContext *ctx) const;
-    void Prepare(CKDependenciesContext &context) const;
-    void Remap(CKDependenciesContext &context);
+    DLL_EXPORT void Load(CKStateChunk *chunk);
+    DLL_EXPORT void Save(CKStateChunk *chunk, CKContext *ctx) const;
+    DLL_EXPORT void Prepare(CKDependenciesContext &context) const;
+    DLL_EXPORT void Remap(CKDependenciesContext &context);
 };
 
 /***************************************************************************
@@ -506,7 +506,7 @@ Remarks:
 
 See Also:XObjectPointerArray,XObjectArray,CKObjectArray
 ****************************************************************************/
-class DLL_EXPORT XSObjectPointerArray : public XSArray<CKObject *>
+class XSObjectPointerArray : public XSArray<CKObject *>
 {
 public:
     /*******************************************************
@@ -567,7 +567,7 @@ public:
 
     See Also: AddIfNotHere, FindObject
     *******************************************************/
-    int RemoveObject(CKObject *obj) { return (int)Remove(obj); }
+    int RemoveObject(CKObject *obj) { return Remove(obj); }
 
     /*******************************************************
     Summary: Checks if given object is in object array.
@@ -593,7 +593,7 @@ public:
 
     See Also: GetObject
     *******************************************************/
-    CK_ID GetObjectID(unsigned int i) const;
+    DLL_EXPORT CK_ID GetObjectID(unsigned int i) const;
 
     /*******************************************************
     Summary: Checks the CKObject*'s array to remove objects that don't
@@ -606,16 +606,16 @@ public:
         If a CKObject* is to be deleted (flagged), it is removed
         from the array. You have to check array after the objects
         have been flagged, but before they are actually deleted
-        otherwise it will crashes (pointer pointing on nothing.)
+        otherwise it will crash (pointer pointing on nothing.)
 
     See Also: XObjectPointerArray::Check
     **************************************************************/
-    CKBOOL Check();
+    DLL_EXPORT CKBOOL Check();
 
-    void Load(CKContext *Context, CKStateChunk *chunk);
-    void Save(CKStateChunk *chunk) const;
-    void Prepare(CKDependenciesContext &context) const;
-    void Remap(CKDependenciesContext &context);
+    DLL_EXPORT void Load(CKContext *Context, CKStateChunk *chunk);
+    DLL_EXPORT void Save(CKStateChunk *chunk) const;
+    DLL_EXPORT void Prepare(CKDependenciesContext &context) const;
+    DLL_EXPORT void Remap(CKDependenciesContext &context);
 };
 
 #endif // XOBJECTARRAY_H
