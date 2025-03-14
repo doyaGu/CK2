@@ -1235,7 +1235,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
                 it->Options = (res == CKLOAD_USECURRENT) ? CKFileObject::CK_FO_RENAMEOBJECT : CKFileObject::CK_FO_DEFAULT;
             } else {
                 it->Object = -id;
-                ResolveReference(it);
+                obj = ResolveReference(it);
                 it->Options = CKFileObject::CK_FO_RENAMEOBJECT;
             }
             objectManager->RegisterLoadObject(obj, it->Object);
