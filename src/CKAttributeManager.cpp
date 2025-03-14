@@ -710,8 +710,10 @@ CKERROR CKAttributeManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
     int categoryCount = chunk->ReadInt();
     m_ConversionTableCount = chunk->ReadInt();
 
-    XArray<CKAttributeCategoryDesc> categories(categoryCount);
-    XArray<CKAttributeCategory> categoryConversions(categoryCount);
+    XArray<CKAttributeCategoryDesc> categories;
+    categories.Resize(categoryCount);
+    XArray<CKAttributeCategory> categoryConversions;
+    categoryConversions.Resize(categoryCount);
 
     for (int i = 0; i < categoryCount; ++i) {
         if (chunk->ReadInt()) {
