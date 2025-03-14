@@ -14,6 +14,7 @@
 #include "CKParameterLocal.h"
 #include "CKParameterOperation.h"
 #include "CKBehaviorLink.h"
+#include "CKBehaviorIO.h"
 #include "CKSceneObject.h"
 #include "CKSynchroObject.h"
 #include "CKInterfaceObjectManager.h"
@@ -93,6 +94,7 @@ CKERROR CKStartUp() {
     CKCLASSREGISTER(CKParameterLocal, CKParameter);
     CKCLASSREGISTER(CKParameterOperation, CKObject);
     CKCLASSREGISTER(CKBehaviorLink, CKObject);
+    CKCLASSREGISTER(CKBehaviorIO, CKObject);
     CKCLASSREGISTER(CKSceneObject, CKObject);
     CKCLASSREGISTER(CKSynchroObject, CKObject);
     CKCLASSREGISTER(CKStateObject, CKObject);
