@@ -2,8 +2,11 @@
 
 #include "VxMath.h"
 #include "CKStateChunk.h"
+#include "CKAttributeManager.h"
 #include "CKParameterManager.h"
+#include "CKMessageManager.h"
 #include "CKInterfaceManager.h"
+#include "CK2dCurve.h"
 
 void CKInitializeParameterTypes(CKParameterManager *man) {
     CKParameterTypeDesc noneTypeDesc;
@@ -272,28 +275,38 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
     man->RegisterParameterType(&scriptTypeDesc);
 
     man->RegisterNewEnum(CKPGUID_DIRECTION, "Direction", "X=1,-X=2,Y=3,-Y=4,Z=5,-Z=6");
-    man->RegisterNewEnum(CKPGUID_BLENDMODE, "Texture Blend Mode", "Decal=1,Modulate=2,DecalAlpha=3,ModulateAlpha=4,DecalMask=5,ModulateMask=6,Copy=7,Add=8");
-    man->RegisterNewEnum(CKPGUID_FILTERMODE, "Filter Mode", "Nearest=1,Linear=2,MipNearest=3,MipLinear=4,LinearMipNearest=5,LinearMipLinear=6,Anisotropic=7");
-    man->RegisterNewEnum(CKPGUID_BLENDFACTOR, "Blend Factor", "Zero=1,One=2,Source Color=3,Inverse Source Color=4,Source Alpha=5,Inverse Source Alpha=6,Destination Alpha=7,Inverse Destination Alpha=8,Destination Color=9,Inverse Destination Color=10,Source Alpha Saturation=11,Both Source Alpha=12,Both Inverse Source Alpha=13");
+    man->RegisterNewEnum(CKPGUID_BLENDMODE, "Texture Blend Mode",
+                         "Decal=1,Modulate=2,DecalAlpha=3,ModulateAlpha=4,DecalMask=5,ModulateMask=6,Copy=7,Add=8");
+    man->RegisterNewEnum(CKPGUID_FILTERMODE, "Filter Mode",
+                         "Nearest=1,Linear=2,MipNearest=3,MipLinear=4,LinearMipNearest=5,LinearMipLinear=6,Anisotropic=7");
+    man->RegisterNewEnum(CKPGUID_BLENDFACTOR, "Blend Factor",
+                         "Zero=1,One=2,Source Color=3,Inverse Source Color=4,Source Alpha=5,Inverse Source Alpha=6,Destination Alpha=7,Inverse Destination Alpha=8,Destination Color=9,Inverse Destination Color=10,Source Alpha Saturation=11,Both Source Alpha=12,Both Inverse Source Alpha=13");
     man->RegisterNewEnum(CKPGUID_FILLMODE, "Fill Mode", "Point=1,WireFrame=2,Solid=3,OnlyZ=4");
     man->RegisterNewEnum(CKPGUID_LITMODE, "Lit Mode", "Prelit=0,Lit=1");
     man->RegisterNewEnum(CKPGUID_SHADEMODE, "Shade Mode", "Flat=1,Gouraud=2");
     man->RegisterNewEnum(CKPGUID_GLOBALEXMODE, "Global Shade Mode", "Wireframe=0,Flat=1,Gouraud=2,Material Default=4");
-    man->RegisterNewEnum(CKPGUID_ZFUNC, "Z Compare Function", "Never=1,Less=2,Equal=3,Less Equal=4,Greater=5,Not Equal=6,Greater Equal=7,Always=8");
+    man->RegisterNewEnum(CKPGUID_ZFUNC, "Z Compare Function",
+                         "Never=1,Less=2,Equal=3,Less Equal=4,Greater=5,Not Equal=6,Greater Equal=7,Always=8");
     man->RegisterNewEnum(CKPGUID_ADDRESSMODE, "Address Mode", "Wrap=1,Mirror=2,Clamp=3,Border=4");
     man->RegisterNewEnum(CKPGUID_WRAPMODE, "Wrap Mode", "None=0,V Looping=1,U Looping=2,UV Looping=3");
     man->RegisterNewEnum(CKPGUID_3DSPRITEMODE, "3DSprite Mode", "Billboard=0,XRotate=1,YRotate=2,Orientable=3");
     man->RegisterNewEnum(CKPGUID_FOGMODE, "Fog Mode", "None=0,Exponential=1,Exponential Squared=2,Linear=3");
     man->RegisterNewEnum(CKPGUID_LIGHTTYPE, "Light Type", "Point=1,Spot=2,Directional=3");
-    man->RegisterNewEnum(CKPGUID_COMPOPERATOR, "Comparison Operator", "Equal=1,Not Equal=2,Less than=3,Less or equal=4,Greater than=5,Greater or equal=6");
+    man->RegisterNewEnum(CKPGUID_COMPOPERATOR, "Comparison Operator",
+                         "Equal=1,Not Equal=2,Less than=3,Less or equal=4,Greater than=5,Greater or equal=6");
     man->RegisterNewEnum(CKPGUID_BINARYOPERATOR, "Binary Operator", "+=1,-=2,*=3,/=4");
     man->RegisterNewEnum(CKPGUID_SETOPERATOR, "Sets Operator", "Union=1,Intersection=2,Subtraction=3");
-    man->RegisterNewEnum(CKPGUID_SPRITETEXTALIGNMENT, "Sprite Text Alignment", "Center=1,Left=2,Right=4,Top=8,Bottom=16,VCenter=32,HCenter=64");
+    man->RegisterNewEnum(CKPGUID_SPRITETEXTALIGNMENT, "Sprite Text Alignment",
+                         "Center=1,Left=2,Right=4,Top=8,Bottom=16,VCenter=32,HCenter=64");
     man->RegisterNewEnum(CKPGUID_ARRAYTYPE, "Array Column Type", "Integer=1,Float=2,String=3,Object=4,Parameter=5");
-    man->RegisterNewFlags(CKPGUID_FILTER, "Filter", "1=1,2=2,3=4,4=8,5=16,6=32,7=64,8=128,9=256,10=512,11=1024,12=2048,13=4096,14=8192,15=16384,16=32768,17=65536,18=131072,19=262144,20=524288,21=1048576,22=2097152,23=4194304,24=8388608,25=16777216,26=33554432,27=67108864,28=134217728,29=268435456,30=536870912,31=1073741824,32=2147483648");
-    man->RegisterNewEnum(CKPGUID_SCENEACTIVITYFLAGS, "Scene Activity Options", "Scene Defaults=0,Force activate=1,Force deactivate=2,Do nothing=3");
+    man->RegisterNewFlags(
+        CKPGUID_FILTER, "Filter",
+        "1=1,2=2,3=4,4=8,5=16,6=32,7=64,8=128,9=256,10=512,11=1024,12=2048,13=4096,14=8192,15=16384,16=32768,17=65536,18=131072,19=262144,20=524288,21=1048576,22=2097152,23=4194304,24=8388608,25=16777216,26=33554432,27=67108864,28=134217728,29=268435456,30=536870912,31=1073741824,32=2147483648");
+    man->RegisterNewEnum(CKPGUID_SCENEACTIVITYFLAGS, "Scene Activity Options",
+                         "Scene Defaults=0,Force activate=1,Force deactivate=2,Do nothing=3");
     man->RegisterNewEnum(CKPGUID_SCENERESETFLAGS, "Scene Reset Options", "Scene Defaults=0,Force Reset=1,Do nothing=2");
-    man->RegisterNewFlags(CKPGUID_RENDEROPTIONS, "Render Options", "Background Sprites=1,Foreground Sprites=2,Use Camera Ratio=8,Clear ZBuffer=16,Clear Back Buffer=32,Clear Stencil Buffer=64,Buffer Swapping=128,Clear Only Viewport=256,Vertical Sync=512,Disable 3D=1024");
+    man->RegisterNewFlags(CKPGUID_RENDEROPTIONS, "Render Options",
+                          "Background Sprites=1,Foreground Sprites=2,Use Camera Ratio=8,Clear ZBuffer=16,Clear Back Buffer=32,Clear Stencil Buffer=64,Buffer Swapping=128,Clear Only Viewport=256,Vertical Sync=512,Disable 3D=1024");
 
 
     XString enumData;
@@ -301,7 +314,7 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
     XClassArray<XString> classNames(classCount);
 
     for (CK_CLASSID classId = CKCID_OBJECT; classId < classCount; ++classId) {
-        CKClassDesc* classDesc = CKGetClassDesc(classId);
+        CKClassDesc *classDesc = CKGetClassDesc(classId);
         if (!classDesc || !classDesc->NameFct) continue;
 
         // Get class name
@@ -325,7 +338,7 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
             man->RegisterParameterType(&paramDesc);
         }
 
-        className << " (" << (unsigned int)classId << ")";
+        className << " (" << (unsigned int) classId << ")";
         classNames.PushBack(className);
     }
 
@@ -364,8 +377,8 @@ void CK_ParameterCopier_SetValue(CKParameter *dest, CKParameter *src) {
 }
 
 void CK_ParameterCopier_Dword(CKParameter *dest, CKParameter *src) {
-    CKDWORD *srcValue = (CKDWORD *)src->m_Buffer;
-    CKDWORD *destValue = (CKDWORD *)dest->m_Buffer;
+    CKDWORD *srcValue = (CKDWORD *) src->m_Buffer;
+    CKDWORD *destValue = (CKDWORD *) dest->m_Buffer;
     *destValue = *srcValue;
 }
 
@@ -386,7 +399,7 @@ void CK_ParameterCopier_Nope(CKParameter *dest, CKParameter *src) {
 }
 
 CKERROR CKParameterTypesEnumCreator(CKParameter *param) {
-    CKParameterManager* pm = param->m_Context->GetParameterManager();
+    CKParameterManager *pm = param->m_Context->GetParameterManager();
     if (!pm->m_ParameterTypeEnumUpToDate) {
         pm->UpdateParameterEnum();
     }
@@ -397,48 +410,227 @@ CKERROR CKParameterTypesEnumCreator(CKParameter *param) {
 }
 
 CKERROR CKDependenciesCreator(CKParameter *param) {
+    CK_DEPENDENCIES_OPMODE opMode = CK_DEPENDENCIES_COPY;
+    CKGUID paramGuid = param->GetGUID();
+    if (paramGuid == CKPGUID_COPYDEPENDENCIES) {
+        opMode = CK_DEPENDENCIES_COPY;
+    } else if (paramGuid == CKPGUID_DELETEDEPENDENCIES) {
+        opMode = CK_DEPENDENCIES_DELETE;
+    } else if (paramGuid == CKPGUID_REPLACEDEPENDENCIES) {
+        opMode = CK_DEPENDENCIES_REPLACE;
+    } else if (paramGuid == CKPGUID_SAVEDEPENDENCIES) {
+        opMode = CK_DEPENDENCIES_SAVE;
+    }
+
+    CKDependencies *dependencies = new CKDependencies();
+
+    CKCopyDefaultClassDependencies(*dependencies, opMode);
+
+    param->SetValue(&dependencies);
+
     return CK_OK;
 }
 
 void CKDependenciesDestructor(CKParameter *param) {
+    CKDependencies *dependencies = nullptr;
+    param->GetValue(&dependencies);
+    if (dependencies) {
+        delete dependencies;
+        dependencies = nullptr;
+    }
+    param->SetValue(&dependencies);
+}
+
+CK_DEPENDENCIES_OPMODE GetOperationModeFromGUID(CKParameter *param) {
+    CKGUID guid = param->GetGUID();
+    if (guid == CKPGUID_COPYDEPENDENCIES) return CK_DEPENDENCIES_COPY;
+    if (guid == CKPGUID_DELETEDEPENDENCIES) return CK_DEPENDENCIES_DELETE;
+    if (guid == CKPGUID_REPLACEDEPENDENCIES) return CK_DEPENDENCIES_REPLACE;
+    if (guid == CKPGUID_SAVEDEPENDENCIES) return CK_DEPENDENCIES_SAVE;
+
+    return CK_DEPENDENCIES_COPY; // Default
 }
 
 void CKDependenciesSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
+    CKDependencies *dependencies = NULL;
+    param->GetValue(&dependencies);
+
+    if (!load) {
+        // Save mode
+        CKStateChunk *saveChunk = new CKStateChunk(nullptr);
+        saveChunk->StartWrite();
+
+        // Write appropriate identifier based on dependencies flags
+        switch (dependencies->m_Flags) {
+        case CK_DEPENDENCIES_NONE:
+            saveChunk->WriteIdentifier(0x12248766);
+            break;
+        case CK_DEPENDENCIES_FULL:
+            saveChunk->WriteIdentifier(0x12248767);
+            break;
+        case CK_DEPENDENCIES_CUSTOM: {
+            saveChunk->WriteIdentifier(0x12248768);
+
+            // Determine operation mode from parameter GUID
+            CK_DEPENDENCIES_OPMODE opMode = GetOperationModeFromGUID(param);
+            CKDependencies *defaultDeps = CKGetDefaultClassDependencies(opMode);
+
+            // Write differences from default dependencies
+            const int count = dependencies->Size();
+            for (int i = 1; i < count; ++i) {
+                if ((*dependencies)[i] != (*defaultDeps)[i]) {
+                    saveChunk->WriteInt(i);
+                    saveChunk->WriteDword((*dependencies)[i]);
+                }
+            }
+            break;
+        }
+        }
+
+        saveChunk->CloseChunk();
+        *chunk = saveChunk;
+    } else {
+        // Load mode
+        CKStateChunk *loadChunk = *chunk;
+        if (!loadChunk) return;
+
+        // Read dependency type identifier
+        if (loadChunk->SeekIdentifier(0x12248766)) {
+            dependencies->m_Flags = CK_DEPENDENCIES_NONE;
+        } else if (loadChunk->SeekIdentifier(0x12248767)) {
+            dependencies->m_Flags = CK_DEPENDENCIES_FULL;
+        } else if (loadChunk->SeekIdentifier(0x12248768)) {
+            dependencies->m_Flags = CK_DEPENDENCIES_CUSTOM;
+
+            // Read custom dependencies data
+            int dataSize = loadChunk->SeekIdentifierAndReturnSize(0x12248768);
+            if (dataSize > 0) {
+                int entryCount = dataSize / sizeof(CKDWORD);
+                for (int i = 0; i < entryCount; ++i) {
+                    int index = loadChunk->ReadInt();
+                    (*dependencies)[index] = loadChunk->ReadDword();
+                }
+            }
+        }
+    }
 }
 
 void CKDependenciesCopier(CKParameter *dest, CKParameter *src) {
+    CKDependencies *srcDeps = nullptr;
+    src->GetValue(&srcDeps);
+    CKDependencies *destDeps = nullptr;
+    dest->GetValue(&destDeps);
+    *destDeps = *srcDeps;
 }
 
 CKERROR CKStateChunkCreator(CKParameter *param) {
+    CKStateChunk *chunk = new CKStateChunk(nullptr);
+    if (!chunk) {
+        return CKERR_OUTOFMEMORY;
+    }
+    param->SetValue(&chunk);
     return CK_OK;
 }
 
 void CKStateChunkDestructor(CKParameter *param) {
+    CKStateChunk *chunk = nullptr;
+    param->GetValue(&chunk);
+    DeleteCKStateChunk(chunk);
+    chunk = nullptr;
+    param->SetValue(&chunk);
 }
 
 void CKStateChunkSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
+    CKStateChunk *stateChunk = nullptr;
+    param->GetValue(&stateChunk);
+    if (load) {
+        if (stateChunk) {
+            stateChunk->Clone(*chunk);
+        }
+    } else {
+        *chunk = new CKStateChunk(stateChunk);
+    }
 }
 
 void CKStateChunkCopier(CKParameter *dest, CKParameter *src) {
+    CKStateChunk *srcChunk = nullptr;
+    src->GetValue(&srcChunk);
+    CKStateChunk *destChunk = nullptr;
+    dest->GetValue(&destChunk);
+    destChunk->Clone(srcChunk);
 }
 
 CKERROR CKCollectionCreator(CKParameter *param) {
+    XObjectArray *array = new XObjectArray();
+    if (!array) {
+        return CKERR_OUTOFMEMORY;
+    }
+    param->SetValue(&array);
     return CK_OK;
 }
 
 void CKCollectionDestructor(CKParameter *param) {
+    XObjectArray *array = nullptr;
+    param->GetValue(&array);
+    if (array) {
+        delete array;
+        array = nullptr;
+    }
+    param->SetValue(&array);
 }
 
 void CKCollectionSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
+    XObjectArray *array = nullptr;
+    param->GetValue(&array);
+    if (load) {
+        CKStateChunk *loadChunk = *chunk;
+        if (loadChunk && loadChunk->SeekIdentifier(0x50)) {
+            const XObjectArray &loadArray = loadChunk->ReadXObjectArray();
+            *array = loadArray;
+        }
+    } else {
+        CKStateChunk *saveChunk = nullptr;
+        if (array) {
+            saveChunk = new CKStateChunk(CKCID_OBJECTARRAY, nullptr);
+            saveChunk->StartWrite();
+            saveChunk->WriteIdentifier(0x50);
+            array->Save(saveChunk, param->m_Context);
+            saveChunk->CloseChunk();
+        }
+
+        *chunk = saveChunk;
+    }
 }
 
 void CKCollectionCheck(CKParameter *param) {
+    XObjectArray *array = nullptr;
+    param->GetValue(&array);
+    if (array && array->Size() != 0) {
+        for (auto it = array->Begin(); it != array->End(); ++it) {
+            CKObject *obj = param->m_Context->GetObject(*it);
+            if (!obj) {
+                *it = 0;
+            }
+        }
+    }
 }
 
 void CKCollectionCopy(CKParameter *dest, CKParameter *src) {
+    XObjectArray *srcArray = nullptr;
+    src->GetValue(&srcArray);
+    XObjectArray *destArray = nullptr;
+    dest->GetValue(&destArray);
+    if (srcArray && destArray) {
+        *destArray = *srcArray;
+    }
 }
 
 CKERROR CKMatrixCreator(CKParameter *param) {
+    if (!param)
+        return CKERR_INVALIDPARAMETER;
+
+    VxMatrix matrix = VxMatrix::Identity();
+    param->SetValue(&matrix, sizeof(VxMatrix));
     return CK_OK;
 }
 
@@ -484,7 +676,7 @@ void CKStructDestructor(CKParameter *param) {
     CKStructStruct *desc = pm->GetStructDescByType(param->GetType());
 
     if (desc) {
-        CK_ID *memberIDs = (CK_ID *)param->GetReadDataPtr();
+        CK_ID *memberIDs = (CK_ID *) param->GetReadDataPtr();
 
         for (int i = 0; i < desc->NbData; ++i) {
             if (memberIDs[i] != 0) {
@@ -507,7 +699,7 @@ void CKStructSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
     if (!desc)
         return;
 
-    CK_ID *memberIDs = (CK_ID *)param->GetReadDataPtr();
+    CK_ID *memberIDs = (CK_ID *) param->GetReadDataPtr();
     if (!memberIDs)
         return;
 
@@ -573,14 +765,14 @@ void CKStructCopier(CKParameter *dest, CKParameter *src) {
     if (!desc)
         return;
 
-    CK_ID *srcMembers = (CK_ID *)src->GetReadDataPtr();
-    CK_ID *destMembers = (CK_ID *)dest->GetWriteDataPtr();
+    CK_ID *srcMembers = (CK_ID *) src->GetReadDataPtr();
+    CK_ID *destMembers = (CK_ID *) dest->GetWriteDataPtr();
     if (!srcMembers || !destMembers)
         return;
 
     for (int i = 0; i < desc->NbData; ++i) {
-        CKParameterOut *srcParam = (CKParameterOut *)context->GetObject(srcMembers[i]);
-        CKParameterOut *destParam = (CKParameterOut *)context->GetObject(destMembers[i]);
+        CKParameterOut *srcParam = (CKParameterOut *) context->GetObject(srcMembers[i]);
+        CKParameterOut *destParam = (CKParameterOut *) context->GetObject(destMembers[i]);
         if (srcParam && destParam) {
             destParam->CopyValue(srcParam, FALSE);
         }
@@ -588,50 +780,356 @@ void CKStructCopier(CKParameter *dest, CKParameter *src) {
 }
 
 CKERROR CK2dCurveCreator(CKParameter *param) {
+    CK2dCurve *curve = new CK2dCurve();
+    if (!curve) {
+        return CKERR_OUTOFMEMORY;
+    }
+    param->SetValue(&curve);
     return CK_OK;
 }
 
 void CK2dCurveDestructor(CKParameter *param) {
+    if (!param)
+        return;
+    CK2dCurve *curve = nullptr;
+    param->GetValue(&curve);
+    if (curve) {
+        delete curve;
+        curve = nullptr;
+    }
+    param->SetValue(&curve);
 }
 
 void CK2dCurveCopier(CKParameter *dest, CKParameter *src) {
+    CK2dCurve *srcCurve = nullptr;
+    src->GetValue(&srcCurve);
+    CK2dCurve *destCurve = nullptr;
+    dest->GetValue(&destCurve);
+    if (srcCurve && destCurve)
+        *destCurve = *srcCurve;
 }
 
 void CK2dCurveSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
+    if (!param)
+        return;
+
+    CK2dCurve *curve = nullptr;
+    param->GetValue(&curve);
+    if (load) {
+        CKStateChunk *loadChunk = *chunk;
+        if (loadChunk && loadChunk->SeekIdentifier(CKCHNK_2DCURVE)) {
+            CKStateChunk *curveChunk = loadChunk->ReadSubChunk();
+            if (curve)
+                curve->Read(curveChunk);
+            if (curveChunk) {
+                DeleteCKStateChunk(curveChunk);
+            }
+        }
+    } else {
+        CKStateChunk *saveChunk = new CKStateChunk(CKCHNK_2DCURVE, nullptr);
+        CKStateChunk *curveChunk = nullptr;
+        if (curve)
+            curveChunk = curve->Dump();
+        saveChunk->StartWrite();
+        saveChunk->WriteIdentifier(CKCHNK_2DCURVE);
+        saveChunk->WriteSubChunk(saveChunk);
+        saveChunk->CloseChunk();
+        if (curveChunk) {
+            DeleteCKStateChunk(curveChunk);
+        }
+        *chunk = saveChunk;
+    }
 }
 
 void CKPointerSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
+    if (!load && chunk && *chunk)
+        *chunk = nullptr;
 }
 
 void CKObjectCheckFunc(CKParameter *param) {
+    CK_ID *pid = (CK_ID *) param->GetWriteDataPtr();
+    if (pid) {
+        CKContext *context = param->m_Context;
+        CKObject *obj = context->GetObject(*pid);
+        if (!obj) {
+            *pid = 0;
+        }
+    }
 }
 
 int CKMatrixStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    VxMatrix matrix;
+
+    const float MATRIX_EPSILON = 1e-5f;
+    const char *MATRIX_FORMAT = "[%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g]";
+
+    if (ReadFromString) {
+        // Read matrix from string
+        if (ValueString) {
+            sscanf(ValueString, MATRIX_FORMAT,
+                   &matrix[0][0], &matrix[0][1], &matrix[0][2], &matrix[0][3],
+                   &matrix[1][0], &matrix[1][1], &matrix[1][2], &matrix[1][3],
+                   &matrix[2][0], &matrix[2][1], &matrix[2][2], &matrix[2][3],
+                   &matrix[3][0], &matrix[3][1], &matrix[3][2], &matrix[3][3]);
+
+            param->SetValue(&matrix, sizeof(VxMatrix));
+        }
+        return 0;
+    }
+
+    // Write matrix to string
+    char buffer[256];
+    param->GetValue(&matrix, sizeof(VxMatrix));
+
+    // Format matrix with epsilon check for near-zero values
+    snprintf(buffer, sizeof(buffer), MATRIX_FORMAT,
+             // Row 0
+             fabs(matrix[0][0]) >= MATRIX_EPSILON ? matrix[0][0] : 0.0f,
+             fabs(matrix[0][1]) >= MATRIX_EPSILON ? matrix[0][1] : 0.0f,
+             fabs(matrix[0][2]) >= MATRIX_EPSILON ? matrix[0][2] : 0.0f,
+             fabs(matrix[0][3]) >= MATRIX_EPSILON ? matrix[0][3] : 0.0f,
+
+             // Row 1
+             fabs(matrix[1][0]) >= MATRIX_EPSILON ? matrix[1][0] : 0.0f,
+             fabs(matrix[1][1]) >= MATRIX_EPSILON ? matrix[1][1] : 0.0f,
+             fabs(matrix[1][2]) >= MATRIX_EPSILON ? matrix[1][2] : 0.0f,
+             fabs(matrix[1][3]) >= MATRIX_EPSILON ? matrix[1][3] : 0.0f,
+
+             // Row 2
+             fabs(matrix[2][0]) >= MATRIX_EPSILON ? matrix[2][0] : 0.0f,
+             fabs(matrix[2][1]) >= MATRIX_EPSILON ? matrix[2][1] : 0.0f,
+             fabs(matrix[2][2]) >= MATRIX_EPSILON ? matrix[2][2] : 0.0f,
+             fabs(matrix[2][3]) >= MATRIX_EPSILON ? matrix[2][3] : 0.0f,
+
+             // Row 3
+             fabs(matrix[3][0]) >= MATRIX_EPSILON ? matrix[3][0] : 0.0f,
+             fabs(matrix[3][1]) >= MATRIX_EPSILON ? matrix[3][1] : 0.0f,
+             fabs(matrix[3][2]) >= MATRIX_EPSILON ? matrix[3][2] : 0.0f,
+             fabs(matrix[3][3]) >= MATRIX_EPSILON ? matrix[3][3] : 0.0f
+    );
+
+    if (ValueString) {
+        strncpy(ValueString, buffer, 255);
+        ValueString[255] = '\0'; // Ensure null termination
+    }
+
+    return strlen(buffer) + 1; // Include null terminator in size
 }
 
 int CKQuaternionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param)
+        return 0;
+
+    const char *QUATERNION_READ_FORMAT = "%f,%f,%f,%f";
+    const char *QUATERNION_WRITE_FORMAT = "%g,%g,%g,%g";
+    const size_t MAX_QUAT_STRING_LENGTH = 256;
+
+    VxQuaternion quat;
+
+    if (ReadFromString) {
+        // Read quaternion from string
+        if (ValueString) {
+            sscanf(ValueString, QUATERNION_READ_FORMAT,
+                   &quat.x, &quat.y, &quat.z, &quat.w);
+            param->SetValue(&quat, sizeof(VxQuaternion));
+        }
+        return 0;
+    }
+
+    // Write quaternion to string
+    char buffer[MAX_QUAT_STRING_LENGTH];
+    param->GetValue(&quat, sizeof(VxQuaternion));
+
+    // Format with proper precision handling
+    snprintf(buffer, MAX_QUAT_STRING_LENGTH, QUATERNION_WRITE_FORMAT,
+             quat.x, quat.y, quat.z, quat.w);
+
+    // Safe string copy if output buffer provided
+    if (ValueString) {
+        strncpy(ValueString, buffer, MAX_QUAT_STRING_LENGTH - 1);
+        ValueString[MAX_QUAT_STRING_LENGTH - 1] = '\0'; // Ensure null-termination
+    }
+
+    // Return required buffer size including null terminator
+    return strlen(buffer) + 1;
 }
 
 int CKObjectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param)
+        return 0;
+
+    CKContext *context = param->m_Context;
+
+    if (ReadFromString) {
+        // Read mode: Convert string to object reference
+        if (ValueString && *ValueString) {
+            // Get expected class ID from parameter type
+            CKParameterType paramType = param->GetType();
+            CKParameterManager *pm = context->GetParameterManager();
+            CK_CLASSID classID = pm->TypeToClassID(paramType);
+
+            // Find object by name and class
+            CKObject *obj = context->GetObjectByNameAndClass(ValueString, classID, NULL);
+
+            // Store object ID in parameter
+            CK_ID objID = obj ? obj->GetID() : 0;
+            param->SetValue(&objID);
+        }
+        return 0;
+    }
+
+    // Write mode: Convert object reference to string
+    CK_ID storedID = 0;
+    param->GetValue(&storedID);
+
+    CKObject *obj = context->GetObject(storedID);
+    if (!obj || !obj->GetName()) {
+        if (ValueString) ValueString[0] = '\0';
+        return 0;
+    }
+
+    // Safe string handling
+    const char *objName = obj->GetName();
+    size_t nameLen = strlen(objName);
+
+    if (ValueString) {
+        strncpy(ValueString, objName, 255);
+        ValueString[255] = '\0'; // Ensure null-termination
+    }
+
+    return nameLen + 1; // Include null terminator in size
 }
 
 int CKStringStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param)
+        return 0;
+    if (ReadFromString) {
+        if (ValueString) {
+            int len = strlen(ValueString);
+            param->SetValue(ValueString, len + 1);
+        }
+        return 0;
+    }
+    if (ValueString)
+        param->GetValue(ValueString);
+    return param->GetDataSize();
 }
 
 int CKAttributeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param)
+        return 0;
+
+    CKContext *context = param->m_Context;
+    CKAttributeManager *attrMgr = context->GetAttributeManager();
+    size_t result = 0;
+
+    if (ReadFromString) {
+        // Read mode: Convert string to attribute type
+        if (ValueString && *ValueString) {
+            CKAttributeType attrType = attrMgr->GetAttributeTypeByName(ValueString);
+            param->SetValue(&attrType, sizeof(CKAttributeType));
+        }
+        return 0;
+    }
+
+    // Write mode: Convert attribute type to string
+    CKAttributeType attrType = -1;
+    param->GetValue(&attrType, sizeof(CKAttributeType));
+    if (attrType == -1) {
+        if (ValueString) ValueString[0] = '\0';
+        return 0;
+    }
+
+    const char *attrName = attrMgr->GetAttributeNameByType(attrType);
+    if (!attrName) {
+        if (ValueString) ValueString[0] = '\0';
+        return 0;
+    }
+
+    size_t nameLen = strlen(attrName);
+    if (ValueString) {
+        strncpy(ValueString, attrName, 255);
+        ValueString[255] = '\0'; // Ensure null-termination
+    }
+
+    return nameLen + 1; // Include null terminator in size
 }
 
 int CKMessageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    CKContext *context = param->m_Context;
+    if (!context) return 0;
+
+    CKMessageManager *msgManager = context->GetMessageManager();
+    if (!msgManager) return 0;
+
+    if (ReadFromString) {
+        // Read mode: Convert string to message type
+        if (!ValueString) return 0;
+
+        // Add/get message type from string
+        CKMessageType msgType = msgManager->AddMessageType(ValueString);
+
+        // Store message type in parameter
+        param->SetValue(&msgType);
+        return 0;
+    } else {
+        // Write mode: Convert message type to string
+        CKMessageType msgType = -1;
+        param->GetValue(&msgType);
+
+        // Get message type name
+        const char *typeName = msgManager->GetMessageTypeName(msgType);
+        if (!typeName) return 0;
+
+        const int len = strlen(typeName);
+        // Copy to output buffer if provided
+        if (ValueString) {
+            strcpy(ValueString, typeName);
+            ValueString[len] = '\0';
+        }
+
+        // Return required buffer size (including null terminator)
+        return len + 1;
+    }
 }
 
 int CKCollectionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    CKContext *context = param->m_Context;
+    if (!context) return 0;
+
+    if (ReadFromString) {
+        // Read functionality not implemented in original code
+        return 0;
+    }
+
+    // Get the collection from the parameter
+    XObjectArray *collection = NULL;
+    param->GetValue(&collection);
+    if (!collection) return 0;
+
+    // Calculate element count safely
+    int elementCount = collection->Size();
+    const char *format = "%d Elements";
+
+    // Determine output buffer
+    char *outputBuffer = ValueString;
+    if (!outputBuffer) {
+        // Get temporary buffer from context
+        outputBuffer = context->GetStringBuffer(40);
+    }
+
+    // Safe string formatting
+    int written = snprintf(outputBuffer, 39, format, elementCount);
+    outputBuffer[39] = '\0'; // Ensure null termination
+
+    // Return required buffer size (including null terminator)
+    return (written < 0) ? 0 : written + 1;
 }
 
 int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
@@ -650,7 +1148,7 @@ int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
     if (!desc)
         return -1;
 
-    CK_ID *memberIDs = (CK_ID *)param->GetReadDataPtr();
+    CK_ID *memberIDs = (CK_ID *) param->GetReadDataPtr();
     if (!memberIDs)
         return -1;
 
@@ -660,7 +1158,7 @@ int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
 
         const char *current = valueStr;
         for (int i = 0; i < desc->NbData; ++i) {
-            CKParameterOut *member = (CKParameterOut *)context->GetObject(memberIDs[i]);
+            CKParameterOut *member = (CKParameterOut *) context->GetObject(memberIDs[i]);
             if (!member)
                 continue;
 
@@ -683,7 +1181,7 @@ int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
         int totalLength = 0;
 
         for (int i = 0; i < desc->NbData; ++i) {
-            CKParameterOut *member = (CKParameterOut *)context->GetObject(memberIDs[i]);
+            CKParameterOut *member = (CKParameterOut *) context->GetObject(memberIDs[i]);
 
             char memberStr[MAX_MEMBER_LENGTH] = {0};
             if (member && member->GetStringValue(memberStr, sizeof(memberStr))) {
@@ -884,54 +1382,407 @@ int CKIntStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
 }
 
 int CKAngleStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const float rad2deg = 180 / PI; // More accurate 180/PI
+    const float deg2rad = PI / 180; // More accurate PI/180
+
+    if (ReadFromString) {
+        // Read mode: Convert string to radians
+        if (!ValueString) return 0;
+
+        int cycles = 0;
+        float remainder = 0.0f;
+        if (sscanf(ValueString, "%d:%f", &cycles, &remainder) != 2) {
+            return 0; // Invalid format
+        }
+
+        float degrees = cycles * 360.0f + remainder;
+        float radians = degrees * deg2rad;
+        param->SetValue(&radians, sizeof(float));
+
+        return 0;
+    } else {
+        // Write mode: Convert radians to string
+        float radians = 0.0f;
+        param->GetValue(&radians, sizeof(float));
+
+        float degrees = radians * rad2deg;
+        int fullCycles = static_cast<int>(degrees / 360.0f);
+        float remainderDegrees = degrees - (fullCycles * 360.0f);
+
+        char buffer[64];
+        int written = snprintf(buffer, sizeof(buffer) - 1, "%d:%g", fullCycles, remainderDegrees);
+        buffer[sizeof(buffer) - 1] = '\0'; // Ensure null termination
+
+        if (ValueString) {
+            strncpy(ValueString, buffer, 63);
+            ValueString[63] = '\0';
+        }
+
+        return written < 0 ? 0 : static_cast<size_t>(written) + 1;
+    }
 }
 
 int CKEulerStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const float rad2deg = 180 / PI; // 180/π
+    const float deg2rad = PI / 180; // π/180
+    const int numComponents = 3;
+    char buffer[128];
+
+    if (ReadFromString) {
+        // Read mode: Convert string to radians
+        if (!ValueString) return 0;
+
+        int cycles[numComponents] = {0};
+        float remainders[numComponents] = {0};
+        int parseCount = sscanf(ValueString, "%d:%f,%d:%f,%d:%f",
+                                &cycles[0], &remainders[0],
+                                &cycles[1], &remainders[1],
+                                &cycles[2], &remainders[2]);
+
+        if (parseCount != numComponents * 2) return 0; // Invalid format
+
+        float radians[numComponents];
+        for (int i = 0; i < numComponents; ++i) {
+            float degrees = cycles[i] * 360.0f + remainders[i];
+            radians[i] = degrees * deg2rad;
+        }
+
+        param->SetValue(radians, sizeof(float) * numComponents);
+        return 0;
+    } else {
+        // Write mode: Convert radians to string
+        float radians[numComponents] = {0};
+        param->GetValue(radians, sizeof(float) * numComponents);
+
+        int cycles[numComponents] = {0};
+        float remainders[numComponents] = {0};
+
+        for (int i = 0; i < numComponents; ++i) {
+            float degrees = radians[i] * rad2deg;
+            cycles[i] = static_cast<int>(degrees / 360.0f);
+            remainders[i] = degrees - (cycles[i] * 360.0f);
+        }
+
+        // Safe string formatting
+        int written = snprintf(buffer, sizeof(buffer) - 1,
+                               "%d:%g,%d:%g,%d:%g",
+                               cycles[0], remainders[0],
+                               cycles[1], remainders[1],
+                               cycles[2], remainders[2]);
+        buffer[sizeof(buffer) - 1] = '\0';
+
+        if (ValueString) {
+            strncpy(ValueString, buffer, sizeof(buffer) - 1);
+            ValueString[sizeof(buffer) - 1] = '\0';
+        }
+
+        return (written < 0) ? 0 : static_cast<size_t>(written) + 1;
+    }
 }
 
 int CK2DVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUFFER_SIZE = 64;
+    char buffer[BUFFER_SIZE];
+    Vx2DVector vec;
+
+    if (ReadFromString) {
+        // Read mode: Convert string to vector
+        if (ValueString) {
+            if (sscanf(ValueString, "%f,%f", &vec.x, &vec.y) != 2) {
+                return 0; // Invalid format
+            }
+            param->SetValue(&vec.x, sizeof(Vx2DVector));
+        }
+        return 0;
+    } else {
+        // Write mode: Convert vector to string
+        param->GetValue(&vec.x, sizeof(Vx2DVector));
+
+        // Safe string formatting
+        int written = snprintf(buffer, BUFFER_SIZE - 1, "%.6g,%.6g", vec.x, vec.y);
+        buffer[BUFFER_SIZE - 1] = '\0'; // Ensure null termination
+
+        if (ValueString) {
+            strncpy(ValueString, buffer, BUFFER_SIZE - 1);
+            ValueString[BUFFER_SIZE - 1] = '\0';
+        }
+
+        return (written < 0) ? 0 : static_cast<size_t>(written) + 1;
+    }
 }
 
 int CKVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUFFER_SIZE = 64;
+    char buffer[BUFFER_SIZE];
+    VxVector vec;
+
+    if (ReadFromString) {
+        // Read mode: Convert string to vector
+        if (ValueString) {
+            if (sscanf(ValueString, "%f,%f,%f", &vec.x, &vec.y, &vec.z) != 3) {
+                return 0; // Invalid format
+            }
+            param->SetValue(&vec, sizeof(VxVector));
+        }
+        return 0;
+    } else {
+        // Write mode: Convert vector to string
+        param->GetValue(&vec, sizeof(VxVector));
+
+        // Safe string formatting with precision control
+        int written = snprintf(buffer, BUFFER_SIZE - 1, "%.6g,%.6g,%.6g", vec.x, vec.y, vec.z);
+        buffer[BUFFER_SIZE - 1] = '\0'; // Ensure null termination
+
+        if (ValueString) {
+            strncpy(ValueString, buffer, BUFFER_SIZE - 1);
+            ValueString[BUFFER_SIZE - 1] = '\0';
+        }
+
+        return (written < 0) ? 0 : static_cast<size_t>(written) + 1;
+    }
 }
 
 int CKRectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUFFER_SIZE = 64;
+    char buffer[BUFFER_SIZE];
+    VxRect rect;
+
+    if (ReadFromString) {
+        // Read mode: Convert string to rectangle
+        if (ValueString) {
+            if (sscanf(ValueString, "(%f,%f),(%f,%f)",
+                       &rect.left, &rect.top,
+                       &rect.right, &rect.bottom) != 4) {
+                return 0; // Invalid format
+            }
+            param->SetValue(&rect, sizeof(VxRect));
+        }
+        return 0;
+    } else {
+        // Write mode: Convert rectangle to string
+        param->GetValue(&rect, sizeof(VxRect));
+
+        // Safe string formatting
+        int written = snprintf(buffer, BUFFER_SIZE - 1,
+                               "(%.6g,%.6g),(%.6g,%.6g)",
+                               rect.left, rect.top,
+                               rect.right, rect.bottom);
+        buffer[BUFFER_SIZE - 1] = '\0';
+
+        if (ValueString) {
+            strncpy(ValueString, buffer, BUFFER_SIZE - 1);
+            ValueString[BUFFER_SIZE - 1] = '\0';
+        }
+
+        return (written < 0) ? 0 : static_cast<size_t>(written) + 1;
+    }
 }
 
 int CKBoxStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUFFER_SIZE = 128;
+    char buffer[BUFFER_SIZE];
+    VxBbox box;
+
+    if (ReadFromString) {
+        // Read mode: Convert string to bounding box
+        if (ValueString) {
+            if (sscanf(ValueString, "(%f,%f,%f),(%f,%f,%f)",
+                       &box.Min.x, &box.Min.y, &box.Min.z,
+                       &box.Max.x, &box.Max.y, &box.Max.z) != 6) {
+                return 0; // Invalid format
+            }
+            param->SetValue(&box, sizeof(VxBbox));
+        }
+        return 0;
+    } else {
+        // Write mode: Convert bounding box to string
+        param->GetValue(&box, sizeof(VxBbox));
+
+        // Safe string formatting
+        int written = snprintf(buffer, BUFFER_SIZE - 1,
+                               "(%.6g,%.6g,%.6g),(%.6g,%.6g,%.6g)",
+                               box.Min.x, box.Min.y, box.Min.z,
+                               box.Max.x, box.Max.y, box.Max.z);
+        buffer[BUFFER_SIZE - 1] = '\0';
+
+        if (ValueString) {
+            strncpy(ValueString, buffer, BUFFER_SIZE - 1);
+            ValueString[BUFFER_SIZE - 1] = '\0';
+        }
+
+        return (written < 0) ? 0 : static_cast<size_t>(written) + 1;
+    }
 }
 
 int CKColorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUF_SIZE = 64;
+    char temp[BUF_SIZE];
+    VxColor color;
+
+    if (ReadFromString) {
+        if (ValueString) {
+            int r, g, b, a;
+            if (sscanf(ValueString, "%d,%d,%d,%d", &r, &g, &b, &a) != 4) return 0;
+
+            color.r = r / 255.0f;
+            color.g = g / 255.0f;
+            color.b = b / 255.0f;
+            color.a = a / 255.0f;
+
+            param->SetValue(&color, sizeof(VxColor));
+        }
+        return 0;
+    } else {
+        param->GetValue(&color, sizeof(VxColor));
+
+        int written = snprintf(temp, BUF_SIZE - 1, "%d,%d,%d,%d",
+                               static_cast<int>(color.r * 255),
+                               static_cast<int>(color.g * 255),
+                               static_cast<int>(color.b * 255),
+                               static_cast<int>(color.a * 255));
+        temp[BUF_SIZE - 1] = '\0';
+
+        if (ValueString) {
+            strncpy(ValueString, temp, BUF_SIZE - 1);
+            ValueString[BUF_SIZE - 1] = '\0';
+        }
+        return (written < 0) ? 0 : written + 1;
+    }
 }
 
 int CKBoolStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUF_SIZE = 64;
+    char temp[BUF_SIZE];
+    CKBOOL value = FALSE;
+
+    if (ReadFromString) {
+        if (ValueString) {
+            char input[6] = {0};
+            strncpy(input, ValueString, 5);
+            value = (stricmp(input, "TRUE") == 0);
+        }
+        param->SetValue(&value, sizeof(CKBOOL));
+        return 0;
+    } else {
+        param->GetValue(&value, sizeof(CKBOOL));
+        const char *result = value ? "TRUE" : "FALSE";
+
+        if (ValueString) {
+            strncpy(ValueString, result, BUF_SIZE - 1);
+            ValueString[BUF_SIZE - 1] = '\0';
+        }
+        return strlen(result) + 1;
+    }
 }
 
 int CKFloatStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUF_SIZE = 64;
+    char temp[BUF_SIZE];
+    float value = 0.0f;
+
+    if (ReadFromString) {
+        if (ValueString && sscanf(ValueString, "%f", &value) == 1) {
+            param->SetValue(&value, sizeof(float));
+        }
+        return 0;
+    } else {
+        param->GetValue(&value, sizeof(float));
+        int written = snprintf(temp, BUF_SIZE - 1, "%.6g", value);
+        temp[BUF_SIZE - 1] = '\0';
+
+        if (ValueString) {
+            strncpy(ValueString, temp, BUF_SIZE - 1);
+            ValueString[BUF_SIZE - 1] = '\0';
+        }
+        return (written < 0) ? 0 : written + 1;
+    }
 }
 
 int CKPercentageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUF_SIZE = 64;
+    char temp[BUF_SIZE];
+    float value = 0.0f;
+
+    if (ReadFromString) {
+        if (ValueString && sscanf(ValueString, "%f%%", &value) == 1) {
+            float normalized = value / 100.0f;
+            param->SetValue(&normalized, sizeof(float));
+        }
+        return 0;
+    } else {
+        param->GetValue(&value, sizeof(float));
+        float percentage = value * 100.0f;
+        int written = snprintf(temp, BUF_SIZE - 1, "%.2f%%", percentage);
+        temp[BUF_SIZE - 1] = '\0';
+
+        if (ValueString) {
+            strncpy(ValueString, temp, BUF_SIZE - 1);
+            ValueString[BUF_SIZE - 1] = '\0';
+        }
+        return (written < 0) ? 0 : written + 1;
+    }
 }
 
 int CKTimeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
-    return 0;
+    if (!param) return 0;
+
+    const size_t BUF_SIZE = 64;
+    char temp[BUF_SIZE];
+    float totalMs = 0.0f;
+
+    if (ReadFromString) {
+        if (ValueString) {
+            float minutes = 0, seconds = 0, milliseconds = 0;
+            if (sscanf(ValueString, "%fm %fs %fms", &minutes, &seconds, &milliseconds) == 3) {
+                totalMs = (minutes * 60000.0f) + (seconds * 1000.0f) + milliseconds;
+                param->SetValue(&totalMs, sizeof(float));
+            }
+        }
+        return 0;
+    } else {
+        param->GetValue(&totalMs, sizeof(float));
+        int ms = static_cast<int>(totalMs);
+
+        div_t min = div(ms, 60000);
+        div_t sec = div(min.rem, 1000);
+
+        int written = snprintf(temp, BUF_SIZE - 1,
+                               "%02dm %02ds %03dms",
+                               min.quot, sec.quot, sec.rem);
+        temp[BUF_SIZE - 1] = '\0';
+
+        if (ValueString) {
+            strncpy(ValueString, temp, BUF_SIZE - 1);
+            ValueString[BUF_SIZE - 1] = '\0';
+        }
+        return (written < 0) ? 0 : written + 1;
+    }
 }
 
 CK_PARAMETERUICREATORFUNCTION GetUICreatorFunction(CKContext *context, CKParameterTypeDesc *desc) {
-    CKInterfaceManager *interfaceManager = (CKInterfaceManager *)context->GetManagerByGuid(INTERFACE_MANAGER_GUID);
+    CKInterfaceManager *interfaceManager = (CKInterfaceManager *) context->GetManagerByGuid(INTERFACE_MANAGER_GUID);
     if (interfaceManager) {
         return interfaceManager->GetEditorFunctionForParameterType(desc);
     }
     return NULL;
 }
-
