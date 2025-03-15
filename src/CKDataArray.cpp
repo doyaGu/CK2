@@ -27,8 +27,8 @@ CKBOOL OpCompare(CK_COMPOPERATOR op, T &a, T &b) {
 }
 
 int DataRowCompare(const void *elem1, const void *elem2) {
-    CKDataRow *row1 = *(CKDataRow **)elem1;
-    CKDataRow *row2 = *(CKDataRow **)elem2;
+    CKDataRow *row1 = *(CKDataRow **) elem1;
+    CKDataRow *row2 = *(CKDataRow **) elem2;
     return CKDataArray::g_SortFunction(row1, row2);
 }
 
@@ -42,7 +42,7 @@ int ArrayIntComp(CKDataRow *row1, CKDataRow *row2) {
 }
 
 int ArrayFloatComp(CKDataRow *row1, CKDataRow *row2) {
-    const float diff = (float)(*row2)[CKDataArray::g_ColumnIndex] - (float)(*row1)[CKDataArray::g_ColumnIndex];
+    const float diff = (float) (*row2)[CKDataArray::g_ColumnIndex] - (float) (*row1)[CKDataArray::g_ColumnIndex];
     if (fabsf(diff) < EPSILON)
         return 0;
     const int result = diff <= 0 ? -2 : 2;
@@ -52,8 +52,8 @@ int ArrayFloatComp(CKDataRow *row1, CKDataRow *row2) {
 }
 
 int ArrayStringComp(CKDataRow *row1, CKDataRow *row2) {
-    const char *s1 = (const char *)(*row1)[CKDataArray::g_ColumnIndex];
-    const char *s2 = (const char *)(*row2)[CKDataArray::g_ColumnIndex];
+    const char *s1 = (const char *) (*row1)[CKDataArray::g_ColumnIndex];
+    const char *s2 = (const char *) (*row2)[CKDataArray::g_ColumnIndex];
     if (!s1)
         s1 = "";
     if (!s2)
@@ -67,8 +67,8 @@ int ArrayStringComp(CKDataRow *row1, CKDataRow *row2) {
 }
 
 int ArrayParameterComp(CKDataRow *row1, CKDataRow *row2) {
-    CKParameter *p1 = (CKParameter *)(*row1)[CKDataArray::g_ColumnIndex];
-    CKParameter *p2 = (CKParameter *)(*row2)[CKDataArray::g_ColumnIndex];
+    CKParameter *p1 = (CKParameter *) (*row1)[CKDataArray::g_ColumnIndex];
+    CKParameter *p2 = (CKParameter *) (*row2)[CKDataArray::g_ColumnIndex];
     if (p1 == p2)
         return 0;
 
@@ -92,19 +92,19 @@ int ArrayParameterComp(CKDataRow *row1, CKDataRow *row2) {
 
 CKBOOL ArrayIntEqual(CKDataRow *row) {
     int v1 = (*row)[CKDataArray::g_ColumnIndex];
-    int v2 = (int)CKDataArray::g_Value;
+    int v2 = (int) CKDataArray::g_Value;
     return OpCompare(CKDataArray::g_Operator, v1, v2);
 }
 
 CKBOOL ArrayFloatEqual(CKDataRow *row) {
-    float v1 = (float)(*row)[CKDataArray::g_ColumnIndex];
-    float v2 = (float)CKDataArray::g_Value;
+    float v1 = (float) (*row)[CKDataArray::g_ColumnIndex];
+    float v2 = (float) CKDataArray::g_Value;
     return OpCompare(CKDataArray::g_Operator, v1, v2);
 }
 
 CKBOOL ArrayStringEqual(CKDataRow *row) {
-    const char *s1 = (const char *)(*row)[CKDataArray::g_ColumnIndex];
-    const char *s2 = (const char *)CKDataArray::g_Value;
+    const char *s1 = (const char *) (*row)[CKDataArray::g_ColumnIndex];
+    const char *s2 = (const char *) CKDataArray::g_Value;
     if (!s1)
         s1 = "";
     if (!s2)
@@ -115,13 +115,13 @@ CKBOOL ArrayStringEqual(CKDataRow *row) {
 }
 
 CKBOOL ArrayParameterEqual(CKDataRow *row) {
-    CKParameter *p = (CKParameter *)(*row)[CKDataArray::g_ColumnIndex];
-    const int size = XMin(p->GetDataSize(), (int)CKDataArray::g_ValueSize);
+    CKParameter *p = (CKParameter *) (*row)[CKDataArray::g_ColumnIndex];
+    const int size = XMin(p->GetDataSize(), (int) CKDataArray::g_ValueSize);
     if (size == 0)
         return FALSE;
 
     const void *ptr = p->GetReadDataPtr();
-    int a = memcmp(ptr, (void *)CKDataArray::g_Value, size);
+    int a = memcmp(ptr, (void *) CKDataArray::g_Value, size);
     int b = 0;
     return OpCompare(CKDataArray::g_Operator, a, b);
 }
@@ -183,9 +183,9 @@ void CKDataArray::InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID 
             }
 
             if (cdest == -1 || cdest >= row->Size()) {
-                row->PushBack((CKDWORD)param);
+                row->PushBack((CKDWORD) param);
             } else {
-                row->Insert(cdest, (CKDWORD)param);
+                row->Insert(cdest, (CKDWORD) param);
             }
         } else {
             if (cdest == -1 || cdest >= row->Size()) {
@@ -256,10 +256,10 @@ void CKDataArray::RemoveColumn(int c) {
 
         switch (colType) {
         case CKARRAYTYPE_STRING:
-            delete[] (char *)*element;
+            delete[] (char *) *element;
             break;
         case CKARRAYTYPE_PARAMETER: {
-            CKParameter *param = (CKParameter *)*element;
+            CKParameter *param = (CKParameter *) *element;
             if (param && param->GetOwner() == this) {
                 m_Context->DestroyObject(param);
             }
@@ -551,7 +551,7 @@ CKBOOL CKDataArray::GetElementValue(int i, int c, void *value) {
     if (!element)
         return FALSE;
     if (GetColumnType(c) == CKARRAYTYPE_PARAMETER) {
-        CKParameter *param = (CKParameter *)*element;
+        CKParameter *param = (CKParameter *) *element;
         if (!param)
             return FALSE;
         param->GetValue(value);
@@ -707,7 +707,7 @@ CKParameterOut *CKDataArray::RemoveShortcut(int i, int c) {
     if (!originalParam || originalParam->GetOwner() == this)
         return NULL;
 
-    CKParameterOut *newParam = (CKParameterOut *)m_Context->CopyObject(originalParam);
+    CKParameterOut *newParam = (CKParameterOut *) m_Context->CopyObject(originalParam);
     if (newParam) {
         newParam->SetOwner(this);
         *element = reinterpret_cast<CKDWORD>(newParam);
@@ -737,39 +737,39 @@ CKBOOL CKDataArray::SetElementStringValue(int i, int c, char *svalue) {
             }
         }
 
-        element = (CKDWORD)intValue;
+        element = (CKDWORD) intValue;
         return TRUE;
     }
 
     case CKARRAYTYPE_FLOAT: {
-        float floatValue = (float)atof(svalue);
+        float floatValue = (float) atof(svalue);
 
         if (isKeyColumn) {
             // Check for duplicate key
-            CKDataRow *foundRow = FindRow(c, CKEQUAL, (CKDWORD)floatValue);
+            CKDataRow *foundRow = FindRow(c, CKEQUAL, (CKDWORD) floatValue);
             if (foundRow && foundRow != dataRow) {
                 return FALSE;
             }
         }
 
-        element = (CKDWORD)floatValue;
+        element = (CKDWORD) floatValue;
         return TRUE;
     }
 
     case CKARRAYTYPE_STRING: {
-        char *oldString = (char *)element;
+        char *oldString = (char *) element;
         delete[] oldString;
 
         if (isKeyColumn) {
             // Check for duplicate key
-            CKDataRow *foundRow = FindRow(c, CKEQUAL, (CKDWORD)svalue);
+            CKDataRow *foundRow = FindRow(c, CKEQUAL, (CKDWORD) svalue);
             if (foundRow && foundRow != dataRow) {
                 element = 0;
                 return FALSE;
             }
         }
 
-        element = (CKDWORD)CKStrdup(svalue);
+        element = (CKDWORD) CKStrdup(svalue);
         return TRUE;
     }
 
@@ -782,7 +782,7 @@ CKBOOL CKDataArray::SetElementStringValue(int i, int c, char *svalue) {
 
     case CKARRAYTYPE_PARAMETER: {
         // Update parameter value
-        CKParameterOut *param = (CKParameterOut *)element;
+        CKParameterOut *param = (CKParameterOut *) element;
         if (param) {
             param->SetStringValue(svalue);
         }
@@ -804,18 +804,18 @@ int CKDataArray::GetStringValue(CKDWORD key, int c, char *svalue) {
 
     switch (format->m_Type) {
     case CKARRAYTYPE_INT:
-        sprintf(buffer, "%d", (int)key);
+        sprintf(buffer, "%d", (int) key);
         result = buffer;
         break;
 
     case CKARRAYTYPE_FLOAT:
-        sprintf(buffer, "%.4f", (float)key);
+        sprintf(buffer, "%.4f", (float) key);
         result = buffer;
         break;
 
     case CKARRAYTYPE_STRING:
         if (key) {
-            result = (const char *)key;
+            result = (const char *) key;
         }
         break;
 
@@ -834,7 +834,7 @@ int CKDataArray::GetStringValue(CKDWORD key, int c, char *svalue) {
             break;
         }
 
-        CKParameter *param = (CKParameter *)key;
+        CKParameter *param = (CKParameter *) key;
         if (param->GetOwner() == this) {
             length = param->GetStringValue(svalue, 0);
             if (svalue) {
@@ -1061,7 +1061,7 @@ void CKDataArray::AddRow() {
             CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, fmt->m_ParameterType, IsDynamic());
             if (param) {
                 param->SetOwner(this);
-                (*newRow)[i] = (CKDWORD)param;
+                (*newRow)[i] = (CKDWORD) param;
             } else {
                 (*newRow)[i] = 0;
             }
@@ -1256,12 +1256,12 @@ void CKDataArray::Clear(CKBOOL Params) {
 
             switch (fmt->m_Type) {
             case CKARRAYTYPE_STRING:
-                delete[] (char *)element;
+                delete[] (char *) element;
                 element = 0;
                 break;
 
             case CKARRAYTYPE_PARAMETER: {
-                CKParameterOut *param = (CKParameterOut *)element;
+                CKParameterOut *param = (CKParameterOut *) element;
                 if (param && Params) {
                     if (param->GetOwner() == this) {
                         paramsToDestroy.PushBack(param->GetID());
@@ -1380,7 +1380,7 @@ CKBOOL CKDataArray::GetNearest(int c, void *value, int &row) {
         int currentMin = 100000000;
 
         for (int i = 0; i < m_DataMatrix.Size(); ++i) {
-            int rowValue = (int)(*m_DataMatrix[i])[c];
+            int rowValue = (int) (*m_DataMatrix[i])[c];
             int diff = abs(targetValue - rowValue);
 
             if (diff < currentMin) {
@@ -1396,8 +1396,8 @@ CKBOOL CKDataArray::GetNearest(int c, void *value, int &row) {
         float currentMin = 100000000.0f;
 
         for (int i = 0; i < m_DataMatrix.Size(); ++i) {
-            float rowValue = (float)(*m_DataMatrix[i])[c];
-            float diff = (float)fabs(targetValue - rowValue);
+            float rowValue = (float) (*m_DataMatrix[i])[c];
+            float diff = (float) fabs(targetValue - rowValue);
 
             if (diff < currentMin) {
                 currentMin = diff;
@@ -1431,7 +1431,7 @@ CKBOOL CKDataArray::GetNearest(int c, void *value, int &row) {
                     matchCount++;
                 }
 
-                score += abs((int)strlen(t) - (int)strlen(r)) * 100;
+                score += abs((int) strlen(t) - (int) strlen(r)) * 100;
             }
 
             if (score < bestScore) {
@@ -1597,10 +1597,10 @@ void CKDataArray::Unique(int c) {
         if (equalFunc(current) == equalFunc(previous)) {
             switch (fmt->m_Type) {
             case CKARRAYTYPE_STRING:
-                delete[] (char *)(*current)[c];
+                delete[] (char *) (*current)[c];
                 break;
             case CKARRAYTYPE_PARAMETER: {
-                CKParameter *param = (CKParameter *)(*current)[c];
+                CKParameter *param = (CKParameter *) (*current)[c];
                 if (param && param->GetOwner() == this) {
                     m_Context->DestroyObject(param);
                 }
@@ -1752,7 +1752,7 @@ void CKDataArray::CreateGroup(int mc, CK_COMPOPERATOR op, CKDWORD key, int size,
             CKDWORD objID = (*row)[ec];
             CKObject *obj = m_Context->GetObject(objID);
             if (obj && CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
-                CKBeObject *beo = (CKBeObject *)obj;
+                CKBeObject *beo = (CKBeObject *) obj;
                 group->AddObject(beo);
             }
         }
@@ -1788,7 +1788,7 @@ void CKDataArray::PreSave(CKFile *file, CKDWORD flags) {
         for (int col = 0; col < columnCount; ++col) {
             ColumnFormat *fmt = m_FormatArray[col];
             if (fmt->m_Type == CKARRAYTYPE_PARAMETER) {
-                CKParameter *param = (CKParameter *)rowData[col];
+                CKParameter *param = (CKParameter *) rowData[col];
                 if (param) {
                     file->SaveObject(param, -1);
                 }
@@ -1829,16 +1829,16 @@ CKStateChunk *CKDataArray::Save(CKFile *file, CKDWORD flags) {
 
             switch (fmt->m_Type) {
             case CKARRAYTYPE_INT:
-                chunk->WriteInt((int)element);
+                chunk->WriteInt((int) element);
                 break;
 
             case CKARRAYTYPE_FLOAT:
-                chunk->WriteFloat((float)element);
+                chunk->WriteFloat((float) element);
                 break;
 
             case CKARRAYTYPE_STRING: {
-                char *str = (char *)element;
-                chunk->WriteString(str ? str : (char *)"");
+                char *str = (char *) element;
+                chunk->WriteString(str ? str : (char *) "");
                 break;
             }
 
@@ -1849,7 +1849,7 @@ CKStateChunk *CKDataArray::Save(CKFile *file, CKDWORD flags) {
             }
 
             case CKARRAYTYPE_PARAMETER: {
-                CKParameterOut *param = (CKParameterOut *)element;
+                CKParameterOut *param = (CKParameterOut *) element;
                 if (file) {
                     chunk->WriteObject(param);
                 } else {
@@ -1905,7 +1905,7 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
 
             // Read format properties
             chunk->ReadString(&fmt->m_Name);
-            fmt->m_Type = (CK_ARRAYTYPE)chunk->ReadInt();
+            fmt->m_Type = (CK_ARRAYTYPE) chunk->ReadInt();
 
             // Set comparison functions
             switch (fmt->m_Type) {
@@ -1958,13 +1958,13 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
                     break;
 
                 case CKARRAYTYPE_FLOAT:
-                    element = (CKDWORD)chunk->ReadFloat();
+                    element = (CKDWORD) chunk->ReadFloat();
                     break;
 
                 case CKARRAYTYPE_STRING: {
                     char *str = NULL;
                     chunk->ReadString(&str);
-                    element = (CKDWORD)CKStrdup(str);
+                    element = (CKDWORD) CKStrdup(str);
                     break;
                 }
 
@@ -1976,7 +1976,7 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
                     if (file) {
                         // Load parameter reference
                         CK_ID paramId = chunk->ReadObjectID();
-                        element = (CKDWORD)m_Context->GetObject(paramId);
+                        element = (CKDWORD) m_Context->GetObject(paramId);
                     } else {
                         // Load parameter data
                         CKStateChunk *paramChunk = chunk->ReadSubChunk();
@@ -1985,7 +1985,7 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
                         if (param) {
                             param->Load(paramChunk, NULL);
                             param->SetOwner(this);
-                            element = (CKDWORD)param;
+                            element = (CKDWORD) param;
                         }
 
                         delete paramChunk;
@@ -2026,7 +2026,7 @@ void CKDataArray::PostLoad() {
                 continue;
 
             CKDWORD &element = (*row)[col];
-            CKParameter *param = (CKParameter *)element;
+            CKParameter *param = (CKParameter *) element;
 
             if (param) {
                 if (!param->GetOwner()) {
@@ -2036,7 +2036,7 @@ void CKDataArray::PostLoad() {
                 CKParameterOut *newParam = m_Context->CreateCKParameterOut(NULL, fmt->m_ParameterType);
                 if (newParam) {
                     newParam->SetOwner(this);
-                    element = (CKDWORD)newParam;
+                    element = (CKDWORD) newParam;
                 }
             }
         }
@@ -2062,7 +2062,7 @@ void CKDataArray::CheckPreDeletion() {
             int paramCol = paramColumns[colIdx];
             CKDWORD &element = (*row)[paramCol];
 
-            CKParameterOut *param = (CKParameterOut *)element;
+            CKParameterOut *param = (CKParameterOut *) element;
             if (!param)
                 continue;
 
@@ -2071,7 +2071,7 @@ void CKDataArray::CheckPreDeletion() {
                 if (newParam) {
                     newParam->CopyValue(param, TRUE);
                     newParam->SetOwner(this);
-                    element = (CKDWORD)newParam;
+                    element = (CKDWORD) newParam;
                 }
             }
         }
@@ -2137,9 +2137,9 @@ int CKDataArray::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
         for (int pcol = 0; pcol < paramObjectColumns.Size(); ++pcol) {
             int col = paramObjectColumns[pcol];
             CKDWORD element = (*dataRow)[col];
-            CKParameter *param = (CKParameter *)element;
+            CKParameter *param = (CKParameter *) element;
             if (param) {
-                CK_ID *idPtr = (CK_ID *)param->GetReadDataPtr();
+                CK_ID *idPtr = (CK_ID *) param->GetReadDataPtr();
                 if (*idPtr == targetId) {
                     return 1;
                 }
@@ -2189,7 +2189,7 @@ CKERROR CKDataArray::PrepareDependencies(CKDependenciesContext &context) {
                 switch (format->m_Type) {
                 case CKARRAYTYPE_OBJECT: {
                     if (classDeps & 1) {
-                        CK_ID id = (CK_ID)element;
+                        CK_ID id = (CK_ID) element;
                         CKObject *obj = m_Context->GetObject(id);
                         if (obj && !CKIsChildClassOf(obj, CKCID_LEVEL) && !CKIsChildClassOf(obj, CKCID_SCENE)) {
                             obj->PrepareDependencies(context);
@@ -2207,7 +2207,7 @@ CKERROR CKDataArray::PrepareDependencies(CKDependenciesContext &context) {
                             CKParameterManager *pm = m_Context->GetParameterManager();
                             CK_CLASSID paramClass = pm->TypeToClassID(param->GetType());
                             if (paramClass != 0) {
-                                CK_ID *idPtr = (CK_ID *)param->GetReadDataPtr();
+                                CK_ID *idPtr = (CK_ID *) param->GetReadDataPtr();
                                 CKObject *obj = m_Context->GetObject(*idPtr);
                                 if (obj && !CKIsChildClassOf(obj, CKCID_LEVEL) && !CKIsChildClassOf(obj, CKCID_SCENE)) {
                                     obj->PrepareDependencies(context);
@@ -2242,7 +2242,7 @@ CKERROR CKDataArray::RemapDependencies(CKDependenciesContext &context) {
 
                 switch (format->m_Type) {
                 case CKARRAYTYPE_OBJECT: {
-                    CK_ID id = (CK_ID)element;
+                    CK_ID id = (CK_ID) element;
                     CKObject *oldObj = m_Context->GetObject(id);
                     CKObject *newObj = context.Remap(oldObj);
                     if (newObj) {
@@ -2252,7 +2252,7 @@ CKERROR CKDataArray::RemapDependencies(CKDependenciesContext &context) {
                 }
 
                 case CKARRAYTYPE_PARAMETER: {
-                    CKParameterOut *param = (CKParameterOut *)element;
+                    CKParameterOut *param = (CKParameterOut *) element;
                     if (param && param->GetOwner() == this) {
                         param->RemapDependencies(context);
                     }
@@ -2273,7 +2273,7 @@ CKERROR CKDataArray::Copy(CKObject &o, CKDependenciesContext &context) {
     if (err != CK_OK)
         return err;
 
-    CKDataArray *src = (CKDataArray *)&o;
+    CKDataArray *src = (CKDataArray *) &o;
 
     m_FormatArray.Clear();
     for (int i = 0; i < src->m_FormatArray.Size(); ++i) {
@@ -2300,14 +2300,14 @@ CKERROR CKDataArray::Copy(CKObject &o, CKDependenciesContext &context) {
 
             switch (fmt->m_Type) {
             case CKARRAYTYPE_STRING: {
-                char *str = (char *)element;
-                newRow->PushBack((CKDWORD)CKStrdup(str));
+                char *str = (char *) element;
+                newRow->PushBack((CKDWORD) CKStrdup(str));
                 break;
             }
             case CKARRAYTYPE_PARAMETER: {
-                CKParameterOut *param = (CKParameterOut *)element;
-                CKParameterOut *copyParam = (CKParameterOut *)m_Context->CopyObject(param);
-                newRow->PushBack((CKDWORD)copyParam);
+                CKParameterOut *param = (CKParameterOut *) element;
+                CKParameterOut *copyParam = (CKParameterOut *) m_Context->CopyObject(param);
+                newRow->PushBack((CKDWORD) copyParam);
                 break;
             }
             default:

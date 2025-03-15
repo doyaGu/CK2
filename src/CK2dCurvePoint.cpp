@@ -3,8 +3,8 @@
 #include "CKStateChunk.h"
 
 int CK2dCurvePoint::CurvePointSortFunc(const void *a, const void *b) {
-    CK2dCurvePoint *pt1 = (CK2dCurvePoint *)a;
-    CK2dCurvePoint *pt2 = (CK2dCurvePoint *)b;
+    CK2dCurvePoint *pt1 = (CK2dCurvePoint *) a;
+    CK2dCurvePoint *pt2 = (CK2dCurvePoint *) b;
     return (pt1->m_Position.x - pt2->m_Position.x >= 0.0f) ? 1 : -1;
 }
 

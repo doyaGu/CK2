@@ -45,12 +45,12 @@ void CKBehavior::SetFlags(CK_BEHAVIOR_FLAGS flags) {
 }
 
 CK_BEHAVIOR_FLAGS CKBehavior::GetFlags() {
-    return (CK_BEHAVIOR_FLAGS)m_Flags;
+    return (CK_BEHAVIOR_FLAGS) m_Flags;
 }
 
 CK_BEHAVIOR_FLAGS CKBehavior::ModifyFlags(CKDWORD Add, CKDWORD Remove) {
     m_Flags = (m_Flags | Add) & ~Remove;
-    return (CK_BEHAVIOR_FLAGS)m_Flags;
+    return (CK_BEHAVIOR_FLAGS) m_Flags;
 }
 
 void CKBehavior::UseGraph() {
@@ -81,7 +81,7 @@ CKBOOL CKBehavior::IsTargetable() {
 
 CKBeObject *CKBehavior::GetTarget() {
     if (!m_InputTargetParam)
-        return (CKBeObject *)m_Context->GetObject(m_Owner);
+        return (CKBeObject *) m_Context->GetObject(m_Owner);
 
     CKParameterIn *targetParam = GetTargetParameter();
     if (!targetParam)
@@ -90,7 +90,7 @@ CKBeObject *CKBehavior::GetTarget() {
     CKParameter *param = targetParam->GetRealSource();
     CK_ID objId = 0;
     param->GetValue(&objId);
-    CKBeObject *obj = (CKBeObject *)m_Context->GetObject(objId);
+    CKBeObject *obj = (CKBeObject *) m_Context->GetObject(objId);
     CKParameterManager *pm = m_Context->GetParameterManager();
     CK_CLASSID cid = pm->TypeToClassID(targetParam->GetType());
     if (!CKIsChildClassOf(obj, cid))
@@ -160,7 +160,7 @@ CKBOOL CKBehavior::IsUsingTarget() {
 }
 
 CKParameterIn *CKBehavior::GetTargetParameter() {
-    return (CKParameterIn *)m_Context->GetObject(m_InputTargetParam);
+    return (CKParameterIn *) m_Context->GetObject(m_InputTargetParam);
 }
 
 void CKBehavior::SetAsTargetable(CKBOOL target) {
@@ -179,13 +179,13 @@ CKParameterIn *CKBehavior::ReplaceTargetParameter(CKParameterIn *targetParam) {
     CK_ID oldParamID = m_InputTargetParam;
     m_InputTargetParam = targetParam->GetID();
     targetParam->SetOwner(this);
-    return (CKParameterIn *)m_Context->GetObject(oldParamID);
+    return (CKParameterIn *) m_Context->GetObject(oldParamID);
 }
 
 CKParameterIn *CKBehavior::RemoveTargetParameter() {
     CK_ID oldParamID = m_InputTargetParam;
     m_InputTargetParam = 0;
-    return (CKParameterIn *)m_Context->GetObject(oldParamID);
+    return (CKParameterIn *) m_Context->GetObject(oldParamID);
 }
 
 CK_CLASSID CKBehavior::GetCompatibleClassID() {
@@ -237,7 +237,7 @@ int CKBehavior::CallSubBehaviorsCallbackFunction(CKDWORD Message, CKGUID *behgui
     if (m_GraphData) {
         int r = 0;
         for (auto *it = m_GraphData->m_SubBehaviors.Begin(); it != m_GraphData->m_SubBehaviors.End(); ++it) {
-            CKBehavior *beh = (CKBehavior *)*it;
+            CKBehavior *beh = (CKBehavior *) *it;
             if (beh) {
                 r = beh->CallSubBehaviorsCallbackFunction(Message, behguid);
                 if (r >= 0)
@@ -336,11 +336,11 @@ int CKBehavior::GetShortestDelay(CKBehavior *beh) {
 }
 
 CKBeObject *CKBehavior::GetOwner() {
-    return (CKBeObject *)m_Context->GetObject(m_Owner);
+    return (CKBeObject *) m_Context->GetObject(m_Owner);
 }
 
 CKBehavior *CKBehavior::GetParent() {
-    return (CKBehavior *)m_Context->GetObject(m_BehParent);
+    return (CKBehavior *) m_Context->GetObject(m_BehParent);
 }
 
 CKBehavior *CKBehavior::GetOwnerScript() {
@@ -515,7 +515,7 @@ void CKBehavior::ActivateOutput(int pos, CKBOOL active) {
     if (pos < 0 || pos >= GetOutputCount())
         return;
 
-    CKBehaviorIO *io = (CKBehaviorIO *)m_OutputArray[pos];
+    CKBehaviorIO *io = (CKBehaviorIO *) m_OutputArray[pos];
     if (!io)
         return;
 
@@ -530,14 +530,14 @@ CKBOOL CKBehavior::IsOutputActive(int pos) {
     if (pos < 0 || pos >= GetOutputCount())
         return FALSE;
 
-    CKBehaviorIO *io = (CKBehaviorIO *)m_OutputArray[pos];
+    CKBehaviorIO *io = (CKBehaviorIO *) m_OutputArray[pos];
     return io ? (io->m_ObjectFlags & CK_BEHAVIORIO_ACTIVE) != 0 : FALSE;
 }
 
 CKBehaviorIO *CKBehavior::RemoveOutput(int pos) {
     if (pos < 0 || pos >= m_OutputArray.Size()) return nullptr;
 
-    CKBehaviorIO *io = (CKBehaviorIO *)m_OutputArray[pos];
+    CKBehaviorIO *io = (CKBehaviorIO *) m_OutputArray[pos];
     m_OutputArray.RemoveAt(pos);
     return io;
 }
@@ -552,7 +552,7 @@ CKERROR CKBehavior::DeleteOutput(int pos) {
 CKBehaviorIO *CKBehavior::GetOutput(int pos) {
     if (pos < 0 || pos >= m_OutputArray.Size())
         return nullptr;
-    return (CKBehaviorIO *)m_OutputArray[pos];
+    return (CKBehaviorIO *) m_OutputArray[pos];
 }
 
 int CKBehavior::GetOutputCount() {
@@ -579,13 +579,13 @@ CKBehaviorIO *CKBehavior::ReplaceOutput(int pos, CKBehaviorIO *io) {
     if (pos < 0 || pos >= m_OutputArray.Size())
         return nullptr;
 
-    CKBehaviorIO *oldIO = (CKBehaviorIO *)m_OutputArray[pos];
+    CKBehaviorIO *oldIO = (CKBehaviorIO *) m_OutputArray[pos];
     m_OutputArray[pos] = io;
     return oldIO;
 }
 
 CKBehaviorIO *CKBehavior::CreateOutput(CKSTRING name) {
-    CKBehaviorIO *io = (CKBehaviorIO *)m_Context->CreateObject(CKCID_BEHAVIORIO, name, CK_OBJECTCREATION_SameDynamic);
+    CKBehaviorIO *io = (CKBehaviorIO *) m_Context->CreateObject(CKCID_BEHAVIORIO, name, CK_OBJECTCREATION_SameDynamic);
     if (io) {
         m_OutputArray.PushBack(io);
         io->m_OwnerBehavior = this;
@@ -598,7 +598,7 @@ void CKBehavior::ActivateInput(int pos, CKBOOL active) {
     if (pos < 0 || pos >= m_InputArray.Size())
         return;
 
-    CKBehaviorIO *io = (CKBehaviorIO *)m_InputArray[pos];
+    CKBehaviorIO *io = (CKBehaviorIO *) m_InputArray[pos];
     if (io) {
         if (active)
             io->ModifyObjectFlags(CK_BEHAVIORIO_ACTIVE, 0);
@@ -611,7 +611,7 @@ CKBOOL CKBehavior::IsInputActive(int pos) {
     if (pos < 0 || pos >= m_InputArray.Size())
         return FALSE;
 
-    CKBehaviorIO *io = (CKBehaviorIO *)m_InputArray[pos];
+    CKBehaviorIO *io = (CKBehaviorIO *) m_InputArray[pos];
     return io ? io->IsActive() : FALSE;
 }
 
@@ -619,7 +619,7 @@ CKBehaviorIO *CKBehavior::RemoveInput(int pos) {
     if (pos < 0 || pos >= m_InputArray.Size())
         return nullptr;
 
-    CKBehaviorIO *io = (CKBehaviorIO *)m_InputArray[pos];
+    CKBehaviorIO *io = (CKBehaviorIO *) m_InputArray[pos];
     m_InputArray.RemoveAt(pos);
     return io;
 }
@@ -634,7 +634,7 @@ CKERROR CKBehavior::DeleteInput(int pos) {
 CKBehaviorIO *CKBehavior::GetInput(int pos) {
     if (pos < 0 || pos >= m_InputArray.Size())
         return nullptr;
-    return (CKBehaviorIO *)m_InputArray[pos];
+    return (CKBehaviorIO *) m_InputArray[pos];
 }
 
 int CKBehavior::GetInputCount() {
@@ -661,13 +661,13 @@ CKBehaviorIO *CKBehavior::ReplaceInput(int pos, CKBehaviorIO *io) {
     if (pos < 0 || pos >= m_InputArray.Size())
         return nullptr;
 
-    CKBehaviorIO *oldIO = (CKBehaviorIO *)m_InputArray[pos];
+    CKBehaviorIO *oldIO = (CKBehaviorIO *) m_InputArray[pos];
     m_InputArray[pos] = io;
     return oldIO;
 }
 
 CKBehaviorIO *CKBehavior::CreateInput(CKSTRING name) {
-    CKBehaviorIO *io = (CKBehaviorIO *)m_Context->CreateObject(CKCID_BEHAVIORIO, name, CK_OBJECTCREATION_SameDynamic);
+    CKBehaviorIO *io = (CKBehaviorIO *) m_Context->CreateObject(CKCID_BEHAVIORIO, name, CK_OBJECTCREATION_SameDynamic);
     if (io) {
         m_InputArray.PushBack(io);
         io->m_OwnerBehavior = this;
@@ -726,7 +726,7 @@ int CKBehavior::GetInputParameterPosition(CKParameterIn *in) {
 CKParameterIn *CKBehavior::GetInputParameter(int pos) {
     if (pos < 0 || pos >= m_InParameter.Size())
         return nullptr;
-    return (CKParameterIn *)m_InParameter[pos];
+    return (CKParameterIn *) m_InParameter[pos];
 }
 
 CKParameterIn *CKBehavior::RemoveInputParameter(int pos) {
@@ -826,7 +826,7 @@ CKParameterOut *CKBehavior::InsertOutputParameter(int pos, CKSTRING name, CKPara
 CKParameterOut *CKBehavior::GetOutputParameter(int pos) {
     if (pos < 0 || pos >= m_OutParameter.Size())
         return nullptr;
-    return (CKParameterOut *)m_OutParameter[pos];
+    return (CKParameterOut *) m_OutParameter[pos];
 }
 
 int CKBehavior::GetOutputParameterPosition(CKParameterOut *p) {
@@ -927,7 +927,7 @@ void CKBehavior::EnableOutputParameter(int pos, CKBOOL enable) {
 }
 
 void CKBehavior::SetInputParameterDefaultValue(CKParameterIn *pin, CKParameter *plink) {
-    CKBehavior *owner = (CKBehavior *)pin->GetOwner();
+    CKBehavior *owner = (CKBehavior *) pin->GetOwner();
     if (!owner)
         return;
 
@@ -973,7 +973,7 @@ CKParameterLocal *CKBehavior::CreateLocalParameter(CKSTRING name, CKGUID guid) {
 CKParameterLocal *CKBehavior::GetLocalParameter(int pos) {
     if (pos < 0 || pos >= m_LocalParameter.Size())
         return nullptr;
-    return (CKParameterLocal *)m_LocalParameter[pos];
+    return (CKParameterLocal *) m_LocalParameter[pos];
 }
 
 CKParameterLocal *CKBehavior::RemoveLocalParameter(int pos) {
@@ -1140,7 +1140,7 @@ CKBehavior *CKBehavior::RemoveSubBehavior(int pos) {
     if (pos < 0 || pos >= subBehaviors.Size())
         return nullptr;
 
-    CKBehavior *removed = (CKBehavior *)subBehaviors[pos];
+    CKBehavior *removed = (CKBehavior *) subBehaviors[pos];
     subBehaviors.RemoveAt(pos);
 
     if (subBehaviors.Size() > 0) {
@@ -1171,7 +1171,7 @@ CKBehavior *CKBehavior::RemoveSubBehavior(int pos) {
 CKBehavior *CKBehavior::GetSubBehavior(int pos) {
     if (!m_GraphData || pos < 0 || pos >= m_GraphData->m_SubBehaviors.Size())
         return nullptr;
-    return (CKBehavior *)m_GraphData->m_SubBehaviors[pos];
+    return (CKBehavior *) m_GraphData->m_SubBehaviors[pos];
 }
 
 int CKBehavior::GetSubBehaviorCount() {
@@ -1205,7 +1205,7 @@ CKBehaviorLink *CKBehavior::RemoveSubBehaviorLink(int pos) {
     if (pos < 0 || pos >= subBehaviorLinks.Size())
         return nullptr;
 
-    CKBehaviorLink *plink = (CKBehaviorLink *)subBehaviorLinks[pos];
+    CKBehaviorLink *plink = (CKBehaviorLink *) subBehaviorLinks[pos];
     if (!plink)
         return nullptr;
 
@@ -1217,7 +1217,7 @@ CKBehaviorLink *CKBehavior::RemoveSubBehaviorLink(int pos) {
 CKBehaviorLink *CKBehavior::GetSubBehaviorLink(int pos) {
     if (!m_GraphData || pos < 0 || pos >= m_GraphData->m_SubBehaviorLinks.Size())
         return nullptr;
-    return (CKBehaviorLink *)m_GraphData->m_SubBehaviorLinks[pos];
+    return (CKBehaviorLink *) m_GraphData->m_SubBehaviorLinks[pos];
 }
 
 int CKBehavior::GetSubBehaviorLinkCount() {
@@ -1237,7 +1237,7 @@ CKERROR CKBehavior::AddParameterOperation(CKParameterOperation *op) {
 CKParameterOperation *CKBehavior::GetParameterOperation(int pos) {
     if (!m_GraphData || pos < 0 || pos >= m_GraphData->m_Operations.Size())
         return nullptr;
-    return (CKParameterOperation *)m_GraphData->m_Operations[pos];
+    return (CKParameterOperation *) m_GraphData->m_Operations[pos];
 }
 
 CKParameterOperation *CKBehavior::RemoveParameterOperation(int pos) {
@@ -1248,7 +1248,7 @@ CKParameterOperation *CKBehavior::RemoveParameterOperation(int pos) {
     if (pos < 0 || pos >= operations.Size())
         return nullptr;
 
-    CKParameterOperation *op = (CKParameterOperation *)operations[pos];
+    CKParameterOperation *op = (CKParameterOperation *) operations[pos];
     if (op)
         op->SetOwner(nullptr);
     return op;
@@ -1330,7 +1330,7 @@ CKERROR CKBehavior::SetOwner(CKBeObject *owner, CKBOOL callback) {
 
     // Update local parameters and sub-behaviors
     for (auto it = m_LocalParameter.Begin(); it != m_LocalParameter.End(); ++it) {
-        CKParameterLocal *param = (CKParameterLocal *)*it;
+        CKParameterLocal *param = (CKParameterLocal *) *it;
         param->SetOwner(this);
     }
 
@@ -1339,7 +1339,7 @@ CKERROR CKBehavior::SetOwner(CKBeObject *owner, CKBOOL callback) {
     if (err != CK_OK && callback) {
         // Rollback to previous owner
         m_Owner = previousOwnerID;
-        CKBeObject *previousOwner = (CKBeObject *)m_Context->GetObject(previousOwnerID);
+        CKBeObject *previousOwner = (CKBeObject *) m_Context->GetObject(previousOwnerID);
         SetSubBehaviorOwner(previousOwner, callback);
         return err;
     }
@@ -1355,7 +1355,7 @@ CKERROR CKBehavior::SetSubBehaviorOwner(CKBeObject *owner, CKBOOL callback) {
         return CK_OK;
 
     for (auto it = m_GraphData->m_SubBehaviors.Begin(); it != m_GraphData->m_SubBehaviors.End(); ++it) {
-        CKBehavior *subBeh = (CKBehavior *)*it;
+        CKBehavior *subBeh = (CKBehavior *) *it;
         if (subBeh) {
             CKERROR err = subBeh->SetOwner(owner, callback);
             if (err != CK_OK)
@@ -1732,7 +1732,7 @@ CKERROR CKBehavior::Load(CKStateChunk *chunk, CKFile *file) {
             }
 
             m_CompatibleClassID = chunk->ReadInt();
-            SetType((CK_BEHAVIOR_TYPE)chunk->ReadDword());
+            SetType((CK_BEHAVIOR_TYPE) chunk->ReadDword());
             m_Priority = chunk->ReadInt();
             m_Owner = chunk->ReadObjectID();
 
@@ -1765,7 +1765,7 @@ CKERROR CKBehavior::Load(CKStateChunk *chunk, CKFile *file) {
             m_CompatibleClassID = chunk->ReadInt();
         }
         if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORTYPE)) {
-            SetType((CK_BEHAVIOR_TYPE)chunk->ReadDword());
+            SetType((CK_BEHAVIOR_TYPE) chunk->ReadDword());
         }
         if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIOROWNER)) {
             m_Owner = chunk->ReadObjectID();
@@ -1969,7 +1969,7 @@ CKERROR CKBehavior::RemapDependencies(CKDependenciesContext &context) {
 
     // Update local parameter owners
     for (auto it = m_LocalParameter.Begin(); it != m_LocalParameter.End(); ++it) {
-        CKParameterLocal *param = (CKParameterLocal *)*it;
+        CKParameterLocal *param = (CKParameterLocal *) *it;
         if (param) {
             param->SetOwner(this);
         }
@@ -2001,7 +2001,7 @@ CKERROR CKBehavior::Copy(CKObject &o, CKDependenciesContext &context) {
     if (err != CK_OK)
         return err;
 
-    CKBehavior *src = (CKBehavior *)&o;
+    CKBehavior *src = (CKBehavior *) &o;
     if (!src)
         return CKERR_INVALIDPARAMETER;
 
@@ -2071,14 +2071,14 @@ void CKBehavior::Reset() {
         // Reset activation delays for sub-behavior links
         for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviorLinks.Begin();
              it != m_GraphData->m_SubBehaviorLinks.End(); ++it) {
-            CKBehaviorLink *link = (CKBehaviorLink *)*it;
+            CKBehaviorLink *link = (CKBehaviorLink *) *it;
             link->m_ActivationDelay = link->m_InitialActivationDelay;
         }
 
         // Clear flags for main links
         for (XObjectPointerArray::Iterator it = m_GraphData->m_Links.Begin();
              it != m_GraphData->m_Links.End(); ++it) {
-            CKBehaviorLink *link = (CKBehaviorLink *)*it;
+            CKBehaviorLink *link = (CKBehaviorLink *) *it;
             link->m_OldFlags &= ~1;
         }
         m_GraphData->m_Links.Clear();
@@ -2086,7 +2086,7 @@ void CKBehavior::Reset() {
         // Reset sub-behaviors
         for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin();
              it != m_GraphData->m_SubBehaviors.End(); ++it) {
-            CKBehavior *subBeh = (CKBehavior *)*it;
+            CKBehavior *subBeh = (CKBehavior *) *it;
             subBeh->m_Flags &= ~CKBEHAVIOR_ACTIVE;
             subBeh->Reset();
         }
@@ -2094,13 +2094,13 @@ void CKBehavior::Reset() {
 
     // Clear activation flags for inputs
     for (XObjectPointerArray::Iterator it = m_InputArray.Begin(); it != m_InputArray.End(); ++it) {
-        CKBehaviorIO *io = (CKBehaviorIO *)*it;
+        CKBehaviorIO *io = (CKBehaviorIO *) *it;
         io->m_ObjectFlags &= ~CK_BEHAVIORIO_ACTIVE;
     }
 
     // Clear activation flags for outputs
     for (XObjectPointerArray::Iterator it = m_OutputArray.Begin(); it != m_OutputArray.End(); ++it) {
-        CKBehaviorIO *io = (CKBehaviorIO *)*it;
+        CKBehaviorIO *io = (CKBehaviorIO *) *it;
         io->m_ObjectFlags &= ~CK_BEHAVIORIO_ACTIVE;
     }
 
@@ -2220,7 +2220,7 @@ void CKBehavior::ErrorMessage(CKSTRING Error, CKDWORD Context, CKBOOL ShowOwner,
         contextStr = "Execution";
         break;
     }
-    return ErrorMessage(Error, (CKSTRING)contextStr, ShowOwner, ShowScript);
+    return ErrorMessage(Error, (CKSTRING) contextStr, ShowOwner, ShowScript);
 }
 
 void CKBehavior::SetPrototypeGuid(CKGUID ckguid) {
@@ -2246,7 +2246,7 @@ void CKBehavior::ResetExecutionTime() {
     if (m_GraphData) {
         for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin();
              it != m_GraphData->m_SubBehaviors.End(); ++it) {
-            CKBehavior *subBeh = (CKBehavior *)*it;
+            CKBehavior *subBeh = (CKBehavior *) *it;
             subBeh->ResetExecutionTime();
         }
     }
@@ -2332,13 +2332,13 @@ int CKBehavior::InternalGetShortestDelay(CKBehavior *beh, XObjectPointerArray &b
     int shortestDelay = 1000;
     const int outputCount = m_OutputArray.Size();
     for (int i = 0; i < outputCount; ++i) {
-        CKBehaviorIO *output = (CKBehaviorIO *)m_OutputArray[i];
+        CKBehaviorIO *output = (CKBehaviorIO *) m_OutputArray[i];
         if (!output)
             continue;
 
         const int linkCount = output->m_Links.Size();
         for (int j = 0; j < linkCount; ++j) {
-            CKBehaviorLink *link = (CKBehaviorLink *)output->m_Links[j];
+            CKBehaviorLink *link = (CKBehaviorLink *) output->m_Links[j];
             if (!link || !link->m_OutIO)
                 continue;
 
@@ -2370,7 +2370,7 @@ void CKBehavior::CheckIOsActivation() {
     // Process all sub-behavior links
     for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviorLinks.Begin();
          it != m_GraphData->m_SubBehaviorLinks.End(); ++it) {
-        CKBehaviorLink *link = (CKBehaviorLink *)*it;
+        CKBehaviorLink *link = (CKBehaviorLink *) *it;
         link->m_OldFlags &= ~2;
         CKBehaviorIO *inIO = link->m_InIO;
 
@@ -2421,7 +2421,7 @@ void CKBehavior::CheckIOsActivation() {
 
     // Populate active sub-behaviors in reverse order
     for (int i = subBehaviorCount - 1; i >= 0; --i) {
-        CKBehavior *subBeh = (CKBehavior *)m_GraphData->m_SubBehaviors[i];
+        CKBehavior *subBeh = (CKBehavior *) m_GraphData->m_SubBehaviors[i];
         if (subBeh != this && subBeh->IsActive()) {
             subBeh->m_Flags |= CKBEHAVIOR_RESERVED0;
             m_GraphData->m_BehaviorIterators[m_GraphData->m_BehaviorIteratorIndex++] = subBeh;
@@ -2436,7 +2436,7 @@ void CKBehavior::CheckBehaviorActivity() {
         // Process all active links
         for (XObjectPointerArray::Iterator it = m_GraphData->m_Links.Begin();
              it != m_GraphData->m_Links.End(); ++it) {
-            CKBehaviorLink *link = (CKBehaviorLink *)*it;
+            CKBehaviorLink *link = (CKBehaviorLink *) *it;
             link->m_OldFlags |= 2;
             link->m_ActivationDelay--;
 
@@ -2464,7 +2464,7 @@ void CKBehavior::CheckBehaviorActivity() {
         // Check sub-behaviors for activity
         for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin();
              it != m_GraphData->m_SubBehaviors.End(); ++it) {
-            CKBehavior *subBeh = (CKBehavior *)*it;
+            CKBehavior *subBeh = (CKBehavior *) *it;
             if (subBeh->GetFlags() & (CKBEHAVIOR_ACTIVE | CKBEHAVIOR_WAITSFORMESSAGE)) {
                 hasActivity = true;
                 break;
@@ -2594,7 +2594,7 @@ void CKBehavior::HierarchyPostLoad() {
     // Process input parameters
     int paramIndex = 0;
     for (auto it = m_InParameter.Begin(); it != m_InParameter.End(); ++it, ++paramIndex) {
-        CKParameterIn *param = (CKParameterIn *)*it;
+        CKParameterIn *param = (CKParameterIn *) *it;
         param->SetOwner(this);
 
         if (proto) {
@@ -2613,7 +2613,7 @@ void CKBehavior::HierarchyPostLoad() {
     // Process output parameters
     paramIndex = 0;
     for (auto it = m_OutParameter.Begin(); it != m_OutParameter.End(); ++it, ++paramIndex) {
-        CKParameterOut *param = (CKParameterOut *)*it;
+        CKParameterOut *param = (CKParameterOut *) *it;
         if (!(param->GetObjectFlags() & CK_OBJECT_NAMESHARED)) {
             param->SetOwner(this);
 
@@ -2629,7 +2629,7 @@ void CKBehavior::HierarchyPostLoad() {
     // Process local parameters
     paramIndex = 0;
     for (auto it = m_LocalParameter.Begin(); it != m_LocalParameter.End(); ++it, ++paramIndex) {
-        CKParameterLocal *param = (CKParameterLocal *)*it;
+        CKParameterLocal *param = (CKParameterLocal *) *it;
         param->SetOwner(this);
 
         if (proto) {
@@ -2643,7 +2643,7 @@ void CKBehavior::HierarchyPostLoad() {
     // Process input IOs
     int ioIndex = 0;
     for (auto it = m_InputArray.Begin(); it != m_InputArray.End(); ++it, ++ioIndex) {
-        CKBehaviorIO *io = (CKBehaviorIO *)*it;
+        CKBehaviorIO *io = (CKBehaviorIO *) *it;
         io->SetOwner(this);
 
         if (proto) {
@@ -2657,7 +2657,7 @@ void CKBehavior::HierarchyPostLoad() {
     // Process output IOs
     ioIndex = 0;
     for (auto it = m_OutputArray.Begin(); it != m_OutputArray.End(); ++it, ++ioIndex) {
-        CKBehaviorIO *io = (CKBehaviorIO *)*it;
+        CKBehaviorIO *io = (CKBehaviorIO *) *it;
         io->SetOwner(this);
 
         if (proto) {
@@ -2673,7 +2673,7 @@ void CKBehavior::HierarchyPostLoad() {
         // Handle sub-behaviors
         for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin(); it != m_GraphData->m_SubBehaviors.
              End(); ++it) {
-            CKBehavior *subBeh = (CKBehavior *)*it;
+            CKBehavior *subBeh = (CKBehavior *) *it;
             subBeh->SetParent(this);
             subBeh->m_Flags &= ~CKBEHAVIOR_DEACTIVATENEXTFRAME;
             subBeh->HierarchyPostLoad();
@@ -2684,7 +2684,7 @@ void CKBehavior::HierarchyPostLoad() {
         // Update parameter operations
         for (XObjectPointerArray::Iterator it = m_GraphData->m_Operations.Begin(); it != m_GraphData->m_Operations.End()
              ; ++it) {
-            CKParameterOperation *op = (CKParameterOperation *)*it;
+            CKParameterOperation *op = (CKParameterOperation *) *it;
             op->SetOwner(this);
             op->Update();
         }
@@ -2692,16 +2692,16 @@ void CKBehavior::HierarchyPostLoad() {
 }
 
 int CKBehavior::BehaviorPrioritySort(CKObject *o1, CKObject *o2) {
-    CKBehavior *beh1 = (CKBehavior *)o1;
-    CKBehavior *beh2 = (CKBehavior *)o2;
+    CKBehavior *beh1 = (CKBehavior *) o1;
+    CKBehavior *beh2 = (CKBehavior *) o2;
     if (beh1 && beh2)
         return beh2->GetPriority() - beh1->GetPriority();
     return 0;
 }
 
 int CKBehavior::BehaviorPrioritySort(const void *elem1, const void *elem2) {
-    CKBehavior *beh1 = *(CKBehavior **)elem1;
-    CKBehavior *beh2 = *(CKBehavior **)elem2;
+    CKBehavior *beh1 = *(CKBehavior **) elem1;
+    CKBehavior *beh2 = *(CKBehavior **) elem2;
     if (beh1 && beh2)
         return beh2->GetPriority() - beh1->GetPriority();
     return 0;
@@ -2714,7 +2714,7 @@ void CKBehavior::ApplyPatchLoad() {
     // Iterate through all parameter operations in the behavior graph
     for (XObjectPointerArray::Iterator it = m_GraphData->m_Operations.Begin();
          it != m_GraphData->m_Operations.End(); ++it) {
-        CKParameterOperation *operation = (CKParameterOperation *)*it;
+        CKParameterOperation *operation = (CKParameterOperation *) *it;
 
         // Check if operation ownership needs correction
         if (operation->GetOwner() != this) {

@@ -360,7 +360,7 @@ CKERROR CKRemovePrototypeDeclaration(CKObjectDeclaration *decl) {
             CK_ID *behaviorIds = ctx->GetObjectsListByClassID(CKCID_BEHAVIOR);
 
             for (int i = 0; i < behaviorCount; ++i) {
-                CKBehavior *behavior = (CKBehavior *)ctx->GetObject(behaviorIds[i]);
+                CKBehavior *behavior = (CKBehavior *) ctx->GetObject(behaviorIds[i]);
                 if (!behavior)
                     continue;
 
@@ -534,12 +534,12 @@ CKWORD CKConvertEndian16(CKWORD w) {
 }
 
 CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC) {
-    return adler32(PreviousCRC, (const Bytef *)data, size);
+    return adler32(PreviousCRC, (const Bytef *) data, size);
 }
 
 char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel) {
     char *buffer = new char[size];
-    if (buffer && compress2((Bytef *)buffer, (uLongf *)&NewSize, (const Bytef *)Data, size, compressionLevel) == Z_OK) {
+    if (buffer && compress2((Bytef *) buffer, (uLongf *) &NewSize, (const Bytef *) Data, size, compressionLevel) == Z_OK) {
         char *buffer2 = new char[NewSize];
         if (buffer2) {
             memcpy(buffer2, buffer, NewSize);
@@ -552,7 +552,7 @@ char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel) {
 
 char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize) {
     char *buffer = new char[DestSize];
-    if (buffer && uncompress((Bytef *)buffer, (uLongf *)&DestSize, (const Bytef *)SrcBuffer, SrcSize) == Z_OK) {
+    if (buffer && uncompress((Bytef *) buffer, (uLongf *) &DestSize, (const Bytef *) SrcBuffer, SrcSize) == Z_OK) {
         return buffer;
     }
     return NULL;
@@ -610,7 +610,7 @@ CKDWORD CKEscapeURL(const char *InURL, XString &OutURL) {
         if (strchr(" #$%&\\+,;=@[]^{}", *p)) {
             needsEscape = true;
             char buf[4];
-            snprintf(buf, sizeof(buf), "%%%02X", (unsigned char)(*p));
+            snprintf(buf, sizeof(buf), "%%%02X", (unsigned char) (*p));
             escaped << buf;
         } else {
             escaped << *p;
@@ -638,7 +638,7 @@ void CKUnEscapeUrl(XString &str) {
     for (int i = 0; i < len; ++i) {
         if (str[i] == '%' && i + 2 < len) {
             char hex[3] = {str[i + 1], str[i + 2], '\0'};
-            url << (char)strtol(hex, nullptr, 16);
+            url << (char) strtol(hex, nullptr, 16);
             i += 2;
         } else {
             url << str[i];
@@ -653,7 +653,7 @@ CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp) {
         return NULL;
     if (bp->m_Size <= 0 || bp->m_Size >= 256)
         return NULL;
-    CKBitmapProperties *nbp = (CKBitmapProperties *)new CKBYTE[bp->m_Size];
+    CKBitmapProperties *nbp = (CKBitmapProperties *) new CKBYTE[bp->m_Size];
     memcpy(nbp, bp, bp->m_Size);
     return nbp;
 }
@@ -751,8 +751,8 @@ CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh) {
 
     if (CKIsChildClassOf(Src, CKCID_LEVEL) && CKIsChildClassOf(Dest, CKCID_LEVEL)) {
         isLevelOperation = TRUE;
-        sourceLevelScene = ((CKLevel *)Src)->GetLevelScene();
-        targetLevelScene = ((CKLevel *)Dest)->GetLevelScene();
+        sourceLevelScene = ((CKLevel *) Src)->GetLevelScene();
+        targetLevelScene = ((CKLevel *) Dest)->GetLevelScene();
     }
 
     XHashTable<CKSceneObjectDesc, CK_ID> sceneDescMap;
@@ -808,10 +808,10 @@ CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh) {
 void CKRemapObjectParameterValue(CKContext *ckContext, CK_ID oldID, CK_ID newID, CK_CLASSID cid, CKBOOL derived) {
     const XObjectPointerArray &params = ckContext->GetObjectListByType(CKCID_PARAMETEROUT, TRUE);
     for (XObjectPointerArray::Iterator it = params.Begin(); it != params.End(); ++it) {
-        CKParameter *param = (CKParameter *)*it;
+        CKParameter *param = (CKParameter *) *it;
         CK_CLASSID pcid = param->GetParameterClassID();
         if (pcid == cid || (derived && CKIsChildClassOf(pcid, cid))) {
-            if (*(CK_ID *)param->GetReadDataPtr(TRUE) == oldID)
+            if (*(CK_ID *) param->GetReadDataPtr(TRUE) == oldID)
                 param->SetValue(&newID);
         }
     }

@@ -29,14 +29,12 @@ void CKInterfaceObjectManager::RemoveStateChunk(CKStateChunk *chunk) {
         return;
 
     int i;
-    for (i = 0; i < m_Count; ++i)
-    {
+    for (i = 0; i < m_Count; ++i) {
         if (m_Chunks[i] == chunk)
             break;
     }
 
-    if (i != m_Count)
-    {
+    if (i != m_Count) {
         memmove(&m_Chunks[i], &m_Chunks[i + 1], sizeof(CKStateChunk *) * (m_Count - (i + 1)));
         if (chunk)
             delete chunk;
@@ -62,8 +60,7 @@ CKInterfaceObjectManager::CKInterfaceObjectManager(CKContext *Context, CKSTRING 
 }
 
 CKInterfaceObjectManager::~CKInterfaceObjectManager() {
-    for (int i = 0; i < m_Count; ++i)
-    {
+    for (int i = 0; i < m_Count; ++i) {
         CKStateChunk *chunk = m_Chunks[i];
         if (chunk)
             delete chunk;
@@ -86,8 +83,7 @@ CKStateChunk *CKInterfaceObjectManager::Save(CKFile *file, CKDWORD flags) {
 
     chunk->WriteIdentifier(0x1234567);
     chunk->WriteInt(m_Count);
-    for (int i = 0; i < m_Count; ++i)
-    {
+    for (int i = 0; i < m_Count; ++i) {
         chunk->WriteSubChunk(m_Chunks[i]);
     }
 
@@ -106,22 +102,17 @@ CKERROR CKInterfaceObjectManager::Load(CKStateChunk *chunk, CKFile *file) {
     if (!chunk || !m_Context->IsInInterfaceMode())
         return CKERR_INVALIDPARAMETER;
 
-    if (chunk->SeekIdentifier(0x1234567))
-    {
+    if (chunk->SeekIdentifier(0x1234567)) {
         m_Count = chunk->ReadInt();
         m_Chunks = new CKStateChunk *[m_Count];
-        for (int i = 0; i < m_Count; ++i)
-        {
+        for (int i = 0; i < m_Count; ++i) {
             m_Chunks[i] = chunk->ReadSubChunk();
         }
     }
 
-    if (chunk->SeekIdentifier(0x87654321))
-    {
+    if (chunk->SeekIdentifier(0x87654321)) {
         m_Guid = chunk->ReadGuid();
-    }
-    else
-    {
+    } else {
         m_Guid = CKGUID();
     }
 

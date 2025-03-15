@@ -57,10 +57,10 @@ CKSTRING CKJustFile(CKSTRING path) {
 }
 
 CKBufferParser::CKBufferParser(void *Buffer, int Size)
-        : m_Valid(FALSE),
-          m_CursorPos(0),
-          m_Buffer((char *)Buffer),
-          m_Size(Size) {}
+    : m_Valid(FALSE),
+      m_CursorPos(0),
+      m_Buffer((char *) Buffer),
+      m_Size(Size) {}
 
 CKBufferParser::~CKBufferParser() {
     if (m_Valid)
@@ -128,7 +128,8 @@ CKStateChunk *CKBufferParser::ExtractChunk(int Size, CKFile *f) {
     return chunk;
 }
 
-void CKBufferParser::ExtractChunk(int Size, CKFile *f, CKFileChunk *chunk) {}
+void CKBufferParser::ExtractChunk(int Size, CKFile *f, CKFileChunk *chunk) {
+}
 
 CKDWORD CKBufferParser::ComputeCRC(int Size, CKDWORD PrevCRC) {
     return CKComputeDataCRC(&m_Buffer[m_CursorPos], Size, PrevCRC);
@@ -188,7 +189,8 @@ CKBufferParser *CKBufferParser::Pack(int Size, int CompressionLevel) {
     return parser;
 }
 
-void CKBufferParser::Encode(int Size, CKDWORD *Key) {}
+void CKBufferParser::Encode(int Size, CKDWORD *Key) {
+}
 
 CKDWORD GetCurrentFileLoadOption() {
     return CurrentFileWriteMode;
@@ -270,7 +272,7 @@ CKERROR CKFile::LoadFileData(CKObjectArray *liste) {
 
             FinishLoading(liste, m_Flags);
             if (WarningForOlderVersion)
-                m_Context->OutputToConsole((CKSTRING)"Obsolete File Format,Please Re-Save...");
+                m_Context->OutputToConsole((CKSTRING) "Obsolete File Format,Please Re-Save...");
         }
     }
 
@@ -327,7 +329,6 @@ void CKFile::ClearData() {
     if (m_Parser) {
         delete m_Parser;
         m_Parser = NULL;
-
     }
 
     if (m_MappedFile) {
@@ -357,7 +358,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
     }
 
     if (header.Part0.FileVersion >= 10) {
-        m_Context->OutputToConsole((CKSTRING)"This version is too old to load this file");
+        m_Context->OutputToConsole((CKSTRING) "This version is too old to load this file");
         return CKERR_OBSOLETEVIRTOOLS;
     }
 
@@ -391,7 +392,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
 
     if (header.Part0.FileVersion >= 8) {
         header.Part0.Crc = 0;
-        CKDWORD crc = CKComputeDataCRC((char *)(&header.Part0), sizeof(CKFileHeaderPart0), 0);
+        CKDWORD crc = CKComputeDataCRC((char *) (&header.Part0), sizeof(CKFileHeaderPart0), 0);
         int prev = parser->CursorPos();
         parser->Seek(sizeof(CKFileHeaderPart0));
         crc = parser->ComputeCRC(sizeof(CKFileHeaderPart1), crc);
@@ -401,7 +402,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
         crc = parser->ComputeCRC(m_FileInfo.DataPackSize, crc);
         parser->Seek(prev);
         if (crc != m_FileInfo.Crc) {
-            m_Context->OutputToConsole((CKSTRING)"Crc Error in m_File");
+            m_Context->OutputToConsole((CKSTRING) "Crc Error in m_File");
             return CKERR_FILECRCERROR;
         }
 
@@ -542,7 +543,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
         if (m_FileInfo.FileVersion < 2) {
             WarningForOlderVersion = TRUE;
         } else if (m_FileInfo.Crc != parser->ComputeCRC(parser->Size() - parser->CursorPos())) {
-            m_Context->OutputToConsole((CKSTRING)"Crc Error in m_File");
+            m_Context->OutputToConsole((CKSTRING) "Crc Error in m_File");
             return CKERR_FILECRCERROR;
         }
 
@@ -677,7 +678,6 @@ CKERROR CKFile::Load(void *MemoryBuffer, int BufferSize, CKObjectArray *list, CK
 }
 
 void CKFile::UpdateAndApplyAnimationsTo(CKCharacter *character) {
-
 }
 
 CKERROR CKFile::StartSave(CKSTRING filename, CKDWORD Flags) {
@@ -845,7 +845,7 @@ CKERROR CKFile::EndSave() {
                 CKBehavior *beh = (CKBehavior *) fileObject.ObjPtr;
                 CKStateChunk *interfaceChunk = beh->GetInterfaceChunk();
                 if (interfaceChunk)
-                    interfaceDataSize += interfaceChunk->GetDataSize() + 2 * (int)sizeof(CKDWORD);
+                    interfaceDataSize += interfaceChunk->GetDataSize() + 2 * (int) sizeof(CKDWORD);
             }
         }
 
@@ -886,7 +886,7 @@ CKERROR CKFile::EndSave() {
     int objectDataSize = 0;
     for (int i = 0; i < fileObjectCount; ++i) {
         CKFileObject &fileObject = m_FileObjects[i];
-        objectInfoSize += 4 * (int)sizeof(CKDWORD);
+        objectInfoSize += 4 * (int) sizeof(CKDWORD);
         if (fileObject.Name)
             objectInfoSize += strlen(fileObject.Name);
 
@@ -899,7 +899,7 @@ CKERROR CKFile::EndSave() {
 
         fileObject.PrePackSize = packSize;
         fileObject.PostPackSize = packSize;
-        objectDataSize += fileObject.PostPackSize + (int)sizeof(CKDWORD);
+        objectDataSize += fileObject.PostPackSize + (int) sizeof(CKDWORD);
     }
 
     int managerDataSize = 0;
@@ -912,21 +912,21 @@ CKERROR CKFile::EndSave() {
     }
 
     int pluginDepCount = m_PluginsDep.Size();
-    int pluginDepsSize = (int)sizeof(CKDWORD);
+    int pluginDepsSize = (int) sizeof(CKDWORD);
     for (int i = 0; i < pluginDepCount; ++i) {
         CKFilePluginDependencies &pluginDep = m_PluginsDep[i];
-        pluginDepsSize += pluginDep.m_Guids.Size() * (int)sizeof(CKGUID) + 2 * (int)sizeof(CKDWORD);
+        pluginDepsSize += pluginDep.m_Guids.Size() * (int) sizeof(CKGUID) + 2 * (int) sizeof(CKDWORD);
     }
 
-    int hdr1PackSize = objectInfoSize + pluginDepsSize + (int)(sizeof(CKDWORD) + sizeof(CKDWORD));
+    int hdr1PackSize = objectInfoSize + pluginDepsSize + (int) (sizeof(CKDWORD) + sizeof(CKDWORD));
     int dataUnPackSize = objectDataSize + managerDataSize;
 
     if (fileObjectCount > 0) {
-        m_FileObjects[0].FileIndex = (int)sizeof(CKFileHeader) + hdr1PackSize + managerDataSize;
+        m_FileObjects[0].FileIndex = (int) sizeof(CKFileHeader) + hdr1PackSize + managerDataSize;
         for (int i = 1; i < fileObjectCount; ++i) {
             CKFileObject &fileObject = m_FileObjects[i];
             CKFileObject &prevFileObject = m_FileObjects[i - 1];
-            fileObject.FileIndex = prevFileObject.FileIndex + prevFileObject.PostPackSize + (int)sizeof(CKDWORD);
+            fileObject.FileIndex = prevFileObject.FileIndex + prevFileObject.PostPackSize + (int) sizeof(CKDWORD);
         }
     }
 
@@ -956,7 +956,7 @@ CKERROR CKFile::EndSave() {
     if (fileObjectCount > 0) {
         for (int i = 0; i < fileObjectCount; ++i) {
             CKFileObject &fileObject = m_FileObjects[i];
-            int nameSize = (fileObject.Name) ? (int)strlen(fileObject.Name) : 0;
+            int nameSize = (fileObject.Name) ? (int) strlen(fileObject.Name) : 0;
 
             CK_ID objId = fileObject.Object;
             if (fileObject.ObjPtr &&
@@ -984,14 +984,14 @@ CKERROR CKFile::EndSave() {
         int guidCount = pluginDep.m_Guids.Size();
         parser->Write(&guidCount, sizeof(int));
         if (guidCount > 0) {
-            parser->Write(pluginDep.m_Guids.Begin(), guidCount * (int)sizeof(CKGUID));
+            parser->Write(pluginDep.m_Guids.Begin(), guidCount * (int) sizeof(CKGUID));
         }
     }
 
     parser->Seek(0);
     if ((header.Part0.FileWriteMode & (CKFILE_WHOLECOMPRESSED | CKFILE_CHUNKCOMPRESSED_OLD)) != 0) {
         parser = parser->Pack(hdr1PackSize, m_Context->GetCompressionLevel());
-        if (parser && (CKDWORD)parser->Size() < header.Part1.Hdr1UnPackSize) {
+        if (parser && (CKDWORD) parser->Size() < header.Part1.Hdr1UnPackSize) {
             header.Part0.Hdr1PackSize = parser->Size();
             delete hdr1BufferParser;
             hdr1BufferParser = parser;
@@ -1038,8 +1038,8 @@ CKERROR CKFile::EndSave() {
 
     parser->Seek(0);
     if ((header.Part0.FileWriteMode & (CKFILE_WHOLECOMPRESSED | CKFILE_CHUNKCOMPRESSED_OLD)) != 0) {
-        parser = parser->Pack((int)header.Part1.Hdr1UnPackSize, m_Context->GetCompressionLevel());
-        if (parser && (CKDWORD)parser->Size() < header.Part1.DataUnPackSize) {
+        parser = parser->Pack((int) header.Part1.Hdr1UnPackSize, m_Context->GetCompressionLevel());
+        if (parser && (CKDWORD) parser->Size() < header.Part1.DataUnPackSize) {
             header.Part1.DataPackSize = parser->Size();
             delete dataBufferParser;
             dataBufferParser = parser;
@@ -1050,8 +1050,8 @@ CKERROR CKFile::EndSave() {
         }
     }
 
-    CKDWORD crc = CKComputeDataCRC((char *)&header.Part0, sizeof(CKFileHeaderPart0));
-    crc = CKComputeDataCRC((char *)&header.Part1, sizeof(CKFileHeaderPart1), crc);
+    CKDWORD crc = CKComputeDataCRC((char *) &header.Part0, sizeof(CKFileHeaderPart0));
+    crc = CKComputeDataCRC((char *) &header.Part1, sizeof(CKFileHeaderPart1), crc);
     crc = hdr1BufferParser->ComputeCRC(hdr1BufferParser->Size(), crc);
     crc = dataBufferParser->ComputeCRC(dataBufferParser->Size(), crc);
     header.Part0.Crc = crc;
@@ -1136,7 +1136,8 @@ CKBOOL CKFile::IncludeFile(CKSTRING FileName, int SearchPathCategory) {
         return FALSE;
 
     XString filename = FileName;
-    if (SearchPathCategory <= -1 || m_Context->GetPathManager()->ResolveFileName(filename, SearchPathCategory) == CK_OK) {
+    if (SearchPathCategory <= -1 || m_Context->GetPathManager()->ResolveFileName(filename, SearchPathCategory) ==
+        CK_OK) {
         m_IncludedFiles.PushBack(filename);
         return TRUE;
     }
@@ -1192,7 +1193,8 @@ CKFile::CKFile(CKContext *Context)
       m_Flags(0),
       m_Parser(NULL),
       m_MappedFile(NULL),
-      m_ReadFileDataDone(FALSE) {}
+      m_ReadFileDataDone(FALSE) {
+}
 
 CKFile::~CKFile() {
     ClearData();
@@ -1232,7 +1234,9 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             if (id >= 0) {
                 CK_CREATIONMODE res;
                 obj = m_Context->CreateObject(it->ObjectCid, it->Name, (CK_OBJECTCREATION_OPTIONS) options, &res);
-                it->Options = (res == CKLOAD_USECURRENT) ? CKFileObject::CK_FO_RENAMEOBJECT : CKFileObject::CK_FO_DEFAULT;
+                it->Options = (res == CKLOAD_USECURRENT)
+                                  ? CKFileObject::CK_FO_RENAMEOBJECT
+                                  : CKFileObject::CK_FO_DEFAULT;
             } else {
                 it->Object = -id;
                 obj = ResolveReference(it);
@@ -1335,7 +1339,8 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETERLOCAL].Begin(); iit != m_IndexByClassId[CKCID_PARAMETERLOCAL].End(); ++iit) {
+        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETERLOCAL].Begin(); iit != m_IndexByClassId[
+                 CKCID_PARAMETERLOCAL].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
             if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
                 continue;
@@ -1364,7 +1369,8 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETER].Begin(); iit != m_IndexByClassId[CKCID_PARAMETER].End(); ++iit) {
+        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETER].Begin(); iit != m_IndexByClassId[
+                 CKCID_PARAMETER].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
             if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
                 continue;
@@ -1393,7 +1399,8 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETEROUT].Begin(); iit != m_IndexByClassId[CKCID_PARAMETEROUT].End(); ++iit) {
+        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETEROUT].Begin(); iit != m_IndexByClassId[
+                 CKCID_PARAMETEROUT].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
             if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
                 continue;
@@ -1423,7 +1430,8 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
         }
     }
 
-    for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_BEHAVIOR].Begin(); iit != m_IndexByClassId[CKCID_BEHAVIOR].End(); ++iit) {
+    for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_BEHAVIOR].Begin(); iit != m_IndexByClassId[CKCID_BEHAVIOR].
+         End(); ++iit) {
         CKFileObject *it = &m_FileObjects[*iit];
         if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
             continue;
@@ -1494,7 +1502,9 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
     objectManager->EndLoadSession();
 }
 
-void CKFile::WriteStats(int InterfaceDataSize) { /* Empty */ }
+void CKFile::WriteStats(int InterfaceDataSize) {
+    /* Empty */
+}
 
 CKObject *CKFile::ResolveReference(CKFileObject *Data) {
     if (!CKIsChildClassOf(Data->ObjectCid, CKCID_PARAMETER))
