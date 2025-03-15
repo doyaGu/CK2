@@ -59,6 +59,11 @@ public:
         memcpy(Data, list.Data, list.Size * sizeof(int));
     }
 
+    ~IntListStruct()
+    {
+        delete[] Data;
+    }
+
     void AddEntry(int pos)
     {
         if ( Size + 1 >= AllocatedSize )
@@ -147,6 +152,11 @@ enum CHUNK_OPTIONS
 class ChunkParser
 {
 public:
+    ChunkParser()
+    {
+        Clear();
+    }
+
     int CurrentPos;
     int DataSize;
     int PrevIdentifierPos;
@@ -365,8 +375,10 @@ public:
     //--------------------------------------------------------
     ////               Private Part
 
-    CKStateChunk(CKStateChunk *chunk);
+    explicit CKStateChunk(CKStateChunk *chunk);
     CKStateChunk(CK_CLASSID Cid, CKFile *f);
+
+    ~CKStateChunk();
 
     static int IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it);
     static int ObjectRemapper(ChunkIteratorData *it);

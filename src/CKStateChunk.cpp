@@ -22,6 +22,21 @@ void DeleteCKStateChunk(CKStateChunk *chunk) {
     delete chunk;
 }
 
+CKStateChunk::CKStateChunk(CKStateChunk *chunk) {
+    m_Data = NULL;
+    m_ChunkClassID = 0;
+    m_ChunkSize = 0;
+    m_ChunkParser = NULL;
+    m_Ids = NULL;
+    m_Chunks = NULL;
+    m_DataVersion = 0;
+    m_ChunkVersion = 0;
+    m_Managers = NULL;
+    m_File = NULL;
+    m_Dynamic = TRUE;
+    Clone(chunk);
+}
+
 CKStateChunk::CKStateChunk(CK_CLASSID Cid, CKFile *f) {
     m_Data = NULL;
     m_ChunkSize = 0;
@@ -36,19 +51,8 @@ CKStateChunk::CKStateChunk(CK_CLASSID Cid, CKFile *f) {
     m_Dynamic = TRUE;
 }
 
-CKStateChunk::CKStateChunk(CKStateChunk *chunk) {
-    m_Data = NULL;
-    m_ChunkClassID = 0;
-    m_ChunkSize = 0;
-    m_ChunkParser = NULL;
-    m_Ids = NULL;
-    m_Chunks = NULL;
-    m_DataVersion = 0;
-    m_ChunkVersion = 0;
-    m_Managers = NULL;
-    m_File = NULL;
-    m_Dynamic = TRUE;
-    Clone(chunk);
+CKStateChunk::~CKStateChunk() {
+    Clear();
 }
 
 void CKStateChunk::Clear() {
@@ -232,14 +236,23 @@ CKBOOL CKStateChunk::SeekIdentifier(CKDWORD identifier) {
         m_ChunkParser->DataSize = m_ChunkSize;
     }
 
+    if (m_ChunkParser->PrevIdentifierPos >= m_ChunkSize - 1)
+        return FALSE;
+
     int j = m_Data[m_ChunkParser->PrevIdentifierPos + 1];
     int i;
     if (j != 0) {
         i = j;
-        while (m_Data[i] != identifier) {
+        while (i < m_ChunkSize && m_Data[i] != identifier) {
+            if (i + 1 >= m_ChunkSize)
+                return FALSE;
+
             i = m_Data[i + 1];
             if (i == 0) {
-                while (m_Data[i] != identifier) {
+                while (i < m_ChunkSize && m_Data[i] != identifier) {
+                    if (i + 1 >= m_ChunkSize)
+                        return FALSE;
+
                     i = m_Data[i + 1];
                     if (i == j)
                         return FALSE;
@@ -248,12 +261,19 @@ CKBOOL CKStateChunk::SeekIdentifier(CKDWORD identifier) {
         }
     } else {
         i = 0;
-        while (m_Data[i] != identifier) {
+        while (i < m_ChunkSize && m_Data[i] != identifier) {
+            if (i + 1 >= m_ChunkSize)
+                return FALSE;
+
             i = m_Data[i + 1];
             if (i == j)
                 return FALSE;
         }
     }
+
+    if (i >= m_ChunkSize)
+        return FALSE;
+
     m_ChunkParser->PrevIdentifierPos = i;
     m_ChunkParser->CurrentPos = i + 2;
 
@@ -471,15 +491,26 @@ int CKStateChunk::ReadArray_LEndian(void **array) {
             // Calculate needed dwords (4-byte chunks)
             const int dwordCount = (dataSizeBytes + 3) / 4;
 
-            // Allocate and copy array data
-            void *arrayData = operator new(dataSizeBytes);
-            memcpy(arrayData, &m_Data[parser->CurrentPos], dataSizeBytes);
+            // Allocate and check allocation success
+            void *arrayData = new CKBYTE[dataSizeBytes];
+            if (!arrayData) {
+                *array = NULL;
+                return 0;
+            }
 
-            // Update parser position
-            parser->CurrentPos += dwordCount;
-
-            *array = arrayData;
-            return elementCount;
+            // Bounds check
+            if (parser->CurrentPos + dwordCount <= m_ChunkSize) {
+                memcpy(arrayData, &m_Data[parser->CurrentPos], dataSizeBytes);
+                // Update parser position
+                parser->CurrentPos += dwordCount;
+                *array = arrayData;
+                return elementCount;
+            } else {
+                // Free memory and return error if bounds check fails
+                delete[] arrayData;
+                *array = NULL;
+                return 0;
+            }
         }
 
         // Invalid size parameters
@@ -1450,6 +1481,9 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
 }
 
 int CKStateChunk::RemapObject(CK_ID old_id, CK_ID new_id) {
+    if (old_id == 0 || new_id == 0)
+        return 0;
+
     CKDependenciesContext depContext(NULL);
     depContext.m_MapID.Insert(old_id, new_id);
     return RemapObjects(NULL, &depContext);
@@ -1680,7 +1714,8 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
         }
 
         // Read bitmap from memory
-        if (reader->ReadMemory(dataStart, dataSize, &bitmapProps)) {
+        bool readSuccess = reader->ReadMemory(dataStart, dataSize, &bitmapProps);
+        if (readSuccess && bitmapProps) {
             // Copy image description to output
             memcpy(&desc, &bitmapProps->m_Format, sizeof(VxImageDescEx));
 
@@ -1691,6 +1726,22 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
             // Cleanup format resources
             reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
             bitmapProps->m_Format.ColorMap = NULL;
+
+            // Free bitmap properties if allocated by reader
+            if (bitmapProps) {
+                delete bitmapProps;
+            }
+        } else {
+            // Clean up if read failed
+            if (bitmapProps) {
+                if (bitmapProps->m_Data) {
+                    reader->ReleaseMemory(bitmapProps->m_Data);
+                }
+                if (bitmapProps->m_Format.ColorMap) {
+                    reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
+                }
+                delete bitmapProps;
+            }
         }
         reader->Release();
     }
@@ -1704,14 +1755,19 @@ CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler) {
 }
 
 void CKStateChunk::Pack(int CompressionLevel) {
-    uLongf size = m_ChunkSize * sizeof(int);
-    Bytef *buf = new Bytef[size];
-    if (compress2(buf, &size, (const Bytef *) m_Data, size, CompressionLevel) == Z_OK) {
-        Bytef *data = new Bytef[size];
-        memcpy(data, m_Data, size);
+    uLongf srcSize = m_ChunkSize * sizeof(int);
+    uLongf destSize = srcSize;
+    Bytef *buf = new Bytef[destSize];
+
+    if (compress2(buf, &destSize, (const Bytef *) m_Data, srcSize, CompressionLevel) == Z_OK) {
+        // Allocate just enough memory for the compressed data
+        Bytef *data = new Bytef[destSize];
+        // Copy from buf (compressed data), not m_Data
+        memcpy(data, buf, destSize);
         delete[] m_Data;
         m_Data = (int *) data;
-        m_ChunkSize = size;
+        // Size should be in ints, not bytes
+        m_ChunkSize = (destSize + sizeof(int) - 1) / sizeof(int);
     }
     delete[] buf;
 }
@@ -1719,10 +1775,17 @@ void CKStateChunk::Pack(int CompressionLevel) {
 CKBOOL CKStateChunk::UnPack(int DestSize) {
     uLongf size = DestSize;
     Bytef *buf = new Bytef[DestSize];
-    int err = uncompress(buf, &size, (const Bytef *) m_Data, m_ChunkSize);
+    if (!buf) return FALSE;  // Check allocation
+
+    int err = uncompress(buf, &size, (const Bytef *) m_Data, m_ChunkSize * sizeof(int));
     if (err == Z_OK) {
-        int sz = DestSize / sizeof(int);
-        int *data = new int [sz];
+        int sz = (DestSize + sizeof(int) - 1) / sizeof(int);  // Ceiling division
+        int *data = new int[sz];
+        if (!data) {
+            delete[] buf;
+            return FALSE;
+        }
+
         memcpy(data, buf, DestSize);
         delete[] m_Data;
         m_Data = data;
