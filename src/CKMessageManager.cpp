@@ -24,8 +24,8 @@ CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
     m_RegisteredMessageTypes.PushBack(name);
     CKWaitingObjectArray **waitingList = new CKWaitingObjectArray *[m_RegisteredMessageTypes.Size()];
     if (m_MsgWaitingList) {
-        memcpy(waitingList, m_MsgWaitingList, (m_RegisteredMessageTypes.Size() - 1) * sizeof(CKWaitingObjectArray));
-        delete m_MsgWaitingList;
+        memcpy(waitingList, m_MsgWaitingList, (m_RegisteredMessageTypes.Size() - 1) * sizeof(CKWaitingObjectArray *));
+        delete[] m_MsgWaitingList;
     }
     waitingList[m_RegisteredMessageTypes.Size() - 1] = nullptr;
     m_MsgWaitingList = waitingList;
@@ -34,8 +34,8 @@ CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
 
 CKSTRING CKMessageManager::GetMessageTypeName(CKMessageType MsgType) {
     if (MsgType >= 0 && MsgType < m_RegisteredMessageTypes.Size())
-        return nullptr;
-    return m_RegisteredMessageTypes[MsgType].Str();
+        return m_RegisteredMessageTypes[MsgType].Str();
+    return nullptr;
 }
 
 int CKMessageManager::GetMessageTypeCount() {
@@ -48,6 +48,8 @@ void CKMessageManager::RenameMessageType(CKMessageType MsgType, CKSTRING NewName
 }
 
 void CKMessageManager::RenameMessageType(CKSTRING OldName, CKSTRING NewName) {
+    if (!OldName || !NewName)
+        return;
     RenameMessageType(AddMessageType(OldName), NewName);
 }
 
@@ -73,7 +75,7 @@ CKERROR CKMessageManager::SendMessage(CKMessage *msg) {
 }
 
 CKMessage *CKMessageManager::SendMessageSingle(CKMessageType MsgType, CKBeObject *dest, CKBeObject *sender) {
-    if (!dest)
+    if (!dest || MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
         return nullptr;
 
     CKMessage *msg = CreateMessageSingle(MsgType, dest, sender);
@@ -85,7 +87,7 @@ CKMessage *CKMessageManager::SendMessageSingle(CKMessageType MsgType, CKBeObject
 }
 
 CKMessage *CKMessageManager::SendMessageGroup(CKMessageType MsgType, CKGroup *group, CKBeObject *sender) {
-    if (!group)
+    if (!group || MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
         return nullptr;
 
     CKMessage *msg = CreateMessageGroup(MsgType, group, sender);
@@ -261,15 +263,18 @@ CKERROR CKMessageManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
 }
 
 CKERROR CKMessageManager::PreClearAll() {
-    for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingArray = m_MsgWaitingList[i];
-        if (waitingArray) {
-            delete waitingArray;
+    if (m_MsgWaitingList) {
+        for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
+            CKWaitingObjectArray *waitingArray = m_MsgWaitingList[i];
+            if (waitingArray) {
+                delete waitingArray;
+                m_MsgWaitingList[i] = nullptr;
+            }
         }
-    }
 
-    delete m_MsgWaitingList;
-    m_MsgWaitingList = nullptr;
+        delete[] m_MsgWaitingList;
+        m_MsgWaitingList = nullptr;
+    }
 
     m_RegisteredMessageTypes.Clear();
 
@@ -342,6 +347,7 @@ CKERROR CKMessageManager::PostProcess() {
                         break;
                     case CK_MESSAGE_SINGLE:
                         shouldReceive = CKIsChildClassOf(beo, CKCID_BODYPART) && beo == ((CKBodyPart *)recipient)->GetCharacter();
+                        break;
                     default:
                         break;
                     }
@@ -417,16 +423,18 @@ CKERROR CKMessageManager::SequenceToBeDeleted(CK_ID *objids, int count) {
 }
 
 CKMessageManager::~CKMessageManager() {
-    for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingList = m_MsgWaitingList[i];
-        if (waitingList) {
-            waitingList->Clear();
-            delete waitingList;
+    if (m_MsgWaitingList) {
+        for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
+            CKWaitingObjectArray *waitingList = m_MsgWaitingList[i];
+            if (waitingList) {
+                waitingList->Clear();
+                delete waitingList;
+            }
         }
-    }
 
-    delete[] m_MsgWaitingList;
-    m_MsgWaitingList = nullptr;
+        delete[] m_MsgWaitingList;
+        m_MsgWaitingList = nullptr;
+    }
 
     for (int i = 0; i < m_ReceivedMsgThisFrame.Size(); ++i) {
         CKMessage *msg = m_ReceivedMsgThisFrame[i];
