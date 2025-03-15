@@ -738,7 +738,7 @@ void CKFile::SaveObject(CKObject *obj, CKDWORD flags) {
         fileObj.Name = CKStrdup(obj->GetName());
         m_FileObjects.PushBack(fileObj);
         m_ObjectsHashTable.Insert(m_FileObjects.Size() - 1, obj->GetID());
-        m_IndexByClassId[obj->GetClassID()] = m_FileObjects.Size() - 1;
+        m_IndexByClassId[obj->GetClassID()].PushBack(m_FileObjects.Size() - 1);
     }
 
     if (CKIsChildClassOf(obj->GetClassID(), CKCID_LEVEL))
@@ -800,7 +800,7 @@ void CKFile::SaveObjectAsReference(CKObject *obj) {
     fileObj.Name = CKStrdup(obj->GetName());
     m_FileObjects.PushBack(fileObj);
     m_ObjectsHashTable.Insert(m_FileObjects.Size() - 1, obj->GetID());
-    m_IndexByClassId[obj->GetClassID()] = m_FileObjects.Size() - 1;
+    m_IndexByClassId[obj->GetClassID()].PushBack(m_FileObjects.Size() - 1);
 }
 
 CKERROR CKFile::EndSave() {
