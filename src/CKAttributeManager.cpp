@@ -551,6 +551,23 @@ void CKAttributeManager::ObjectAddedToScene(CKBeObject *beo, CKScene *scene) {
     }
 }
 
+void CKAttributeManager::ObjectRemovedFromScene(CKBeObject *beo, CKScene *scene) {
+    CKScene *currentScene = m_Context->GetCurrentScene();
+    if (currentScene != scene)
+        return;
+
+    const int attributeCount = beo->GetAttributeCount();
+    for (int i = 0; i < attributeCount; ++i) {
+        CKAttributeType attrType = beo->GetAttributeType(i);
+        if (attrType >= 0 && attrType < m_AttributeInfoCount && m_AttributeInfos) {
+            CKAttributeDesc *attrDesc = m_AttributeInfos[attrType];
+            if (attrDesc) {
+                attrDesc->AttributeList.Remove(beo);
+            }
+        }
+    }
+}
+
 void CKAttributeManager::RemoveAttributeFromObject(CKBeObject *beo) {
     for (CKAttributeType i = 0; i < m_AttributeInfoCount; ++i) {
         CKAttributeDesc *desc = m_AttributeInfos[i];
