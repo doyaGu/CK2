@@ -1228,7 +1228,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
     for (int i = 0; i < m_FileObjects.Size(); ++i) {
         CKFileObject *it = &m_FileObjects[i];
         m_IndexByClassId[it->ObjectCid].PushBack(i);
-        if (it->ObjectCid != CKCID_RENDERCONTEXT && it->Data) {
+        if (it->Data && it->ObjectCid != CKCID_RENDERCONTEXT) {
             int id = *(int *) &it->Object;
             CKObject *obj = NULL;
             if (id >= 0) {
@@ -1270,7 +1270,10 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
     }
 
     if (!m_IndexByClassId[CKCID_LEVEL].IsEmpty()) {
-        CKLevel *level = (CKLevel *) m_FileObjects[m_IndexByClassId[CKCID_LEVEL][0]].ObjPtr;
+        auto &levels = m_IndexByClassId[CKCID_LEVEL];
+        int index = levels[0];
+        CKFileObject &fileObject = m_FileObjects[index];
+        CKLevel *level = (CKLevel *) fileObject.ObjPtr;
         if (level) {
             if (!m_Context->GetCurrentLevel()) {
                 m_Context->SetCurrentLevel(level);
