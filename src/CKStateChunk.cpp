@@ -656,7 +656,7 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
         return;
     }
 
-    if (m_ChunkVersion < 4) {
+    if (m_ChunkVersion < CHUNK_VERSION1) {
         m_ChunkParser->CurrentPos += 4;
         count = m_Data[m_ChunkParser->CurrentPos++];
     }
@@ -691,7 +691,7 @@ const XObjectArray &CKStateChunk::ReadXObjectArray() {
 
     int count = StartReadSequence();
     if (count != 0) {
-        if (m_ChunkVersion < 4) {
+        if (m_ChunkVersion < CHUNK_VERSION1) {
             m_ChunkParser->CurrentPos += 4;
             count = ReadInt();
             m_TempXOA.Resize(count);
@@ -727,7 +727,7 @@ const XObjectPointerArray &CKStateChunk::ReadXObjectArray(CKContext *context) {
 
     int count = StartReadSequence();
     if (count != 0) {
-        if (m_ChunkVersion < 4) {
+        if (m_ChunkVersion < CHUNK_VERSION1) {
             m_ChunkParser->CurrentPos += 4;
             count = ReadInt();
             m_TempXOPA.Reserve(count);
@@ -774,7 +774,7 @@ CKObjectArray *CKStateChunk::ReadObjectArray() {
     if (count == 0)
         return NULL;
 
-    if (m_ChunkVersion < 4) {
+    if (m_ChunkVersion < CHUNK_VERSION1) {
         m_ChunkParser->CurrentPos += 4;
         count = m_Data[m_ChunkParser->CurrentPos++];
         if (count == 0)
@@ -826,7 +826,7 @@ void CKStateChunk::WriteSubChunk(CKStateChunk *sub) {
             m_Chunks = new IntListStruct;
         m_Chunks->AddEntry(m_ChunkParser->CurrentPos - 1);
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkClassID;
-        m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion << 16 | sub->m_ChunkVersion;
+        m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion | sub->m_ChunkVersion << 16;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkSize;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != NULL;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Ids) ? sub->m_Ids->Size : 0;
@@ -872,7 +872,7 @@ void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
     m_Data[m_ChunkParser->CurrentPos++] = size / sizeof(int) - 1;
     if (sub) {
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkClassID;
-        m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion << 16 | sub->m_ChunkVersion;
+        m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion | sub->m_ChunkVersion << 16;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkSize;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != NULL;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Ids) ? sub->m_Ids->Size : 0;
@@ -897,7 +897,7 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
     }
 
     int size = m_Data[m_ChunkParser->CurrentPos++];
-    if (size == 0 || size + m_ChunkParser->CurrentPos > m_ChunkSize)
+    if (size <= 0 || size + m_ChunkParser->CurrentPos > m_ChunkSize)
         return NULL;
 
     int classID = m_Data[m_ChunkParser->CurrentPos++];
@@ -915,11 +915,10 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
             return sub;
         }
     } else {
-        int count = m_Data[m_ChunkParser->CurrentPos];
-        if (count + sizeof(int) != size) {
-            int val = m_Data[m_ChunkParser->CurrentPos++];
-            sub->m_ChunkVersion = (short int) (val & 0x0000FFFF);
-            sub->m_DataVersion = (short int) ((val & 0xFFFF0000) >> 16);
+        int version = m_Data[m_ChunkParser->CurrentPos++];
+        if (version + sizeof(int) != size) {
+            sub->m_DataVersion = (short int) (version & 0x0000FFFF);
+            sub->m_ChunkVersion = (short int) ((version & 0xFFFF0000) >> 16);
             sub->m_ChunkSize = m_Data[m_ChunkParser->CurrentPos++];
             CKBOOL hasFile = m_Data[m_ChunkParser->CurrentPos++];
             int idCount = m_Data[m_ChunkParser->CurrentPos++];
@@ -967,6 +966,7 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
         }
     }
 
+    delete sub;
     return NULL;
 }
 
@@ -1290,7 +1290,9 @@ int CKStateChunk::ConvertToBuffer(void *buffer) {
     if (buffer) {
         int pos = 0;
         int *buf = (int *) buffer;
-        buf[pos++] = (((m_ChunkClassID << 8) | m_DataVersion) << 16) | ((chunkOptions << 8) | m_ChunkVersion);
+        CKWORD chunkVersion = m_ChunkVersion | chunkOptions;
+        CKWORD dataVersion = m_DataVersion | m_ChunkClassID << 8;
+        buf[pos++] = dataVersion | chunkVersion << 16;
         buf[pos++] = m_ChunkSize;
         memcpy(&buf[pos], m_Data, m_ChunkSize * sizeof(int));
         pos += m_ChunkSize;
