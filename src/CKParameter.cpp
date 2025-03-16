@@ -430,13 +430,13 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
         return CK_OK; // No data
     }
 
-    if (m_ParamType->SaveLoadFunction && paramState == 0) {
+    if (paramState == 0 && m_ParamType->SaveLoadFunction) {
         CKStateChunk *subChunk = chunk->ReadSubChunk();
-        m_ParamType->SaveLoadFunction(this, &subChunk, 1);
+        m_ParamType->SaveLoadFunction(this, &subChunk, TRUE);
 
         // Clean up sub-chunk
         if (subChunk) {
-            delete subChunk;
+            DeleteCKStateChunk(subChunk);
         }
         return CK_OK;
     }
