@@ -1851,94 +1851,98 @@ void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int
 }
 
 int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
-    int totalResult = fct(it); // Process current chunk first
+    int result = fct(it);
 
-    if (!it->Chunks || it->ChunkCount <= 0) {
-        return totalResult;
-    }
+    if (it->Chunks) {
+        int chunkIndex = 0;
+        const int chunkCount = it->ChunkCount;
 
-    const int CHUNK_VERSION_MANAGER_CHANGE = 4;
+        while (chunkIndex < chunkCount) {
+            ChunkIteratorData localIt;
+            memset(&localIt, 0, sizeof(ChunkIteratorData));
+            localIt.CopyFctData(it);
 
-    for (int chunkIndex = 0; chunkIndex < it->ChunkCount;) {
-        ChunkIteratorData subChunkData;
-        subChunkData.CopyFctData(it); // Inherit context data
+            const int currentChunk = it->Chunks[chunkIndex];
 
-        const int chunkPos = it->Chunks[chunkIndex];
+            if (currentChunk >= 0) {
+                // Process normal chunk
+                int *chunkData = it->Data + currentChunk;
+                const int dataSize = *chunkData;
 
-        if (chunkPos >= 0) {
-            // Single sub-chunk processing
-            int *data = it->Data;
-            int chunkSize = data[chunkPos + 3];
-            int headerSize = 7 + (it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE ? 1 : 0);
+                if (dataSize > 0 && chunkData[2] + 4 != dataSize) {
+                    localIt.ChunkVersion = static_cast<short>(chunkData[2] >> 16);
+                    localIt.ChunkSize = chunkData[3];
+                    localIt.IdCount = chunkData[5];
+                    localIt.ChunkCount = chunkData[6];
 
-            // Configure sub-chunk parameters
-            subChunkData.ChunkVersion = data[chunkPos + 2] & 0xFF;
-            subChunkData.ChunkSize = chunkSize;
-            subChunkData.IdCount = data[chunkPos + 5];
-            subChunkData.ChunkCount = data[chunkPos + 6];
-            subChunkData.ManagerCount = it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE ? data[chunkPos + 7] : 0;
+                    // Handle version-specific manager count
+                    if (it->ChunkVersion <= 4) {
+                        localIt.ManagerCount = 0;
+                        localIt.Data = chunkData + 7;
+                    } else {
+                        localIt.ManagerCount = chunkData[7];
+                        localIt.Data = chunkData + 8;
+                    }
 
-            // Calculate data pointers
-            const int dataOffset = chunkPos + headerSize;
-            subChunkData.Data = &data[dataOffset];
+                    // Set up ID and chunk pointers
+                    if (localIt.IdCount > 0) {
+                        localIt.Ids = localIt.Data + localIt.ChunkSize;
+                    }
+                    if (localIt.ChunkCount > 0) {
+                        localIt.Chunks = localIt.Ids + localIt.IdCount;
+                    }
+                    if (localIt.ManagerCount > 0) {
+                        localIt.Managers = localIt.Chunks + localIt.ChunkCount;
+                    }
 
-            if (subChunkData.IdCount > 0) {
-                subChunkData.Ids = &data[dataOffset + chunkSize];
-            }
-            if (subChunkData.ChunkCount > 0) {
-                subChunkData.Chunks = &data[dataOffset + chunkSize + subChunkData.IdCount];
-            }
-            if (subChunkData.ManagerCount > 0) {
-                subChunkData.Managers = &data[dataOffset + chunkSize + subChunkData.IdCount +
-                    subChunkData.ChunkCount];
-            }
-
-            totalResult += IterateAndDo(fct, &subChunkData);
-            chunkIndex++;
-        } else {
-            // Sequence of sub-chunks
-            chunkIndex++; // Move to sequence count
-            const int sequenceCount = it->Data[it->Chunks[chunkIndex]];
-            int dataPosition = it->Chunks[chunkIndex] + 1;
-
-            for (int i = 0; i < sequenceCount; i++) {
-                const int chunkHeaderPos = dataPosition;
-                const int chunkSize = it->Data[chunkHeaderPos + 3];
-                const int headerSize = 6 + (it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE ? 1 : 0);
-
-                // Configure sub-chunk parameters
-                subChunkData.ChunkVersion = it->Data[chunkHeaderPos + 2] & 0xFF;
-                subChunkData.ChunkSize = chunkSize;
-                subChunkData.IdCount = it->Data[chunkHeaderPos + 4];
-                subChunkData.ChunkCount = it->Data[chunkHeaderPos + 5];
-                subChunkData.ManagerCount = it->ChunkVersion > CHUNK_VERSION_MANAGER_CHANGE
-                                                ? it->Data[chunkHeaderPos + 6]
-                                                : 0;
-
-                // Calculate data pointers
-                const int dataOffset = chunkHeaderPos + headerSize;
-                subChunkData.Data = &it->Data[dataOffset];
-
-                if (subChunkData.IdCount > 0) {
-                    subChunkData.Ids = &it->Data[dataOffset + chunkSize];
+                    result += IterateAndDo(fct, &localIt);
                 }
-                if (subChunkData.ChunkCount > 0) {
-                    subChunkData.Chunks = &it->Data[dataOffset + chunkSize + subChunkData.IdCount];
-                }
-                if (subChunkData.ManagerCount > 0) {
-                    subChunkData.Managers = &it->Data[dataOffset + chunkSize + subChunkData.IdCount +
-                        subChunkData.ChunkCount];
-                }
+                chunkIndex++;
+            } else {
+                // Process packed chunks
+                int *packedData = it->Data + (-currentChunk);
+                const int packedCount = *packedData++;
 
-                totalResult += IterateAndDo(fct, &subChunkData);
-                dataPosition = dataOffset + chunkSize + subChunkData.IdCount +
-                    subChunkData.ChunkCount + subChunkData.ManagerCount;
+                for (int i = 0; i < packedCount; i++) {
+                    const int subChunkSize = *packedData++;
+                    if (subChunkSize <= 0) continue;
+
+                    int *subChunkData = packedData;
+                    packedData += subChunkSize; // Move to next subchunk
+
+                    localIt.ChunkVersion = static_cast<short>(subChunkData[1] >> 16);
+                    localIt.ChunkSize = subChunkData[2];
+                    localIt.IdCount = subChunkData[4];
+                    localIt.ChunkCount = subChunkData[5];
+
+                    // Version-specific handling
+                    if (it->ChunkVersion <= 4) {
+                        localIt.ManagerCount = 0;
+                        localIt.Data = subChunkData + 6;
+                    } else {
+                        localIt.ManagerCount = subChunkData[6];
+                        localIt.Data = subChunkData + 7;
+                    }
+
+                    // Set up pointers
+                    if (localIt.IdCount > 0) {
+                        localIt.Ids = localIt.Data + localIt.ChunkSize;
+                    }
+                    if (localIt.ChunkCount > 0) {
+                        localIt.Chunks = localIt.Ids + localIt.IdCount;
+                    }
+                    if (localIt.ManagerCount > 0) {
+                        localIt.Managers = localIt.Chunks + localIt.ChunkCount;
+                    }
+
+                    result += IterateAndDo(fct, &localIt);
+                }
+                chunkIndex++;
             }
-            chunkIndex++;
         }
     }
 
-    return totalResult;
+    return result;
 }
 
 int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
