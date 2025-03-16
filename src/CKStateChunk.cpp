@@ -903,7 +903,55 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
     int classID = m_Data[m_ChunkParser->CurrentPos++];
     CKStateChunk *sub = new CKStateChunk(classID, NULL);
 
-    if (m_ChunkVersion < 4) {
+    if (m_ChunkVersion >= CHUNK_VERSION1) {
+        int version = m_Data[m_ChunkParser->CurrentPos++];
+        sub->m_DataVersion = (short int) (version & 0x0000FFFF);
+        sub->m_ChunkVersion = (short int) ((version & 0xFFFF0000) >> 16);
+        sub->m_ChunkSize = m_Data[m_ChunkParser->CurrentPos++];
+        CKBOOL hasFile = m_Data[m_ChunkParser->CurrentPos++];
+        int idCount = m_Data[m_ChunkParser->CurrentPos++];
+        int chunkCount = m_Data[m_ChunkParser->CurrentPos++];
+        int managerCount = 0;
+        if (m_ChunkVersion > 4)
+            managerCount = m_Data[m_ChunkParser->CurrentPos++];
+        if (sub->m_ChunkSize != 0) {
+            sub->m_Data = new int[sub->m_ChunkSize];
+            if (sub->m_Data)
+                ReadAndFillBuffer_LEndian(sub->m_ChunkSize * sizeof(int), sub->m_Data);
+        }
+
+        if (idCount > 0) {
+            sub->m_Ids = new IntListStruct;
+            sub->m_Ids->AllocatedSize = idCount;
+            sub->m_Ids->Size = idCount;
+            sub->m_Ids->Data = new int[idCount];
+            if (sub->m_Ids->Data)
+                ReadAndFillBuffer_LEndian(idCount * sizeof(int), sub->m_Ids->Data);
+        }
+
+        if (chunkCount > 0) {
+            sub->m_Chunks = new IntListStruct;
+            sub->m_Chunks->AllocatedSize = chunkCount;
+            sub->m_Chunks->Size = chunkCount;
+            sub->m_Chunks->Data = new int[chunkCount];
+            if (sub->m_Chunks->Data)
+                ReadAndFillBuffer_LEndian(chunkCount * sizeof(int), sub->m_Chunks->Data);
+        }
+
+        if (managerCount > 0) {
+            sub->m_Managers = new IntListStruct;
+            sub->m_Managers->AllocatedSize = managerCount;
+            sub->m_Managers->Size = managerCount;
+            sub->m_Managers->Data = new int[managerCount];
+            if (sub->m_Managers->Data)
+                ReadAndFillBuffer_LEndian(managerCount * sizeof(int), sub->m_Managers->Data);
+        }
+
+        if (hasFile && m_File)
+            sub->m_File = m_File;
+
+        return sub;
+    } else {
         sub->m_ChunkSize = m_Data[m_ChunkParser->CurrentPos++];
         ++m_ChunkParser->CurrentPos;
         if (sub->m_ChunkSize == 0)
@@ -912,56 +960,6 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
         if (sub->m_Data) {
             memcpy(sub->m_Data, &m_Data[m_ChunkParser->CurrentPos], sub->m_ChunkSize * sizeof(int));
             m_ChunkParser->CurrentPos += sub->m_ChunkSize;
-            return sub;
-        }
-    } else {
-        int version = m_Data[m_ChunkParser->CurrentPos++];
-        if (version + sizeof(int) != size) {
-            sub->m_DataVersion = (short int) (version & 0x0000FFFF);
-            sub->m_ChunkVersion = (short int) ((version & 0xFFFF0000) >> 16);
-            sub->m_ChunkSize = m_Data[m_ChunkParser->CurrentPos++];
-            CKBOOL hasFile = m_Data[m_ChunkParser->CurrentPos++];
-            int idCount = m_Data[m_ChunkParser->CurrentPos++];
-            int chunkCount = m_Data[m_ChunkParser->CurrentPos++];
-            int managerCount = 0;
-            if (m_ChunkVersion > 4)
-                managerCount = m_Data[m_ChunkParser->CurrentPos++];
-            if (sub->m_ChunkSize != 0) {
-                sub->m_Data = new int[sub->m_ChunkSize];
-                if (sub->m_Data)
-                    ReadAndFillBuffer_LEndian(sub->m_ChunkSize * sizeof(int), sub->m_Data);
-            }
-
-            if (idCount > 0) {
-                sub->m_Ids = new IntListStruct;
-                sub->m_Ids->AllocatedSize = idCount;
-                sub->m_Ids->Size = idCount;
-                sub->m_Ids->Data = new int[idCount];
-                if (sub->m_Ids->Data)
-                    ReadAndFillBuffer_LEndian(idCount * sizeof(int), sub->m_Ids->Data);
-            }
-
-            if (chunkCount > 0) {
-                sub->m_Chunks = new IntListStruct;
-                sub->m_Chunks->AllocatedSize = chunkCount;
-                sub->m_Chunks->Size = chunkCount;
-                sub->m_Chunks->Data = new int[chunkCount];
-                if (sub->m_Chunks->Data)
-                    ReadAndFillBuffer_LEndian(chunkCount * sizeof(int), sub->m_Chunks->Data);
-            }
-
-            if (managerCount > 0) {
-                sub->m_Managers = new IntListStruct;
-                sub->m_Managers->AllocatedSize = managerCount;
-                sub->m_Managers->Size = managerCount;
-                sub->m_Managers->Data = new int[managerCount];
-                if (sub->m_Managers->Data)
-                    ReadAndFillBuffer_LEndian(managerCount * sizeof(int), sub->m_Managers->Data);
-            }
-
-            if (hasFile && m_File)
-                sub->m_File = m_File;
-
             return sub;
         }
     }
