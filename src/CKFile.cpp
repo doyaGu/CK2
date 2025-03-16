@@ -592,7 +592,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                 if (fileObjectUnPackSize > 0) {
                     WarningForOlderVersion = TRUE;
                     const int chunkCid = parser->ReadInt();
-                    obj->Data = CreateCKStateChunk(chunkCid);
+                    obj->Data = CreateCKStateChunk(chunkCid, this);
                     obj->SaveFlags = parser->ReadInt();
                     const int dataSize = parser->ReadInt();
                     if (m_FileInfo.FileWriteMode & CKFILE_CHUNKCOMPRESSED_OLD) {
