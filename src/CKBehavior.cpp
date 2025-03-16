@@ -2599,13 +2599,18 @@ void CKBehavior::HierarchyPostLoad() {
 
         if (proto) {
             CKSTRING expectedName = proto->GetInParamIndex(paramIndex);
-            if (expectedName && param->GetName() && !strcmp(param->GetName(), expectedName)) {
-                param->SetName(expectedName, TRUE);
-            }
+            if (expectedName) {
+                CKSTRING paramName = param->GetName();
+                if (paramName) {
+                    if (!strcmp(paramName, expectedName)) {
+                        param->SetName(expectedName, TRUE);
+                    }
 
-            CKParameter *source = param->GetRealSource();
-            if (source && source->GetName() && !strcmp(source->GetName(), expectedName)) {
-                source->SetName(expectedName, TRUE);
+                    CKParameter *source = param->GetRealSource();
+                    if (source && source->GetName() && !strcmp(source->GetName(), expectedName)) {
+                        source->SetName(expectedName, TRUE);
+                    }
+                }
             }
         }
     }
@@ -2671,8 +2676,7 @@ void CKBehavior::HierarchyPostLoad() {
     // Process sub-behaviors and operations
     if (m_GraphData) {
         // Handle sub-behaviors
-        for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin(); it != m_GraphData->m_SubBehaviors.
-             End(); ++it) {
+        for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin(); it != m_GraphData->m_SubBehaviors.End(); ++it) {
             CKBehavior *subBeh = (CKBehavior *) *it;
             subBeh->SetParent(this);
             subBeh->m_Flags &= ~CKBEHAVIOR_DEACTIVATENEXTFRAME;
@@ -2682,8 +2686,7 @@ void CKBehavior::HierarchyPostLoad() {
         SortSubs();
 
         // Update parameter operations
-        for (XObjectPointerArray::Iterator it = m_GraphData->m_Operations.Begin(); it != m_GraphData->m_Operations.End()
-             ; ++it) {
+        for (XObjectPointerArray::Iterator it = m_GraphData->m_Operations.Begin(); it != m_GraphData->m_Operations.End(); ++it) {
             CKParameterOperation *op = (CKParameterOperation *) *it;
             op->SetOwner(this);
             op->Update();
