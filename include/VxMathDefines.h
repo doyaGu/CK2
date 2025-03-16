@@ -3,6 +3,8 @@
 
 #include "VxMathCompiler.h"
 
+#include "VxMemory.h"
+
 #define _QUOTE(x) #x
 
 #define QUOTE(x) _QUOTE(x)
