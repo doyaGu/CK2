@@ -1323,7 +1323,9 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
     Clear();
     int val = buf[pos++];
     m_DataVersion = (short) (val & 0x0000FFFF);
+    m_DataVersion &= 0x00FF;
     m_ChunkVersion = (short) ((val & 0xFFFF0000) >> 16);
+    m_ChunkVersion &= 0x00FF;
 
     if (m_ChunkVersion < CHUNK_VERSION2) {
         m_ChunkClassID = buf[pos++];
@@ -1416,6 +1418,9 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
         m_File = NULL;
         return TRUE;
     } else if (m_ChunkVersion <= CHUNK_VERSION4) {
+        m_DataVersion = (short) (val & 0x0000FFFF);
+        m_ChunkVersion = (short) ((val & 0xFFFF0000) >> 16);
+
         CKBYTE chunkOptions = (m_ChunkVersion & 0xFF00) >> 8;
 
         m_ChunkClassID = (m_DataVersion & 0xFF00) >> 8;
