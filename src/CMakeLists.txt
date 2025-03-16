@@ -108,11 +108,11 @@ set(CK2_PUBLIC_HEADERS
         ${CK2_INCLUDE_DIR}/CKDataArray.h
         ${CK2_INCLUDE_DIR}/CKDebugContext.h
         ${CK2_INCLUDE_DIR}/CKMemoryPool.h
-        )
+)
 
 set(CK2_PRIVATE_HEADERS
 
-        )
+)
 
 set(CK2_SOURCES
         CK2Win32.cpp
@@ -189,7 +189,7 @@ set(CK2_SOURCES
         XObjectArray.cpp
         CKDataArray.cpp
         CKObjectArray.cpp
-        )
+)
 
 add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
 target_include_directories(CK2 PUBLIC $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>)

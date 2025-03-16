@@ -45,14 +45,11 @@ add_compile_options(
         $<$<COMPILE_LANGUAGE:CXX>:$<$<CXX_COMPILER_ID:GNU>:-Wno-write-strings>>
 )
 
-if (MSVC)
-    # Disable msvc unsafe warnings
-    add_compile_definitions(
-            $<$<C_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
-            $<$<C_COMPILER_ID:MSVC>:_CRT_NONSTDC_NO_WARNINGS>
-    )
-endif ()
-
+# Disable msvc unsafe warnings
+add_compile_definitions(
+		$<$<C_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
+		$<$<C_COMPILER_ID:MSVC>:_CRT_NONSTDC_NO_WARNINGS>
+)
 
 add_subdirectory(deps)
 add_subdirectory(src)
