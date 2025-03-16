@@ -230,14 +230,10 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
 
             // Read additional parameter (old shared source format)
             CKObject *param = chunk->ReadObject(m_Context);
-            if (param) {
-                // Handle legacy shared parameter conversion
-                if (param->GetClassID() == CKCID_PARAMETERIN) {
-                    m_InShared = (CKParameterIn *)param;
-                    m_ObjectFlags |= CK_PARAMETERIN_SHARED;
-                } else {
-                    m_OutSource = (CKParameter *)param;
-                }
+            if (!m_OutSource) {
+                m_OutSource = (CKParameter *) param;
+            } else {
+                m_ObjectFlags |= CK_PARAMETERIN_SHARED;
             }
         }
 
