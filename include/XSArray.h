@@ -39,6 +39,16 @@ public:
         XCopy(m_Begin, a.m_Begin, a.m_End);
     }
 
+#if VX_HAS_CXX11
+    XSArray(XSArray<T> &&a) VX_NOEXCEPT
+    {
+        m_Begin = a.m_Begin;
+        m_End = a.m_End;
+        a.m_Begin = NULL;
+        a.m_End = NULL;
+    }
+#endif
+
     ~XSArray()
     {
         Clear();
@@ -59,6 +69,21 @@ public:
 
         return *this;
     }
+
+#if VX_HAS_CXX11
+    XSArray<T> &operator=(XSArray<T> &&a) VX_NOEXCEPT
+    {
+        if (this != &a)
+        {
+            Free();
+            m_Begin = a.m_Begin;
+            m_End = a.m_End;
+            a.m_Begin = NULL;
+            a.m_End = NULL;
+        }
+        return *this;
+    }
+#endif
 
     XSArray<T> &operator+=(const XSArray<T> &a)
     {
@@ -103,7 +128,7 @@ public:
                     if (a.Find(*t) == a.m_End)
                     {
                         // the element is not in the other array, we copy it to the newone
-                        *temp = *t; // t was it
+                        *temp = *t;
                         ++temp;
                     }
                 }
@@ -166,7 +191,6 @@ public:
 
     void Insert(T *i, const T &o)
     {
-        // TODO : s'assurer que i est dans les limites...
         if (i < m_Begin || i > m_End)
             return;
 
@@ -181,7 +205,6 @@ public:
 
     void Move(T *i, T *n)
     {
-        // TODO : s'assurer que i est dans les limites...
         if (i < m_Begin || i > m_End)
             return;
         if (n < m_Begin || n > m_End)
@@ -323,11 +346,11 @@ public:
         return *(T *)elem1 < *(T *)elem2;
     }
 
-    //			compare func should return :
-    //			< 0 elem1 less than elem2
-    //			0 elem1 equivalent to elem2
-    //			> 0 elem1 greater than elem2
-    //			elem1 & elem2 T*
+    // compare func should return :
+    // < 0 elem1 less than elem2
+    // 0 elem1 equivalent to elem2
+    // > 0 elem1 greater than elem2
+    // elem1 & elem2 T*
     void Sort(VxSortFunc compare = XCompare)
     {
         if (Size() > 1)
@@ -435,14 +458,22 @@ protected:
     T *Allocate(int size)
     {
         if (size)
-            return new T[size];
+#ifdef NO_VX_MALLOC
+            return (T *)new T[size];
+#else
+            return (T *)VxMalloc(sizeof(T) * size);
+#endif
         else
             return 0;
     }
 
     void Free()
     {
+#ifdef NO_VX_MALLOC
         delete[] m_Begin;
+#else
+        VxFree(m_Begin);
+#endif
     }
 
     ///

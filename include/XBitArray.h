@@ -15,7 +15,7 @@ Remarks:
 class XBitArray
 {
 public:
-    XBitArray(int initialize = 1)
+    explicit XBitArray(int initialize = 1)
     {
         if (initialize < 1) initialize = 1;
         m_Size = (initialize << 5);
@@ -23,17 +23,28 @@ public:
         Clear();
     }
 
-    ~XBitArray()
-    {
-        Free();
-    }
-
-    // copy Ctor
+    // Copy Ctor
     XBitArray(const XBitArray &a)
     {
         m_Size = a.m_Size;
         m_Data = Allocate(m_Size >> 5);
         memcpy(m_Data, a.m_Data, m_Size >> 3);
+    }
+
+#if VX_HAS_CXX11
+    // Move Ctor
+    XBitArray(XBitArray &&a) VX_NOEXCEPT
+    {
+        m_Data = a.m_Data;
+        m_Size = a.m_Size;
+        a.m_Data = NULL;
+        a.m_Size = 0;
+    }
+#endif
+
+    ~XBitArray()
+    {
+        Free();
     }
 
     // operator =
@@ -55,6 +66,22 @@ public:
         }
         return *this;
     }
+
+#if VX_HAS_CXX11
+    // operator =
+    XBitArray &operator=(XBitArray &&a) VX_NOEXCEPT
+    {
+        if (this != &a)
+        {
+            Free();
+            m_Data = a.m_Data;
+            m_Size = a.m_Size;
+            a.m_Data = NULL;
+            a.m_Size = 0;
+        }
+        return *this;
+    }
+#endif
 
     // Reallocation if necessary
     void CheckSize(int n)
@@ -101,7 +128,7 @@ public:
     int IsSet(int n)
     {
         if (n >= m_Size)
-            return 0; // Out of range
+            return 0;                              // Out of range
         return (m_Data[n >> 5] & (1 << (n & 31))); // Allocated after the first DWORD
     }
 
@@ -378,12 +405,20 @@ public:
 private:
     XDWORD *Allocate(int size)
     {
+#ifdef NO_VX_MALLOC
         return new XDWORD[size];
+#else
+        return (XDWORD *)VxMalloc(sizeof(XDWORD) * size);
+#endif
     }
 
     void Free()
     {
+#ifdef NO_VX_MALLOC
         delete[] m_Data;
+#else
+        VxFree(m_Data);
+#endif
     }
 
     // the array itself {secret}
