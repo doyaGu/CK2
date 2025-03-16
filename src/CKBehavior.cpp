@@ -1703,7 +1703,7 @@ CKERROR CKBehavior::Load(CKStateChunk *chunk, CKFile *file) {
             if (m_GraphData) {
                 if (saveFlags & CK_STATESAVE_BEHAVIORSUBBEHAV)
                     m_GraphData->m_SubBehaviors.Load(m_Context, chunk);
-                if (saveFlags & CK_STATESAVE_BEHAVIORACTIVESUBLINKS)
+                if (saveFlags & CK_STATESAVE_BEHAVIORSUBLINKS)
                     m_GraphData->m_SubBehaviorLinks.Load(m_Context, chunk);
                 if (saveFlags & CK_STATESAVE_BEHAVIOROPERATIONS)
                     m_GraphData->m_Operations.Load(m_Context, chunk);
