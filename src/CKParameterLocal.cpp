@@ -84,11 +84,9 @@ CKERROR CKParameterLocal::SetStringValue(CKSTRING Value) {
     return CKParameter::SetStringValue(Value);
 }
 
-CKParameterLocal::CKParameterLocal(CKContext *Context, CKSTRING name, int type) : CKParameter(Context, name, type) {
-}
+CKParameterLocal::CKParameterLocal(CKContext *Context, CKSTRING name, int type) : CKParameter(Context, name, type) {}
 
-CKParameterLocal::~CKParameterLocal() {
-}
+CKParameterLocal::~CKParameterLocal() {}
 
 CK_CLASSID CKParameterLocal::GetClassID() {
     return m_ClassID;
