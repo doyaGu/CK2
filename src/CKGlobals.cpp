@@ -191,6 +191,14 @@ void ComputeParentsTable(CK_CLASSID cid) {
     if (info.Done)
         return;
 
+    if (info.Parent == 0 || info.Parent == cid) {
+        info.Parents.Clear();
+        info.Parents.Set(cid);
+        info.DerivationLevel = 0;
+        info.Done = TRUE;
+        return;
+    }
+
     ComputeParentsTable(info.Parent);
 
     // TODO: Maybe need fix
@@ -239,7 +247,7 @@ void CKBuildClassHierarchyTable() {
 
     // 3. Build inverse child relationships
     for (CK_CLASSID cls = 0; cls < classCount; ++cls) {
-        g_CKClassInfo[cls].Children.Set(cls);
+        g_CKClassInfo[cls].Children.Set(cls); // A class is considered its own "child" for type matching
 
         for (CK_CLASSID parent = 0; parent < classCount; ++parent) {
             if (g_CKClassInfo[cls].Parents.IsSet(parent)) {
@@ -273,6 +281,11 @@ void CKBuildClassHierarchyTable() {
         g_DefaultSaveDependencies[i] = g_CKClassInfo[i].DefaultSaveDependencies;
     }
 
+    // Reset 'Done' flag before next computation
+    for (CK_CLASSID i = 0; i < classCount; ++i) {
+        g_CKClassInfo[i].Done = FALSE;
+    }
+
     // 7. Compute notification tables
     for (CK_CLASSID i = 0; i < classCount; ++i) {
         ComputeParentsNotifyTable(i);
@@ -282,7 +295,10 @@ void CKBuildClassHierarchyTable() {
     for (CK_CLASSID cls = 0; cls < classCount; ++cls) {
         for (CK_CLASSID target = 0; target < classCount; ++target) {
             if (g_CKClassInfo[cls].CommonToBeNotify.IsSet(target)) {
-                g_CKClassInfo[cls].ToNotify.Insert(g_CKClassInfo[cls].Parent, target);
+                // Only add if parent is valid
+                if (g_CKClassInfo[cls].Parent != 0 && g_CKClassInfo[cls].Parent < classCount) {
+                    g_CKClassInfo[cls].ToNotify.Insert(g_CKClassInfo[cls].Parent, target);
+                }
             }
         }
     }
@@ -428,16 +444,43 @@ CK_CLASSID CKStringToClassID(CKSTRING classname) {
 }
 
 CKBOOL CKIsChildClassOf(CK_CLASSID child, CK_CLASSID parent) {
-    if (child >= 0 && child < g_CKClassInfo.Size() && parent >= 0 && parent < g_CKClassInfo.Size()) {
-        return g_CKClassInfo[child].Parents.IsSet(parent);
-    }
-    return FALSE;
+    // Special case: every class is its own child
+    if (child == parent)
+        return TRUE;
+
+    // Special case: class 0 is not a valid class (it's a sentinel for "no parent")
+    if (child == 0 || parent == 0)
+        return FALSE;
+
+    // Bounds check
+    if (child >= g_CKClassInfo.Size() || parent >= g_CKClassInfo.Size())
+        return FALSE;
+
+    // Use the bitset to check ancestry
+    return g_CKClassInfo[child].Parents.IsSet(parent) != 0;
 }
 
 CKBOOL CKIsChildClassOf(CKObject *obj, CK_CLASSID parent) {
-    if (obj)
-        return g_CKClassInfo[obj->GetClassID()].Parents.IsSet(parent);
-    return FALSE;
+    // Handle null object
+    if (!obj)
+        return FALSE;
+
+    // Special case: class 0 is not a valid class
+    if (parent == 0)
+        return FALSE;
+
+    // Bounds check
+    if (parent >= g_CKClassInfo.Size())
+        return FALSE;
+
+    CK_CLASSID child = obj->GetClassID();
+
+    // Special case: every class is its own child
+    if (child == parent)
+        return TRUE;
+
+    // Use the bitset to check ancestry
+    return g_CKClassInfo[child].Parents.IsSet(parent) != 0;
 }
 
 CK_CLASSID CKGetParentClassID(CK_CLASSID child) {
@@ -458,28 +501,41 @@ CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2) {
         return 0;
     }
 
-    while (cid1 != 0 && cid2 != 0) {
-        if (CKIsChildClassOf(cid1, cid2)) {
-            return cid2;
-        }
-        if (CKIsChildClassOf(cid2, cid1)) {
-            return cid1;
+    // Quick check: if one is a child of the other, return the parent
+    if (CKIsChildClassOf(cid1, cid2)) {
+        return cid2;
+    }
+    if (CKIsChildClassOf(cid2, cid1)) {
+        return cid1;
+    }
+
+    // Keep going up the hierarchy until we find a common ancestor
+    CK_CLASSID originalCid2 = cid2;
+    while (cid1 != 0) {
+        cid2 = originalCid2; // Reset cid2 for each parent of cid1
+
+        while (cid2 != 0) {
+            if (cid1 == cid2) {
+                return cid1; // Found common ancestor
+            }
+
+            // Move to parent of cid2
+            if (cid2 < g_CKClassInfo.Size()) {
+                cid2 = g_CKClassInfo[cid2].Parent;
+            } else {
+                cid2 = 0;
+            }
         }
 
+        // Move to parent of cid1
         if (cid1 < g_CKClassInfo.Size()) {
             cid1 = g_CKClassInfo[cid1].Parent;
         } else {
             cid1 = 0;
         }
-
-        if (cid2 < g_CKClassInfo.Size()) {
-            cid2 = g_CKClassInfo[cid2].Parent;
-        } else {
-            cid2 = 0;
-        }
     }
 
-    return 0;
+    return 0; // No common ancestor found
 }
 
 CKObjectArray *CreateCKObjectArray() {
