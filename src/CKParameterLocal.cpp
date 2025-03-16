@@ -27,24 +27,16 @@ void CKParameterLocal::SetAsMyselfParameter(CKBOOL act) {
             paramType = pm->ClassIDToType(targetObject->GetClassID());
         }
 
-        // Set parameter type or fallback to BEOBJECT GUID
         if (paramType > 0) {
             SetType(paramType);
         } else {
             SetGUID(CKPGUID_BEOBJECT);
         }
 
-        // Store owner ID in parameter buffer
-        if (targetObject) {
-            *reinterpret_cast<CK_ID *>(m_Buffer) = targetObject->GetID();
-        } else {
-            *reinterpret_cast<CK_ID *>(m_Buffer) = 0;
-        }
+        *(CK_ID *)m_Buffer = targetObject ? targetObject->GetID() : 0;
 
-        // Set THIS parameter flag
         m_ObjectFlags |= CK_PARAMETERIN_THIS;
     } else {
-        // Clear THIS parameter flag
         m_ObjectFlags &= ~CK_PARAMETERIN_THIS;
     }
 }
