@@ -305,9 +305,9 @@ CKStateChunk *CKParameter::Save(CKFile *file, CKDWORD flags) {
 
     // Check object flags
     if ((m_ObjectFlags & CK_OBJECT_ONLYFORFILEREFERENCE) == 0) {
-        if ((m_ObjectFlags & CK_PARAMETEROUT_PARAMOP) != 0 || !m_ParamType) {
+        if ((m_ObjectFlags & CK_PARAMETEROUT_PARAMOP) != 0 || m_ParamType == 0) {
             chunk->WriteInt(3);
-        } else if (m_ParamType->Saver_Manager != CKGUID()) {
+        } else if (m_ParamType->Saver_Manager.IsValid()) {
             // Handle Saver_Manager case
             int savedValue = 0;
             GetValue(&savedValue, TRUE);
@@ -335,7 +335,7 @@ CKStateChunk *CKParameter::Save(CKFile *file, CKDWORD flags) {
 
             if (GetGUID() == CKPGUID_PARAMETERTYPE) {
                 // Special case handling
-                CKGUID typeGUID = pm->ParameterTypeToGuid(m_Value);
+                CKGUID typeGUID = pm->ParameterTypeToGuid(*m_Buffer);
                 chunk->WriteGuid(typeGUID);
             } else {
                 chunk->WriteBuffer(m_Size, m_Buffer);
@@ -368,9 +368,8 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
         CK_PARAMETEROUT_DELETEAFTERUSE);
 
     // Ensure the identifier exists in the chunk
-    if (!chunk->SeekIdentifier(0x40)) {
+    if (!chunk->SeekIdentifier(0x40))
         return CK_OK;
-    }
 
     // Read GUID from chunk
     CKParameterManager *pm = m_Context->GetParameterManager();
@@ -386,19 +385,38 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
     }
 
     // Check if the current parameter type matches the loaded GUID
-    if (!(m_ParamType && m_ParamType->Guid == paramGUID && m_ParamType->DefaultSize == m_Size)) {
-        // Call delete function if necessary
-        if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
-            m_ParamType->DeleteFunction(this);
-        }
+    if (m_ParamType) {
+        if (m_ParamType->Guid != paramGUID || m_ParamType->DefaultSize != m_Size) {
+            if (m_ParamType->Valid && m_ParamType->DeleteFunction) {
+                m_ParamType->DeleteFunction(this);
+            }
 
-        // Free current buffer
+            delete[] m_Buffer;
+
+            m_ParamType = pm->GetParameterTypeDescription(paramGUID);
+
+            if (m_ParamType) {
+                m_Size = m_ParamType->DefaultSize;
+                if (m_Size > 0) {
+                    m_Buffer = new CKBYTE[m_Size];
+                    memset(m_Buffer, 0, m_Size);
+                } else {
+                    m_Buffer = nullptr;
+                }
+
+                if (m_ParamType->CreateDefaultFunction) {
+                    m_ParamType->CreateDefaultFunction(this);
+                }
+            } else {
+                m_Size = 0;
+                m_Buffer = nullptr;
+            }
+        }
+    } else {
         delete[] m_Buffer;
 
-        // Retrieve the new parameter type
         m_ParamType = pm->GetParameterTypeDescription(paramGUID);
 
-        // Allocate memory based on the new parameter type
         if (m_ParamType) {
             m_Size = m_ParamType->DefaultSize;
             if (m_Size > 0) {
@@ -408,7 +426,6 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
                 m_Buffer = nullptr;
             }
 
-            // Call CreateDefaultFunction if defined
             if (m_ParamType->CreateDefaultFunction) {
                 m_ParamType->CreateDefaultFunction(this);
             }
@@ -421,8 +438,7 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
     // Read and process data
     int paramState = chunk->ReadInt();
     if (!m_ParamType) {
-        m_Context->OutputToConsoleExBeep("%s : Unknown Parameter Type (DLL declaring this parameter may be missing)",
-                                         m_Name);
+        m_Context->OutputToConsoleExBeep("%s : Unknown Parameter Type (DLL declaring this parameter may be missing)", m_Name);
         return CKERR_INVALIDPARAMETERTYPE;
     }
 
@@ -441,40 +457,45 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
         return CK_OK;
     }
 
-    if (paramState == 2) {
-        CK_ID objID = chunk->ReadObjectID();
+    if (paramState != 1) {
+        CK_ID objID = 0;
+        if (paramState == 2) {
+            objID = chunk->ReadObjectID();
+        } else {
+            chunk->ReadInt();
+            objID = chunk->ReadInt();
+        }
         SetValue(&objID, sizeof(CK_ID));
         return CK_OK;
     }
 
-    if (paramState == 1) {
-        paramGUID = chunk->ReadGuid();
-        if (paramGUID == CKPGUID_PARAMETERTYPE) {
-            int typeID = pm->ParameterGuidToType(paramGUID);
-            SetValue(&typeID, sizeof(int));
-            return CK_OK;
-        }
-
-        char *buffer = nullptr;
-        int bufferSize = chunk->ReadBuffer((void **)&buffer);
-
-        if (paramGUID == CKPGUID_MESSAGE) {
-            CKMessageManager *msgManager = m_Context->GetMessageManager();
-            int msgType = msgManager->AddMessageType(buffer);
-            SetValue(&msgType, sizeof(int));
-        } else if (paramGUID == CKPGUID_ATTRIBUTE) {
-            CKAttributeManager *attrManager = m_Context->GetAttributeManager();
-            int attrType = attrManager->GetAttributeTypeByName(buffer);
-            SetValue(&attrType, sizeof(int));
-        } else if (paramGUID == CKPGUID_ID) {
-            int saveID = file->m_SaveIDMax;
-            SetValue(&saveID, sizeof(int));
-        } else {
-            SetValue(buffer, bufferSize);
-        }
-
-        CKDeletePointer(buffer);
+    if (paramGUID == CKPGUID_PARAMETERTYPE) {
+        CKGUID guid = chunk->ReadGuid();
+        CKParameterType typeID = pm->ParameterGuidToType(guid);
+        SetValue(&typeID, sizeof(CKParameterType));
+        return CK_OK;
     }
+
+    char *buffer = nullptr;
+    int bufferSize = chunk->ReadBuffer((void **)&buffer);
+
+    if (paramGUID == CKPGUID_OLDMESSAGE) {
+        CKMessageManager *msgManager = m_Context->GetMessageManager();
+        CKMessageType msgType = msgManager->AddMessageType(buffer);
+        SetValue(&msgType, sizeof(CKMessageType));
+    } else if (paramGUID == CKPGUID_OLDATTRIBUTE) {
+        CKAttributeManager *attrManager = m_Context->GetAttributeManager();
+        CKAttributeType attrType = attrManager->GetAttributeTypeByName(buffer);
+        SetValue(&attrType, sizeof(CKAttributeType));
+    } else if (paramGUID == CKPGUID_OLDTIME) {
+        float time = *(float *)buffer;
+        SetValue(&time, sizeof(float));
+    }
+
+    if ((m_ParamType->dwFlags & CKPARAMETERTYPE_VARIABLESIZE) != 0 || buffer && bufferSize > 0)
+        SetValue(buffer, bufferSize);
+
+    CKDeletePointer(buffer);
 
     return CK_OK;
 }
