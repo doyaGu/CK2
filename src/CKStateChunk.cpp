@@ -1323,9 +1323,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
     Clear();
     int val = buf[pos++];
     m_DataVersion = (short) (val & 0x0000FFFF);
-    m_DataVersion &= 0x00FF;
     m_ChunkVersion = (short) ((val & 0xFFFF0000) >> 16);
-    m_ChunkVersion &= 0x00FF;
 
     if (m_ChunkVersion < CHUNK_VERSION2) {
         m_ChunkClassID = buf[pos++];
@@ -1476,6 +1474,8 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
             }
         }
 
+        m_DataVersion &= 0x00FF;
+        m_ChunkVersion &= 0x00FF;
         return TRUE;
     }
 
