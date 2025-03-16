@@ -28,7 +28,7 @@ CKERROR CKBehaviorLink::SetOutBehaviorIO(CKBehaviorIO *ckbioout) {
     if (!ckbioout)
         return CKERR_INVALIDPARAMETER;
 
-    m_InIO = ckbioout;
+    m_OutIO = ckbioout;
     return CK_OK;
 }
 
