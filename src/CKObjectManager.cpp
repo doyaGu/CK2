@@ -99,7 +99,7 @@ CKERROR CKObjectManager::ClearAllObjects() {
 
                 CKMaterial *mat = rc->GetBackgroundMaterial();
                 if (mat) {
-                    mat->SetTexture(nullptr);
+                    mat->SetTexture0(nullptr);
                     objs.Set(mat->GetID());
                     mat->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
                 }

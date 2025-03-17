@@ -424,7 +424,7 @@ void CKScene::ApplyEnvironmentSettings(XObjectPointerArray *renderContexts) {
 
             // Set background texture
             CKTexture *bgTexture = GetBackgroundTexture();
-            bgMaterial->SetTexture(bgTexture);
+            bgMaterial->SetTexture0(bgTexture);
         }
 
         // 3. Configure fog settings
@@ -930,8 +930,8 @@ CKERROR CKScene::Load(CKStateChunk *chunk, CKFile *file) {
         }
 
         if (chunk->SeekIdentifier(CK_STATESAVE_SCENERENDERSETTINGS)) {
-            m_BackgroundColor = chunk->ReadInt();
-            m_AmbientLightColor = chunk->ReadInt();
+            m_BackgroundColor = chunk->ReadDword();
+            m_AmbientLightColor = chunk->ReadDword();
 
             m_FogMode = (VXFOG_MODE)chunk->ReadDword();
             m_FogColor = chunk->ReadDword();
