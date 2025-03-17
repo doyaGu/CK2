@@ -339,7 +339,7 @@ void CKBeObject::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjec
 
     for (auto it = m_ScriptArray->Begin(); it != m_ScriptArray->End();) {
         CKBehavior *script = (CKBehavior *)*it;
-        if (script && (script->GetFlags() & CKBEHAVIOR_SCRIPT)) {
+        if (script && (script->GetFlags() & CKBEHAVIOR_SCRIPT) == 0) {
             WarningForOlderVersion = TRUE;
             it = m_ScriptArray->Remove(script);
         } else {
