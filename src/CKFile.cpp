@@ -1473,10 +1473,19 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
         for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_INTERFACEOBJECTMANAGER].Begin();
              iit != m_IndexByClassId[CKCID_INTERFACEOBJECTMANAGER].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
-            /*CKInterfaceObjectManager *obj = (CKInterfaceObjectManager *) it->ObjPtr;
+            CKInterfaceObjectManager *obj = (CKInterfaceObjectManager *) it->ObjPtr;
             if (obj && list) {
                 list->InsertRear(obj);
-            }*/
+            }
+        }
+
+        for (XArray<CKFileObject>::Iterator it = m_FileObjects.Begin(); it != m_FileObjects.End(); ++it) {
+            if (it->ObjPtr && it->Data && it->Options == CKFileObject::CK_FO_DEFAULT) {
+                if (CKIsChildClassOf(it->ObjectCid, CKCID_BEOBJECT)) {
+                    CKBeObject *beo = (CKBeObject *) it->ObjPtr;
+                    beo->ApplyOwner();
+                }
+            }
         }
 
         for (XArray<CKFileObject>::Iterator it = m_FileObjects.Begin(); it != m_FileObjects.End(); ++it) {
