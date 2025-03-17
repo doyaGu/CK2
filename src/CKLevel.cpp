@@ -413,7 +413,7 @@ CKStateChunk *CKLevel::Save(CKFile *file, CKDWORD flags) {
 }
 
 CKERROR CKLevel::Load(CKStateChunk *chunk, CKFile *file) {
-    if (file)
+    if (!file)
         return CK_OK;
     if (!chunk)
         return CKERR_INVALIDPARAMETER;
