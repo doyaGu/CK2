@@ -1372,8 +1372,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETER].Begin(); iit != m_IndexByClassId[
-                 CKCID_PARAMETER].End(); ++iit) {
+        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETER].Begin(); iit != m_IndexByClassId[CKCID_PARAMETER].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
             if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
                 continue;
