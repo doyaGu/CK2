@@ -290,7 +290,7 @@ void CKLevel::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects)
         if (!script)
             continue;
 
-        int sceneInCount = GetSceneInCount();
+        const int sceneInCount = GetSceneInCount();
         for (int s = 0; s < sceneInCount; ++s) {
             CKScene *scene = GetSceneIn(s);
             if (!scene->GetSceneObjectDesc(script)) {
@@ -307,21 +307,25 @@ void CKLevel::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects)
         if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
             CKBehavior *beh = (CKBehavior *)obj;
             CKBeObject *owner = beh->GetOwner();
-            if (owner && beh->GetFlags() & CKBEHAVIOR_SCRIPT) {
-                bool found = false;
-                for (int i = 0; i < owner->GetScriptCount(); ++i) {
-                    if (owner->GetScript(i) == beh) {
-                        found = true;
-                        break;
+            if (owner) {
+                if (beh->GetFlags() & CKBEHAVIOR_SCRIPT) {
+                    bool found = false;
+                    for (int i = 0; i < owner->GetScriptCount(); ++i) {
+                        if (owner->GetScript(i) == beh) {
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (!found) {
-                    scriptsToRemove.PushBack(beh->GetID());
+                    if (!found) {
+                        scriptsToRemove.PushBack(beh->GetID());
+                    }
                 }
             } else {
                 scriptsToRemove.PushBack(beh->GetID());
             }
         }
+
+        it++;
     }
 
     if (scriptsToRemove.Size() > 0) {
