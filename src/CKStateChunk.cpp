@@ -439,9 +439,27 @@ void CKStateChunk::WriteManagerInt(CKGUID Manager, int val) {
 
 void CKStateChunk::WriteArray_LEndian(int elementCount, int elementSize, void *srcData) {
     if (srcData && elementCount > 0 && elementSize > 0) {
+        // Check for integer overflow in total bytes calculation
+        if (elementCount > INT_MAX / elementSize) {
+            // Handle overflow
+            CheckSize(8);
+            m_Data[m_ChunkParser->CurrentPos++] = 0;
+            m_Data[m_ChunkParser->CurrentPos++] = 0;
+            return;
+        }
+
         // Calculate total bytes and required dword count (rounding up)
         const int totalBytes = elementSize * elementCount;
         const int dwordCount = (totalBytes + 3) / 4; // Convert bytes to 4-byte dwords
+
+        // Check for overflow in CheckSize calculation
+        if ((8 + (dwordCount * 4)) < 8) {
+            // Handle overflow
+            CheckSize(8);
+            m_Data[m_ChunkParser->CurrentPos++] = 0;
+            m_Data[m_ChunkParser->CurrentPos++] = 0;
+            return;
+        }
 
         // Ensure buffer has space for: [totalBytes (int)] + [count (int)] + data
         CheckSize(8 + (dwordCount * 4)); // 8 bytes header + data size
@@ -491,6 +509,12 @@ int CKStateChunk::ReadArray_LEndian(void **array) {
             // Calculate needed dwords (4-byte chunks)
             const int dwordCount = (dataSizeBytes + 3) / 4;
 
+            // Bounds check before allocation
+            if (parser->CurrentPos + dwordCount > m_ChunkSize) {
+                *array = NULL;
+                return 0;
+            }
+
             // Allocate and check allocation success
             void *arrayData = new CKBYTE[dataSizeBytes];
             if (!arrayData) {
@@ -498,19 +522,11 @@ int CKStateChunk::ReadArray_LEndian(void **array) {
                 return 0;
             }
 
-            // Bounds check
-            if (parser->CurrentPos + dwordCount <= m_ChunkSize) {
-                memcpy(arrayData, &m_Data[parser->CurrentPos], dataSizeBytes);
-                // Update parser position
-                parser->CurrentPos += dwordCount;
-                *array = arrayData;
-                return elementCount;
-            } else {
-                // Free memory and return error if bounds check fails
-                delete[] arrayData;
-                *array = NULL;
-                return 0;
-            }
+            memcpy(arrayData, &m_Data[parser->CurrentPos], dataSizeBytes);
+            // Update parser position
+            parser->CurrentPos += dwordCount;
+            *array = arrayData;
+            return elementCount;
         }
 
         // Invalid size parameters
