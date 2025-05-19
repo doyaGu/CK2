@@ -46,7 +46,7 @@ int CKObjectManager::GetObjectsCount() {
     return m_ObjectsCount;
 }
 
-CKObject *CKObjectManager::GetObjectA(CK_ID id) {
+CKObject *CKObjectManager::GetObject(CK_ID id) {
     return m_Objects[id];
 }
 
