@@ -1764,10 +1764,15 @@ void CKStateChunk::Pack(int CompressionLevel) {
     uLongf srcSize = m_ChunkSize * sizeof(int);
     uLongf destSize = srcSize;
     Bytef *buf = new Bytef[destSize];
+    if (!buf) return;
 
     if (compress2(buf, &destSize, (const Bytef *) m_Data, srcSize, CompressionLevel) == Z_OK) {
         // Allocate just enough memory for the compressed data
         Bytef *data = new Bytef[destSize];
+        if (!data) {
+            delete[] buf;
+            return;
+        }
         // Copy from buf (compressed data), not m_Data
         memcpy(data, buf, destSize);
         delete[] m_Data;
@@ -1779,9 +1784,11 @@ void CKStateChunk::Pack(int CompressionLevel) {
 }
 
 CKBOOL CKStateChunk::UnPack(int DestSize) {
+    if (DestSize <= 0) return FALSE;
+
     uLongf size = DestSize;
     Bytef *buf = new Bytef[DestSize];
-    if (!buf) return FALSE;  // Check allocation
+    if (!buf) return FALSE;
 
     int err = uncompress(buf, &size, (const Bytef *) m_Data, m_ChunkSize * sizeof(int));
     if (err == Z_OK) {
