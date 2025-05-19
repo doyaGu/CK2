@@ -51,9 +51,13 @@ add_compile_definitions(
 		$<$<C_COMPILER_ID:MSVC>:_CRT_NONSTDC_NO_WARNINGS>
 )
 
+option(CK2_BUILD_TESTS "Build the test suite" OFF)
+
 set(CK2_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 set(CK2_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 
 add_subdirectory(deps)
 add_subdirectory(src)
-
+if (CK2_BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()
