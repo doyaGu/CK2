@@ -15,7 +15,7 @@ public:
     CKDWORD m_Flags;
 };
 
-class CKObjectManager : public CKBaseManager
+class DLL_EXPORT CKObjectManager : public CKBaseManager
 {
 public:
     int ObjectsByClass(CK_CLASSID cid, CKBOOL derived, CK_ID *obj_ids);
@@ -92,6 +92,7 @@ public:
     void AddSingleObjectActivity(CKSceneObject *o, CK_ID id);
     int GetSingleObjectActivity(CKSceneObject *o, CK_ID &id);
 
+public:
     int m_ObjectsCount;
     CKObject **m_Objects;
     XClassArray<XObjectArray> m_ObjectLists;

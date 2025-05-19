@@ -16,7 +16,7 @@ Remarks:
 
   See also: CK3dEntity, CKRenderContext,CK2dEntity
 *******************************************************************************/
-class CKRenderObject : public CKBeObject
+class DLL_EXPORT CKRenderObject : public CKBeObject
 {
 public:
     /*************************************************

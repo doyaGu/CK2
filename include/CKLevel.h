@@ -24,7 +24,7 @@ objects such as how do they behave at startup or initial conditions.
 
 See also: CKContext::GetCurrentLevel,CKScene
 *************************************************/
-class DLL_EXPORT CKLevel : public CKBeObject
+class CKLevel : public CKBeObject
 {
     friend class CKScene;
     friend class CKContext;
@@ -33,55 +33,55 @@ public:
     //-----------------------------------------------------
     //	Object Management
     //  Object are directly inserted or removed from the level Scene
-    CKERROR AddObject(CKObject *obj);
-    CKERROR RemoveObject(CKObject *obj);
-    CKERROR RemoveObject(CK_ID objID);
-    void BeginAddSequence(CKBOOL Begin);
-    void BeginRemoveSequence(CKBOOL Begin);
+    DLL_EXPORT CKERROR AddObject(CKObject *obj);
+    DLL_EXPORT CKERROR RemoveObject(CKObject *obj);
+    DLL_EXPORT CKERROR RemoveObject(CK_ID objID);
+    DLL_EXPORT void BeginAddSequence(CKBOOL Begin);
+    DLL_EXPORT void BeginRemoveSequence(CKBOOL Begin);
 
     //--------------------------------------------------------
     // Return the list of object ( owned by this level )
-    const XObjectPointerArray &ComputeObjectList(CK_CLASSID cid, CKBOOL derived = TRUE);
+    DLL_EXPORT const XObjectPointerArray &ComputeObjectList(CK_CLASSID cid, CKBOOL derived = TRUE);
 
     //----------------------------------------------------------
     // Place Management
-    CKERROR AddPlace(CKPlace *pl);
-    CKERROR RemovePlace(CKPlace *pl);
-    CKPlace *RemovePlace(int pos);
-    CKPlace *GetPlace(int pos);
-    int GetPlaceCount();
+    DLL_EXPORT CKERROR AddPlace(CKPlace *pl);
+    DLL_EXPORT CKERROR RemovePlace(CKPlace *pl);
+    DLL_EXPORT CKPlace *RemovePlace(int pos);
+    DLL_EXPORT CKPlace *GetPlace(int pos);
+    DLL_EXPORT int GetPlaceCount();
 
     //-----------------------------------------------------------
     // Scene Management
-    CKERROR AddScene(CKScene *scn);
-    CKERROR RemoveScene(CKScene *scn);
-    CKScene *RemoveScene(int pos);
-    CKScene *GetScene(int pos);
-    int GetSceneCount();
+    DLL_EXPORT CKERROR AddScene(CKScene *scn);
+    DLL_EXPORT CKERROR RemoveScene(CKScene *scn);
+    DLL_EXPORT CKScene *RemoveScene(int pos);
+    DLL_EXPORT CKScene *GetScene(int pos);
+    DLL_EXPORT int GetSceneCount();
 
     //-----------------------------------------------------------
     // Active Scene
-    CKERROR SetNextActiveScene(CKScene *, CK_SCENEOBJECTACTIVITY_FLAGS Active = CK_SCENEOBJECTACTIVITY_SCENEDEFAULT,
+    DLL_EXPORT CKERROR SetNextActiveScene(CKScene *, CK_SCENEOBJECTACTIVITY_FLAGS Active = CK_SCENEOBJECTACTIVITY_SCENEDEFAULT,
                                CK_SCENEOBJECTRESET_FLAGS Reset = CK_SCENEOBJECTRESET_RESET);
 
-    CKERROR LaunchScene(CKScene *, CK_SCENEOBJECTACTIVITY_FLAGS Active = CK_SCENEOBJECTACTIVITY_SCENEDEFAULT,
+    DLL_EXPORT CKERROR LaunchScene(CKScene *, CK_SCENEOBJECTACTIVITY_FLAGS Active = CK_SCENEOBJECTACTIVITY_SCENEDEFAULT,
                         CK_SCENEOBJECTRESET_FLAGS Reset = CK_SCENEOBJECTRESET_RESET);
-    CKScene *GetCurrentScene();
+    DLL_EXPORT CKScene *GetCurrentScene();
 
     //----------------------------------------------------------
     //	Render Context functions
-    void AddRenderContext(CKRenderContext *, CKBOOL Main = FALSE);
-    void RemoveRenderContext(CKRenderContext *);
-    int GetRenderContextCount();
-    CKRenderContext *GetRenderContext(int count);
+    DLL_EXPORT void AddRenderContext(CKRenderContext *, CKBOOL Main = FALSE);
+    DLL_EXPORT void RemoveRenderContext(CKRenderContext *);
+    DLL_EXPORT int GetRenderContextCount();
+    DLL_EXPORT CKRenderContext *GetRenderContext(int count);
 
     //-----------------------------------------------------------
     //	Main Scene for this Level
-    CKScene *GetLevelScene();
+    DLL_EXPORT CKScene *GetLevelScene();
 
     //-----------------------------------------------------------
     //	Merge
-    CKERROR Merge(CKLevel *mergedLevel, CKBOOL asScene);
+    DLL_EXPORT CKERROR Merge(CKLevel *mergedLevel, CKBOOL asScene);
 
 #ifndef NO_OLDERVERSION_COMPATIBILITY
     virtual void ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects);
@@ -89,23 +89,23 @@ public:
 
     //-------------------------------------------------------------------
 
-    CKLevel(CKContext *Context, CKSTRING name = NULL);
-    virtual ~CKLevel();
-    virtual CK_CLASSID GetClassID();
+    DLL_EXPORT CKLevel(CKContext *Context, CKSTRING name = NULL);
+    DLL_EXPORT virtual ~CKLevel();
+    DLL_EXPORT virtual CK_CLASSID GetClassID();
 
-    virtual void PreSave(CKFile *file, CKDWORD flags);
-    virtual CKStateChunk *Save(CKFile *file, CKDWORD flags);
-    virtual CKERROR Load(CKStateChunk *chunk, CKFile *file);
+    DLL_EXPORT virtual void PreSave(CKFile *file, CKDWORD flags);
+    DLL_EXPORT virtual CKStateChunk *Save(CKFile *file, CKDWORD flags);
+    DLL_EXPORT virtual CKERROR Load(CKStateChunk *chunk, CKFile *file);
 
-    virtual void CheckPreDeletion();
-    virtual void CheckPostDeletion();
+    DLL_EXPORT virtual void CheckPreDeletion();
+    DLL_EXPORT virtual void CheckPostDeletion();
 
-    virtual int GetMemoryOccupation();
-    virtual int IsObjectUsed(CKObject *o, CK_CLASSID cid);
+    DLL_EXPORT virtual int GetMemoryOccupation();
+    DLL_EXPORT virtual int IsObjectUsed(CKObject *o, CK_CLASSID cid);
 
     //--------------------------------------------
     // Dependencies Functions
-    virtual CKERROR PrepareDependencies(CKDependenciesContext &context);
+    DLL_EXPORT virtual CKERROR PrepareDependencies(CKDependenciesContext &context);
 
     //--------------------------------------------
     // Class Registering
@@ -125,10 +125,10 @@ public:
     virtual void AddToScene(CKScene *scene, CKBOOL dependencies = TRUE);
     virtual void RemoveFromScene(CKScene *scene, CKBOOL dependencies = TRUE);
 
-    void Reset();
-    void ActivateAllScript();
-    void CreateLevelScene();
-    void PreProcess();
+    DLL_EXPORT void Reset();
+    DLL_EXPORT void ActivateAllScript();
+    DLL_EXPORT void CreateLevelScene();
+    DLL_EXPORT void PreProcess();
 
 protected:
     XObjectPointerArray m_SceneList;

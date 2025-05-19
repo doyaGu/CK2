@@ -19,7 +19,7 @@ onto the output parameter. To have the list and definition of predefined paramet
 
 See also: CKBehavior, CKParameterIn, CKParameterOperation
 **********************************************************************************/
-class DLL_EXPORT CKParameter : public CKObject
+class CKParameter : public CKObject
 {
     friend class CKParameterIn;
     friend class CKParameterManager;
@@ -28,17 +28,17 @@ public:
     //--------------------------------------------
     // Value
 
-    CKObject *GetValueObject(CKBOOL update = TRUE);
+    DLL_EXPORT CKObject *GetValueObject(CKBOOL update = TRUE);
 
     virtual CKERROR GetValue(void *buf, CKBOOL update = TRUE);
     virtual CKERROR SetValue(const void *buf, int size = 0);
     virtual CKERROR CopyValue(CKParameter *param, CKBOOL UpdateParam = TRUE);
 
-    CKBOOL IsCompatibleWith(CKParameter *param);
+    DLL_EXPORT CKBOOL IsCompatibleWith(CKParameter *param);
 
     //--------------------------------------------
     // Data pointer
-    int GetDataSize();
+    DLL_EXPORT int GetDataSize();
     virtual void *GetReadDataPtr(CKBOOL update = TRUE);
     virtual void *GetWriteDataPtr();
 
@@ -49,24 +49,24 @@ public:
 
     //--------------------------------------------
     // Type
-    CKParameterType GetType();
-    void SetType(CKParameterType type);
-    CKGUID GetGUID();
-    void SetGUID(CKGUID guid);
-    CK_CLASSID GetParameterClassID();
+    DLL_EXPORT CKParameterType GetType();
+    DLL_EXPORT void SetType(CKParameterType type);
+    DLL_EXPORT CKGUID GetGUID();
+    DLL_EXPORT void SetGUID(CKGUID guid);
+    DLL_EXPORT CK_CLASSID GetParameterClassID();
 
     //--------------------------------------------
     // Owner
     virtual void SetOwner(CKObject *o);
-    CKObject *GetOwner();
+    DLL_EXPORT CKObject *GetOwner();
 
     //--------------------------------------------
     // Disabled parameters in behaviors
 
     //-------------------------------------------------------------------
 
-    void Enable(CKBOOL act = TRUE);
-    CKBOOL IsEnabled();
+    DLL_EXPORT void Enable(CKBOOL act = TRUE);
+    DLL_EXPORT CKBOOL IsEnabled();
 
     //--------------------------------------------
     // Virtual functions

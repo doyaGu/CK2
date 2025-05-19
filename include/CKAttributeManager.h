@@ -57,7 +57,7 @@ new type of attribute may be accessed by name or by the unique index returned by
 + See the Using attributes paper for more detail on how to use attributes.
 See also: CKBeObject::SetAttribute,CKBeObject,CKParameterManager,Using Attributes
 ***********************************************************************/
-class DLL_EXPORT CKAttributeManager : public CKBaseManager
+class CKAttributeManager : public CKBaseManager
 {
     friend class CKPluginManager;
     friend class CKFile;
@@ -65,75 +65,75 @@ class DLL_EXPORT CKAttributeManager : public CKBaseManager
 public:
     //-------------------------------------------------------------------
     // Registration
-    CKAttributeType RegisterNewAttributeType(CKSTRING Name, CKGUID ParameterType, CK_CLASSID CompatibleCid = CKCID_BEOBJECT, CK_ATTRIBUT_FLAGS flags = CK_ATTRIBUT_SYSTEM);
-    void UnRegisterAttribute(CKAttributeType AttribType);
-    void UnRegisterAttribute(CKSTRING atname);
+    DLL_EXPORT CKAttributeType RegisterNewAttributeType(CKSTRING Name, CKGUID ParameterType, CK_CLASSID CompatibleCid = CKCID_BEOBJECT, CK_ATTRIBUT_FLAGS flags = CK_ATTRIBUT_SYSTEM);
+    DLL_EXPORT void UnRegisterAttribute(CKAttributeType AttribType);
+    DLL_EXPORT void UnRegisterAttribute(CKSTRING atname);
 
-    CKSTRING GetAttributeNameByType(CKAttributeType AttribType);
-    CKAttributeType GetAttributeTypeByName(CKSTRING AttribName);
+    DLL_EXPORT CKSTRING GetAttributeNameByType(CKAttributeType AttribType);
+    DLL_EXPORT CKAttributeType GetAttributeTypeByName(CKSTRING AttribName);
 
-    void SetAttributeNameByType(CKAttributeType AttribType, CKSTRING name);
+    DLL_EXPORT void SetAttributeNameByType(CKAttributeType AttribType, CKSTRING name);
 
-    int GetAttributeCount();
+    DLL_EXPORT int GetAttributeCount();
 
     //-------------------------------------------------------------------
     // Attribute Parameter
-    CKGUID GetAttributeParameterGUID(CKAttributeType AttribType);
-    CKParameterType GetAttributeParameterType(CKAttributeType AttribType);
+    DLL_EXPORT CKGUID GetAttributeParameterGUID(CKAttributeType AttribType);
+    DLL_EXPORT CKParameterType GetAttributeParameterType(CKAttributeType AttribType);
 
     //-------------------------------------------------------------------
     // Attribute Compatible Class Id
-    CK_CLASSID GetAttributeCompatibleClassId(CKAttributeType AttribType);
+    DLL_EXPORT CK_CLASSID GetAttributeCompatibleClassId(CKAttributeType AttribType);
 
     //-------------------------------------------------------------------
     // Attribute Flags
-    CKBOOL IsAttributeIndexValid(CKAttributeType index);
-    CKBOOL IsCategoryIndexValid(CKAttributeCategory index);
+    DLL_EXPORT CKBOOL IsAttributeIndexValid(CKAttributeType index);
+    DLL_EXPORT CKBOOL IsCategoryIndexValid(CKAttributeCategory index);
 
     //-------------------------------------------------------------------
     // Attribute Flags
-    CK_ATTRIBUT_FLAGS GetAttributeFlags(CKAttributeType AttribType);
+    DLL_EXPORT CK_ATTRIBUT_FLAGS GetAttributeFlags(CKAttributeType AttribType);
 
     //-------------------------------------------------------------------
     // Attribute Callback
-    void SetAttributeCallbackFunction(CKAttributeType AttribType, CKATTRIBUTECALLBACK fct, void *arg);
+    DLL_EXPORT void SetAttributeCallbackFunction(CKAttributeType AttribType, CKATTRIBUTECALLBACK fct, void *arg);
 
     //-------------------------------------------------------------------
     // Attribute Default Value
-    void SetAttributeDefaultValue(CKAttributeType AttribType, CKSTRING DefaultVal);
-    CKSTRING GetAttributeDefaultValue(CKAttributeType AttribType);
+    DLL_EXPORT void SetAttributeDefaultValue(CKAttributeType AttribType, CKSTRING DefaultVal);
+    DLL_EXPORT CKSTRING GetAttributeDefaultValue(CKAttributeType AttribType);
 
     //-------------------------------------------------------------------
     // Group By Attributes
-    const XObjectPointerArray &GetAttributeListPtr(CKAttributeType AttribType);
-    const XObjectPointerArray &GetGlobalAttributeListPtr(CKAttributeType AttribType);
+    DLL_EXPORT const XObjectPointerArray &GetAttributeListPtr(CKAttributeType AttribType);
+    DLL_EXPORT const XObjectPointerArray &GetGlobalAttributeListPtr(CKAttributeType AttribType);
 
-    const XObjectPointerArray &FillListByAttributes(CKAttributeType *ListAttrib, int AttribCount);
-    const XObjectPointerArray &FillListByGlobalAttributes(CKAttributeType *ListAttrib, int AttribCount);
+    DLL_EXPORT const XObjectPointerArray &FillListByAttributes(CKAttributeType *ListAttrib, int AttribCount);
+    DLL_EXPORT const XObjectPointerArray &FillListByGlobalAttributes(CKAttributeType *ListAttrib, int AttribCount);
 
     //----------------------------------------------------------------
     // Categories...
-    int GetCategoriesCount();
-    CKSTRING GetCategoryName(CKAttributeCategory index);
-    CKAttributeCategory GetCategoryByName(CKSTRING Name);
+    DLL_EXPORT int GetCategoriesCount();
+    DLL_EXPORT CKSTRING GetCategoryName(CKAttributeCategory index);
+    DLL_EXPORT CKAttributeCategory GetCategoryByName(CKSTRING Name);
 
-    void SetCategoryName(CKAttributeCategory catType, CKSTRING name);
+    DLL_EXPORT void SetCategoryName(CKAttributeCategory catType, CKSTRING name);
 
-    CKAttributeCategory AddCategory(CKSTRING Category, CKDWORD flags = 0);
-    void RemoveCategory(CKSTRING Category);
+    DLL_EXPORT CKAttributeCategory AddCategory(CKSTRING Category, CKDWORD flags = 0);
+    DLL_EXPORT void RemoveCategory(CKSTRING Category);
 
-    CKDWORD GetCategoryFlags(CKAttributeCategory cat);
-    CKDWORD GetCategoryFlags(CKSTRING cat);
+    DLL_EXPORT CKDWORD GetCategoryFlags(CKAttributeCategory cat);
+    DLL_EXPORT CKDWORD GetCategoryFlags(CKSTRING cat);
 
     //-----------------------------------------------------------------
     // Attribute Category
-    void SetAttributeCategory(CKAttributeType AttribType, CKSTRING Category);
-    CKSTRING GetAttributeCategory(CKAttributeType AttribType);
-    CKAttributeCategory GetAttributeCategoryIndex(CKAttributeType AttribType);
+    DLL_EXPORT void SetAttributeCategory(CKAttributeType AttribType, CKSTRING Category);
+    DLL_EXPORT CKSTRING GetAttributeCategory(CKAttributeType AttribType);
+    DLL_EXPORT CKAttributeCategory GetAttributeCategoryIndex(CKAttributeType AttribType);
 
-    void AddAttributeToObject(CKAttributeType AttribType, CKBeObject *beo);
+    DLL_EXPORT void AddAttributeToObject(CKAttributeType AttribType, CKBeObject *beo);
 
-    void RefreshList(CKObject *obj, CKScene *scene);
+    DLL_EXPORT void RefreshList(CKObject *obj, CKScene *scene);
 
     //-------------------------------------------------------------------
     //-------------------------------------------------------------------
@@ -141,17 +141,17 @@ public:
     //-------------------------------------------------------------------
     //-------------------------------------------------------------------
 
-    CKPluginEntry *GetCreatorDll(int pos);
+    DLL_EXPORT CKPluginEntry *GetCreatorDll(int pos);
 
-    void NewActiveScene(CKScene *scene);
+    DLL_EXPORT void NewActiveScene(CKScene *scene);
 
-    void ObjectAddedToScene(CKBeObject *beo, CKScene *scene);
-    void ObjectRemovedFromScene(CKBeObject *beo, CKScene *scene);
+    DLL_EXPORT void ObjectAddedToScene(CKBeObject *beo, CKScene *scene);
+    DLL_EXPORT void ObjectRemovedFromScene(CKBeObject *beo, CKScene *scene);
 
-    void RemoveAttributeFromObject(CKBeObject *beo);
+    DLL_EXPORT void RemoveAttributeFromObject(CKBeObject *beo);
 
-    void PatchRemapBeObjectFileChunk(CKStateChunk *chunk);
-    void PatchRemapBeObjectStateChunk(CKStateChunk *chunk);
+    DLL_EXPORT void PatchRemapBeObjectFileChunk(CKStateChunk *chunk);
+    DLL_EXPORT void PatchRemapBeObjectStateChunk(CKStateChunk *chunk);
 
     CKAttributeManager(CKContext *Context);
 

@@ -22,153 +22,153 @@ panning and volume control.
 + Its class id is CKCID_WAVESOUND
 See also: CKMidiSound,CKSoundManager
 ******************************************************************************/
-class DLL_EXPORT CKWaveSound : public CKSound
+class CKWaveSound : public CKSound
 {
     friend class CKSoundManager;
 
 public:
     //-----------------------------------------------------
     // Sound Duplication for Instance Playing
-    CKSOUNDHANDLE PlayMinion(CKBOOL Background = TRUE, CK3dEntity *Ent = NULL, VxVector *Position = NULL, VxVector *Direction = NULL, float MinDelay = 0.0f);
+    DLL_EXPORT CKSOUNDHANDLE PlayMinion(CKBOOL Background = TRUE, CK3dEntity *Ent = NULL, VxVector *Position = NULL, VxVector *Direction = NULL, float MinDelay = 0.0f);
 
     //---------------------------------------------------------
     // Associated filename
-    CKERROR SetSoundFileName(const CKSTRING FileName);
-    CKSTRING GetSoundFileName();
+    DLL_EXPORT CKERROR SetSoundFileName(const CKSTRING FileName);
+    DLL_EXPORT CKSTRING GetSoundFileName();
 
     //----------------------------------------------------------
     // Parameter PCM
-    int GetSoundLength();
-    CKERROR GetSoundFormat(CKWaveFormat &Format);
+    DLL_EXPORT int GetSoundLength();
+    DLL_EXPORT CKERROR GetSoundFormat(CKWaveFormat &Format);
     //----------------------------------------------------------
     // Sound Type
-    CK_WAVESOUND_TYPE GetType();
-    void SetType(CK_WAVESOUND_TYPE Type);
+    DLL_EXPORT CK_WAVESOUND_TYPE GetType();
+    DLL_EXPORT void SetType(CK_WAVESOUND_TYPE Type);
     //----------------------------------------------------------
     // Sound State
-    CKDWORD GetState();
-    void SetState(CKDWORD State);
+    DLL_EXPORT CKDWORD GetState();
+    DLL_EXPORT void SetState(CKDWORD State);
 
     //----------------------------------------------------------
     // Priority of the sound : between 0.0(lowest) and 1.0(highest). Default is 0.5
-    void SetPriority(float Priority);
-    float GetPriority();
+    DLL_EXPORT void SetPriority(float Priority);
+    DLL_EXPORT float GetPriority();
 
     //----------------------------------------------------------
     // Activation of the loop mode : TOSETUP
-    void SetLoopMode(CKBOOL Enabled);
-    CKBOOL GetLoopMode();
+    DLL_EXPORT void SetLoopMode(CKBOOL Enabled);
+    DLL_EXPORT CKBOOL GetLoopMode();
 
     //----------------------------------------------------------
     // File Streaming
-    CKERROR SetFileStreaming(CKBOOL Enabled, CKBOOL RecreateSound = FALSE);
-    CKBOOL GetFileStreaming();
+    DLL_EXPORT CKERROR SetFileStreaming(CKBOOL Enabled, CKBOOL RecreateSound = FALSE);
+    DLL_EXPORT CKBOOL GetFileStreaming();
 
     //-----------------------------------------------------
     // PlayBack Control
     // plays the sound with a faded
-    void Play(float FadeIn = 0, float FinalGain = 1.0f);
-    void Resume();
-    void Rewind();
+    DLL_EXPORT void Play(float FadeIn = 0, float FinalGain = 1.0f);
+    DLL_EXPORT void Resume();
+    DLL_EXPORT void Rewind();
 
     //----------------------------------------------------------
     // Stops the sound with a fade
-    void Stop(float FadeOut = 0);
+    DLL_EXPORT void Stop(float FadeOut = 0);
 
-    void Pause();
+    DLL_EXPORT void Pause();
 
     //----------------------------------------------------------
-    CKBOOL IsPlaying();
-    CKBOOL IsPaused();
+    DLL_EXPORT CKBOOL IsPlaying();
+    DLL_EXPORT CKBOOL IsPaused();
 
     //------------------------------------------------
     // 2D/3D Members Functions
 
     // Sets and gets the playback gain of a source. 0.....1.0
-    void SetGain(float Gain);
-    float GetGain();
+    DLL_EXPORT void SetGain(float Gain);
+    DLL_EXPORT float GetGain();
     //----------------------------------------------------------
     // Sets and gets the playback pitch bend of a source. 0.5....2.0
-    void SetPitch(float Rate);
-    float GetPitch();
+    DLL_EXPORT void SetPitch(float Rate);
+    DLL_EXPORT float GetPitch();
     //----------------------------------------------------------
     // Sets the gains for multichannel, non-specialized sources. -1.0....1.0 default(0.0)
-    void SetPan(float Pan);
-    float GetPan();
+    DLL_EXPORT void SetPan(float Pan);
+    DLL_EXPORT float GetPan();
 
-    CKSOUNDHANDLE GetSource();
+    DLL_EXPORT CKSOUNDHANDLE GetSource();
     //----------------------------------------------------------
     // 3D Members Functions
 
     //----------------------------------------------------------
     // Attach the sound to an object : TOSETUP
-    void PositionSound(CK3dEntity *Object, VxVector *Position = NULL, VxVector *Direction = NULL, CKBOOL Commit = FALSE);
-    CK3dEntity *GetAttachedEntity();
-    void GetPosition(VxVector &Pos);
-    void GetDirection(VxVector &Dir);
-    void GetSound3DInformation(VxVector &Pos, VxVector &Dir, float &DistanceFromListener);
+    DLL_EXPORT void PositionSound(CK3dEntity *Object, VxVector *Position = NULL, VxVector *Direction = NULL, CKBOOL Commit = FALSE);
+    DLL_EXPORT CK3dEntity *GetAttachedEntity();
+    DLL_EXPORT void GetPosition(VxVector &Pos);
+    DLL_EXPORT void GetDirection(VxVector &Dir);
+    DLL_EXPORT void GetSound3DInformation(VxVector &Pos, VxVector &Dir, float &DistanceFromListener);
 
     //----------------------------------------------------------
     // Sets the directionality of a source cone. 0.....180 for the angles, gain 0....1.0 : TOSETUP
-    void SetCone(float InAngle, float OutAngle, float OutsideGain);
-    void GetCone(float *InAngle, float *OutAngle, float *OutsideGain);
+    DLL_EXPORT void SetCone(float InAngle, float OutAngle, float OutsideGain);
+    DLL_EXPORT void GetCone(float *InAngle, float *OutAngle, float *OutsideGain);
     //----------------------------------------------------------
     // Distance min/maximum de perception (maxdbehavior = 1(mute) ou 0(audible)), distances form 0.....n with max>min : TOSETUP
-    void SetMinMaxDistance(float MinDistance, float MaxDistance, CKDWORD MaxDistanceBehavior = 1);
-    void GetMinMaxDistance(float *MinDistance, float *MaxDistance, CKDWORD *MaxDistanceBehavior);
+    DLL_EXPORT void SetMinMaxDistance(float MinDistance, float MaxDistance, CKDWORD MaxDistanceBehavior = 1);
+    DLL_EXPORT void GetMinMaxDistance(float *MinDistance, float *MaxDistance, CKDWORD *MaxDistanceBehavior);
 
     // These functions are for direct access to the source : You don't have to use them normally.
     //----------------------------------------------------------
     // Velocity of the Source
-    void SetVelocity(VxVector &Pos);
-    void GetVelocity(VxVector &Pos);
+    DLL_EXPORT void SetVelocity(VxVector &Pos);
+    DLL_EXPORT void GetVelocity(VxVector &Pos);
 
     //----------------------------------------------------------
     // Orientation of the source
-    void SetOrientation(VxVector &Dir, VxVector &Up);
-    void GetOrientation(VxVector &Dir, VxVector &Up);
+    DLL_EXPORT void SetOrientation(VxVector &Dir, VxVector &Up);
+    DLL_EXPORT void GetOrientation(VxVector &Dir, VxVector &Up);
 
     //----------------------------------------------------------
     // Write Data in the sound buffer
-    CKERROR WriteData(CKBYTE *Buffer, int Buffersize);
+    DLL_EXPORT CKERROR WriteData(CKBYTE *Buffer, int Buffersize);
 
     //----------------------------------------------------------
     // Buffer access
-    CKERROR Lock(CKDWORD WriteCursor, CKDWORD NumBytes, void **Ptr1, CKDWORD *Bytes1, void **Ptr2, CKDWORD *Bytes2, CK_WAVESOUND_LOCKMODE Flags);
-    CKERROR Unlock(void *Ptr1, CKDWORD Bytes1, void *Ptr2, CKDWORD Bytes2);
+    DLL_EXPORT CKERROR Lock(CKDWORD WriteCursor, CKDWORD NumBytes, void **Ptr1, CKDWORD *Bytes1, void **Ptr2, CKDWORD *Bytes2, CK_WAVESOUND_LOCKMODE Flags);
+    DLL_EXPORT CKERROR Unlock(void *Ptr1, CKDWORD Bytes1, void *Ptr2, CKDWORD Bytes2);
 
     //----------------------------------------------------------
     // Position in the sound buffer
-    CKDWORD GetPlayPosition();
+    DLL_EXPORT CKDWORD GetPlayPosition();
 
-    int GetPlayedMs();
+    DLL_EXPORT int GetPlayedMs();
 
     //----------------------------------------------------------
     // Creation of the buffer and
-    CKERROR Create(CKBOOL FileStreaming, CKSTRING Filename);
-    CKERROR Create(CK_WAVESOUND_TYPE Type, CKWaveFormat *Format, int Size);
-    CKERROR SetReader(CKSoundReader *Reader);
-    CKSoundReader *GetReader();
+    DLL_EXPORT CKERROR Create(CKBOOL FileStreaming, CKSTRING Filename);
+    DLL_EXPORT CKERROR Create(CK_WAVESOUND_TYPE Type, CKWaveFormat *Format, int Size);
+    DLL_EXPORT CKERROR SetReader(CKSoundReader *Reader);
+    DLL_EXPORT CKSoundReader *GetReader();
 
-    void SetDataToRead(int Size);
+    DLL_EXPORT void SetDataToRead(int Size);
 
-    CKERROR Recreate(CKBOOL Safe = FALSE);
-    void Release();
+    DLL_EXPORT CKERROR Recreate(CKBOOL Safe = FALSE);
+    DLL_EXPORT void Release();
 
-    CKERROR TryRecreate();
+    DLL_EXPORT CKERROR TryRecreate();
 
     //----------------------------------------------------------
     // Update the position, according to the attached object
 
-    void UpdatePosition(float deltaT);
+    DLL_EXPORT void UpdatePosition(float deltaT);
 
     //-------------------------------------------------------------------------
     // Internal functions
 
-    void UpdateFade();
-    CKERROR WriteDataFromReader();
-    void FillWithBlanks(CKBOOL IncBf = FALSE);
-    void InternalStop();
+    DLL_EXPORT void UpdateFade();
+    DLL_EXPORT CKERROR WriteDataFromReader();
+    DLL_EXPORT void FillWithBlanks(CKBOOL IncBf = FALSE);
+    DLL_EXPORT void InternalStop();
 
     CKWaveSound(CKContext *Context, CKSTRING Name = NULL);
     virtual ~CKWaveSound();

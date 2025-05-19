@@ -52,7 +52,7 @@ three default category:
 
 See Also:CKContext::GetPathManager
 ****************************************************/
-class DLL_EXPORT CKPathManager : public CKBaseManager
+class CKPathManager : public CKBaseManager
 {
 public:
     CKPathManager(CKContext *Context);
@@ -62,65 +62,65 @@ public:
     // Category Functions
 
     // Adds a category, category name must be unique
-    int AddCategory(XString &cat);
+    DLL_EXPORT int AddCategory(XString &cat);
     // Removes a category using its name or its index in category list
-    CKERROR RemoveCategory(int catIdx);
+    DLL_EXPORT CKERROR RemoveCategory(int catIdx);
 
     // Gets the number of categories
-    int GetCategoryCount();
+    DLL_EXPORT int GetCategoryCount();
 
     // Gets the category name at specified index
-    CKERROR GetCategoryName(int catIdx, XString &catName);
+    DLL_EXPORT CKERROR GetCategoryName(int catIdx, XString &catName);
 
     // Gets the category Index in List
-    int GetCategoryIndex(XString &cat);
+    DLL_EXPORT int GetCategoryIndex(XString &cat);
 
     // Renames a category
-    CKERROR RenameCategory(int catIdx, XString &newName);
+    DLL_EXPORT CKERROR RenameCategory(int catIdx, XString &newName);
 
     // Paths Functions
 
     // Adds a path to a category
-    int AddPath(int catIdx, XString &path);
+    DLL_EXPORT int AddPath(int catIdx, XString &path);
     // Removes a path in a category
-    CKERROR RemovePath(int catIdx, int pathIdx);
+    DLL_EXPORT CKERROR RemovePath(int catIdx, int pathIdx);
 
     // Swap paths
-    CKERROR SwapPaths(int catIdx, int pathIdx1, int pathIdx2);
+    DLL_EXPORT CKERROR SwapPaths(int catIdx, int pathIdx1, int pathIdx2);
 
     // Gets the path count for a category
-    int GetPathCount(int catIdx);
+    DLL_EXPORT int GetPathCount(int catIdx);
 
     // Gets the path at index pathIdx for a category
-    CKERROR GetPathName(int catIdx, int pathIdx, XString &path);
+    DLL_EXPORT CKERROR GetPathName(int catIdx, int pathIdx, XString &path);
 
     // Gets the path at index pathIdx for a category
-    int GetPathIndex(int catIdx, XString &path);
+    DLL_EXPORT int GetPathIndex(int catIdx, XString &path);
 
     // Changes a path in a category
-    CKERROR RenamePath(int catIdx, int pathIdx, XString &path);
+    DLL_EXPORT CKERROR RenamePath(int catIdx, int pathIdx, XString &path);
 
     //--- Finding a file
 
     // Resolve File Name in the given category
-    CKERROR ResolveFileName(XString &file, int catIdx, int startIdx = -1);
+    DLL_EXPORT CKERROR ResolveFileName(XString &file, int catIdx, int startIdx = -1);
 
     //--- Utilities
 
     // Path Type
-    CKBOOL PathIsAbsolute(XString &file);
-    CKBOOL PathIsUNC(XString &file);
-    CKBOOL PathIsURL(XString &file);
-    CKBOOL PathIsFile(XString &file);
+    DLL_EXPORT CKBOOL PathIsAbsolute(XString &file);
+    DLL_EXPORT CKBOOL PathIsUNC(XString &file);
+    DLL_EXPORT CKBOOL PathIsURL(XString &file);
+    DLL_EXPORT CKBOOL PathIsFile(XString &file);
 
     // Converts '%20' characters to ' '
-    void RemoveEscapedSpace(char *str);
+    DLL_EXPORT void RemoveEscapedSpace(char *str);
 
     // Converts '' characters to '%20'
-    void AddEscapedSpace(XString &str);
+    DLL_EXPORT void AddEscapedSpace(XString &str);
 
     // Virtools temporary storage folder...
-    XString GetVirtoolsTemporaryFolder();
+    DLL_EXPORT XString GetVirtoolsTemporaryFolder();
 
 protected:
     void Clean();

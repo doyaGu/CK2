@@ -29,11 +29,11 @@ public:
     CKDEBUG_STATE CurrentBehaviorAction;
     CKBOOL InDebug;
 
-    void Init(XObjectPointerArray &array, float delta);
-    void StepInto(CKBehavior *beh);
-    void StepBehavior();
-    CKBOOL DebugStep();
-    void Clear();
+    DLL_EXPORT void Init(XObjectPointerArray &array, float delta);
+    DLL_EXPORT void StepInto(CKBehavior *beh);
+    DLL_EXPORT void StepBehavior();
+    DLL_EXPORT CKBOOL DebugStep();
+    DLL_EXPORT void Clear();
 
     CKDebugContext(CKContext *context)
     {

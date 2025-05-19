@@ -47,7 +47,7 @@ Example:
 
 See also: CKBehaviorPrototype,
 ********************************************************************************/
-class DLL_EXPORT CKObjectDeclaration
+class CKObjectDeclaration
 {
 public:
     //////////////////////////////////////////////////
@@ -56,49 +56,49 @@ public:
 
     //-----------------------------------------------------
     // Description
-    void SetDescription(CKSTRING Description);
-    CKSTRING GetDescription();
+    DLL_EXPORT void SetDescription(CKSTRING Description);
+    DLL_EXPORT CKSTRING GetDescription();
 
     //-----------------------------------------------------
     // Behavior GUID
-    void SetGuid(CKGUID guid);
-    CKGUID GetGuid();
+    DLL_EXPORT void SetGuid(CKGUID guid);
+    DLL_EXPORT CKGUID GetGuid();
 
-    void SetType(int type);
+    DLL_EXPORT void SetType(int type);
 
-    int GetType();
+    DLL_EXPORT int GetType();
 
     //-----------------------------------------------------
     // Dependencie on Managers
-    void NeedManager(CKGUID Manager);
+    DLL_EXPORT void NeedManager(CKGUID Manager);
 
     //-----------------------------------------------------
     // Creation function (function that will create the prototype )
-    void SetCreationFunction(CKDLL_CREATEPROTOFUNCTION f);
-    CKDLL_CREATEPROTOFUNCTION GetCreationFunction();
+    DLL_EXPORT void SetCreationFunction(CKDLL_CREATEPROTOFUNCTION f);
+    DLL_EXPORT CKDLL_CREATEPROTOFUNCTION GetCreationFunction();
 
     //-----------------------------------------------------
     // Author information
-    void SetAuthorGuid(CKGUID guid);
-    CKGUID GetAuthorGuid();
+    DLL_EXPORT void SetAuthorGuid(CKGUID guid);
+    DLL_EXPORT CKGUID GetAuthorGuid();
 
-    void SetAuthorName(CKSTRING Name);
-    CKSTRING GetAuthorName();
+    DLL_EXPORT void SetAuthorName(CKSTRING Name);
+    DLL_EXPORT CKSTRING GetAuthorName();
 
     //-----------------------------------------------------
     // Version information
-    void SetVersion(CKDWORD verion);
-    CKDWORD GetVersion();
+    DLL_EXPORT void SetVersion(CKDWORD verion);
+    DLL_EXPORT CKDWORD GetVersion();
 
     //-----------------------------------------------------
     // Class Id of object to which the declared behavior can apply
-    void SetCompatibleClassId(CK_CLASSID id);
-    CK_CLASSID GetCompatibleClassId();
+    DLL_EXPORT void SetCompatibleClassId(CK_CLASSID id);
+    DLL_EXPORT CK_CLASSID GetCompatibleClassId();
 
     //-----------------------------------------------------
     // Category in which the behavior will be presented
-    void SetCategory(CKSTRING cat);
-    CKSTRING GetCategory();
+    DLL_EXPORT void SetCategory(CKSTRING cat);
+    DLL_EXPORT CKSTRING GetCategory();
 
     /*************************************************
     Summary: Gets the name of behavior Prototype.

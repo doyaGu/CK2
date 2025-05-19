@@ -32,7 +32,7 @@ Remarks:
 
 See also: Using Materials,CKTexture,CKMesh,CKSprite3D,CK2dEntity
 ***********************************************************************/
-class CKMaterial : public CKBeObject
+class DLL_EXPORT CKMaterial : public CKBeObject
 {
 public:
     /*************************************************

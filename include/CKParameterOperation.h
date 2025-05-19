@@ -32,7 +32,7 @@ Remarks:
 
 See also: CKParameterManager, CKParameterOut, CKParameterIn, CKBehaviorPrototype,ParameterOperation Types
 *********************************************************************************/
-class DLL_EXPORT CKParameterOperation : public CKObject
+class CKParameterOperation : public CKObject
 {
     friend class CKBehavior;
     friend class CKParameterIn;
@@ -81,10 +81,7 @@ public:
 
     See also: CKBehavior::AddParameterOperation
     *************************************************/
-    CKBehavior *GetOwner()
-    {
-        return m_Owner;
-    }
+    CKBehavior *GetOwner() { return m_Owner; }
 
     /*************************************************
     Summary: Owner management
@@ -98,18 +95,18 @@ public:
 
     //------------------------------------------------
     // Execution
-    CKERROR DoOperation();
+    DLL_EXPORT CKERROR DoOperation();
 
     //------------------------------------------------
     // Guid
-    CKGUID GetOperationGuid();
-    void Reconstruct(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid);
+    DLL_EXPORT CKGUID GetOperationGuid();
+    DLL_EXPORT void Reconstruct(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid);
 
-    void Update();
+    DLL_EXPORT void Update();
 
     //-------------------------------------------------------------------
 
-    CK_PARAMETEROPERATION GetOperationFunction();
+    DLL_EXPORT CK_PARAMETEROPERATION GetOperationFunction();
 
     //------------------------------------------------
     // Virtual functions

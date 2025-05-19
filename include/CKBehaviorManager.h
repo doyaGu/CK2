@@ -24,32 +24,32 @@ Remarks:
 provided for special behavior processing and direct access to the execution of behaviors.
 See Also: CKBehavior, CKBeObject, CKScene
 *************************************************************************/
-class DLL_EXPORT CKBehaviorManager : public CKBaseManager
+class CKBehaviorManager : public CKBaseManager
 {
     friend class CKBehavior;
 
 public:
     //----------------------------------------------
     // Main Process
-    CKERROR Execute(float delta);
-    CKERROR ExecuteDebugStart(float delta);
-    void ManageObjectsActivity();
+    DLL_EXPORT CKERROR Execute(float delta);
+    DLL_EXPORT CKERROR ExecuteDebugStart(float delta);
+    DLL_EXPORT void ManageObjectsActivity();
 
     //----------------------------------------------
     // Object Management
-    int GetObjectsCount();
-    CKBeObject *GetObject(int pos);
-    CKERROR AddObject(CKBeObject *beo);
-    void SortObjects();
-    void RemoveAllObjects();
+    DLL_EXPORT int GetObjectsCount();
+    DLL_EXPORT CKBeObject *GetObject(int pos);
+    DLL_EXPORT CKERROR AddObject(CKBeObject *beo);
+    DLL_EXPORT void SortObjects();
+    DLL_EXPORT void RemoveAllObjects();
 
     //-----------------------------------------------
     // Setup
-    int GetBehaviorMaxIteration();
-    void SetBehaviorMaxIteration(int n);
+    DLL_EXPORT int GetBehaviorMaxIteration();
+    DLL_EXPORT void SetBehaviorMaxIteration(int n);
 
-    int AddObjectNextFrame(CKBeObject *beo);
-    int RemoveObjectNextFrame(CKBeObject *beo);
+    DLL_EXPORT int AddObjectNextFrame(CKBeObject *beo);
+    DLL_EXPORT int RemoveObjectNextFrame(CKBeObject *beo);
 
     //-------------------------------------------------------------------------
     // Internal functions

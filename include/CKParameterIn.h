@@ -37,7 +37,7 @@ The method to use to plug the input parameter to such a shared input is ShareSou
 
 See also: CKBehavior, CKParameterOut, CKParameterOperation
 *************************************************/
-class DLL_EXPORT CKParameterIn : public CKObject
+class CKParameterIn : public CKObject
 {
     friend class CKParameterManager;
     friend class CKParameterOut;
@@ -149,13 +149,13 @@ public:
         return m_OutSource;
     }
 
-    CKERROR SetDirectSource(CKParameter *param);
-    CKERROR ShareSourceWith(CKParameterIn *param);
+    DLL_EXPORT CKERROR SetDirectSource(CKParameter *param);
+    DLL_EXPORT CKERROR ShareSourceWith(CKParameterIn *param);
 
     //-------------------------------------------------
     // Type of the data
-    void SetType(CKParameterType type, CKBOOL UpdateSource = FALSE, CKSTRING NewName = NULL);
-    void SetGUID(CKGUID guid, CKBOOL UpdateSource = FALSE, CKSTRING NewName = NULL);
+    DLL_EXPORT void SetType(CKParameterType type, CKBOOL UpdateSource = FALSE, CKSTRING NewName = NULL);
+    DLL_EXPORT void SetGUID(CKGUID guid, CKBOOL UpdateSource = FALSE, CKSTRING NewName = NULL);
 
     /*******************************************
     Summary: Returns the type of the input parameter

@@ -104,7 +104,7 @@ Remarks:
 
 See also: CreateCKBehaviorPrototype,CKBehavior
 *************************************************/
-class DLL_EXPORT CKBehaviorPrototype
+class CKBehaviorPrototype
 {
     friend class CKBehavior;
 
@@ -120,31 +120,31 @@ public:
     virtual int DeclareOutParameter(CKSTRING name, CKGUID guid_type, CKSTRING defaultval = NULL);
     virtual int DeclareOutParameter(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize);
 
-    int DeclareLocalParameter(CKSTRING name, CKGUID guid_type, CKSTRING defaultval = NULL);
-    int DeclareLocalParameter(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize);
+    DLL_EXPORT int DeclareLocalParameter(CKSTRING name, CKGUID guid_type, CKSTRING defaultval = NULL);
+    DLL_EXPORT int DeclareLocalParameter(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize);
 
-    int DeclareSetting(CKSTRING name, CKGUID guid_type, CKSTRING defaultval = NULL);
-    int DeclareSetting(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize);
+    DLL_EXPORT int DeclareSetting(CKSTRING name, CKGUID guid_type, CKSTRING defaultval = NULL);
+    DLL_EXPORT int DeclareSetting(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize);
 
     //--------------------------------------------------------------------
     // Behavior Description functions
-    void SetGuid(CKGUID guid);
-    CKGUID GetGuid();
+    DLL_EXPORT void SetGuid(CKGUID guid);
+    DLL_EXPORT CKGUID GetGuid();
 
-    void SetFlags(CK_BEHAVIORPROTOTYPE_FLAGS flags);
-    CK_BEHAVIORPROTOTYPE_FLAGS GetFlags();
+    DLL_EXPORT void SetFlags(CK_BEHAVIORPROTOTYPE_FLAGS flags);
+    DLL_EXPORT CK_BEHAVIORPROTOTYPE_FLAGS GetFlags();
 
-    void SetApplyToClassID(CK_CLASSID cid);
-    CK_CLASSID GetApplyToClassID();
+    DLL_EXPORT void SetApplyToClassID(CK_CLASSID cid);
+    DLL_EXPORT CK_CLASSID GetApplyToClassID();
 
-    void SetFunction(CKBEHAVIORFCT fct);
-    CKBEHAVIORFCT GetFunction();
+    DLL_EXPORT void SetFunction(CKBEHAVIORFCT fct);
+    DLL_EXPORT CKBEHAVIORFCT GetFunction();
 
-    void SetBehaviorCallbackFct(CKBEHAVIORCALLBACKFCT fct, CKDWORD CallbackMask = CKCB_BEHAVIORALL, void *param = NULL);
-    CKBEHAVIORCALLBACKFCT GetBehaviorCallbackFct();
+    DLL_EXPORT void SetBehaviorCallbackFct(CKBEHAVIORCALLBACKFCT fct, CKDWORD CallbackMask = CKCB_BEHAVIORALL, void *param = NULL);
+    DLL_EXPORT CKBEHAVIORCALLBACKFCT GetBehaviorCallbackFct();
 
-    void SetBehaviorFlags(CK_BEHAVIOR_FLAGS flags);
-    CK_BEHAVIOR_FLAGS GetBehaviorFlags();
+    DLL_EXPORT void SetBehaviorFlags(CK_BEHAVIOR_FLAGS flags);
+    DLL_EXPORT CK_BEHAVIOR_FLAGS GetBehaviorFlags();
 
     /*******************************************
     Summary: Returns the name of this prototype
@@ -152,37 +152,38 @@ public:
         Prototype name.
     See Also: GetGuid
     ********************************************/
-    CKSTRING GetName() { return m_Name.Str(); }
+    DLL_EXPORT CKSTRING GetName() { return m_Name.Str(); }
 
     //-------------------------------------------------------------------
     // Internal functions
 
     //---------------------------------------------------------------------
     // Info Functions {Secret}
-    int GetInputCount() { return m_InIOCount; }
-    int GetOutputCount() { return m_OutIOCount; }
-    int GetInParameterCount() { return m_InParameterCount; }
-    int GetOutParameterCount() { return m_OutParameterCount; }
-    int GetLocalParameterCount() { return m_LocalParameterCount; }
-    CKBEHAVIORIO_DESC **GetInIOList() { return m_InIOList; }
-    CKBEHAVIORIO_DESC **GetOutIOList() { return m_OutIOList; }
-    CKPARAMETER_DESC **GetInParameterList() { return m_InParameterList; }
-    CKPARAMETER_DESC **GetOutParameterList() { return m_OutParameterList; }
-    CKPARAMETER_DESC **GetLocalParameterList() { return m_LocalParameterList; }
+    DLL_EXPORT int GetInputCount() { return m_InIOCount; }
+    DLL_EXPORT int GetOutputCount() { return m_OutIOCount; }
+    DLL_EXPORT int GetInParameterCount() { return m_InParameterCount; }
+    DLL_EXPORT int GetOutParameterCount() { return m_OutParameterCount; }
+    DLL_EXPORT int GetLocalParameterCount() { return m_LocalParameterCount; }
+    DLL_EXPORT CKBEHAVIORIO_DESC **GetInIOList() { return m_InIOList; }
+    DLL_EXPORT CKBEHAVIORIO_DESC **GetOutIOList() { return m_OutIOList; }
+    DLL_EXPORT CKPARAMETER_DESC **GetInParameterList() { return m_InParameterList; }
+    DLL_EXPORT CKPARAMETER_DESC **GetOutParameterList() { return m_OutParameterList; }
+    DLL_EXPORT CKPARAMETER_DESC **GetLocalParameterList() { return m_LocalParameterList; }
 
-    CKObjectDeclaration *GetSoureObjectDeclaration();
+    // Typo retained for compatibility
+    DLL_EXPORT CKObjectDeclaration *GetSoureObjectDeclaration();
 
-    int GetInIOIndex(CKSTRING name);
-    int GetOutIOIndex(CKSTRING name);
-    int GetInParamIndex(CKSTRING name);
-    int GetOutParamIndex(CKSTRING name);
-    int GetLocalParamIndex(CKSTRING name);
+    DLL_EXPORT int GetInIOIndex(CKSTRING name);
+    DLL_EXPORT int GetOutIOIndex(CKSTRING name);
+    DLL_EXPORT int GetInParamIndex(CKSTRING name);
+    DLL_EXPORT int GetOutParamIndex(CKSTRING name);
+    DLL_EXPORT int GetLocalParamIndex(CKSTRING name);
 
-    CKSTRING GetInIOName(int);
-    CKSTRING GetOutIOIndex(int);
-    CKSTRING GetInParamIndex(int);
-    CKSTRING GetOutParamIndex(int);
-    CKSTRING GetLocalParamIndex(int);
+    DLL_EXPORT CKSTRING GetInIOName(int);
+    DLL_EXPORT CKSTRING GetOutIOIndex(int);
+    DLL_EXPORT CKSTRING GetInParamIndex(int);
+    DLL_EXPORT CKSTRING GetOutParamIndex(int);
+    DLL_EXPORT CKSTRING GetLocalParamIndex(int);
 
     void SetSourceObjectDeclaration(CKObjectDeclaration *decl) { m_SourceObjectDeclaration = decl; }
 

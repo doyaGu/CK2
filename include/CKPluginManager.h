@@ -193,56 +193,56 @@ the DLL that declared it.
 
 See Also: CKPluginEntry,CKPluginDll,Creating New Plugins
 **********************************************************************************/
-class DLL_EXPORT CKPluginManager
+class CKPluginManager
 {
 public:
     CKPluginManager();
     virtual ~CKPluginManager();
 
     //----- Parse a directory for plugins and returns the number of valid plugins enumerated
-    int ParsePlugins(CKSTRING Directory);
+    DLL_EXPORT int ParsePlugins(CKSTRING Directory);
     //------ Registers a specific plugin Dll
-    CKERROR RegisterPlugin(CKSTRING str);
+    DLL_EXPORT CKERROR RegisterPlugin(CKSTRING str);
 
-    CKPluginEntry *FindComponent(CKGUID Component, int catIdx = -1); // Search for behaviors,managers,readers,etc.. to see if they exists
+    DLL_EXPORT CKPluginEntry *FindComponent(CKGUID Component, int catIdx = -1); // Search for behaviors,managers,readers,etc.. to see if they exists
 
     //---- Category Functions
-    int AddCategory(CKSTRING cat);                        // Adds a category, category name must be unique {secret}
-    CKERROR RemoveCategory(int catIdx);                   // Removes a category, category name must be unique	 {secret}
-    int GetCategoryCount();                               // Gets the number of categories
-    CKSTRING GetCategoryName(int catIdx);                 // Gets the category name at specified index
-    int GetCategoryIndex(CKSTRING cat);                   // Gets the category Index in List
-    CKERROR RenameCategory(int catIdx, CKSTRING newName); // Renames a category  {secret}
+    DLL_EXPORT int AddCategory(CKSTRING cat);                        // Adds a category, category name must be unique {secret}
+    DLL_EXPORT CKERROR RemoveCategory(int catIdx);                   // Removes a category, category name must be unique	 {secret}
+    DLL_EXPORT int GetCategoryCount();                               // Gets the number of categories
+    DLL_EXPORT CKSTRING GetCategoryName(int catIdx);                 // Gets the category name at specified index
+    DLL_EXPORT int GetCategoryIndex(CKSTRING cat);                   // Gets the category Index in List
+    DLL_EXPORT CKERROR RenameCategory(int catIdx, CKSTRING newName); // Renames a category  {secret}
 
     //---- PluginDll Functions
-    int GetPluginDllCount();                                             // Gets the Plugin count
-    CKPluginDll *GetPluginDllInfo(int PluginDllIdx);                     // Gets the Plugin at index
-    CKPluginDll *GetPluginDllInfo(CKSTRING PluginName, int *idx = NULL); // Search for a Plugin by name
-    CKERROR UnLoadPluginDll(int PluginDllIdx);
-    CKERROR ReLoadPluginDll(int PluginDllIdx);
+    DLL_EXPORT int GetPluginDllCount();                                             // Gets the Plugin count
+    DLL_EXPORT CKPluginDll *GetPluginDllInfo(int PluginDllIdx);                     // Gets the Plugin at index
+    DLL_EXPORT CKPluginDll *GetPluginDllInfo(CKSTRING PluginName, int *idx = NULL); // Search for a Plugin by name
+    DLL_EXPORT CKERROR UnLoadPluginDll(int PluginDllIdx);
+    DLL_EXPORT CKERROR ReLoadPluginDll(int PluginDllIdx);
 
     //---- Plugin Functions
-    int GetPluginCount(int catIdx);                          // Gets the Plugin count for a category
-    CKPluginEntry *GetPluginInfo(int catIdx, int PluginIdx); // Gets the Plugin at index PluginIdx for a category
+    DLL_EXPORT int GetPluginCount(int catIdx);                          // Gets the Plugin count for a category
+    DLL_EXPORT CKPluginEntry *GetPluginInfo(int catIdx, int PluginIdx); // Gets the Plugin at index PluginIdx for a category
 
     //---- Bitmap,Sound,Model or Movie Reader Access
-    CKBOOL SetReaderOptionData(CKContext *context, void *memdata, CKParameterOut *Param, CKFileExtension ext, CKGUID *guid = NULL);
-    CKParameterOut *GetReaderOptionData(CKContext *context, void *memdata, CKFileExtension ext, CKGUID *guid = NULL);
+    DLL_EXPORT CKBOOL SetReaderOptionData(CKContext *context, void *memdata, CKParameterOut *Param, CKFileExtension ext, CKGUID *guid = NULL);
+    DLL_EXPORT CKParameterOut *GetReaderOptionData(CKContext *context, void *memdata, CKFileExtension ext, CKGUID *guid = NULL);
 
-    CKBitmapReader *GetBitmapReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
-    CKSoundReader *GetSoundReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
-    CKModelReader *GetModelReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
-    CKMovieReader *GetMovieReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
+    DLL_EXPORT CKBitmapReader *GetBitmapReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
+    DLL_EXPORT CKSoundReader *GetSoundReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
+    DLL_EXPORT CKModelReader *GetModelReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
+    DLL_EXPORT CKMovieReader *GetMovieReader(CKFileExtension &ext, CKGUID *preferedGUID = NULL);
 
     //---- Model and Virtools Loading access {secret}
-    CKERROR Load(CKContext *context, CKSTRING FileName, CKObjectArray *liste, CK_LOAD_FLAGS LoadFlags, CKCharacter *carac = NULL, CKGUID *Readerguid = NULL); //  {secret}
-    CKERROR Save(CKContext *context, CKSTRING FileName, CKObjectArray *liste, CKDWORD SaveFlags, CKGUID *Readerguid = NULL);                                  //  {secret}
+    DLL_EXPORT CKERROR Load(CKContext *context, CKSTRING FileName, CKObjectArray *liste, CK_LOAD_FLAGS LoadFlags, CKCharacter *carac = NULL, CKGUID *Readerguid = NULL); //  {secret}
+    DLL_EXPORT CKERROR Save(CKContext *context, CKSTRING FileName, CKObjectArray *liste, CKDWORD SaveFlags, CKGUID *Readerguid = NULL);                                  //  {secret}
 
     //---- Init {secret}
-    void ReleaseAllPlugins();
-    void InitializePlugins(CKContext *context);
-    void ComputeDependenciesList(CKFile *file);
-    void MarkComponentAsNeeded(CKGUID Component, int catIdx);
+    DLL_EXPORT void ReleaseAllPlugins();
+    DLL_EXPORT void InitializePlugins(CKContext *context);
+    DLL_EXPORT void ComputeDependenciesList(CKFile *file);
+    DLL_EXPORT void MarkComponentAsNeeded(CKGUID Component, int catIdx);
 
 protected:
     //--- Utils

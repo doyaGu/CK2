@@ -15,32 +15,32 @@ Remarks:
     + The class id of CKGroup is CKCID_GROUP.
 See also: CKBeObject
 **************************************************************************/
-class DLL_EXPORT CKGroup : public CKBeObject
+class CKGroup : public CKBeObject
 {
     friend class CKBeObject;
 
 public:
     //---------------------------------------
     // Insertion Removal
-    CKERROR AddObject(CKBeObject *o);
-    CKERROR AddObjectFront(CKBeObject *o);
-    CKERROR InsertObjectAt(CKBeObject *o, int pos);
+    DLL_EXPORT CKERROR AddObject(CKBeObject *o);
+    DLL_EXPORT CKERROR AddObjectFront(CKBeObject *o);
+    DLL_EXPORT CKERROR InsertObjectAt(CKBeObject *o, int pos);
 
-    CKBeObject *RemoveObject(int pos);
-    void RemoveObject(CKBeObject *obj);
-    void Clear();
+    DLL_EXPORT CKBeObject *RemoveObject(int pos);
+    DLL_EXPORT void RemoveObject(CKBeObject *obj);
+    DLL_EXPORT void Clear();
 
     //---------------------------------------
     // Order
-    void MoveObjectUp(CKBeObject *o);
-    void MoveObjectDown(CKBeObject *o);
+    DLL_EXPORT void MoveObjectUp(CKBeObject *o);
+    DLL_EXPORT void MoveObjectDown(CKBeObject *o);
 
     //---------------------------------------
     // Object Access
-    CKBeObject *GetObject(int pos);
-    int GetObjectCount();
+    DLL_EXPORT CKBeObject *GetObject(int pos);
+    DLL_EXPORT int GetObjectCount();
 
-    CK_CLASSID GetCommonClassID();
+    DLL_EXPORT CK_CLASSID GetCommonClassID();
 
     //--------------------------------------------------------
     ////               Private Part

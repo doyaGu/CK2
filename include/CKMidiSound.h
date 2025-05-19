@@ -14,25 +14,25 @@ Remarks:
 + Its class id is CKCID_MIDISOUND
 See also: CKWaveSound,CKSoundManager
 ******************************************************************************/
-class DLL_EXPORT CKMidiSound : public CKSound
+class CKMidiSound : public CKSound
 {
 public:
     //---------------------------------------------------
     // Sound File
-    CKERROR SetSoundFileName(CKSTRING filename);
-    CKSTRING GetSoundFileName();
+    DLL_EXPORT CKERROR SetSoundFileName(CKSTRING filename);
+    DLL_EXPORT CKSTRING GetSoundFileName();
 
     //----------------------------------------------------
     // Current Position In MilliSeconds
-    CKDWORD GetCurrentPos();
+    DLL_EXPORT CKDWORD GetCurrentPos();
 
     //-----------------------------------------------------
     // Sound File
-    CKERROR Play();
-    CKERROR Stop();
-    CKERROR Pause(CKBOOL pause = TRUE);
-    CKBOOL IsPlaying();
-    CKBOOL IsPaused();
+    DLL_EXPORT CKERROR Play();
+    DLL_EXPORT CKERROR Stop();
+    DLL_EXPORT CKERROR Pause(CKBOOL pause = TRUE);
+    DLL_EXPORT CKBOOL IsPlaying();
+    DLL_EXPORT CKBOOL IsPaused();
 
     //-------------------------------------------------------------------
 

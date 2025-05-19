@@ -41,7 +41,7 @@ Remarks:
 
 See also: CKKeyedAnimation
 *************************************************************************/
-class CKObjectAnimation : public CKSceneObject
+class DLL_EXPORT CKObjectAnimation : public CKSceneObject
 {
     friend class CKKeyedAnimation;
 

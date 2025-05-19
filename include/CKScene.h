@@ -84,7 +84,7 @@ Remarks:
 
 See also:CKLevel::LaunchScene
 ******************************************************************************/
-class DLL_EXPORT CKScene : public CKBeObject
+class CKScene : public CKBeObject
 {
     friend class CKSceneObject;
 
@@ -92,97 +92,97 @@ public:
     //-----------------------------------------------------------
     // Objects functions
     // Adds an Object to this scene with all dependant objects
-    void AddObjectToScene(CKSceneObject *o, CKBOOL dependencies = TRUE);
-    void RemoveObjectFromScene(CKSceneObject *o, CKBOOL dependencies = TRUE);
-    CKBOOL IsObjectHere(CKObject *o);
-    void BeginAddSequence(CKBOOL Begin);
-    void BeginRemoveSequence(CKBOOL Begin);
+    DLL_EXPORT void AddObjectToScene(CKSceneObject *o, CKBOOL dependencies = TRUE);
+    DLL_EXPORT void RemoveObjectFromScene(CKSceneObject *o, CKBOOL dependencies = TRUE);
+    DLL_EXPORT CKBOOL IsObjectHere(CKObject *o);
+    DLL_EXPORT void BeginAddSequence(CKBOOL Begin);
+    DLL_EXPORT void BeginRemoveSequence(CKBOOL Begin);
 
     //-----------------------------------------------------------
     // Object List
-    int GetObjectCount();
-    void AddObject(CKSceneObject *o);
-    void RemoveObject(CKSceneObject *o);
-    void RemoveAllObjects();
-    const XObjectPointerArray &ComputeObjectList(CK_CLASSID cid, CKBOOL derived = TRUE);
-    CKERROR ComputeObjectList(CKObjectArray *array, CK_CLASSID cid, CKBOOL derived = TRUE);
+    DLL_EXPORT int GetObjectCount();
+    DLL_EXPORT void AddObject(CKSceneObject *o);
+    DLL_EXPORT void RemoveObject(CKSceneObject *o);
+    DLL_EXPORT void RemoveAllObjects();
+    DLL_EXPORT const XObjectPointerArray &ComputeObjectList(CK_CLASSID cid, CKBOOL derived = TRUE);
+    DLL_EXPORT CKERROR ComputeObjectList(CKObjectArray *array, CK_CLASSID cid, CKBOOL derived = TRUE);
 
     //-----------------------------------------------------------
     // Object Settings by index in list
-    CKSceneObjectIterator GetObjectIterator();
-    CKSceneObjectDesc *GetSceneObjectDesc(CKSceneObject *o);
+    DLL_EXPORT CKSceneObjectIterator GetObjectIterator();
+    DLL_EXPORT CKSceneObjectDesc *GetSceneObjectDesc(CKSceneObject *o);
 
     //---- BeObject and Script Activation/deactivation
-    void Activate(CKSceneObject *o, CKBOOL Reset);
-    void DeActivate(CKSceneObject *o);
+    DLL_EXPORT void Activate(CKSceneObject *o, CKBOOL Reset);
+    DLL_EXPORT void DeActivate(CKSceneObject *o);
 
-    void ActivateBeObject(CKBeObject *beo, CKBOOL activate, CKBOOL reset);
-    void ActivateScript(CKBehavior *beh, CKBOOL activate, CKBOOL reset);
+    DLL_EXPORT void ActivateBeObject(CKBeObject *beo, CKBOOL activate, CKBOOL reset);
+    DLL_EXPORT void ActivateScript(CKBehavior *beh, CKBOOL activate, CKBOOL reset);
 
     //-----------------------------------------------------------
     // Object Settings by object
-    void SetObjectFlags(CKSceneObject *o, CK_SCENEOBJECT_FLAGS flags);
-    CK_SCENEOBJECT_FLAGS GetObjectFlags(CKSceneObject *o);
-    CK_SCENEOBJECT_FLAGS ModifyObjectFlags(CKSceneObject *o, CKDWORD Add, CKDWORD Remove);
-    CKBOOL SetObjectInitialValue(CKSceneObject *o, CKStateChunk *chunk);
-    CKStateChunk *GetObjectInitialValue(CKSceneObject *o);
-    CKBOOL IsObjectActive(CKSceneObject *o);
+    DLL_EXPORT void SetObjectFlags(CKSceneObject *o, CK_SCENEOBJECT_FLAGS flags);
+    DLL_EXPORT CK_SCENEOBJECT_FLAGS GetObjectFlags(CKSceneObject *o);
+    DLL_EXPORT CK_SCENEOBJECT_FLAGS ModifyObjectFlags(CKSceneObject *o, CKDWORD Add, CKDWORD Remove);
+    DLL_EXPORT CKBOOL SetObjectInitialValue(CKSceneObject *o, CKStateChunk *chunk);
+    DLL_EXPORT CKStateChunk *GetObjectInitialValue(CKSceneObject *o);
+    DLL_EXPORT CKBOOL IsObjectActive(CKSceneObject *o);
 
     //-----------------------------------------------------------
     // Render Settings
-    void ApplyEnvironmentSettings(XObjectPointerArray *renderContexts = NULL);
-    void UseEnvironmentSettings(CKBOOL use = TRUE);
-    CKBOOL EnvironmentSettings();
+    DLL_EXPORT void ApplyEnvironmentSettings(XObjectPointerArray *renderContexts = NULL);
+    DLL_EXPORT void UseEnvironmentSettings(CKBOOL use = TRUE);
+    DLL_EXPORT CKBOOL EnvironmentSettings();
 
     //-----------------------------------------------------------
     // Ambient Light
-    void SetAmbientLight(CKDWORD Color);
-    CKDWORD GetAmbientLight();
+    DLL_EXPORT void SetAmbientLight(CKDWORD Color);
+    DLL_EXPORT CKDWORD GetAmbientLight();
 
     //-----------------------------------------------------------
     //	Fog Access
-    void SetFogMode(VXFOG_MODE Mode);
-    void SetFogStart(float Start);
-    void SetFogEnd(float End);
-    void SetFogDensity(float Density);
-    void SetFogColor(CKDWORD Color);
+    DLL_EXPORT void SetFogMode(VXFOG_MODE Mode);
+    DLL_EXPORT void SetFogStart(float Start);
+    DLL_EXPORT void SetFogEnd(float End);
+    DLL_EXPORT void SetFogDensity(float Density);
+    DLL_EXPORT void SetFogColor(CKDWORD Color);
 
-    VXFOG_MODE GetFogMode();
-    float GetFogStart();
-    float GetFogEnd();
-    float GetFogDensity();
-    CKDWORD GetFogColor();
+    DLL_EXPORT VXFOG_MODE GetFogMode();
+    DLL_EXPORT float GetFogStart();
+    DLL_EXPORT float GetFogEnd();
+    DLL_EXPORT float GetFogDensity();
+    DLL_EXPORT CKDWORD GetFogColor();
 
     //---------------------------------------------------------
     // Background
-    void SetBackgroundColor(CKDWORD Color);
-    CKDWORD GetBackgroundColor();
+    DLL_EXPORT void SetBackgroundColor(CKDWORD Color);
+    DLL_EXPORT CKDWORD GetBackgroundColor();
 
-    void SetBackgroundTexture(CKTexture *texture);
-    CKTexture *GetBackgroundTexture();
+    DLL_EXPORT void SetBackgroundTexture(CKTexture *texture);
+    DLL_EXPORT CKTexture *GetBackgroundTexture();
 
     //--------------------------------------------------------
     // Active camera
-    void SetStartingCamera(CKCamera *camera);
-    CKCamera *GetStartingCamera();
+    DLL_EXPORT void SetStartingCamera(CKCamera *camera);
+    DLL_EXPORT CKCamera *GetStartingCamera();
 
     //-----------------------------------------------------------
     // Level functions
-    CKLevel *GetLevel();
-    void SetLevel(CKLevel *level);
+    DLL_EXPORT CKLevel *GetLevel();
+    DLL_EXPORT void SetLevel(CKLevel *level);
 
     //-----------------------------------------------------------
     // Merge functions
-    CKERROR Merge(CKScene *mergedScene, CKLevel *fromLevel = NULL);
+    DLL_EXPORT CKERROR Merge(CKScene *mergedScene, CKLevel *fromLevel = NULL);
 
     //-------------------------------------------------------------------
 
-    void Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_FLAGS activityFlags, CK_SCENEOBJECTRESET_FLAGS resetFlags);
-    void Stop(XObjectPointerArray &renderContexts, CKBOOL reset = TRUE);
+    DLL_EXPORT void Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_FLAGS activityFlags, CK_SCENEOBJECTRESET_FLAGS resetFlags);
+    DLL_EXPORT void Stop(XObjectPointerArray &renderContexts, CKBOOL reset = TRUE);
 
     //-----------------------------------------------------------
     // Virtual functions
-    CKScene(CKContext *Context, CKSTRING name = NULL);
+    DLL_EXPORT CKScene(CKContext *Context, CKSTRING name = NULL);
     virtual ~CKScene();
     virtual CK_CLASSID GetClassID();
 
@@ -204,12 +204,12 @@ public:
 
     //--------------------------------------------
     // Class Registering
-    static CKSTRING GetClassName();
-    static int GetDependenciesCount(int mode);
-    static CKSTRING GetDependencies(int i, int mode);
-    static void Register();
-    static CKScene *CreateInstance(CKContext *Context);
-    static CK_CLASSID m_ClassID;
+    DLL_EXPORT static CKSTRING GetClassName();
+    DLL_EXPORT static int GetDependenciesCount(int mode);
+    DLL_EXPORT static CKSTRING GetDependencies(int i, int mode);
+    DLL_EXPORT static void Register();
+    DLL_EXPORT static CKScene *CreateInstance(CKContext *Context);
+    DLL_EXPORT static CK_CLASSID m_ClassID;
 
     // Dynamic Cast method (returns NULL if the object can't be casted)
     static CKScene *Cast(CKObject *iO)
@@ -217,9 +217,9 @@ public:
         return CKIsChildClassOf(iO, CKCID_SCENE) ? (CKScene *)iO : NULL;
     }
 
-    void CheckSceneObjectList();
+    DLL_EXPORT void CheckSceneObjectList();
 
-    CKSceneObjectDesc *AddObjectDesc(CKSceneObject *o);
+    DLL_EXPORT CKSceneObjectDesc *AddObjectDesc(CKSceneObject *o);
 
 protected:
     int m_SceneGlobalIndex;

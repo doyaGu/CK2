@@ -35,9 +35,9 @@ public:
     virtual CKDWORD MillisecsToTicks(void *source, CKDWORD msOffset) = 0;
     virtual CKDWORD TicksToMillisecs(void *source, CKDWORD tkOffset) = 0;
 
-    CKMidiManager(CKContext *Context, CKSTRING name) : CKBaseManager(Context, MIDI_MANAGER_GUID, name){};
+    CKMidiManager(CKContext *Context, CKSTRING name) : CKBaseManager(Context, MIDI_MANAGER_GUID, name) {}
 
-    virtual ~CKMidiManager(){};
+    virtual ~CKMidiManager() {}
 };
 
 #endif // CKMIDIMANAGER_H

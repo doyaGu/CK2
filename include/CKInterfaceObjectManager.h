@@ -6,15 +6,15 @@
 class CKInterfaceObjectManager : public CKObject
 {
 public:
-    void SetGuid(CKGUID guid);
-    CKGUID GetGuid();
+    DLL_EXPORT void SetGuid(CKGUID guid);
+    DLL_EXPORT CKGUID GetGuid();
 
     ////////////////////////////////////////
     // Datas
-    void AddStateChunk(CKStateChunk *chunk);
-    void RemoveStateChunk(CKStateChunk *chunk);
-    int GetChunkCount();
-    CKStateChunk *GetChunk(int pos);
+    DLL_EXPORT void AddStateChunk(CKStateChunk *chunk);
+    DLL_EXPORT void RemoveStateChunk(CKStateChunk *chunk);
+    DLL_EXPORT int GetChunkCount();
+    DLL_EXPORT CKStateChunk *GetChunk(int pos);
 
     //-------------------------------------------------------------------
     //-------------------------------------------------------------------

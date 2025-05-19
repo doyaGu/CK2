@@ -59,33 +59,33 @@ are stacked in the object's "last frame messages" list.
 
 See also: CKContext::GetMessageManager,CKMessage
 ****************************************************************************/
-class DLL_EXPORT CKMessageManager : public CKBaseManager
+class CKMessageManager : public CKBaseManager
 {
     friend class CKMessage;
 
 public:
     //---------------------------------------------
     // Message Types
-    CKMessageType AddMessageType(CKSTRING MsgName);
-    CKSTRING GetMessageTypeName(CKMessageType MsgType);
-    int GetMessageTypeCount();
-    void RenameMessageType(CKMessageType MsgType, CKSTRING NewName);
-    void RenameMessageType(CKSTRING OldName, CKSTRING NewName);
+    DLL_EXPORT CKMessageType AddMessageType(CKSTRING MsgName);
+    DLL_EXPORT CKSTRING GetMessageTypeName(CKMessageType MsgType);
+    DLL_EXPORT int GetMessageTypeCount();
+    DLL_EXPORT void RenameMessageType(CKMessageType MsgType, CKSTRING NewName);
+    DLL_EXPORT void RenameMessageType(CKSTRING OldName, CKSTRING NewName);
 
     //---------------------------------------------
     // register incoming message
-    CKERROR SendMessage(CKMessage *msg);
-    CKMessage *SendMessageSingle(CKMessageType MsgType, CKBeObject *dest, CKBeObject *sender = NULL);
-    CKMessage *SendMessageGroup(CKMessageType MsgType, CKGroup *group, CKBeObject *sender = NULL);
-    CKMessage *SendMessageBroadcast(CKMessageType MsgType, CK_CLASSID cid = CKCID_BEOBJECT, CKBeObject *sender = NULL);
+    DLL_EXPORT CKERROR SendMessage(CKMessage *msg);
+    DLL_EXPORT CKMessage *SendMessageSingle(CKMessageType MsgType, CKBeObject *dest, CKBeObject *sender = NULL);
+    DLL_EXPORT CKMessage *SendMessageGroup(CKMessageType MsgType, CKGroup *group, CKBeObject *sender = NULL);
+    DLL_EXPORT CKMessage *SendMessageBroadcast(CKMessageType MsgType, CK_CLASSID cid = CKCID_BEOBJECT, CKBeObject *sender = NULL);
 
     //----------------------------------------------
     // Waiting behaviors
-    CKERROR RegisterWait(CKMessageType MsgType, CKBehavior *behav, int OutputToActivate, CKBeObject *obj);
-    CKERROR RegisterWait(CKSTRING MsgName, CKBehavior *behav, int OutputToActivate, CKBeObject *obj);
-    CKERROR UnRegisterWait(CKMessageType MsgType, CKBehavior *behav, int OutputToActivate);
-    CKERROR UnRegisterWait(CKSTRING MsgName, CKBehavior *behav, int OutputToActivate);
-    CKERROR RegisterDefaultMessages();
+    DLL_EXPORT CKERROR RegisterWait(CKMessageType MsgType, CKBehavior *behav, int OutputToActivate, CKBeObject *obj);
+    DLL_EXPORT CKERROR RegisterWait(CKSTRING MsgName, CKBehavior *behav, int OutputToActivate, CKBeObject *obj);
+    DLL_EXPORT CKERROR UnRegisterWait(CKMessageType MsgType, CKBehavior *behav, int OutputToActivate);
+    DLL_EXPORT CKERROR UnRegisterWait(CKSTRING MsgName, CKBehavior *behav, int OutputToActivate);
+    DLL_EXPORT CKERROR RegisterDefaultMessages();
 
     //-------------------------------------------------------------------
     //-------------------------------------------------------------------

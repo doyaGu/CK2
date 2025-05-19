@@ -65,7 +65,7 @@ the frame dependant.
 
 See also: Time Management,Creating a Standalone Application,CKContext::GetTimeManager
 *****************************************************************************/
-class DLL_EXPORT CKTimeManager : public CKBaseManager
+class CKTimeManager : public CKBaseManager
 {
 public:
     //*********** Processing **********************
@@ -217,7 +217,7 @@ public:
         SetFrameRateLimit or SetBehavioralRateLimit methods.
     See Also:CK_FRAMERATE_LIMITS,SetBehavioralRateLimit,SetFrameRateLimit,GetLimitOptions
     *****************************************************/
-    void ChangeLimitOptions(CK_FRAMERATE_LIMITS FpsOptions, CK_FRAMERATE_LIMITS BehOptions = CK_RATE_NOP);
+    DLL_EXPORT void ChangeLimitOptions(CK_FRAMERATE_LIMITS FpsOptions, CK_FRAMERATE_LIMITS BehOptions = CK_RATE_NOP);
 
     /****************************************************
     Summary: Sets the frame rate limit
@@ -228,7 +228,7 @@ public:
         + This value is only used when the frame rate is limited (GetLimitOptions() & CK_FRAMERATE_LIMIT)
     See Also:GetFrameRateLimit,GetLimitOptions,ChangeLimitOptions
     *****************************************************/
-    void SetFrameRateLimit(float FRLimit);
+    DLL_EXPORT void SetFrameRateLimit(float FRLimit);
 
     /****************************************************
     Summary: Sets the behavioral rate limit
@@ -239,7 +239,7 @@ public:
         + This value is only used when the behavioral rate is limited (GetLimitOptions() & CK_BEHRATE_LIMIT)
     See Also:GetBehavioralRateLimit,GetLimitOptions,ChangeLimitOptions
     *****************************************************/
-    void SetBehavioralRateLimit(float BRLimit);
+    DLL_EXPORT void SetBehavioralRateLimit(float BRLimit);
 
     /****************************************************
     Summary: Sets the minimum delta time.
@@ -253,7 +253,7 @@ public:
     + Default minimum delta time = 1 millisecond.
     See Also:SetMaximumDeltaTime,GetMinimumDeltaTime
     *****************************************************/
-    void SetMinimumDeltaTime(float DtMin);
+    DLL_EXPORT void SetMinimumDeltaTime(float DtMin);
 
     /****************************************************
     Summary: Sets the maximum delta time.
@@ -267,7 +267,7 @@ public:
     + Default maximum delta time = 200 millisecond.
     See Also:SetMinimumDeltaTime,GetMaximumDeltaTime
     *****************************************************/
-    void SetMaximumDeltaTime(float DtMax);
+    DLL_EXPORT void SetMaximumDeltaTime(float DtMax);
 
     /*******************************************************
     Summary: Set the DeltaTime for custom use.
@@ -321,9 +321,9 @@ public:
         }
     See Also:Creating a Standalone Application
     *****************************************************/
-    void GetTimeToWaitForLimits(float &TimeBeforeRender, float &TimeBeforeBeh);
+    DLL_EXPORT void GetTimeToWaitForLimits(float &TimeBeforeRender, float &TimeBeforeBeh);
 
-    void ResetChronos(CKBOOL RenderChrono, CKBOOL BehavioralChrono);
+    DLL_EXPORT void ResetChronos(CKBOOL RenderChrono, CKBOOL BehavioralChrono);
 
     //-------------------------------------------------------------------------
     // Internal functions

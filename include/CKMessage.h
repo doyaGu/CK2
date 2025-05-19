@@ -33,21 +33,21 @@ when creating a message with the SendMessage methods of the CKMessageManager
 
 See also: CKMessageManager, CKMessageManager::SendMessageSingle, CKMessageManager::SendMessageGroup, CKMessageManager::SendMessageBroadcast
 ***********************************************************************/
-class DLL_EXPORT CKMessage
+class CKMessage
 {
     friend class CKMessageManager;
 
 public:
     //--------------------------------------------------------------
     // In case of typed broadcast, type of objects to send the message to
-    CKERROR SetBroadcastObjectType(CK_CLASSID type = CKCID_BEOBJECT);
+    DLL_EXPORT CKERROR SetBroadcastObjectType(CK_CLASSID type = CKCID_BEOBJECT);
 
     //--------------------------------------------------------------
     // Associated Parameters
-    CKERROR AddParameter(CKParameter *param, CKBOOL DeleteParameterWithMessage = FALSE);
-    CKERROR RemoveParameter(CKParameter *param);
-    int GetParameterCount();
-    CKParameter *GetParameter(int pos);
+    DLL_EXPORT CKERROR AddParameter(CKParameter *param, CKBOOL DeleteParameterWithMessage = FALSE);
+    DLL_EXPORT CKERROR RemoveParameter(CKParameter *param);
+    DLL_EXPORT int GetParameterCount();
+    DLL_EXPORT CKParameter *GetParameter(int pos);
 
     //---------------------------------------------------------
     // Sender

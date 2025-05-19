@@ -23,7 +23,7 @@ Remarks:
 
 See also: CK2dCurve
 *************************************************************************/
-class DLL_EXPORT CK2dCurvePoint
+class CK2dCurvePoint
 {
     friend class CK2dCurve;
 
@@ -246,7 +246,7 @@ public:
         NotifyUpdate();
     }
 
-    void NotifyUpdate();
+    DLL_EXPORT void NotifyUpdate();
 
     CK2dCurvePoint()
     {
@@ -255,14 +255,14 @@ public:
         m_Flags = 0;
     }
 
-    static int CurvePointSortFunc(const void *a, const void *b);
+    DLL_EXPORT static int CurvePointSortFunc(const void *a, const void *b);
 
 protected:
     void SetCurve(CK2dCurve *curve) { m_Curve = curve; }
     void SetLength(float l) { m_Length = l; }
     Vx2DVector &GetRCurvePos() { return m_RCurvePos; }
     void SetRCurvePos(Vx2DVector &v) { m_RCurvePos = v; }
-    void Read(CKStateChunk *chunk);
+    DLL_EXPORT void Read(CKStateChunk *chunk);
 
     CK2dCurve *m_Curve;					   // Owner curve
     float m_Tension, m_Continuity, m_Bias; // t,c,b, parameters

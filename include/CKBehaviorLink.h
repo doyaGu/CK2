@@ -24,7 +24,7 @@ the activation from its input to its output, immediately or with a given delay.
 
 See also: CKBehavior,CKBehaviorIO
 **************************************************************************/
-class DLL_EXPORT CKBehaviorLink : public CKObject
+class CKBehaviorLink : public CKObject
 {
     friend class CKBehavior;
     friend class CKBehaviorIO;
@@ -32,8 +32,8 @@ class DLL_EXPORT CKBehaviorLink : public CKObject
 public:
     //-------------------------------------------------------
     // Behavior IO functions
-    CKERROR SetInBehaviorIO(CKBehaviorIO *ckbioin);
-    CKERROR SetOutBehaviorIO(CKBehaviorIO *ckbioout);
+    DLL_EXPORT CKERROR SetInBehaviorIO(CKBehaviorIO *ckbioin);
+    DLL_EXPORT CKERROR SetOutBehaviorIO(CKBehaviorIO *ckbioout);
 
     CKBehaviorIO *GetOutBehaviorIO() { return m_OutIO; }
 

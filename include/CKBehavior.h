@@ -156,7 +156,7 @@ Remarks:
 
 See also: CKBeObject, CKScene, CKParameterOut, CKParameterIn, CKBehaviorLink, CKBehaviorPrototype
 ************************************************************************************/
-class DLL_EXPORT CKBehavior : public CKSceneObject
+class CKBehavior : public CKSceneObject
 {
     friend class CKBehaviorManager;
     friend class CKBeObject;
@@ -173,203 +173,203 @@ class DLL_EXPORT CKBehavior : public CKSceneObject
 public:
     //----------------------------------------------------------------
     // Behavior Typage
-    CK_BEHAVIOR_TYPE GetType();
-    void SetType(CK_BEHAVIOR_TYPE type);
+    DLL_EXPORT CK_BEHAVIOR_TYPE GetType();
+    DLL_EXPORT void SetType(CK_BEHAVIOR_TYPE type);
 
-    void SetFlags(CK_BEHAVIOR_FLAGS flags);
-    CK_BEHAVIOR_FLAGS GetFlags();
-    CK_BEHAVIOR_FLAGS ModifyFlags(CKDWORD Add, CKDWORD Remove);
+    DLL_EXPORT void SetFlags(CK_BEHAVIOR_FLAGS flags);
+    DLL_EXPORT CK_BEHAVIOR_FLAGS GetFlags();
+    DLL_EXPORT CK_BEHAVIOR_FLAGS ModifyFlags(CKDWORD Add, CKDWORD Remove);
 
     //---------- BuildingBlock or Graph
-    void UseGraph();
-    void UseFunction();
-    CKBOOL IsUsingFunction();
+    DLL_EXPORT void UseGraph();
+    DLL_EXPORT void UseFunction();
+    DLL_EXPORT CKBOOL IsUsingFunction();
 
     //----------------------------------------------------------------
     // Targetable Behavior
-    CKBOOL IsTargetable();
-    CKBeObject *GetTarget();
-    CKERROR UseTarget(CKBOOL Use = TRUE);
-    CKBOOL IsUsingTarget();
-    CKParameterIn *GetTargetParameter();
-    void SetAsTargetable(CKBOOL target = TRUE);
-    CKParameterIn *ReplaceTargetParameter(CKParameterIn *targetParam);
-    CKParameterIn *RemoveTargetParameter();
+    DLL_EXPORT CKBOOL IsTargetable();
+    DLL_EXPORT CKBeObject *GetTarget();
+    DLL_EXPORT CKERROR UseTarget(CKBOOL Use = TRUE);
+    DLL_EXPORT CKBOOL IsUsingTarget();
+    DLL_EXPORT CKParameterIn *GetTargetParameter();
+    DLL_EXPORT void SetAsTargetable(CKBOOL target = TRUE);
+    DLL_EXPORT CKParameterIn *ReplaceTargetParameter(CKParameterIn *targetParam);
+    DLL_EXPORT CKParameterIn *RemoveTargetParameter();
 
     //----------------------------------------------------------------
     // Object type to which this behavior applies
-    CK_CLASSID GetCompatibleClassID();
-    void SetCompatibleClassID(CK_CLASSID cid);
+    DLL_EXPORT CK_CLASSID GetCompatibleClassID();
+    DLL_EXPORT void SetCompatibleClassID(CK_CLASSID cid);
 
     //----------------------------------------------------------------
     // Execution Function
-    void SetFunction(CKBEHAVIORFCT fct);
-    CKBEHAVIORFCT GetFunction();
+    DLL_EXPORT void SetFunction(CKBEHAVIORFCT fct);
+    DLL_EXPORT CKBEHAVIORFCT GetFunction();
 
     //----------------------------------------------------------------
     // Callbacks Function
-    void SetCallbackFunction(CKBEHAVIORCALLBACKFCT fct);
-    int CallCallbackFunction(CKDWORD Message);
-    int CallSubBehaviorsCallbackFunction(CKDWORD Message, CKGUID *behguid = NULL);
+    DLL_EXPORT void SetCallbackFunction(CKBEHAVIORCALLBACKFCT fct);
+    DLL_EXPORT int CallCallbackFunction(CKDWORD Message);
+    DLL_EXPORT int CallSubBehaviorsCallbackFunction(CKDWORD Message, CKGUID *behguid = NULL);
 
     //--------------------------------------------------------------
     // RunTime Functions
-    CKBOOL IsActive();
-    int Execute(float delta);
+    DLL_EXPORT CKBOOL IsActive();
+    DLL_EXPORT int Execute(float delta);
 
     //--------------------------------------------------------------
     //
-    CKBOOL IsParentScriptActiveInScene(CKScene *scn);
-    int GetShortestDelay(CKBehavior *beh);
+    DLL_EXPORT CKBOOL IsParentScriptActiveInScene(CKScene *scn);
+    DLL_EXPORT int GetShortestDelay(CKBehavior *beh);
 
     //--------------------------------------------------------------
     // Owner Functions
-    CKBeObject *GetOwner();
-    CKBehavior *GetParent();
-    CKBehavior *GetOwnerScript();
+    DLL_EXPORT CKBeObject *GetOwner();
+    DLL_EXPORT CKBehavior *GetParent();
+    DLL_EXPORT CKBehavior *GetOwnerScript();
 
     //----------------------------------------------------------------
     // Creation From prototype
-    CKERROR InitFromPrototype(CKBehaviorPrototype *proto);
-    CKERROR InitFromGuid(CKGUID Guid);
-    CKERROR InitFctPtrFromGuid(CKGUID Guid);
-    CKERROR InitFctPtrFromPrototype(CKBehaviorPrototype *proto);
-    CKGUID GetPrototypeGuid();
-    CKBehaviorPrototype *GetPrototype();
-    CKSTRING GetPrototypeName();
-    CKDWORD GetVersion();
-    void SetVersion(CKDWORD version);
+    DLL_EXPORT CKERROR InitFromPrototype(CKBehaviorPrototype *proto);
+    DLL_EXPORT CKERROR InitFromGuid(CKGUID Guid);
+    DLL_EXPORT CKERROR InitFctPtrFromGuid(CKGUID Guid);
+    DLL_EXPORT CKERROR InitFctPtrFromPrototype(CKBehaviorPrototype *proto);
+    DLL_EXPORT CKGUID GetPrototypeGuid();
+    DLL_EXPORT CKBehaviorPrototype *GetPrototype();
+    DLL_EXPORT CKSTRING GetPrototypeName();
+    DLL_EXPORT CKDWORD GetVersion();
+    DLL_EXPORT void SetVersion(CKDWORD version);
 
     //----------------------------------------------------------------
     // Outputs
-    void ActivateOutput(int pos, CKBOOL active = TRUE);
-    CKBOOL IsOutputActive(int pos);
-    CKBehaviorIO *RemoveOutput(int pos);
-    CKERROR DeleteOutput(int pos);
-    CKBehaviorIO *GetOutput(int pos);
-    int GetOutputCount();
-    int GetOutputPosition(CKBehaviorIO *io);
-    int AddOutput(CKSTRING name);
-    CKBehaviorIO *ReplaceOutput(int pos, CKBehaviorIO *io);
-    CKBehaviorIO *CreateOutput(CKSTRING name);
+    DLL_EXPORT void ActivateOutput(int pos, CKBOOL active = TRUE);
+    DLL_EXPORT CKBOOL IsOutputActive(int pos);
+    DLL_EXPORT CKBehaviorIO *RemoveOutput(int pos);
+    DLL_EXPORT CKERROR DeleteOutput(int pos);
+    DLL_EXPORT CKBehaviorIO *GetOutput(int pos);
+    DLL_EXPORT int GetOutputCount();
+    DLL_EXPORT int GetOutputPosition(CKBehaviorIO *io);
+    DLL_EXPORT int AddOutput(CKSTRING name);
+    DLL_EXPORT CKBehaviorIO *ReplaceOutput(int pos, CKBehaviorIO *io);
+    DLL_EXPORT CKBehaviorIO *CreateOutput(CKSTRING name);
 
     //----------------------------------------------------------------
     // Inputs
-    void ActivateInput(int pos, CKBOOL active = TRUE);
-    CKBOOL IsInputActive(int pos);
-    CKBehaviorIO *RemoveInput(int pos);
-    CKERROR DeleteInput(int pos);
-    CKBehaviorIO *GetInput(int pos);
-    int GetInputCount();
-    int GetInputPosition(CKBehaviorIO *io);
-    int AddInput(CKSTRING name);
-    CKBehaviorIO *ReplaceInput(int pos, CKBehaviorIO *io);
-    CKBehaviorIO *CreateInput(CKSTRING name);
+    DLL_EXPORT void ActivateInput(int pos, CKBOOL active = TRUE);
+    DLL_EXPORT CKBOOL IsInputActive(int pos);
+    DLL_EXPORT CKBehaviorIO *RemoveInput(int pos);
+    DLL_EXPORT CKERROR DeleteInput(int pos);
+    DLL_EXPORT CKBehaviorIO *GetInput(int pos);
+    DLL_EXPORT int GetInputCount();
+    DLL_EXPORT int GetInputPosition(CKBehaviorIO *io);
+    DLL_EXPORT int AddInput(CKSTRING name);
+    DLL_EXPORT CKBehaviorIO *ReplaceInput(int pos, CKBehaviorIO *io);
+    DLL_EXPORT CKBehaviorIO *CreateInput(CKSTRING name);
 
     //----------------------------------------------------------------
     // inputs Parameters
-    CKERROR ExportInputParameter(CKParameterIn *p);
-    CKParameterIn *CreateInputParameter(CKSTRING name, CKParameterType type);
-    CKParameterIn *CreateInputParameter(CKSTRING name, CKGUID guid);
-    CKParameterIn *InsertInputParameter(int pos, CKSTRING name, CKParameterType type);
-    void AddInputParameter(CKParameterIn *in);
-    int GetInputParameterPosition(CKParameterIn *in);
-    CKParameterIn *GetInputParameter(int pos);
-    CKParameterIn *RemoveInputParameter(int pos);
-    CKParameterIn *ReplaceInputParameter(int pos, CKParameterIn *param);
-    int GetInputParameterCount();
-    CKERROR GetInputParameterValue(int pos, void *buf);
-    void *GetInputParameterReadDataPtr(int pos);
-    CKObject *GetInputParameterObject(int pos);
-    CKBOOL IsInputParameterEnabled(int pos);
-    void EnableInputParameter(int pos, CKBOOL enable);
+    DLL_EXPORT CKERROR ExportInputParameter(CKParameterIn *p);
+    DLL_EXPORT CKParameterIn *CreateInputParameter(CKSTRING name, CKParameterType type);
+    DLL_EXPORT CKParameterIn *CreateInputParameter(CKSTRING name, CKGUID guid);
+    DLL_EXPORT CKParameterIn *InsertInputParameter(int pos, CKSTRING name, CKParameterType type);
+    DLL_EXPORT void AddInputParameter(CKParameterIn *in);
+    DLL_EXPORT int GetInputParameterPosition(CKParameterIn *in);
+    DLL_EXPORT CKParameterIn *GetInputParameter(int pos);
+    DLL_EXPORT CKParameterIn *RemoveInputParameter(int pos);
+    DLL_EXPORT CKParameterIn *ReplaceInputParameter(int pos, CKParameterIn *param);
+    DLL_EXPORT int GetInputParameterCount();
+    DLL_EXPORT CKERROR GetInputParameterValue(int pos, void *buf);
+    DLL_EXPORT void *GetInputParameterReadDataPtr(int pos);
+    DLL_EXPORT CKObject *GetInputParameterObject(int pos);
+    DLL_EXPORT CKBOOL IsInputParameterEnabled(int pos);
+    DLL_EXPORT void EnableInputParameter(int pos, CKBOOL enable);
 
     //----------------------------------------------------------------
     // outputs Parameters
-    CKERROR ExportOutputParameter(CKParameterOut *p);
-    CKParameterOut *CreateOutputParameter(CKSTRING name, CKParameterType type);
-    CKParameterOut *CreateOutputParameter(CKSTRING name, CKGUID guid);
-    CKParameterOut *InsertOutputParameter(int pos, CKSTRING name, CKParameterType type);
-    CKParameterOut *GetOutputParameter(int pos);
-    int GetOutputParameterPosition(CKParameterOut *p);
-    CKParameterOut *ReplaceOutputParameter(int pos, CKParameterOut *p);
-    CKParameterOut *RemoveOutputParameter(int pos);
-    void AddOutputParameter(CKParameterOut *out);
-    int GetOutputParameterCount();
-    CKERROR GetOutputParameterValue(int pos, void *buf);
-    CKERROR SetOutputParameterValue(int pos, const void *buf, int size = 0);
-    void *GetOutputParameterWriteDataPtr(int pos);
-    CKERROR SetOutputParameterObject(int pos, CKObject *obj);
-    CKObject *GetOutputParameterObject(int pos);
-    CKBOOL IsOutputParameterEnabled(int pos);
-    void EnableOutputParameter(int pos, CKBOOL enable);
+    DLL_EXPORT CKERROR ExportOutputParameter(CKParameterOut *p);
+    DLL_EXPORT CKParameterOut *CreateOutputParameter(CKSTRING name, CKParameterType type);
+    DLL_EXPORT CKParameterOut *CreateOutputParameter(CKSTRING name, CKGUID guid);
+    DLL_EXPORT CKParameterOut *InsertOutputParameter(int pos, CKSTRING name, CKParameterType type);
+    DLL_EXPORT CKParameterOut *GetOutputParameter(int pos);
+    DLL_EXPORT int GetOutputParameterPosition(CKParameterOut *p);
+    DLL_EXPORT CKParameterOut *ReplaceOutputParameter(int pos, CKParameterOut *p);
+    DLL_EXPORT CKParameterOut *RemoveOutputParameter(int pos);
+    DLL_EXPORT void AddOutputParameter(CKParameterOut *out);
+    DLL_EXPORT int GetOutputParameterCount();
+    DLL_EXPORT CKERROR GetOutputParameterValue(int pos, void *buf);
+    DLL_EXPORT CKERROR SetOutputParameterValue(int pos, const void *buf, int size = 0);
+    DLL_EXPORT void *GetOutputParameterWriteDataPtr(int pos);
+    DLL_EXPORT CKERROR SetOutputParameterObject(int pos, CKObject *obj);
+    DLL_EXPORT CKObject *GetOutputParameterObject(int pos);
+    DLL_EXPORT CKBOOL IsOutputParameterEnabled(int pos);
+    DLL_EXPORT void EnableOutputParameter(int pos, CKBOOL enable);
 
-    void SetInputParameterDefaultValue(CKParameterIn *pin, CKParameter *plink);
+    DLL_EXPORT void SetInputParameterDefaultValue(CKParameterIn *pin, CKParameter *plink);
 
     //----------------------------------------------------------------
     // Local Parameters
-    CKParameterLocal *CreateLocalParameter(CKSTRING name, CKParameterType type);
-    CKParameterLocal *CreateLocalParameter(CKSTRING name, CKGUID guid);
-    CKParameterLocal *GetLocalParameter(int pos);
-    CKParameterLocal *RemoveLocalParameter(int pos);
-    void AddLocalParameter(CKParameterLocal *loc);
-    int GetLocalParameterPosition(CKParameterLocal *);
-    int GetLocalParameterCount();
-    CKERROR GetLocalParameterValue(int pos, void *buf);
-    CKERROR SetLocalParameterValue(int pos, const void *buf, int size = 0);
-    void *GetLocalParameterWriteDataPtr(int pos);
-    void *GetLocalParameterReadDataPtr(int pos);
-    CKObject *GetLocalParameterObject(int pos);
-    CKERROR SetLocalParameterObject(int pos, CKObject *obj);
-    CKBOOL IsLocalParameterSetting(int pos);
+    DLL_EXPORT CKParameterLocal *CreateLocalParameter(CKSTRING name, CKParameterType type);
+    DLL_EXPORT CKParameterLocal *CreateLocalParameter(CKSTRING name, CKGUID guid);
+    DLL_EXPORT CKParameterLocal *GetLocalParameter(int pos);
+    DLL_EXPORT CKParameterLocal *RemoveLocalParameter(int pos);
+    DLL_EXPORT void AddLocalParameter(CKParameterLocal *loc);
+    DLL_EXPORT int GetLocalParameterPosition(CKParameterLocal *);
+    DLL_EXPORT int GetLocalParameterCount();
+    DLL_EXPORT CKERROR GetLocalParameterValue(int pos, void *buf);
+    DLL_EXPORT CKERROR SetLocalParameterValue(int pos, const void *buf, int size = 0);
+    DLL_EXPORT void *GetLocalParameterWriteDataPtr(int pos);
+    DLL_EXPORT void *GetLocalParameterReadDataPtr(int pos);
+    DLL_EXPORT CKObject *GetLocalParameterObject(int pos);
+    DLL_EXPORT CKERROR SetLocalParameterObject(int pos, CKObject *obj);
+    DLL_EXPORT CKBOOL IsLocalParameterSetting(int pos);
 
     //----------------------------------------------------------------
     // Run Time Graph : Activation
-    void Activate(CKBOOL Active = TRUE, CKBOOL breset = FALSE);
+    DLL_EXPORT void Activate(CKBOOL Active = TRUE, CKBOOL breset = FALSE);
 
     //----------------------------------------------------------------
     // Run Time Graph : Sub Behaviors
-    CKERROR AddSubBehavior(CKBehavior *cbk);
-    CKBehavior *RemoveSubBehavior(CKBehavior *cbk);
-    CKBehavior *RemoveSubBehavior(int pos);
-    CKBehavior *GetSubBehavior(int pos);
-    int GetSubBehaviorCount();
+    DLL_EXPORT CKERROR AddSubBehavior(CKBehavior *cbk);
+    DLL_EXPORT CKBehavior *RemoveSubBehavior(CKBehavior *cbk);
+    DLL_EXPORT CKBehavior *RemoveSubBehavior(int pos);
+    DLL_EXPORT CKBehavior *GetSubBehavior(int pos);
+    DLL_EXPORT int GetSubBehaviorCount();
 
     //----------------------------------------------------------------
     // Run Time Graph : Links between sub behaviors
-    CKERROR AddSubBehaviorLink(CKBehaviorLink *cbkl);
-    CKBehaviorLink *RemoveSubBehaviorLink(CKBehaviorLink *cbkl);
-    CKBehaviorLink *RemoveSubBehaviorLink(int pos);
-    CKBehaviorLink *GetSubBehaviorLink(int pos);
-    int GetSubBehaviorLinkCount();
+    DLL_EXPORT CKERROR AddSubBehaviorLink(CKBehaviorLink *cbkl);
+    DLL_EXPORT CKBehaviorLink *RemoveSubBehaviorLink(CKBehaviorLink *cbkl);
+    DLL_EXPORT CKBehaviorLink *RemoveSubBehaviorLink(int pos);
+    DLL_EXPORT CKBehaviorLink *GetSubBehaviorLink(int pos);
+    DLL_EXPORT int GetSubBehaviorLinkCount();
 
     //----------------------------------------------------------------
     // Run Time Graph : Parameter Operation
-    CKERROR AddParameterOperation(CKParameterOperation *op);
-    CKParameterOperation *GetParameterOperation(int pos);
-    CKParameterOperation *RemoveParameterOperation(int pos);
-    CKParameterOperation *RemoveParameterOperation(CKParameterOperation *op);
-    int GetParameterOperationCount();
+    DLL_EXPORT CKERROR AddParameterOperation(CKParameterOperation *op);
+    DLL_EXPORT CKParameterOperation *GetParameterOperation(int pos);
+    DLL_EXPORT CKParameterOperation *RemoveParameterOperation(int pos);
+    DLL_EXPORT CKParameterOperation *RemoveParameterOperation(CKParameterOperation *op);
+    DLL_EXPORT int GetParameterOperationCount();
 
     //----------------------------------------------------------------
     // Run Time Graph : Behavior Priority
-    int GetPriority();
-    void SetPriority(int priority);
+    DLL_EXPORT int GetPriority();
+    DLL_EXPORT void SetPriority(int priority);
 
     //------- Profiling ---------------------
-    float GetLastExecutionTime();
+    DLL_EXPORT float GetLastExecutionTime();
 
     //-------------------------------------------------------------------------
     // Internal functions
 
-    CKERROR SetOwner(CKBeObject *owner, CKBOOL callback = TRUE);
-    CKERROR SetSubBehaviorOwner(CKBeObject *owner, CKBOOL callback = TRUE);
+    DLL_EXPORT CKERROR SetOwner(CKBeObject *owner, CKBOOL callback = TRUE);
+    DLL_EXPORT CKERROR SetSubBehaviorOwner(CKBeObject *owner, CKBOOL callback = TRUE);
 
-    void NotifyEdition();
-    void NotifySettingsEdition();
+    DLL_EXPORT void NotifyEdition();
+    DLL_EXPORT void NotifySettingsEdition();
 
-    CKStateChunk *GetInterfaceChunk();
-    void SetInterfaceChunk(CKStateChunk *state);
+    DLL_EXPORT CKStateChunk *GetInterfaceChunk();
+    DLL_EXPORT void SetInterfaceChunk(CKStateChunk *state);
 
     CKBehavior(CKContext *Context, CKSTRING name = NULL);
     virtual ~CKBehavior();

@@ -60,131 +60,131 @@ Remarks:
 
 See also:
 *************************************************/
-class DLL_EXPORT CKDataArray : public CKBeObject
+class CKDataArray : public CKBeObject
 {
 public:
     // Column/Format Functions
     // Insert Column before column cdest (-1 means move at the end)
-    void InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramGuid = CKGUID(0, 0));
+    DLL_EXPORT void InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramGuid = CKGUID(0, 0));
     // Move Column csrc before column cdest (-1 means move at the end)
-    void MoveColumn(int csrc, int cdest);
+    DLL_EXPORT void MoveColumn(int csrc, int cdest);
     // Remove Column
-    void RemoveColumn(int c);
+    DLL_EXPORT void RemoveColumn(int c);
     // Set Column Name
-    void SetColumnName(int c, char *name);
+    DLL_EXPORT void SetColumnName(int c, char *name);
     // Get Column Name
-    char *GetColumnName(int c);
+    DLL_EXPORT char *GetColumnName(int c);
     // Get Column Format
-    void SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid = CKGUID(0, 0));
+    DLL_EXPORT void SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid = CKGUID(0, 0));
     // Get Column Format
-    CK_ARRAYTYPE GetColumnType(int c);
+    DLL_EXPORT CK_ARRAYTYPE GetColumnType(int c);
     // Get Column Format
-    CKGUID GetColumnParameterGuid(int c);
+    DLL_EXPORT CKGUID GetColumnParameterGuid(int c);
     // Get Key Column
-    int GetKeyColumn();
+    DLL_EXPORT int GetKeyColumn();
     // Set Key Column
-    void SetKeyColumn(int c);
+    DLL_EXPORT void SetKeyColumn(int c);
     // Get Column Number
-    int GetColumnCount();
+    DLL_EXPORT int GetColumnCount();
 
     // Elements Functions
 
     // Get the element pointer of the specified case
-    CKDWORD *GetElement(int i, int c);
+    DLL_EXPORT CKDWORD *GetElement(int i, int c);
     // Use to get an int, a float, a string or an object ID
-    CKBOOL GetElementValue(int i, int c, void *value);
+    DLL_EXPORT CKBOOL GetElementValue(int i, int c, void *value);
     // Use to get an CKObject
-    CKObject *GetElementObject(int i, int c);
+    DLL_EXPORT CKObject *GetElementObject(int i, int c);
 
     // Use to set an int, a float ,an object ID, a string
-    CKBOOL SetElementValue(int i, int c, void *value, int size = 0);
+    DLL_EXPORT CKBOOL SetElementValue(int i, int c, void *value, int size = 0);
     // Use to set a value from a parameter
-    CKBOOL SetElementValueFromParameter(int i, int c, CKParameter *pout);
+    DLL_EXPORT CKBOOL SetElementValueFromParameter(int i, int c, CKParameter *pout);
     // Use to set an CKObject
-    CKBOOL SetElementObject(int i, int c, CKObject *object);
+    DLL_EXPORT CKBOOL SetElementObject(int i, int c, CKObject *object);
 
     // Parameters Shortcuts
 
     // Paste a shortcut of a parameter on an existing compatible parameter
-    CKBOOL PasteShortcut(int i, int c, CKParameter *pout);
+    DLL_EXPORT CKBOOL PasteShortcut(int i, int c, CKParameter *pout);
     // Remove a shortcut parameter (if it exists)
-    CKParameterOut *RemoveShortcut(int i, int c);
+    DLL_EXPORT CKParameterOut *RemoveShortcut(int i, int c);
 
     // String Value
 
     // Set the value of an existing element
-    CKBOOL SetElementStringValue(int i, int c, char *svalue);
+    DLL_EXPORT CKBOOL SetElementStringValue(int i, int c, char *svalue);
     // Set the value of an existing element
-    int GetStringValue(CKDWORD key, int c, char *svalue);
+    DLL_EXPORT int GetStringValue(CKDWORD key, int c, char *svalue);
     // Set the value of an existing element
-    int GetElementStringValue(int i, int c, char *svalue);
+    DLL_EXPORT int GetElementStringValue(int i, int c, char *svalue);
 
     // Load / Write
 
     // load elements into an array from a formatted file
-    CKBOOL LoadElements(CKSTRING filename, CKBOOL append, int column);
+    DLL_EXPORT CKBOOL LoadElements(CKSTRING filename, CKBOOL append, int column);
     // write elements from an array to a file
-    CKBOOL WriteElements(CKSTRING filename, int column, int number, CKBOOL append = FALSE);
+    DLL_EXPORT CKBOOL WriteElements(CKSTRING filename, int column, int number, CKBOOL append = FALSE);
 
     // Rows Functions
     // Get row Count
-    int GetRowCount();
+    DLL_EXPORT int GetRowCount();
     // Find the nth line
-    CKDataRow *GetRow(int n);
+    DLL_EXPORT CKDataRow *GetRow(int n);
     // adds a row
-    void AddRow();
+    DLL_EXPORT void AddRow();
     // Insert a Row before another, -1 means after everything
-    CKDataRow *InsertRow(int n = -1);
+    DLL_EXPORT CKDataRow *InsertRow(int n = -1);
     // Test a row on a column
-    CKBOOL TestRow(int row, int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
+    DLL_EXPORT CKBOOL TestRow(int row, int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
     // Find a line with the current key : search in the column c and return the line index (-1) if none
-    int FindRowIndex(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
+    DLL_EXPORT int FindRowIndex(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
     // Find a line with the current key : search in the column c and return the line itself (NULL if none)
-    CKDataRow *FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
+    DLL_EXPORT CKDataRow *FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
     // Remove the nth line
-    void RemoveRow(int n);
+    DLL_EXPORT void RemoveRow(int n);
     // Move a row
-    void MoveRow(int rsrc, int rdst);
+    DLL_EXPORT void MoveRow(int rsrc, int rdst);
     // Swap 2 rows
-    void SwapRows(int i1, int i2);
+    DLL_EXPORT void SwapRows(int i1, int i2);
     // Clear the entire array
-    void Clear(CKBOOL Params = TRUE);
+    DLL_EXPORT void Clear(CKBOOL Params = TRUE);
     // Delete the data
-    void DataDelete(CKBOOL Params = TRUE);
+    DLL_EXPORT void DataDelete(CKBOOL Params = TRUE);
 
     ///////////////////////////
     // Algorithm
     ///////////////////////////
 
     // Find the highest value in the given column
-    CKBOOL GetHighest(int c, int &row);
+    DLL_EXPORT CKBOOL GetHighest(int c, int &row);
     // Find the lowest value in the given column
-    CKBOOL GetLowest(int c, int &row);
+    DLL_EXPORT CKBOOL GetLowest(int c, int &row);
     // Find the nearest value in the given column
-    CKBOOL GetNearest(int c, void *value, int &row);
+    DLL_EXPORT CKBOOL GetNearest(int c, void *value, int &row);
     // Transform the values by operating them with the given value
-    void ColumnTransform(int c, CK_BINARYOPERATOR op, CKDWORD value);
+    DLL_EXPORT void ColumnTransform(int c, CK_BINARYOPERATOR op, CKDWORD value);
     // Operate two columns into a third
-    void ColumnsOperate(int c1, CK_BINARYOPERATOR op, int c2, int cr);
+    DLL_EXPORT void ColumnsOperate(int c1, CK_BINARYOPERATOR op, int c2, int cr);
 
     // Sort the array on the column, ascending or descending
-    void Sort(int c, CKBOOL ascending);
+    DLL_EXPORT void Sort(int c, CKBOOL ascending);
     // Remove the elements identical in the array
-    void Unique(int c);
+    DLL_EXPORT void Unique(int c);
     // Shuffle the array
-    void RandomShuffle();
+    DLL_EXPORT void RandomShuffle();
     // Reverse the array
-    void Reverse();
+    DLL_EXPORT void Reverse();
 
     // Get the sum of a specific column
-    CKDWORD Sum(int c);
+    DLL_EXPORT CKDWORD Sum(int c);
     // Get The product of a specific column
-    CKDWORD Product(int c);
+    DLL_EXPORT CKDWORD Product(int c);
 
     // Get the count of elements verifying a condition (operator)
-    int GetCount(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
+    DLL_EXPORT int GetCount(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
     // Create a group from elements matching a value
-    void CreateGroup(int mc, CK_COMPOPERATOR op, CKDWORD key, int size, CKGroup *group, int ec = 0);
+    DLL_EXPORT void CreateGroup(int mc, CK_COMPOPERATOR op, CKDWORD key, int size, CKGroup *group, int ec = 0);
 
     //-------------------------------------------------------------------------
     // Internal functions

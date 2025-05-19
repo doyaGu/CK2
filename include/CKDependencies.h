@@ -84,7 +84,7 @@ operations like copy, delete, etc.
 Remarks:
 See also: CKDependencies,CKContext
 *************************************************/
-class DLL_EXPORT CKDependenciesContext
+class CKDependenciesContext
 {
     friend class CKObject;
     friend class CKStateChunk;
@@ -92,16 +92,16 @@ class DLL_EXPORT CKDependenciesContext
     friend class CKUIManager;
 
 public:
-    CKDependenciesContext(CKContext *context)
+    DLL_EXPORT CKDependenciesContext(CKContext *context)
         : m_CKContext(context),
           m_Dependencies(NULL),
           m_Mode(CK_DEPENDENCIES_BUILD),
           m_CreationMode(CK_OBJECTCREATION_NONAMECHECK) {}
 
     // Objects Access
-    void AddObjects(CK_ID *ids, int count);
-    int GetObjectsCount();
-    CKObject *GetObjects(int i);
+    DLL_EXPORT void AddObjects(CK_ID *ids, int count);
+    DLL_EXPORT int GetObjectsCount();
+    DLL_EXPORT CKObject *GetObjects(int i);
 
     /*************************************************
     Summary: Remaps a CK_ID.
@@ -116,7 +116,7 @@ public:
 
     See also: Remap
     *************************************************/
-    CK_ID RemapID(CK_ID &id);
+    DLL_EXPORT CK_ID RemapID(CK_ID &id);
 
     /*************************************************
     Summary: Remaps a CKObject.
@@ -126,7 +126,7 @@ public:
         Returns the remapped object, or the old object if it wasn't in the dependencies context.
     See also: RemapID
     *************************************************/
-    CKObject *Remap(const CKObject *o);
+    DLL_EXPORT CKObject *Remap(const CKObject *o);
 
     /*************************************************
     Summary: Tests if a CK_ID is in the dependencies context.
@@ -142,8 +142,8 @@ public:
     CKBOOL IsDependenciesHere(CK_ID id) { return m_MapID.IsHere(id); }
 
     /// Dependencies access
-    XObjectArray FillDependencies();
-    XObjectArray FillRemappedDependencies();
+    DLL_EXPORT XObjectArray FillDependencies();
+    DLL_EXPORT XObjectArray FillRemappedDependencies();
 
     /*************************************************
     Summary: Sets dependencies options for the subsequent operations
@@ -181,9 +181,9 @@ public:
         m_Dependencies = ((m_DependenciesStack.Size()) ? m_DependenciesStack.Back() : NULL);
     }
 
-    CKDWORD GetClassDependencies(int c);
+    DLL_EXPORT CKDWORD GetClassDependencies(int c);
 
-    void Copy(CKSTRING appendstring = NULL);
+    DLL_EXPORT void Copy(CKSTRING appendstring = NULL);
 
     /*************************************************
     Summary: Sets the operation mode for this dependencies context.
@@ -215,14 +215,14 @@ public:
     *************************************************/
     void SetCreationMode(CK_OBJECTCREATION_OPTIONS m) { m_CreationMode = m; }
 
-    CKBOOL ContainClassID(CK_CLASSID Cid);
+    DLL_EXPORT CKBOOL ContainClassID(CK_CLASSID Cid);
 
     //-------------------------------------------------------------------------
     // Internal functions
 
     XObjectPointerArray m_DynamicObjects;
 
-    CKERROR FinishPrepareDependencies(CKObject *iMySelf, CK_CLASSID Cid);
+    DLL_EXPORT CKERROR FinishPrepareDependencies(CKObject *iMySelf, CK_CLASSID Cid);
 
     // the context
     CKContext *m_CKContext;
@@ -234,9 +234,9 @@ public:
 
 protected:
     // Add Object
-    CKBOOL AddDependencies(CK_ID id);
+    DLL_EXPORT CKBOOL AddDependencies(CK_ID id);
 
-    void Clear();
+    DLL_EXPORT void Clear();
 
     CKDependencies *m_Dependencies;
     // Remapping Hashtable

@@ -19,13 +19,13 @@ Remarks:
 
 See also: CKParameterOut
 *****************************************************************************/
-class DLL_EXPORT CKParameterLocal : public CKParameter
+class CKParameterLocal : public CKParameter
 {
 public:
     //--------------------------------------------
     // Special Parameter :: This (MySelf)
 
-    void SetAsMyselfParameter(CKBOOL act);
+    DLL_EXPORT void SetAsMyselfParameter(CKBOOL act);
 
     CKBOOL IsMyselfParameter() { return (m_ObjectFlags & CK_PARAMETERIN_THIS); }
 

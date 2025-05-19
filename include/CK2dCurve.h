@@ -31,7 +31,7 @@ Remarks:
 
 See also: CK2dCurvePoint,CKCurve
 **********************************************************************/
-class DLL_EXPORT CK2dCurve
+class CK2dCurve
 {
 public:
     /*************************************************
@@ -52,7 +52,7 @@ public:
         CKERR_INVALIDPARAMETER if step is invalid
     See also: GetY
     *************************************************/
-    CKERROR GetPos(float step, Vx2DVector *pos);
+    DLL_EXPORT CKERROR GetPos(float step, Vx2DVector *pos);
 
     /*************************************************
     Summary: Retrieves the Y value corresponding to a given X value
@@ -62,7 +62,7 @@ public:
        The Y coordinate corresponding to the X value
     See also: GetPos
     *************************************************/
-    float GetY(float x);
+    DLL_EXPORT float GetY(float x);
 
     //--------------------------------------------------------------------------
     // Control points access
@@ -91,7 +91,7 @@ public:
 
     See also: GetControlPoint,GetControlPointCount,RemoveControlPoint
     *************************************************/
-    void AddControlPoint(const Vx2DVector &pos);
+    DLL_EXPORT void AddControlPoint(const Vx2DVector &pos);
 
     /*************************************************
     Summary: Gets the number of control points
@@ -109,14 +109,14 @@ public:
     *************************************************/
     CK2dCurvePoint *GetControlPoint(int pos) { return &m_ControlPoints[pos]; }
 
-    void Update();
+    DLL_EXPORT void Update();
 
     //----------------------------------------------------------
     // Internal functions
     //----------------------------------------------------------
-    CK2dCurve();
-    CKStateChunk *Dump();
-    CKERROR Read(CKStateChunk *chunk);
+    DLL_EXPORT CK2dCurve();
+    DLL_EXPORT CKStateChunk *Dump();
+    DLL_EXPORT CKERROR Read(CKStateChunk *chunk);
 
 protected:
     XArray<CK2dCurvePoint> m_ControlPoints;
@@ -124,7 +124,7 @@ protected:
     float m_Length;
     float FittingCoef;
 
-    void UpdatePointsAndTangents();
+    DLL_EXPORT void UpdatePointsAndTangents();
 
     int Rindex(int index)
     {

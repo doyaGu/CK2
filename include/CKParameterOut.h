@@ -39,7 +39,7 @@ function that will create the edition window when needed by the interface.
 
 See also: CKBehavior, CKParameterIn, CKParameterOperation
 **********************************************************************************/
-class DLL_EXPORT CKParameterOut : public CKParameter
+class CKParameterOut : public CKParameter
 {
     friend class CKParameterIn;
     friend class CKParameter;
@@ -58,12 +58,12 @@ public:
     //--------------------------------------------
     // Destinations
 
-    void DataChanged();
-    CKERROR AddDestination(CKParameter *param, CKBOOL CheckType = TRUE);
-    void RemoveDestination(CKParameter *param);
-    int GetDestinationCount();
-    CKParameter *GetDestination(int pos);
-    void RemoveAllDestinations();
+    DLL_EXPORT void DataChanged();
+    DLL_EXPORT CKERROR AddDestination(CKParameter *param, CKBOOL CheckType = TRUE);
+    DLL_EXPORT void RemoveDestination(CKParameter *param);
+    DLL_EXPORT int GetDestinationCount();
+    DLL_EXPORT CKParameter *GetDestination(int pos);
+    DLL_EXPORT void RemoveAllDestinations();
 
     //-------------------------------------------------------------------
     // Internal functions

@@ -22,17 +22,17 @@ Remarks:
 
 See also:
 *************************************************/
-class DLL_EXPORT CKSynchroObject : public CKObject
+class CKSynchroObject : public CKObject
 {
 public:
-    void Reset();
+    DLL_EXPORT void Reset();
     //-------------------------------------------
     // Rendez Vous
-    void SetRendezVousNumberOfWaiters(int waiters);
-    int GetRendezVousNumberOfWaiters();
-    CKBOOL CanIPassRendezVous(CKBeObject *asker);
-    int GetRendezVousNumberOfArrivedObjects();
-    CKBeObject *GetRendezVousArrivedObject(int pos);
+    DLL_EXPORT void SetRendezVousNumberOfWaiters(int waiters);
+    DLL_EXPORT int GetRendezVousNumberOfWaiters();
+    DLL_EXPORT CKBOOL CanIPassRendezVous(CKBeObject *asker);
+    DLL_EXPORT int GetRendezVousNumberOfArrivedObjects();
+    DLL_EXPORT CKBeObject *GetRendezVousArrivedObject(int pos);
 
     ////-------------------------------------------------------------------
 
@@ -79,13 +79,13 @@ Remarks:
 
 See also:
 *************************************************/
-class DLL_EXPORT CKCriticalSectionObject : public CKObject
+class CKCriticalSectionObject : public CKObject
 {
 public:
-    void Reset();
+    DLL_EXPORT void Reset();
 
-    CKBOOL EnterCriticalSection(CKBeObject *asker);
-    CKBOOL LeaveCriticalSection(CKBeObject *asker);
+    DLL_EXPORT CKBOOL EnterCriticalSection(CKBeObject *asker);
+    DLL_EXPORT CKBOOL LeaveCriticalSection(CKBeObject *asker);
 
     //-------------------------------------------------------------------
 
@@ -128,15 +128,15 @@ be checked through IsStateActive.
 
 See also:
 *************************************************/
-class DLL_EXPORT CKStateObject : public CKObject
+class CKStateObject : public CKObject
 {
 
 public:
     //-----------------------------------
     // Event
-    CKBOOL IsStateActive();
-    void EnterState();
-    void LeaveState();
+    DLL_EXPORT CKBOOL IsStateActive();
+    DLL_EXPORT void EnterState();
+    DLL_EXPORT void LeaveState();
 
     //-------------------------------------------------------------------
 

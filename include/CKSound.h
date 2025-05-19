@@ -13,12 +13,12 @@ Remarks:
     + CKSound provides only common method for the save options of sounds.
 See also: CKWaveSound,CKMidiSound
 *************************************************/
-class DLL_EXPORT CKSound : public CKBeObject
+class CKSound : public CKBeObject
 {
 public:
     //-------- Save format
-    CK_SOUND_SAVEOPTIONS GetSaveOptions();
-    void SetSaveOptions(CK_SOUND_SAVEOPTIONS Options);
+    DLL_EXPORT CK_SOUND_SAVEOPTIONS GetSaveOptions();
+    DLL_EXPORT void SetSaveOptions(CK_SOUND_SAVEOPTIONS Options);
 
     //-------------------------------------------------------------------
 

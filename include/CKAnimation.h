@@ -42,7 +42,7 @@ Remarks:
 
 See also: CKKeyedAnimation,CKCharacter,Using Animations,Using Characters
 ***********************************************************************/
-class CKAnimation : public CKSceneObject
+class DLL_EXPORT CKAnimation : public CKSceneObject
 {
 public:
     //--------------------------------------

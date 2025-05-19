@@ -70,18 +70,18 @@ or it can be use to access the sub-members of a parameter of the type CKPGUID_MY
 
 See Also: RegisterNewStructure,
 ************************************************************/
-class DLL_EXPORT CKStructHelper
+class CKStructHelper
 {
 public:
-    CKStructHelper(CKParameter *Param);
-    CKStructHelper(CKContext *ctx, CKGUID PGuid, CK_ID *Data = NULL);
-    CKStructHelper(CKContext *ctx, CKParameterType PType, CK_ID *Data = NULL);
+    DLL_EXPORT CKStructHelper(CKParameter *Param);
+    DLL_EXPORT CKStructHelper(CKContext *ctx, CKGUID PGuid, CK_ID *Data = NULL);
+    DLL_EXPORT CKStructHelper(CKContext *ctx, CKParameterType PType, CK_ID *Data = NULL);
 
     //------- Members description (These methods do not require
     // Data pointer to be valid )
-    char *GetMemberName(int Pos);
-    CKGUID GetMemberGUID(int Pos);
-    int GetMemberCount();
+    DLL_EXPORT char *GetMemberName(int Pos);
+    DLL_EXPORT CKGUID GetMemberGUID(int Pos);
+    DLL_EXPORT int GetMemberCount();
 
     /************************************************************
     Summary: Returns a member of this structure as a parameter
@@ -162,7 +162,7 @@ cases the name argument is provided as a convenience for debugging and display p
 
 See Also: CKParameterOperation, CKParameter,CKParameterIn, CKParameterOut,ParameterOperation Types,Pre-Registered Parameter Types
 ********************************************/
-class DLL_EXPORT CKParameterManager : public CKBaseManager
+class CKParameterManager : public CKBaseManager
 {
     friend class CKParameter;
     friend class CKContext;
@@ -170,94 +170,94 @@ class DLL_EXPORT CKParameterManager : public CKBaseManager
 public:
     //-----------------------------------------------------------------------
     // Parameter Types registration
-    CKERROR RegisterParameterType(CKParameterTypeDesc *paramType);
-    CKERROR UnRegisterParameterType(CKGUIDCONSTREF guid);
-    CKParameterTypeDesc *GetParameterTypeDescription(int type);
-    CKParameterTypeDesc *GetParameterTypeDescription(CKGUIDCONSTREF guid);
-    int GetParameterSize(CKParameterType type);
-    int GetParameterTypesCount();
+    DLL_EXPORT CKERROR RegisterParameterType(CKParameterTypeDesc *paramType);
+    DLL_EXPORT CKERROR UnRegisterParameterType(CKGUIDCONSTREF guid);
+    DLL_EXPORT CKParameterTypeDesc *GetParameterTypeDescription(int type);
+    DLL_EXPORT CKParameterTypeDesc *GetParameterTypeDescription(CKGUIDCONSTREF guid);
+    DLL_EXPORT int GetParameterSize(CKParameterType type);
+    DLL_EXPORT int GetParameterTypesCount();
 
     //-----------------------------------------------------------------------
     // Parameter Types <=> Parameter Type Name <=> GUID conversion functions
-    CKParameterType ParameterGuidToType(CKGUIDCONSTREF guid);
-    CKSTRING ParameterGuidToName(CKGUIDCONSTREF guid);
-    CKGUID ParameterTypeToGuid(CKParameterType type);
-    CKSTRING ParameterTypeToName(CKParameterType type);
-    CKGUID ParameterNameToGuid(CKSTRING name);
-    CKParameterType ParameterNameToType(CKSTRING name);
+    DLL_EXPORT CKParameterType ParameterGuidToType(CKGUIDCONSTREF guid);
+    DLL_EXPORT CKSTRING ParameterGuidToName(CKGUIDCONSTREF guid);
+    DLL_EXPORT CKGUID ParameterTypeToGuid(CKParameterType type);
+    DLL_EXPORT CKSTRING ParameterTypeToName(CKParameterType type);
+    DLL_EXPORT CKGUID ParameterNameToGuid(CKSTRING name);
+    DLL_EXPORT CKParameterType ParameterNameToType(CKSTRING name);
 
     ///----------------------------------------------------------------------
     // Derivated types functions
-    CKBOOL IsDerivedFrom(CKGUIDCONSTREF guid1, CKGUIDCONSTREF parent);
-    CKBOOL IsDerivedFrom(CKParameterType child, CKParameterType parent);
-    CKBOOL IsTypeCompatible(CKGUIDCONSTREF guid1, CKGUIDCONSTREF guid2);
-    CKBOOL IsTypeCompatible(CKParameterType type1, CKParameterType type2);
+    DLL_EXPORT CKBOOL IsDerivedFrom(CKGUIDCONSTREF guid1, CKGUIDCONSTREF parent);
+    DLL_EXPORT CKBOOL IsDerivedFrom(CKParameterType child, CKParameterType parent);
+    DLL_EXPORT CKBOOL IsTypeCompatible(CKGUIDCONSTREF guid1, CKGUIDCONSTREF guid2);
+    DLL_EXPORT CKBOOL IsTypeCompatible(CKParameterType type1, CKParameterType type2);
 
     //-----------------------------------------------------------------------
     // Parameter Type to Class ID conversions functions
-    CK_CLASSID TypeToClassID(CKParameterType type);
-    CK_CLASSID GuidToClassID(CKGUIDCONSTREF guid);
+    DLL_EXPORT CK_CLASSID TypeToClassID(CKParameterType type);
+    DLL_EXPORT CK_CLASSID GuidToClassID(CKGUIDCONSTREF guid);
 
-    CKParameterType ClassIDToType(CK_CLASSID cid);
-    CKGUID ClassIDToGuid(CK_CLASSID cid);
+    DLL_EXPORT CKParameterType ClassIDToType(CK_CLASSID cid);
+    DLL_EXPORT CKGUID ClassIDToGuid(CK_CLASSID cid);
 
     //-----------------------------------------------------------------------
     // Special Types : Flags,enums and Structures
-    CKERROR RegisterNewFlags(CKGUIDCONSTREF FlagsGuid, CKSTRING FlagsName, CKSTRING FlagsData);
-    CKERROR RegisterNewEnum(CKGUIDCONSTREF EnumGuid, CKSTRING EnumName, CKSTRING EnumData);
-    CKERROR ChangeEnumDeclaration(CKGUIDCONSTREF EnumGuid, CKSTRING EnumData);
-    CKERROR ChangeFlagsDeclaration(CKGUIDCONSTREF FlagsGuid, CKSTRING FlagsData);
-    CKERROR RegisterNewStructure(CKGUIDCONSTREF StructGuid, CKSTRING StructName, CKSTRING StructData, ...);
-    CKERROR RegisterNewStructure(CKGUIDCONSTREF StructGuid, CKSTRING StructName, CKSTRING StructData, XArray<CKGUID> &ListGuid);
+    DLL_EXPORT CKERROR RegisterNewFlags(CKGUIDCONSTREF FlagsGuid, CKSTRING FlagsName, CKSTRING FlagsData);
+    DLL_EXPORT CKERROR RegisterNewEnum(CKGUIDCONSTREF EnumGuid, CKSTRING EnumName, CKSTRING EnumData);
+    DLL_EXPORT CKERROR ChangeEnumDeclaration(CKGUIDCONSTREF EnumGuid, CKSTRING EnumData);
+    DLL_EXPORT CKERROR ChangeFlagsDeclaration(CKGUIDCONSTREF FlagsGuid, CKSTRING FlagsData);
+    DLL_EXPORT CKERROR RegisterNewStructure(CKGUIDCONSTREF StructGuid, CKSTRING StructName, CKSTRING StructData, ...);
+    DLL_EXPORT CKERROR RegisterNewStructure(CKGUIDCONSTREF StructGuid, CKSTRING StructName, CKSTRING StructData, XArray<CKGUID> &ListGuid);
 
-    int GetNbFlagDefined();
-    int GetNbEnumDefined();
-    int GetNbStructDefined();
-    CKFlagsStruct *GetFlagsDescByType(CKParameterType pType);
-    CKEnumStruct *GetEnumDescByType(CKParameterType pType);
-    CKStructStruct *GetStructDescByType(CKParameterType pType);
+    DLL_EXPORT int GetNbFlagDefined();
+    DLL_EXPORT int GetNbEnumDefined();
+    DLL_EXPORT int GetNbStructDefined();
+    DLL_EXPORT CKFlagsStruct *GetFlagsDescByType(CKParameterType pType);
+    DLL_EXPORT CKEnumStruct *GetEnumDescByType(CKParameterType pType);
+    DLL_EXPORT CKStructStruct *GetStructDescByType(CKParameterType pType);
 
     //------------ Parameter Operations -------------------------------------//
 
     //-----------------------------------------------------------------------
     // Operation Family Registration
-    CKOperationType RegisterOperationType(CKGUIDCONSTREF OpCode, CKSTRING name);
-    CKERROR UnRegisterOperationType(CKGUIDCONSTREF opguid);
-    CKERROR UnRegisterOperationType(CKOperationType opcode);
+    DLL_EXPORT CKOperationType RegisterOperationType(CKGUIDCONSTREF OpCode, CKSTRING name);
+    DLL_EXPORT CKERROR UnRegisterOperationType(CKGUIDCONSTREF opguid);
+    DLL_EXPORT CKERROR UnRegisterOperationType(CKOperationType opcode);
 
     //-----------------------------------------------------------------------
     // Operation function access
-    CKERROR RegisterOperationFunction(CKGUIDREF operation, CKGUIDREF type_paramres, CKGUIDREF type_param1, CKGUIDREF type_param2, CK_PARAMETEROPERATION op);
+    DLL_EXPORT CKERROR RegisterOperationFunction(CKGUIDREF operation, CKGUIDREF type_paramres, CKGUIDREF type_param1, CKGUIDREF type_param2, CK_PARAMETEROPERATION op);
 
-    CK_PARAMETEROPERATION GetOperationFunction(CKGUIDREF operation, CKGUIDREF type_paramres, CKGUIDREF type_param1, CKGUIDREF type_param2);
-    CKERROR UnRegisterOperationFunction(CKGUIDREF operation, CKGUIDREF type_paramres, CKGUIDREF type_param1, CKGUIDREF type_param2);
+    DLL_EXPORT CK_PARAMETEROPERATION GetOperationFunction(CKGUIDREF operation, CKGUIDREF type_paramres, CKGUIDREF type_param1, CKGUIDREF type_param2);
+    DLL_EXPORT CKERROR UnRegisterOperationFunction(CKGUIDREF operation, CKGUIDREF type_paramres, CKGUIDREF type_param1, CKGUIDREF type_param2);
 
     //-----------------------------------------------------------------------
     // operation type conversion functions : Name <-> GUID <-> internal code for operation
-    CKGUID OperationCodeToGuid(CKOperationType type);
-    CKSTRING OperationCodeToName(CKOperationType type);
-    CKOperationType OperationGuidToCode(CKGUIDCONSTREF guid);
-    CKSTRING OperationGuidToName(CKGUIDCONSTREF guid);
-    CKGUID OperationNameToGuid(CKSTRING name);
-    CKOperationType OperationNameToCode(CKSTRING name);
+    DLL_EXPORT CKGUID OperationCodeToGuid(CKOperationType type);
+    DLL_EXPORT CKSTRING OperationCodeToName(CKOperationType type);
+    DLL_EXPORT CKOperationType OperationGuidToCode(CKGUIDCONSTREF guid);
+    DLL_EXPORT CKSTRING OperationGuidToName(CKGUIDCONSTREF guid);
+    DLL_EXPORT CKGUID OperationNameToGuid(CKSTRING name);
+    DLL_EXPORT CKOperationType OperationNameToCode(CKSTRING name);
 
-    int GetAvailableOperationsDesc(const CKGUID &opGuid,
+    DLL_EXPORT int GetAvailableOperationsDesc(const CKGUID &opGuid,
                                    CKParameterOut *res,
                                    CKParameterIn *p1,
                                    CKParameterIn *p2,
                                    CKOperationDesc *list);
 
-    int GetParameterOperationCount();
+    DLL_EXPORT int GetParameterOperationCount();
 
-    void BuildParameterHierarchy(CKParameterType type, CKGUID *parents, int &count);
-    void ProcessParameterCombinations(
+    DLL_EXPORT void BuildParameterHierarchy(CKParameterType type, CKGUID *parents, int &count);
+    DLL_EXPORT void ProcessParameterCombinations(
         OperationCell &opCell,
         CKGUID *p1Hierarchy, int p1Count,
         CKGUID *p2Hierarchy, int p2Count,
         CKGUID *resHierarchy, int resCount,
         CKOperationDesc *list,
         int &opCount);
-    void ProcessSecondParameterLevel(
+    DLL_EXPORT void ProcessSecondParameterLevel(
         TreeCell &p1Cell,
         CKGUID *p2Hierarchy, int p2Count,
         CKGUID *resHierarchy, int resCount,
@@ -265,7 +265,7 @@ public:
         int &opCount,
         const CKGUID &opGuid,
         const CKGUID &p1Guid);
-    void ProcessResultTypeLevel(
+    DLL_EXPORT void ProcessResultTypeLevel(
         TreeCell &p2Cell,
         CKGUID *resHierarchy, int resCount,
         CKOperationDesc *list,
@@ -273,7 +273,7 @@ public:
         const CKGUID &opGuid,
         const CKGUID &p1Guid,
         const CKGUID &p2Guid);
-    void AddCompatibleDerivedOperations(
+    DLL_EXPORT void AddCompatibleDerivedOperations(
         TreeCell &resCell,
         CKOperationDesc *list,
         int &opCount,
@@ -281,12 +281,12 @@ public:
         const CKGUID &p1Guid,
         const CKGUID &p2Guid);
 
-    TreeCell *FindOrCreateGuidCell(TreeCell *&cells, int &cellCount, CKGUID &guid);
+    DLL_EXPORT TreeCell *FindOrCreateGuidCell(TreeCell *&cells, int &cellCount, CKGUID &guid);
 
-    CKBOOL IsParameterTypeToBeShown(CKParameterType type);
-    CKBOOL IsParameterTypeToBeShown(CKGUIDCONSTREF guid);
+    DLL_EXPORT CKBOOL IsParameterTypeToBeShown(CKParameterType type);
+    DLL_EXPORT CKBOOL IsParameterTypeToBeShown(CKGUIDCONSTREF guid);
 
-    void UpdateParameterEnum();
+    DLL_EXPORT void UpdateParameterEnum();
 
     CKParameterManager(CKContext *Context);
 
