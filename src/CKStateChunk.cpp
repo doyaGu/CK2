@@ -2077,8 +2077,8 @@ int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
     int remappedCount = 0;
     int currentIndex = 0;
 
-    if (!it->Managers || it->ManagerCount <= 0)
-        return remappedCount;
+    if (!it || !it->Managers || it->ManagerCount <= 0 || !it->Data || !it->ConversionTable || it->NbEntries <= 0)
+        return 0;
 
     while (currentIndex < it->ManagerCount) {
         int *managers = it->Managers;
@@ -2086,6 +2086,11 @@ int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
 
         if (dataPosition >= 0) {
             // Single manager entry processing
+            // Check for array bounds
+            if (dataPosition + 2 >= it->ChunkSize) {
+                break; // Out of bounds, stop processing
+            }
+
             int *data = it->Data;
             int guidPart1 = data[dataPosition];
             int guidPart2 = data[dataPosition + 1];
@@ -2101,18 +2106,39 @@ int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
             currentIndex++;
         } else {
             // Sequence of manager entries processing
+            // Check that we're not at the end of the array
+            if (currentIndex + 1 >= it->ManagerCount) {
+                break;
+            }
+
             int *data = it->Data;
             currentIndex++; // Move to sequence count position
             int sequenceStart = managers[currentIndex];
 
+            // Check array bounds
+            if (sequenceStart < 0 || sequenceStart + 2 >= it->ChunkSize) {
+                break;
+            }
+
             int sequenceCount = data[sequenceStart];
+
+            // Check for reasonable sequence count
+            if (sequenceCount < 0 || sequenceCount > 10000000) {
+                break;
+            }
+
             int guidPart1 = data[sequenceStart + 1];
             int guidPart2 = data[sequenceStart + 2];
 
-            if (it->Guid.d1 == guidPart1 && it->Guid.d2 == guidPart2) {
-                int valueStartPos = sequenceStart + 3;
-                int valueEndPos = valueStartPos + sequenceCount;
+            // Validate value range
+            int valueStartPos = sequenceStart + 3;
+            int valueEndPos = valueStartPos + sequenceCount;
 
+            if (valueEndPos > it->ChunkSize) {
+                break; // Out of bounds
+            }
+
+            if (it->Guid.d1 == guidPart1 && it->Guid.d2 == guidPart2) {
                 for (int valuePos = valueStartPos; valuePos < valueEndPos; valuePos++) {
                     int &valueRef = data[valuePos];
                     if (valueRef >= 0 && valueRef < it->NbEntries) {
