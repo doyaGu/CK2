@@ -51,6 +51,9 @@ add_compile_definitions(
 		$<$<C_COMPILER_ID:MSVC>:_CRT_NONSTDC_NO_WARNINGS>
 )
 
+set(CK2_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+set(CK2_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
+
 add_subdirectory(deps)
 add_subdirectory(src)
 

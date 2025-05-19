@@ -1,5 +1,3 @@
-set(CK2_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
-
 set(CK2_PUBLIC_HEADERS
         ${CK2_INCLUDE_DIR}/CKAll.h
 
