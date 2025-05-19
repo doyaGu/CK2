@@ -286,7 +286,7 @@ public:
     DLL_EXPORT CKBOOL IsParameterTypeToBeShown(CKParameterType type);
     DLL_EXPORT CKBOOL IsParameterTypeToBeShown(CKGUIDCONSTREF guid);
 
-    DLL_EXPORT void UpdateParameterEnum();
+    void UpdateParameterEnum();
 
     CKParameterManager(CKContext *Context);
 
