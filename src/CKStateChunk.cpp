@@ -1671,6 +1671,7 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
     CKBYTE *bitmapData = NULL;
     void *buffer = NULL;
     CKBitmapProperties *bitmapProps = NULL;
+    CKBitmapReader *reader = NULL;
 
     // Read bitmap header information
     ReadInt(); // Skip version/flags field
@@ -1707,7 +1708,7 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
 
     // Get appropriate bitmap reader
     CKFileExtension ext(fileExtension);
-    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext);
+    reader = CKGetPluginManager()->GetBitmapReader(ext);
     if (reader) {
         char *dataStart = static_cast<char *>(buffer);
         int dataSize = bufferSize;
