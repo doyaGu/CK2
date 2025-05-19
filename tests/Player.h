@@ -46,9 +46,9 @@ public:
     PlayerConfig();
     PlayerConfig &operator=(const PlayerConfig &config);
 
-    void SetPath(PlayerPathCategory category, const char *path);
-    const char *GetPath(PlayerPathCategory category) const;
     bool HasPath(PlayerPathCategory category) const;
+    const char *GetPath(PlayerPathCategory category) const;
+    void SetPath(PlayerPathCategory category, const char *path);
     bool ResetPath(PlayerPathCategory category = ePathCategoryCount);
 
 private:
@@ -157,6 +157,7 @@ private:
     static bool RegisterRenderWindowClass(HINSTANCE hInstance);
     static bool UnregisterMainWindowClass(HINSTANCE hInstance);
     static bool UnregisterRenderWindowClass(HINSTANCE hInstance);
+
     static LRESULT CALLBACK MainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     int m_State;

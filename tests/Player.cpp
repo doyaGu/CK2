@@ -194,7 +194,7 @@ PlayerConfig::PlayerConfig() {
     borderless = false;
     alwaysHandleInput = false;
 
-    ResetPath(ePathCategoryCount);
+    ResetPath();
 }
 
 PlayerConfig &PlayerConfig::operator=(const PlayerConfig &config) {
@@ -218,10 +218,10 @@ PlayerConfig &PlayerConfig::operator=(const PlayerConfig &config) {
     return *this;
 }
 
-void PlayerConfig::SetPath(PlayerPathCategory category, const char *path) {
-    if (category < 0 || category >= ePathCategoryCount || !path)
-        return;
-    m_Paths[category] = path;
+bool PlayerConfig::HasPath(PlayerPathCategory category) const {
+    if (category < 0 || category >= ePathCategoryCount)
+        return false;
+    return !m_Paths[category].empty();
 }
 
 const char *PlayerConfig::GetPath(PlayerPathCategory category) const {
@@ -230,10 +230,10 @@ const char *PlayerConfig::GetPath(PlayerPathCategory category) const {
     return m_Paths[category].c_str();
 }
 
-bool PlayerConfig::HasPath(PlayerPathCategory category) const {
-    if (category < 0 || category >= ePathCategoryCount)
-        return false;
-    return !m_Paths[category].empty();
+void PlayerConfig::SetPath(PlayerPathCategory category, const char *path) {
+    if (category < 0 || category >= ePathCategoryCount || !path)
+        return;
+    m_Paths[category] = path;
 }
 
 bool PlayerConfig::ResetPath(PlayerPathCategory category) {
@@ -242,7 +242,7 @@ bool PlayerConfig::ResetPath(PlayerPathCategory category) {
 
     if (category == ePathCategoryCount) {
         // Reset all paths
-        for (int i = ePluginPath; i < ePathCategoryCount; ++i) {
+        for (int i = 0; i < ePathCategoryCount; ++i) {
             SetPath(static_cast<PlayerPathCategory>(i), DefaultPaths[i]);
         }
     } else {
@@ -712,7 +712,7 @@ bool Player::FinishLoad(const char *filename) {
 
 void Player::ReportMissingGuids(CKFile *file, const char *resolvedFile) {
     // Retrieve the list of missing plugins/guids
-    XClassArray<CKFilePluginDependencies> *p = file->GetMissingPlugins();
+    const XClassArray<CKFilePluginDependencies> *p = file->GetMissingPlugins();
     for (CKFilePluginDependencies *it = p->Begin(); it != p->End(); it++) {
         const int count = it->m_Guids.Size();
         for (int i = 0; i < count; i++) {
