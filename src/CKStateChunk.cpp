@@ -1873,344 +1873,337 @@ void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int
 }
 
 int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
-    int result = fct(it);
+    if (!it) return 0;
+    int totalResult = fct(it);
 
-    if (it->Chunks) {
-        int chunkIndex = 0;
-        const int chunkCount = it->ChunkCount;
-
-        while (chunkIndex < chunkCount) {
-            ChunkIteratorData localIt;
-            memset(&localIt, 0, sizeof(ChunkIteratorData));
-            localIt.CopyFctData(it);
-
-            const int currentChunk = it->Chunks[chunkIndex];
-
-            if (currentChunk >= 0) {
-                // Process normal chunk
-                int *chunkData = it->Data + currentChunk;
-                const int dataSize = *chunkData;
-
-                if (dataSize > 0 && chunkData[2] + 4 != dataSize) {
-                    localIt.ChunkVersion = static_cast<short>(chunkData[2] >> 16);
-                    localIt.ChunkSize = chunkData[3];
-                    localIt.IdCount = chunkData[5];
-                    localIt.ChunkCount = chunkData[6];
-
-                    // Handle version-specific manager count
-                    if (it->ChunkVersion <= 4) {
-                        localIt.ManagerCount = 0;
-                        localIt.Data = chunkData + 7;
-                    } else {
-                        localIt.ManagerCount = chunkData[7];
-                        localIt.Data = chunkData + 8;
-                    }
-
-                    // Set up ID and chunk pointers
-                    if (localIt.IdCount > 0) {
-                        localIt.Ids = localIt.Data + localIt.ChunkSize;
-                    }
-                    if (localIt.ChunkCount > 0) {
-                        localIt.Chunks = localIt.Ids + localIt.IdCount;
-                    }
-                    if (localIt.ManagerCount > 0) {
-                        localIt.Managers = localIt.Chunks + localIt.ChunkCount;
-                    }
-
-                    result += IterateAndDo(fct, &localIt);
-                }
-                chunkIndex++;
-            } else {
-                // Process packed chunks
-                int *packedData = it->Data + (-currentChunk);
-                const int packedCount = *packedData++;
-
-                for (int i = 0; i < packedCount; i++) {
-                    const int subChunkSize = *packedData++;
-                    if (subChunkSize <= 0) continue;
-
-                    int *subChunkData = packedData;
-                    packedData += subChunkSize; // Move to next subchunk
-
-                    localIt.ChunkVersion = static_cast<short>(subChunkData[1] >> 16);
-                    localIt.ChunkSize = subChunkData[2];
-                    localIt.IdCount = subChunkData[4];
-                    localIt.ChunkCount = subChunkData[5];
-
-                    // Version-specific handling
-                    if (it->ChunkVersion <= 4) {
-                        localIt.ManagerCount = 0;
-                        localIt.Data = subChunkData + 6;
-                    } else {
-                        localIt.ManagerCount = subChunkData[6];
-                        localIt.Data = subChunkData + 7;
-                    }
-
-                    // Set up pointers
-                    if (localIt.IdCount > 0) {
-                        localIt.Ids = localIt.Data + localIt.ChunkSize;
-                    }
-                    if (localIt.ChunkCount > 0) {
-                        localIt.Chunks = localIt.Ids + localIt.IdCount;
-                    }
-                    if (localIt.ManagerCount > 0) {
-                        localIt.Managers = localIt.Chunks + localIt.ChunkCount;
-                    }
-
-                    result += IterateAndDo(fct, &localIt);
-                }
-                chunkIndex++;
-            }
-        }
+    if (!it->Chunks || it->ChunkCount <= 0) {
+        return totalResult;
     }
 
-    return result;
+    int chunkListIdx = 0;
+    while (chunkListIdx < it->ChunkCount) {
+        ChunkIteratorData localIt;
+        localIt.CopyFctData(it);
+
+        int currentChunkInfoOffset = it->Chunks[chunkListIdx];
+
+        if (currentChunkInfoOffset >= 0) { // Normal sub-chunk
+            if (currentChunkInfoOffset >= it->ChunkSize) { chunkListIdx++; continue; }
+
+            int *subChunkHeaderPtr = it->Data + currentChunkInfoOffset;
+
+            if (currentChunkInfoOffset + 2 >= it->ChunkSize) { chunkListIdx++; continue; } // Need at least size and version fields
+            const int subChunkBlockTotalDwords = subChunkHeaderPtr[0] + 1; // Field stores TotalDwords-1
+            const int subChunkVersionAndClassidField = subChunkHeaderPtr[2];
+
+            // This specific condition is based on IDA decompilation, its exact meaning in all contexts might be obscure.
+            if (subChunkBlockTotalDwords > 1 && (subChunkVersionAndClassidField + 4 != subChunkHeaderPtr[0]) ) {
+                int requiredHeaderDwords = (it->ChunkVersion <= CHUNK_VERSION1) ? 7 : 8;
+                if (currentChunkInfoOffset + requiredHeaderDwords > it->ChunkSize || subChunkBlockTotalDwords < requiredHeaderDwords) {
+                     chunkListIdx++; continue;
+                }
+
+                localIt.ChunkVersion = static_cast<short>(subChunkVersionAndClassidField >> 16);
+                localIt.ChunkSize    = subChunkHeaderPtr[3];
+                localIt.IdCount      = subChunkHeaderPtr[5];
+                localIt.ChunkCount   = subChunkHeaderPtr[6];
+
+                int dataPtrOffsetFromHeaderStart;
+                if (it->ChunkVersion <= CHUNK_VERSION1) {
+                    localIt.ManagerCount = 0;
+                    dataPtrOffsetFromHeaderStart = 7;
+                } else {
+                    localIt.ManagerCount = subChunkHeaderPtr[7];
+                    dataPtrOffsetFromHeaderStart = 8;
+                }
+
+                localIt.Data = subChunkHeaderPtr + dataPtrOffsetFromHeaderStart;
+
+                int totalSubElementsDwords = localIt.ChunkSize + localIt.IdCount + localIt.ChunkCount + localIt.ManagerCount;
+                if ( (dataPtrOffsetFromHeaderStart + totalSubElementsDwords > subChunkBlockTotalDwords) ||
+                     (currentChunkInfoOffset + dataPtrOffsetFromHeaderStart + totalSubElementsDwords > it->ChunkSize) ) {
+                    chunkListIdx++; continue;
+                }
+
+                int* currentDataSectionPtr = localIt.Data;
+                currentDataSectionPtr += localIt.ChunkSize;
+                localIt.Ids = (localIt.IdCount > 0) ? currentDataSectionPtr : nullptr;
+                if (localIt.Ids) currentDataSectionPtr += localIt.IdCount;
+
+                localIt.Chunks = (localIt.ChunkCount > 0) ? currentDataSectionPtr : nullptr;
+                if (localIt.Chunks) currentDataSectionPtr += localIt.ChunkCount;
+
+                localIt.Managers = (localIt.ManagerCount > 0) ? currentDataSectionPtr : nullptr;
+
+                localIt.Flag = 0;
+                totalResult += IterateAndDo(fct, &localIt);
+            }
+            chunkListIdx++;
+        } else { // Packed sub-chunk sequence
+            chunkListIdx++;
+            if (chunkListIdx >= it->ChunkCount) break;
+
+            int sequenceDataActualOffset = it->Chunks[chunkListIdx];
+            if (sequenceDataActualOffset < 0 || sequenceDataActualOffset >= it->ChunkSize) { chunkListIdx++; continue; }
+
+            int* packedCursor = it->Data + sequenceDataActualOffset;
+            if ((packedCursor - it->Data) >= it->ChunkSize) { chunkListIdx++; continue; }
+
+            const int numSubChunksInPack = *packedCursor++;
+            if (numSubChunksInPack < 0) { chunkListIdx++; continue; }
+
+            for (int i = 0; i < numSubChunksInPack; ++i) {
+                if ((packedCursor - it->Data) >= it->ChunkSize) break;
+                const int currentPackedSubBlockDwords = *packedCursor++;
+
+                if (currentPackedSubBlockDwords <= 0) continue;
+                if ((packedCursor - it->Data) + currentPackedSubBlockDwords > it->ChunkSize) break;
+
+                int* packedSubChunkHeaderPtr = packedCursor;
+                packedCursor += currentPackedSubBlockDwords;
+
+                // Header for packed: [0]=ClassID, [1]=VerInfo, [2]=ChunkSize, [3]=FileFlag, [4]=IdCount, [5]=ChunkCount, ([6]=ManagerCount)
+                if (packedSubChunkHeaderPtr[1] + 4 == currentPackedSubBlockDwords) {
+                    // Skip based on IDA
+                } else {
+                    int requiredPackedHeaderDwords = (it->ChunkVersion <= CHUNK_VERSION1) ? 6 : 7;
+                    if (currentPackedSubBlockDwords < requiredPackedHeaderDwords) continue;
+
+                    localIt.ChunkVersion = static_cast<short>(packedSubChunkHeaderPtr[1] >> 16);
+                    localIt.ChunkSize    = packedSubChunkHeaderPtr[2];
+                    localIt.IdCount      = packedSubChunkHeaderPtr[4];
+                    localIt.ChunkCount   = packedSubChunkHeaderPtr[5];
+
+                    int dataPtrOffsetFromPackedHeaderStart;
+                    if (it->ChunkVersion <= CHUNK_VERSION1) {
+                        localIt.ManagerCount = 0;
+                        dataPtrOffsetFromPackedHeaderStart = 6;
+                    } else {
+                        localIt.ManagerCount = packedSubChunkHeaderPtr[6];
+                        dataPtrOffsetFromPackedHeaderStart = 7;
+                    }
+
+                    localIt.Data = packedSubChunkHeaderPtr + dataPtrOffsetFromPackedHeaderStart;
+
+                    int totalPackedSubElementsDwords = localIt.ChunkSize + localIt.IdCount + localIt.ChunkCount + localIt.ManagerCount;
+                    if (dataPtrOffsetFromPackedHeaderStart + totalPackedSubElementsDwords > currentPackedSubBlockDwords) {
+                         continue;
+                    }
+
+                    int* currentPackedDataSectionPtr = localIt.Data;
+                    currentPackedDataSectionPtr += localIt.ChunkSize;
+                    localIt.Ids = (localIt.IdCount > 0) ? currentPackedDataSectionPtr : nullptr;
+                    if (localIt.Ids) currentPackedDataSectionPtr += localIt.IdCount;
+
+                    localIt.Chunks = (localIt.ChunkCount > 0) ? currentPackedDataSectionPtr : nullptr;
+                    if (localIt.Chunks) currentPackedDataSectionPtr += localIt.ChunkCount;
+
+                    localIt.Managers = (localIt.ManagerCount > 0) ? currentPackedDataSectionPtr : nullptr;
+
+                    localIt.Flag = 0;
+                    totalResult += IterateAndDo(fct, &localIt);
+                }
+            }
+            chunkListIdx++;
+        }
+    }
+    return totalResult;
 }
 
+
 int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
-    ChunkIteratorData *iterData = it;
+    if (!it || !it->Data) return 0;
     int remappedCount = 0;
 
-    if (iterData->ChunkVersion >= 4) {
-        // Handle new chunk format with ID lists
-        if (!iterData->Ids || iterData->IdCount <= 0)
-            return remappedCount;
+    if (it->ChunkVersion >= CHUNK_VERSION1) {
+        if (!it->Ids || it->IdCount <= 0) return 0;
 
-        for (int i = 0; i < iterData->IdCount;) {
-            int currentIdPos = iterData->Ids[i];
-
-            if (currentIdPos >= 0) {
-                // Single object ID remapping
-                CK_ID &oldId = (CK_ID &) iterData->Data[currentIdPos];
-                CK_ID newId = 0;
-
-                if (iterData->DepContext) {
-                    // Use dependency context mapping
-                    auto it = iterData->DepContext->m_MapID.Find(oldId);
-                    newId = (it) ? *it : 0;
-                } else {
-                    // Use direct object manager resolution
-                    newId = iterData->Context->m_ObjectManager->RealId(oldId);
-                }
-
-                if (newId) {
-                    oldId = newId;
-                    remappedCount++;
+        for (int i = 0; i < it->IdCount; ) {
+            int idOffsetInData = it->Ids[i];
+            if (idOffsetInData >= 0) { // Single ID
+                if (idOffsetInData < it->ChunkSize) {
+                    CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[idOffsetInData]);
+                    CK_ID oldIdVal = oldIdRef;
+                    if (oldIdVal != 0) {
+                        CK_ID newId = 0;
+                        if (it->DepContext) {
+                            XHashID::Iterator mapIt = it->DepContext->m_MapID.Find(oldIdVal);
+                            if (mapIt != it->DepContext->m_MapID.End()) newId = *mapIt;
+                        } else if (it->Context && it->Context->m_ObjectManager) {
+                            newId = it->Context->m_ObjectManager->RealId(oldIdVal);
+                        }
+                        if (newId != 0 && newId != oldIdVal) {
+                            oldIdRef = newId;
+                            remappedCount++;
+                        }
+                    }
                 }
                 i++;
-            } else {
-                // Sequence of object IDs (negative marker followed by count)
-                int sequenceCount = iterData->Ids[i + 1];
-                int startPos = i + 2;
-                int endPos = startPos + sequenceCount;
-
-                for (int j = startPos; j < endPos; j++) {
-                    CK_ID &oldId = (CK_ID &) iterData->Data[j];
-                    CK_ID newId = 0;
-
-                    if (iterData->DepContext) {
-                        auto it = iterData->DepContext->m_MapID.Find(oldId);
-                        newId = (it) ? *it : 0;
-                    } else {
-                        newId = iterData->Context->m_ObjectManager->RealId(oldId);
-                    }
-
-                    if (newId) {
-                        oldId = newId;
-                        remappedCount++;
+            } else { // Sequence: -1 followed by offset to count
+                i++;
+                if (i >= it->IdCount) break;
+                int sequenceHeaderOffset = it->Ids[i];
+                if (sequenceHeaderOffset >= 0 && sequenceHeaderOffset < it->ChunkSize) {
+                    int count = it->Data[sequenceHeaderOffset];
+                    if (count > 0 && sequenceHeaderOffset + 1 + count <= it->ChunkSize) {
+                        for (int k = 0; k < count; ++k) {
+                            CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[sequenceHeaderOffset + 1 + k]);
+                            CK_ID oldIdVal = oldIdRef;
+                             if (oldIdVal != 0) {
+                                CK_ID newId = 0;
+                                if (it->DepContext) {
+                                    XHashID::Iterator mapIt = it->DepContext->m_MapID.Find(oldIdVal);
+                                    if (mapIt != it->DepContext->m_MapID.End()) newId = *mapIt;
+                                } else if (it->Context && it->Context->m_ObjectManager) {
+                                    newId = it->Context->m_ObjectManager->RealId(oldIdVal);
+                                }
+                                if (newId != 0 && newId != oldIdVal) {
+                                    oldIdRef = newId;
+                                    remappedCount++;
+                                }
+                            }
+                        }
                     }
                 }
-                i = endPos;
+                i++;
             }
         }
     } else {
-        // Handle legacy chunk formats
         const CKDWORD OBJID_MARKER[] = {0xE32BC4C9, 0x134212E3, 0xFCBAE9DC};
         const CKDWORD SEQ_MARKER[] = {0xE192BD47, 0x13246628, 0x13EAB3CE, 0x7891AEFC, 0x13984562};
-
-        // Process single object ID markers
-        for (int pos = 3; pos < iterData->ChunkSize; pos++) {
-            if (pos >= 3 &&
-                iterData->Data[pos - 3] == OBJID_MARKER[0] &&
-                iterData->Data[pos - 2] == OBJID_MARKER[1] &&
-                iterData->Data[pos - 1] == OBJID_MARKER[2]) {
-                CK_ID &oldId = (CK_ID &) iterData->Data[pos];
-                CK_ID newId = 0;
-
-                if (iterData->DepContext) {
-                    auto it = iterData->DepContext->m_MapID.Find(oldId);
-                    newId = (it) ? *it : 0;
-                } else {
-                    newId = iterData->Context->m_ObjectManager->RealId(oldId);
-                }
-
-                if (newId) {
-                    oldId = newId;
-                    remappedCount++;
-                }
-            }
-        }
-
-        // Process sequence markers
-        for (int pos = 2; pos < iterData->ChunkSize - 5; pos++) {
-            if (iterData->Data[pos] == SEQ_MARKER[0] &&
-                iterData->Data[pos + 1] == SEQ_MARKER[1] &&
-                iterData->Data[pos + 2] == SEQ_MARKER[2] &&
-                iterData->Data[pos + 3] == SEQ_MARKER[3] &&
-                iterData->Data[pos + 4] == SEQ_MARKER[4]) {
-                int sequenceCount = iterData->Data[pos + 5];
-                int startPos = pos + 6;
-                int endPos = startPos + sequenceCount;
-
-                if (endPos > iterData->ChunkSize)
-                    break;
-
-                for (int j = startPos; j < endPos; j++) {
-                    CK_ID &oldId = (CK_ID &) iterData->Data[j];
+        for (int pos = 0; pos < it->ChunkSize; ) {
+            if (pos + 3 < it->ChunkSize &&
+                it->Data[pos] == OBJID_MARKER[0] && it->Data[pos+1] == OBJID_MARKER[1] && it->Data[pos+2] == OBJID_MARKER[2]) {
+                CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[pos+3]);
+                CK_ID oldIdVal = oldIdRef;
+                if (oldIdVal != 0) {
                     CK_ID newId = 0;
-
-                    if (iterData->DepContext) {
-                        auto it = iterData->DepContext->m_MapID.Find(oldId);
-                        newId = (it) ? *it : 0;
-                    } else {
-                        newId = iterData->Context->m_ObjectManager->RealId(oldId);
+                    if (it->DepContext) {
+                        XHashID::Iterator mapIt = it->DepContext->m_MapID.Find(oldIdVal);
+                        if (mapIt != it->DepContext->m_MapID.End()) newId = *mapIt;
+                    } else if (it->Context && it->Context->m_ObjectManager) {
+                        newId = it->Context->m_ObjectManager->RealId(oldIdVal);
                     }
-
-                    if (newId) {
-                        oldId = newId;
+                    if (newId != 0 && newId != oldIdVal) {
+                        oldIdRef = newId;
                         remappedCount++;
                     }
                 }
-                pos = endPos - 1;
+                pos += 4; continue;
             }
+            if (pos + 5 < it->ChunkSize && // Need 5 for marker + 1 for count
+                it->Data[pos] == SEQ_MARKER[0] && it->Data[pos+1] == SEQ_MARKER[1] && it->Data[pos+2] == SEQ_MARKER[2] &&
+                it->Data[pos+3] == SEQ_MARKER[3] && it->Data[pos+4] == SEQ_MARKER[4]) {
+                int count = it->Data[pos+5];
+                if (count >= 0 && pos + 6 + count <= it->ChunkSize) { // count can be 0
+                    for (int k=0; k<count; ++k) {
+                        CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[pos+6+k]);
+                        CK_ID oldIdVal = oldIdRef;
+                        if (oldIdVal != 0) {
+                             CK_ID newId = 0;
+                            if (it->DepContext) {
+                                XHashID::Iterator mapIt = it->DepContext->m_MapID.Find(oldIdVal);
+                                if (mapIt != it->DepContext->m_MapID.End()) newId = *mapIt;
+                            } else if (it->Context && it->Context->m_ObjectManager) {
+                                newId = it->Context->m_ObjectManager->RealId(oldIdVal);
+                            }
+                            if (newId != 0 && newId != oldIdVal) {
+                                oldIdRef = newId;
+                                remappedCount++;
+                            }
+                        }
+                    }
+                    pos += 6 + count; continue;
+                } else {
+                     pos += 6; continue;
+                }
+            }
+            pos++;
         }
     }
-
     return remappedCount;
 }
 
 int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
-    int remappedCount = 0;
-    int currentIndex = 0;
-
     if (!it || !it->Managers || it->ManagerCount <= 0 || !it->Data || !it->ConversionTable || it->NbEntries <= 0)
         return 0;
 
-    while (currentIndex < it->ManagerCount) {
-        int *managers = it->Managers;
-        int dataPosition = managers[currentIndex];
-
-        if (dataPosition >= 0) {
-            // Single manager entry processing
-            // Check for array bounds
-            if (dataPosition + 2 >= it->ChunkSize) {
-                break; // Out of bounds, stop processing
-            }
-
-            int *data = it->Data;
-            int guidPart1 = data[dataPosition];
-            int guidPart2 = data[dataPosition + 1];
-            int valuePosition = dataPosition + 2;
-
-            if (it->Guid.d1 == guidPart1 && it->Guid.d2 == guidPart2) {
-                int &valueRef = data[valuePosition];
-                if (valueRef >= 0 && valueRef < it->NbEntries) {
-                    valueRef = it->ConversionTable[valueRef];
-                    remappedCount++;
-                }
-            }
-            currentIndex++;
-        } else {
-            // Sequence of manager entries processing
-            // Check that we're not at the end of the array
-            if (currentIndex + 1 >= it->ManagerCount) {
-                break;
-            }
-
-            int *data = it->Data;
-            currentIndex++; // Move to sequence count position
-            int sequenceStart = managers[currentIndex];
-
-            // Check array bounds
-            if (sequenceStart < 0 || sequenceStart + 2 >= it->ChunkSize) {
-                break;
-            }
-
-            int sequenceCount = data[sequenceStart];
-
-            // Check for reasonable sequence count
-            if (sequenceCount < 0 || sequenceCount > 10000000) {
-                break;
-            }
-
-            int guidPart1 = data[sequenceStart + 1];
-            int guidPart2 = data[sequenceStart + 2];
-
-            // Validate value range
-            int valueStartPos = sequenceStart + 3;
-            int valueEndPos = valueStartPos + sequenceCount;
-
-            if (valueEndPos > it->ChunkSize) {
-                break; // Out of bounds
-            }
-
-            if (it->Guid.d1 == guidPart1 && it->Guid.d2 == guidPart2) {
-                for (int valuePos = valueStartPos; valuePos < valueEndPos; valuePos++) {
-                    int &valueRef = data[valuePos];
-                    if (valueRef >= 0 && valueRef < it->NbEntries) {
-                        valueRef = it->ConversionTable[valueRef];
+    int remappedCount = 0;
+    for (int i = 0; i < it->ManagerCount; ) {
+        int managerDataOffset = it->Managers[i];
+        if (managerDataOffset >= 0) {
+            if (managerDataOffset + 2 < it->ChunkSize) {
+                CKGUID storedGuid(it->Data[managerDataOffset], it->Data[managerDataOffset+1]);
+                if (it->Guid == storedGuid) {
+                    int& valRef = it->Data[managerDataOffset+2];
+                    int oldVal = valRef;
+                    if (oldVal >= 0 && oldVal < it->NbEntries) {
+                         int newVal = it->ConversionTable[oldVal];
+                         if (newVal != oldVal) {
+                            valRef = newVal;
+                            remappedCount++;
+                         }
                     }
                 }
-                remappedCount += sequenceCount;
             }
-            currentIndex++;
+            i++;
+        } else {
+            i++;
+            if (i >= it->ManagerCount) break;
+            int sequenceHeaderOffset = it->Managers[i];
+            if (sequenceHeaderOffset >=0 && sequenceHeaderOffset + 2 < it->ChunkSize) {
+                int count = it->Data[sequenceHeaderOffset];
+                if (count >= 0 && sequenceHeaderOffset + 3 + count <= it->ChunkSize) { // count can be 0
+                    CKGUID storedGuid(it->Data[sequenceHeaderOffset+1], it->Data[sequenceHeaderOffset+2]);
+                    if (it->Guid == storedGuid) {
+                        for (int k=0; k<count; ++k) {
+                            int& valRef = it->Data[sequenceHeaderOffset+3+k];
+                            int oldVal = valRef;
+                            if (oldVal >=0 && oldVal < it->NbEntries) {
+                                int newVal = it->ConversionTable[oldVal];
+                                if (newVal != oldVal) {
+                                    valRef = newVal;
+                                    remappedCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            i++;
         }
     }
-
     return remappedCount;
 }
 
 int CKStateChunk::ParameterRemapper(ChunkIteratorData *it) {
-    int *data = it->Data;
-    if (!data) return 0;
+    if (!it || !it->Data || it->ChunkSize == 0 || !it->ConversionTable) return 0;
 
-    // Search for parameter marker sequence
     int currentPos = 0;
-    while (true) {
-        if (data[currentPos] == 0x40) {
-            // PARAMETER_MARKER
-            break;
+    while (currentPos + 1 < it->ChunkSize) {
+        if (it->Data[currentPos] == 0x40) {
+            int headerStart = currentPos + 2;
+            if (headerStart + 4 < it->ChunkSize) {
+                CKGUID storedGuid(it->Data[headerStart], it->Data[headerStart + 1]);
+                int paramType = it->Data[headerStart + 2];
+                if (it->Guid == storedGuid && paramType == 1) {
+                    int& valRef = it->Data[headerStart + 4];
+                    int oldVal = valRef;
+                    if (it->NbEntries > 0 && oldVal >= 0 && oldVal < it->NbEntries) {
+                        valRef = it->ConversionTable[oldVal];
+                    } else {
+                        valRef = 0;
+                    }
+                    return 1;
+                }
+            }
+            return 0;
         }
-
-        // Follow linked list pointer
-        int nextPos = data[currentPos + 1];
-        if (nextPos >= it->ChunkSize || nextPos <= currentPos || nextPos == 0) {
-            return 0; // Invalid pointer structure
+        int nextPos = it->Data[currentPos + 1];
+        if (nextPos <= currentPos || nextPos == 0 || nextPos >= it->ChunkSize) { // Added check for nextPos >= ChunkSize
+            return 0;
         }
         currentPos = nextPos;
     }
-
-    // Verify parameter header structure
-    const int headerStart = currentPos + 2;
-    if (headerStart <= 0) return 0;
-
-    const int guidPart1 = data[headerStart];
-    const int guidPart2 = data[headerStart + 1];
-    const int paramType = data[headerStart + 2];
-
-    // Validate GUID and parameter type
-    if (it->Guid.d1 != guidPart1 ||
-        it->Guid.d2 != guidPart2 ||
-        paramType != 1) {
-        return 0;
-    }
-
-    // Get and convert parameter value
-    int &paramValueRef = data[headerStart + 4];
-    if (paramValueRef >= 0 && paramValueRef < it->NbEntries) {
-        paramValueRef = it->ConversionTable[paramValueRef];
-        return 1; // Successfully remapped
-    }
-
-    return 0; // Invalid parameter index
+    return 0;
 }
