@@ -180,6 +180,8 @@ public:
     DLL_EXPORT void Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_FLAGS activityFlags, CK_SCENEOBJECTRESET_FLAGS resetFlags);
     DLL_EXPORT void Stop(XObjectPointerArray &renderContexts, CKBOOL reset = TRUE);
 
+    void Launch();
+
     //-----------------------------------------------------------
     // Virtual functions
     DLL_EXPORT CKScene(CKContext *Context, CKSTRING name = NULL);

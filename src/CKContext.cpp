@@ -16,6 +16,7 @@
 #include "CKBitmapReader.h"
 #include "CKDebugContext.h"
 #include "CKLevel.h"
+#include "CKScene.h"
 #include "CKRenderContext.h"
 #include "CKBehavior.h"
 #include "CKCharacter.h"
@@ -301,8 +302,7 @@ CKERROR CKContext::Reset() {
     int criticalSectionCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_CRITICALSECTION);
     CK_ID *criticalSectionList = m_ObjectManager->GetObjectsListByClassID(CKCID_CRITICALSECTION);
     for (int i = 0; i < criticalSectionCount; ++i) {
-        CKCriticalSectionObject *criticalSection = (CKCriticalSectionObject *) m_ObjectManager->m_Objects[
-            criticalSectionList[i]];
+        CKCriticalSectionObject *criticalSection = (CKCriticalSectionObject *) m_ObjectManager->m_Objects[criticalSectionList[i]];
         if (criticalSection)
             criticalSection->Reset();
     }
@@ -320,7 +320,7 @@ CKERROR CKContext::Reset() {
 
     CKScene *currentScene = currentLevel->GetCurrentScene();
     if (currentScene)
-        currentLevel->LaunchScene(currentScene);
+        currentScene->Launch();
 
     ExecuteManagersOnCKPostReset();
     return CK_OK;

@@ -600,8 +600,7 @@ void CKScene::Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_F
         rc->AddRemoveSequence(TRUE);
     }
 
-    CKSceneObjectIterator it = GetObjectIterator();
-    while (!it.End()) {
+    for (CKSceneObjectIterator it = GetObjectIterator(); !it.End(); it++) {
         CK_ID objID = it.GetObjectID();
         CKSceneObjectDesc *desc = it.GetObjectDesc();
         CKObject *obj = m_Context->GetObject(objID);
@@ -651,16 +650,17 @@ void CKScene::Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_F
                 desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
             }
 
-            beh->ModifyFlags(
-                0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME);
+            beh->ModifyFlags(0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME);
             beh->Activate((desc->m_Flags & CK_SCENEOBJECT_ACTIVE) != 0, reset);
         }
 
         if (desc->m_Flags & CK_SCENEOBJECT_ACTIVE) {
-            m_Context->GetBehaviorManager()->AddObject((CKBeObject *)obj);
+            if (CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
+                CKBeObject *beo = (CKBeObject *)obj;
+                if (beo->GetScriptCount() > 0)
+                    m_Context->GetBehaviorManager()->AddObject(beo);
+            }
         }
-
-        it++;
     }
 
     for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
@@ -713,6 +713,46 @@ void CKScene::Stop(XObjectPointerArray &renderContexts, CKBOOL reset) {
         for (XObjectPointerArray::Iterator rit = renderContexts.Begin(); rit != renderContexts.End(); ++rit) {
             CKRenderContext *rc = (CKRenderContext *)*rit;
             rc->AddRemoveSequence(FALSE);
+        }
+    }
+}
+
+void CKScene::Launch() {
+    CKSceneObjectIterator it = GetObjectIterator();
+    CKBOOL sceneListNeedsCheck = FALSE;
+    while (!it.End()) {
+        CKObject *obj = m_Context->GetObject(it.GetObjectID());
+        if (obj) {
+            CKSceneObjectDesc *desc = it.GetObjectDesc();
+            if (desc->m_Flags & CK_SCENEOBJECT_START_ACTIVATE) {
+                desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+                if (CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
+                    CKBeObject *beo = (CKBeObject *) obj;
+                    if (beo->GetScriptCount() > 0)
+                        m_Context->GetBehaviorManager()->AddObject(beo);
+                }
+            } else if (desc->m_Flags & CK_SCENEOBJECT_START_DEACTIVATE) {
+                desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+            } else if (desc->m_Flags & CK_SCENEOBJECT_START_LEAVE && desc->m_Flags & CK_SCENEOBJECT_ACTIVE) {
+                if (CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
+                    CKBeObject *beo = (CKBeObject *) obj;
+                    if (beo->GetScriptCount() > 0)
+                        m_Context->GetBehaviorManager()->AddObject(beo);
+                }
+            }
+
+            if (desc->m_Flags & CK_SCENEOBJECT_START_RESET) {
+                if (desc->m_InitialValue)
+                    obj->Load(desc->m_InitialValue, nullptr);
+            }
+        } else {
+            sceneListNeedsCheck = TRUE;
+        }
+
+        it++;
+        if (!it.GetObjectDesc()) {
+            if (sceneListNeedsCheck)
+                CheckSceneObjectList();
         }
     }
 }
