@@ -575,7 +575,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                 }
 
                 const int fileObjectSize = parser->ReadInt();
-                if (m_FileInfo.FileVersion < 7 || (m_Flags & 0x100) == 0 || oit->ObjectCid == CKCID_BEHAVIOR) {
+                if (m_FileInfo.FileVersion < 7 || !(m_Flags & CK_LOAD_ONLYBEHAVIORS) || oit->ObjectCid == CKCID_BEHAVIOR) {
                     oit->Data = parser->ExtractChunk(fileObjectSize, this);
                     if (oit->Data) {
                         const int postPackSize = oit->Data->GetDataSize();
@@ -1256,7 +1256,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
         }
     }
 
-    if ((m_Flags & CK_LOAD_ONLYBEHAVIORS) == 0) {
+    if (!(m_Flags & CK_LOAD_ONLYBEHAVIORS)) {
         for (XArray<CKFileObject>::Iterator it = m_FileObjects.Begin(); it != m_FileObjects.End(); ++it) {
             if (it->Data) {
                 it->Data->RemapObjects(m_Context);
@@ -1283,7 +1283,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
 
     int count = 0;
 
-    if ((m_Flags & CK_LOAD_ONLYBEHAVIORS) == 0) {
+    if (!(m_Flags & CK_LOAD_ONLYBEHAVIORS)) {
         bool hasGridManager = false;
         for (XArray<CKFileManagerData>::Iterator it = m_ManagersData.Begin(); it != m_ManagersData.End(); ++it) {
             CKBaseManager *manager = m_Context->GetManagerByGuid(it->Manager);
@@ -1342,8 +1342,8 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETERLOCAL].Begin(); iit != m_IndexByClassId[
-                 CKCID_PARAMETERLOCAL].End(); ++iit) {
+        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETERLOCAL].Begin();
+             iit != m_IndexByClassId[CKCID_PARAMETERLOCAL].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
             if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
                 continue;
@@ -1401,8 +1401,8 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETEROUT].Begin(); iit != m_IndexByClassId[
-                 CKCID_PARAMETEROUT].End(); ++iit) {
+        for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_PARAMETEROUT].Begin();
+             iit != m_IndexByClassId[CKCID_PARAMETEROUT].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
             if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
                 continue;
@@ -1432,8 +1432,8 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
         }
     }
 
-    for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_BEHAVIOR].Begin(); iit != m_IndexByClassId[CKCID_BEHAVIOR].
-         End(); ++iit) {
+    for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_BEHAVIOR].Begin();
+         iit != m_IndexByClassId[CKCID_BEHAVIOR].End(); ++iit) {
         CKFileObject *it = &m_FileObjects[*iit];
         if (!it->Data || it->Options != CKFileObject::CK_FO_DEFAULT)
             continue;
@@ -1468,7 +1468,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
         }
     }
 
-    if ((m_Flags & CK_LOAD_ONLYBEHAVIORS) == 0) {
+    if (!(m_Flags & CK_LOAD_ONLYBEHAVIORS)) {
         for (XArray<int>::Iterator iit = m_IndexByClassId[CKCID_INTERFACEOBJECTMANAGER].Begin();
              iit != m_IndexByClassId[CKCID_INTERFACEOBJECTMANAGER].End(); ++iit) {
             CKFileObject *it = &m_FileObjects[*iit];
