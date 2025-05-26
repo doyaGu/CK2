@@ -1808,7 +1808,7 @@ CKBOOL CKStateChunk::UnPack(int DestSize) {
 
     int err = uncompress(buf, &size, (const Bytef *) m_Data, m_ChunkSize * sizeof(int));
     if (err == Z_OK) {
-        int sz = (DestSize + sizeof(int) - 1) / sizeof(int);  // Ceiling division
+        int sz = (DestSize + sizeof(int) - 1) / sizeof(int); // Ceiling division
         int *data = new int[sz];
         if (!data) {
             delete[] buf;
@@ -1887,26 +1887,35 @@ int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
 
         int currentChunkInfoOffset = it->Chunks[chunkListIdx];
 
-        if (currentChunkInfoOffset >= 0) { // Normal sub-chunk
-            if (currentChunkInfoOffset >= it->ChunkSize) { chunkListIdx++; continue; }
+        if (currentChunkInfoOffset >= 0) {
+            // Normal sub-chunk
+            if (currentChunkInfoOffset >= it->ChunkSize) {
+                chunkListIdx++;
+                continue;
+            }
 
             int *subChunkHeaderPtr = it->Data + currentChunkInfoOffset;
 
-            if (currentChunkInfoOffset + 2 >= it->ChunkSize) { chunkListIdx++; continue; } // Need at least size and version fields
+            if (currentChunkInfoOffset + 2 >= it->ChunkSize) {
+                chunkListIdx++;
+                continue;
+            }                                                              // Need at least size and version fields
             const int subChunkBlockTotalDwords = subChunkHeaderPtr[0] + 1; // Field stores TotalDwords-1
             const int subChunkVersionAndClassidField = subChunkHeaderPtr[2];
 
             // This specific condition is based on IDA decompilation, its exact meaning in all contexts might be obscure.
-            if (subChunkBlockTotalDwords > 1 && (subChunkVersionAndClassidField + 4 != subChunkHeaderPtr[0]) ) {
+            if (subChunkBlockTotalDwords > 1 && (subChunkVersionAndClassidField + 4 != subChunkHeaderPtr[0])) {
                 int requiredHeaderDwords = (it->ChunkVersion <= CHUNK_VERSION1) ? 7 : 8;
-                if (currentChunkInfoOffset + requiredHeaderDwords > it->ChunkSize || subChunkBlockTotalDwords < requiredHeaderDwords) {
-                     chunkListIdx++; continue;
+                if (currentChunkInfoOffset + requiredHeaderDwords > it->ChunkSize || subChunkBlockTotalDwords <
+                    requiredHeaderDwords) {
+                    chunkListIdx++;
+                    continue;
                 }
 
                 localIt.ChunkVersion = static_cast<short>(subChunkVersionAndClassidField >> 16);
-                localIt.ChunkSize    = subChunkHeaderPtr[3];
-                localIt.IdCount      = subChunkHeaderPtr[5];
-                localIt.ChunkCount   = subChunkHeaderPtr[6];
+                localIt.ChunkSize = subChunkHeaderPtr[3];
+                localIt.IdCount = subChunkHeaderPtr[5];
+                localIt.ChunkCount = subChunkHeaderPtr[6];
 
                 int dataPtrOffsetFromHeaderStart;
                 if (it->ChunkVersion <= CHUNK_VERSION1) {
@@ -1920,12 +1929,13 @@ int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
                 localIt.Data = subChunkHeaderPtr + dataPtrOffsetFromHeaderStart;
 
                 int totalSubElementsDwords = localIt.ChunkSize + localIt.IdCount + localIt.ChunkCount + localIt.ManagerCount;
-                if ( (dataPtrOffsetFromHeaderStart + totalSubElementsDwords > subChunkBlockTotalDwords) ||
-                     (currentChunkInfoOffset + dataPtrOffsetFromHeaderStart + totalSubElementsDwords > it->ChunkSize) ) {
-                    chunkListIdx++; continue;
+                if ((dataPtrOffsetFromHeaderStart + totalSubElementsDwords > subChunkBlockTotalDwords) ||
+                    (currentChunkInfoOffset + dataPtrOffsetFromHeaderStart + totalSubElementsDwords > it->ChunkSize)) {
+                    chunkListIdx++;
+                    continue;
                 }
 
-                int* currentDataSectionPtr = localIt.Data;
+                int *currentDataSectionPtr = localIt.Data;
                 currentDataSectionPtr += localIt.ChunkSize;
                 localIt.Ids = (localIt.IdCount > 0) ? currentDataSectionPtr : nullptr;
                 if (localIt.Ids) currentDataSectionPtr += localIt.IdCount;
@@ -1939,18 +1949,28 @@ int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
                 totalResult += IterateAndDo(fct, &localIt);
             }
             chunkListIdx++;
-        } else { // Packed sub-chunk sequence
+        } else {
+            // Packed sub-chunk sequence
             chunkListIdx++;
             if (chunkListIdx >= it->ChunkCount) break;
 
             int sequenceDataActualOffset = it->Chunks[chunkListIdx];
-            if (sequenceDataActualOffset < 0 || sequenceDataActualOffset >= it->ChunkSize) { chunkListIdx++; continue; }
+            if (sequenceDataActualOffset < 0 || sequenceDataActualOffset >= it->ChunkSize) {
+                chunkListIdx++;
+                continue;
+            }
 
-            int* packedCursor = it->Data + sequenceDataActualOffset;
-            if ((packedCursor - it->Data) >= it->ChunkSize) { chunkListIdx++; continue; }
+            int *packedCursor = it->Data + sequenceDataActualOffset;
+            if ((packedCursor - it->Data) >= it->ChunkSize) {
+                chunkListIdx++;
+                continue;
+            }
 
             const int numSubChunksInPack = *packedCursor++;
-            if (numSubChunksInPack < 0) { chunkListIdx++; continue; }
+            if (numSubChunksInPack < 0) {
+                chunkListIdx++;
+                continue;
+            }
 
             for (int i = 0; i < numSubChunksInPack; ++i) {
                 if ((packedCursor - it->Data) >= it->ChunkSize) break;
@@ -1959,7 +1979,7 @@ int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
                 if (currentPackedSubBlockDwords <= 0) continue;
                 if ((packedCursor - it->Data) + currentPackedSubBlockDwords > it->ChunkSize) break;
 
-                int* packedSubChunkHeaderPtr = packedCursor;
+                int *packedSubChunkHeaderPtr = packedCursor;
                 packedCursor += currentPackedSubBlockDwords;
 
                 // Header for packed: [0]=ClassID, [1]=VerInfo, [2]=ChunkSize, [3]=FileFlag, [4]=IdCount, [5]=ChunkCount, ([6]=ManagerCount)
@@ -1970,9 +1990,9 @@ int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
                     if (currentPackedSubBlockDwords < requiredPackedHeaderDwords) continue;
 
                     localIt.ChunkVersion = static_cast<short>(packedSubChunkHeaderPtr[1] >> 16);
-                    localIt.ChunkSize    = packedSubChunkHeaderPtr[2];
-                    localIt.IdCount      = packedSubChunkHeaderPtr[4];
-                    localIt.ChunkCount   = packedSubChunkHeaderPtr[5];
+                    localIt.ChunkSize = packedSubChunkHeaderPtr[2];
+                    localIt.IdCount = packedSubChunkHeaderPtr[4];
+                    localIt.ChunkCount = packedSubChunkHeaderPtr[5];
 
                     int dataPtrOffsetFromPackedHeaderStart;
                     if (it->ChunkVersion <= CHUNK_VERSION1) {
@@ -1987,10 +2007,10 @@ int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
 
                     int totalPackedSubElementsDwords = localIt.ChunkSize + localIt.IdCount + localIt.ChunkCount + localIt.ManagerCount;
                     if (dataPtrOffsetFromPackedHeaderStart + totalPackedSubElementsDwords > currentPackedSubBlockDwords) {
-                         continue;
+                        continue;
                     }
 
-                    int* currentPackedDataSectionPtr = localIt.Data;
+                    int *currentPackedDataSectionPtr = localIt.Data;
                     currentPackedDataSectionPtr += localIt.ChunkSize;
                     localIt.Ids = (localIt.IdCount > 0) ? currentPackedDataSectionPtr : nullptr;
                     if (localIt.Ids) currentPackedDataSectionPtr += localIt.IdCount;
@@ -2018,11 +2038,12 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
     if (it->ChunkVersion >= CHUNK_VERSION1) {
         if (!it->Ids || it->IdCount <= 0) return 0;
 
-        for (int i = 0; i < it->IdCount; ) {
+        for (int i = 0; i < it->IdCount;) {
             int idOffsetInData = it->Ids[i];
-            if (idOffsetInData >= 0) { // Single ID
+            if (idOffsetInData >= 0) {
+                // Single ID
                 if (idOffsetInData < it->ChunkSize) {
-                    CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[idOffsetInData]);
+                    CK_ID &oldIdRef = reinterpret_cast<CK_ID &>(it->Data[idOffsetInData]);
                     CK_ID oldIdVal = oldIdRef;
                     if (oldIdVal != 0) {
                         CK_ID newId = 0;
@@ -2039,7 +2060,8 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
                     }
                 }
                 i++;
-            } else { // Sequence: -1 followed by offset to count
+            } else {
+                // Sequence: -1 followed by offset to count
                 i++;
                 if (i >= it->IdCount) break;
                 int sequenceHeaderOffset = it->Ids[i];
@@ -2047,9 +2069,9 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
                     int count = it->Data[sequenceHeaderOffset];
                     if (count > 0 && sequenceHeaderOffset + 1 + count <= it->ChunkSize) {
                         for (int k = 0; k < count; ++k) {
-                            CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[sequenceHeaderOffset + 1 + k]);
+                            CK_ID &oldIdRef = reinterpret_cast<CK_ID &>(it->Data[sequenceHeaderOffset + 1 + k]);
                             CK_ID oldIdVal = oldIdRef;
-                             if (oldIdVal != 0) {
+                            if (oldIdVal != 0) {
                                 CK_ID newId = 0;
                                 if (it->DepContext) {
                                     XHashID::Iterator mapIt = it->DepContext->m_MapID.Find(oldIdVal);
@@ -2071,10 +2093,12 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
     } else {
         const CKDWORD OBJID_MARKER[] = {0xE32BC4C9, 0x134212E3, 0xFCBAE9DC};
         const CKDWORD SEQ_MARKER[] = {0xE192BD47, 0x13246628, 0x13EAB3CE, 0x7891AEFC, 0x13984562};
-        for (int pos = 0; pos < it->ChunkSize; ) {
+        for (int pos = 0; pos < it->ChunkSize;) {
             if (pos + 3 < it->ChunkSize &&
-                it->Data[pos] == OBJID_MARKER[0] && it->Data[pos+1] == OBJID_MARKER[1] && it->Data[pos+2] == OBJID_MARKER[2]) {
-                CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[pos+3]);
+                it->Data[pos] == OBJID_MARKER[0] &&
+                it->Data[pos + 1] == OBJID_MARKER[1] &&
+                it->Data[pos + 2] == OBJID_MARKER[2]) {
+                CK_ID &oldIdRef = reinterpret_cast<CK_ID &>(it->Data[pos + 3]);
                 CK_ID oldIdVal = oldIdRef;
                 if (oldIdVal != 0) {
                     CK_ID newId = 0;
@@ -2089,18 +2113,23 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
                         remappedCount++;
                     }
                 }
-                pos += 4; continue;
+                pos += 4;
+                continue;
             }
             if (pos + 5 < it->ChunkSize && // Need 5 for marker + 1 for count
-                it->Data[pos] == SEQ_MARKER[0] && it->Data[pos+1] == SEQ_MARKER[1] && it->Data[pos+2] == SEQ_MARKER[2] &&
-                it->Data[pos+3] == SEQ_MARKER[3] && it->Data[pos+4] == SEQ_MARKER[4]) {
-                int count = it->Data[pos+5];
-                if (count >= 0 && pos + 6 + count <= it->ChunkSize) { // count can be 0
-                    for (int k=0; k<count; ++k) {
-                        CK_ID& oldIdRef = reinterpret_cast<CK_ID&>(it->Data[pos+6+k]);
+                it->Data[pos] == SEQ_MARKER[0] &&
+                it->Data[pos + 1] == SEQ_MARKER[1] &&
+                it->Data[pos + 2] == SEQ_MARKER[2] &&
+                it->Data[pos + 3] == SEQ_MARKER[3] &&
+                it->Data[pos + 4] == SEQ_MARKER[4]) {
+                int count = it->Data[pos + 5];
+                if (count >= 0 && pos + 6 + count <= it->ChunkSize) {
+                    // count can be 0
+                    for (int k = 0; k < count; ++k) {
+                        CK_ID &oldIdRef = reinterpret_cast<CK_ID &>(it->Data[pos + 6 + k]);
                         CK_ID oldIdVal = oldIdRef;
                         if (oldIdVal != 0) {
-                             CK_ID newId = 0;
+                            CK_ID newId = 0;
                             if (it->DepContext) {
                                 XHashID::Iterator mapIt = it->DepContext->m_MapID.Find(oldIdVal);
                                 if (mapIt != it->DepContext->m_MapID.End()) newId = *mapIt;
@@ -2113,9 +2142,11 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
                             }
                         }
                     }
-                    pos += 6 + count; continue;
+                    pos += 6 + count;
+                    continue;
                 } else {
-                     pos += 6; continue;
+                    pos += 6;
+                    continue;
                 }
             }
             pos++;
@@ -2129,20 +2160,20 @@ int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
         return 0;
 
     int remappedCount = 0;
-    for (int i = 0; i < it->ManagerCount; ) {
+    for (int i = 0; i < it->ManagerCount;) {
         int managerDataOffset = it->Managers[i];
         if (managerDataOffset >= 0) {
             if (managerDataOffset + 2 < it->ChunkSize) {
-                CKGUID storedGuid(it->Data[managerDataOffset], it->Data[managerDataOffset+1]);
+                CKGUID storedGuid(it->Data[managerDataOffset], it->Data[managerDataOffset + 1]);
                 if (it->Guid == storedGuid) {
-                    int& valRef = it->Data[managerDataOffset+2];
+                    int &valRef = it->Data[managerDataOffset + 2];
                     int oldVal = valRef;
                     if (oldVal >= 0 && oldVal < it->NbEntries) {
-                         int newVal = it->ConversionTable[oldVal];
-                         if (newVal != oldVal) {
+                        int newVal = it->ConversionTable[oldVal];
+                        if (newVal != oldVal) {
                             valRef = newVal;
                             remappedCount++;
-                         }
+                        }
                     }
                 }
             }
@@ -2151,15 +2182,16 @@ int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
             i++;
             if (i >= it->ManagerCount) break;
             int sequenceHeaderOffset = it->Managers[i];
-            if (sequenceHeaderOffset >=0 && sequenceHeaderOffset + 2 < it->ChunkSize) {
+            if (sequenceHeaderOffset >= 0 && sequenceHeaderOffset + 2 < it->ChunkSize) {
                 int count = it->Data[sequenceHeaderOffset];
-                if (count >= 0 && sequenceHeaderOffset + 3 + count <= it->ChunkSize) { // count can be 0
-                    CKGUID storedGuid(it->Data[sequenceHeaderOffset+1], it->Data[sequenceHeaderOffset+2]);
+                if (count >= 0 && sequenceHeaderOffset + 3 + count <= it->ChunkSize) {
+                    // count can be 0
+                    CKGUID storedGuid(it->Data[sequenceHeaderOffset + 1], it->Data[sequenceHeaderOffset + 2]);
                     if (it->Guid == storedGuid) {
-                        for (int k=0; k<count; ++k) {
-                            int& valRef = it->Data[sequenceHeaderOffset+3+k];
+                        for (int k = 0; k < count; ++k) {
+                            int &valRef = it->Data[sequenceHeaderOffset + 3 + k];
                             int oldVal = valRef;
-                            if (oldVal >=0 && oldVal < it->NbEntries) {
+                            if (oldVal >= 0 && oldVal < it->NbEntries) {
                                 int newVal = it->ConversionTable[oldVal];
                                 if (newVal != oldVal) {
                                     valRef = newVal;
@@ -2187,7 +2219,7 @@ int CKStateChunk::ParameterRemapper(ChunkIteratorData *it) {
                 CKGUID storedGuid(it->Data[headerStart], it->Data[headerStart + 1]);
                 int paramType = it->Data[headerStart + 2];
                 if (it->Guid == storedGuid && paramType == 1) {
-                    int& valRef = it->Data[headerStart + 4];
+                    int &valRef = it->Data[headerStart + 4];
                     int oldVal = valRef;
                     if (it->NbEntries > 0 && oldVal >= 0 && oldVal < it->NbEntries) {
                         valRef = it->ConversionTable[oldVal];
@@ -2200,7 +2232,8 @@ int CKStateChunk::ParameterRemapper(ChunkIteratorData *it) {
             return 0;
         }
         int nextPos = it->Data[currentPos + 1];
-        if (nextPos <= currentPos || nextPos == 0 || nextPos >= it->ChunkSize) { // Added check for nextPos >= ChunkSize
+        if (nextPos <= currentPos || nextPos == 0 || nextPos >= it->ChunkSize) {
+            // Added check for nextPos >= ChunkSize
             return 0;
         }
         currentPos = nextPos;
