@@ -505,16 +505,18 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
             m_ScriptArray = NULL;
         }
 
-        if (chunk->GetDataVersion() < 5) {
-            if (chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORS)) {
+        if (chunk->GetDataVersion() < 5 && chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORS)) {
+            if (!m_ScriptArray) {
                 m_ScriptArray = new XObjectPointerArray();
-                m_ScriptArray->Load(context, chunk);
             }
-        } else {
-            if (chunk->SeekIdentifier(CK_STATESAVE_SCRIPTS)) {
+            m_ScriptArray->Load(context, chunk);
+        }
+
+        if (chunk->SeekIdentifier(CK_STATESAVE_SCRIPTS)) {
+            if (!m_ScriptArray) {
                 m_ScriptArray = new XObjectPointerArray();
-                m_ScriptArray->Load(context, chunk);
             }
+            m_ScriptArray->Load(context, chunk);
         }
 
         if (chunk->SeekIdentifier(CK_STATESAVE_DATAS)) {
@@ -595,14 +597,12 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
         for (int i = 0; i < attrChunks.Size(); ++i) {
             CKDeletePointer(attrChunks[i]);
         }
-    }
-
-    if (chunk->SeekIdentifier(CK_STATESAVE_ATTRIBUTES)) {
+    } else if (chunk->SeekIdentifier(CK_STATESAVE_ATTRIBUTES)) {
         CKBOOL oldVersion = FALSE;
         if (chunk->ReadInt() > 0) {
             int a = chunk->ReadInt();
             int b = chunk->ReadInt();
-            if (a > 54 || b <= 0 || b > 65) {
+            if (a > 0x36 || b <= 0 || b > 0x41) {
                 oldVersion = TRUE;
                 WarningForOlderVersion = TRUE;
             }
@@ -618,8 +618,7 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
                 compatibleCid = chunk->ReadInt();
 
             CKSTRING name = NULL;
-            chunk->ReadString(&name);
-            if (CKIsChildClassOf(compatibleCid, CKCID_OBJECT) && name) {
+            if (CKIsChildClassOf(compatibleCid, CKCID_OBJECT) && (chunk->ReadString(&name), name)) {
                 CKSTRING category = NULL;
                 chunk->ReadString(&category);
                 CKGUID paramGuid = chunk->ReadGuid();
