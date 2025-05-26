@@ -5,6 +5,7 @@
 
 #include "VxMathDefines.h"
 #include "XString.h"
+#include "VxWindowFunctions.h"
 
 #include "VxMemoryOverrides.h"
 
@@ -24,7 +25,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID lpReserved) {
 }
 
 XString CKGetTempPath() {
-    XString path(512);
-    GetTempPathA(512, path.Str());
-    return path;
+    char path[MAX_PATH];
+    GetTempPathA(512, path);
+    char dir[64];
+    sprintf(dir, "VTmp%d", rand());
+
+    char buf[MAX_PATH];
+    VxMakePath(buf, path, dir);
+    return XString(buf);
 }

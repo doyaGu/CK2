@@ -14,14 +14,8 @@ CKPathManager::CKPathManager(CKContext *Context) : CKBaseManager(Context, PATH_M
     XString sound = "Sound Paths";
     AddCategory(sound);
 
-    XString path = CKGetTempPath();
-    char dir[64];
-    sprintf(dir, "VTmp%d", rand());
-    char buf[CKMAX_PATH];
-    VxMakePath(buf, path.Str(), dir);
-
     m_TemporaryFolderExist = FALSE;
-    m_TemporaryFolder = buf;
+    m_TemporaryFolder = CKGetTempPath();
 
     m_Context->RegisterNewManager(this);
 }
