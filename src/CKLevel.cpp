@@ -451,6 +451,8 @@ CKERROR CKLevel::Load(CKStateChunk *chunk, CKFile *file) {
         CKScene *levelScene = GetLevelScene();
         if (!levelScene)
             CreateLevelScene();
+        if (!levelScene)
+            return CKERR_INVALIDPARAMETER;
 
         CKStateChunk *subChunk = chunk->ReadSubChunk();
         if (subChunk) {
@@ -584,9 +586,8 @@ void CKLevel::ActivateAllScript() {
     if (!levelScene)
         return;
 
-    CKSceneObjectIterator oit = levelScene->GetObjectIterator();
-    while (!oit.End()) {
-        CKObject *obj = m_Context->GetObject(oit.GetObjectID());
+    for (CKSceneObjectIterator it = levelScene->GetObjectIterator(); !it.End(); it++) {
+        CKObject *obj = m_Context->GetObject(it.GetObjectID());
         if (CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
             CKBeObject *beo = (CKBeObject *)obj;
             const int scriptCount = beo->GetScriptCount();
@@ -599,7 +600,6 @@ void CKLevel::ActivateAllScript() {
         }
     }
 
-    // 2. Activate scripts in all sub-scenes
     for (auto it = m_SceneList.Begin(); it != m_SceneList.End(); ++it) {
         CKScene *scene = (CKScene *)*it;
         if (scene) {
@@ -629,8 +629,7 @@ void CKLevel::ActivateAllScript() {
 
 void CKLevel::CreateLevelScene() {
     if (!m_Context->GetObject(m_DefaultScene)) {
-        CKScene *scene = (CKScene *)m_Context->CreateObject(
-            CKCID_SCENE, m_Name, CK_OBJECTCREATION_Dynamic(m_Context->IsInDynamicCreationMode()), nullptr);
+        CKScene *scene = (CKScene *)m_Context->CreateObject(CKCID_SCENE, m_Name, CK_OBJECTCREATION_Dynamic(m_Context->IsInDynamicCreationMode()), nullptr);
         if (scene) {
             scene->SetLevel(this);
             scene->AddObjectToScene(this, TRUE);
