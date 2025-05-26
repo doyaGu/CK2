@@ -537,10 +537,11 @@ CKBOOL CKBehavior::IsOutputActive(int pos) {
 }
 
 CKBehaviorIO *CKBehavior::RemoveOutput(int pos) {
-    if (pos < 0 || pos >= m_OutputArray.Size()) return nullptr;
-
-    CKBehaviorIO *io = (CKBehaviorIO *) m_OutputArray[pos];
-    m_OutputArray.RemoveAt(pos);
+    CKBehaviorIO *io = GetOutput(pos);
+    if (!io)
+        return nullptr;
+    if (pos >= 0 && pos < m_OutputArray.Size())
+        m_OutputArray.RemoveAt(pos);
     return io;
 }
 
@@ -548,7 +549,8 @@ CKERROR CKBehavior::DeleteOutput(int pos) {
     CKBehaviorIO *io = RemoveOutput(pos);
     if (!io)
         return CKERR_INVALIDPARAMETER;
-    return m_Context->DestroyObject(io);
+    m_Context->DestroyObject(io);
+    return CK_OK;
 }
 
 CKBehaviorIO *CKBehavior::GetOutput(int pos) {
@@ -618,11 +620,11 @@ CKBOOL CKBehavior::IsInputActive(int pos) {
 }
 
 CKBehaviorIO *CKBehavior::RemoveInput(int pos) {
-    if (pos < 0 || pos >= m_InputArray.Size())
+    CKBehaviorIO *io = GetInput(pos);
+    if (!io)
         return nullptr;
-
-    CKBehaviorIO *io = (CKBehaviorIO *) m_InputArray[pos];
-    m_InputArray.RemoveAt(pos);
+    if (pos >= 0 && pos < m_InputArray.Size())
+        m_InputArray.RemoveAt(pos);
     return io;
 }
 
@@ -630,7 +632,8 @@ CKERROR CKBehavior::DeleteInput(int pos) {
     CKBehaviorIO *io = RemoveInput(pos);
     if (!io)
         return CKERR_INVALIDPARAMETER;
-    return m_Context->DestroyObject(io);
+    m_Context->DestroyObject(io);
+    return CK_OK;
 }
 
 CKBehaviorIO *CKBehavior::GetInput(int pos) {
