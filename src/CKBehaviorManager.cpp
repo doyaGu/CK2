@@ -19,15 +19,14 @@ CKERROR CKBehaviorManager::Execute(float delta) {
 
     // Process behavior activation first
     for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
-        CKBeObject *obj = (CKBeObject *)*it;
-        const int scriptCount = obj->GetScriptCount();
+        CKBeObject *beo = (CKBeObject *)*it;
+        const int scriptCount = beo->GetScriptCount();
         for (int i = 0; i < scriptCount; ++i) {
-            CKBehavior *behavior = obj->GetScript(i);
-            const CKDWORD flags = behavior->GetFlags();
+            CKBehavior *beh = beo->GetScript(i);
+            const CKDWORD flags = beh->GetFlags();
             if (flags & (CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME)) {
-                behavior->Activate((flags & CKBEHAVIOR_ACTIVATENEXTFRAME) != 0,
-                                   (flags & CKBEHAVIOR_RESETNEXTFRAME) != 0);
-                behavior->ModifyFlags(
+                beh->Activate((flags & CKBEHAVIOR_ACTIVATENEXTFRAME) != 0, (flags & CKBEHAVIOR_RESETNEXTFRAME) != 0);
+                beh->ModifyFlags(
                     0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME);
             }
         }

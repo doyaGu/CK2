@@ -394,7 +394,6 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
             delete[] m_Buffer;
 
             m_ParamType = pm->GetParameterTypeDescription(paramGUID);
-
             if (m_ParamType) {
                 m_Size = m_ParamType->DefaultSize;
                 if (m_Size > 0) {

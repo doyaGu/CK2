@@ -496,7 +496,6 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
 
     CKContext *context = m_Context;
     CKAttributeManager *am = context->GetAttributeManager();
-    bool legacyVersion = false;
 
     if (file) {
         // Cleanup existing scripts
