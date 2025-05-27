@@ -414,6 +414,7 @@ CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, 
     enumDesc.CopyFunction = CK_ParameterCopier_Dword;
     enumDesc.StringFunction = CKEnumStringFunc;
     enumDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &enumDesc);
+    enumDesc.dwParam = m_NbEnumsDefined;
     enumDesc.dwFlags = CKPARAMETERTYPE_ENUMS;
 
     CKERROR err = RegisterParameterType(&enumDesc);
