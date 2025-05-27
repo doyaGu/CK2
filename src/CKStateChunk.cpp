@@ -2,6 +2,7 @@
 
 #include "VxMatrix.h"
 #include "VxWindowFunctions.h"
+#include "VxMath.h"
 #include "CKFile.h"
 #include "CKPluginManager.h"
 
@@ -1573,21 +1574,642 @@ int CKStateChunk::RemapObjects(CKContext *context, CKDependenciesContext *Depcon
     return IterateAndDo(ObjectRemapper, &data);
 }
 
+static CKDWORD g_RedShift_LSB;
+static CKDWORD g_RedQuantShift_MSB; // 8 - RedBitCount
+static CKDWORD g_GreenShift_LSB;
+static CKDWORD g_GreenQuantShift_MSB;
+static CKDWORD g_BlueShift_LSB;
+static CKDWORD g_BlueQuantShift_MSB;
+static CKDWORD g_AlphaShift_LSB;
+static CKDWORD g_AlphaQuantShift_MSB;
+
+static CKBOOL CalculateShiftsForComponent(CKDWORD mask, CKDWORD &outLsbShift, CKDWORD &outQuantShift) {
+    if (mask == 0) {
+        outLsbShift = 0;
+        outQuantShift = 8; // Effectively no quantization or full range if 0 bits
+        return TRUE;
+    }
+
+    CKDWORD lsbShift = 0;
+    CKDWORD tempMask = 1;
+    while ((tempMask & mask) == 0) {
+        tempMask <<= 1;
+        lsbShift++;
+        if (lsbShift >= 32) {
+            // Should not happen for valid masks
+            outLsbShift = 0;
+            outQuantShift = 8;
+            return FALSE;
+        }
+    }
+
+    CKDWORD bitCount = 0;
+    // tempMask now aligns with the LSB of the component mask
+    while ((tempMask & mask) != 0) {
+        tempMask <<= 1;
+        bitCount++;
+        if (bitCount > 8) return FALSE; // Component uses more than 8 bits
+        if (bitCount >= 32) break;      // Safety break
+    }
+    if (bitCount == 0) {
+        // Mask was present but no contiguous bits from LSB? Invalid mask.
+        outLsbShift = 0;
+        outQuantShift = 8;
+        return FALSE;
+    }
+
+    outLsbShift = lsbShift;
+    outQuantShift = 8 - bitCount;
+    return TRUE;
+}
+
+static CKBOOL CalculateMaskShifts(CKDWORD RedMask, CKDWORD GreenMask, CKDWORD BlueMask, CKDWORD AlphaMask) {
+    if (!CalculateShiftsForComponent(RedMask, g_RedShift_LSB, g_RedQuantShift_MSB)) return FALSE;
+    if (!CalculateShiftsForComponent(GreenMask, g_GreenShift_LSB, g_GreenQuantShift_MSB)) return FALSE;
+    if (!CalculateShiftsForComponent(BlueMask, g_BlueShift_LSB, g_BlueQuantShift_MSB)) return FALSE;
+    if (!CalculateShiftsForComponent(AlphaMask, g_AlphaShift_LSB, g_AlphaQuantShift_MSB)) return FALSE;
+    return TRUE;
+}
+
 void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *reader, CKBitmapProperties *bp) {
+    if (!m_ChunkParser)
+        return;
+
+    if (!desc.Image || !reader || !bp) {
+        WriteDword(0);
+        return;
+    }
+
+    CKBOOL alphaIsSavedByReader = reader->IsAlphaSaved(bp);
+    void *memoryToSave = nullptr; // Pointer to the data buffer that reader->SaveMemory will produce
+    int savedMemorySize = 0; // Size of memoryToSave
+    void *temp32BitBuffer = nullptr; // Buffer for on-the-fly conversion
+
+    // 1. Prepare the image data in bp->m_Data and bp->m_Format
+    //    If desc is not 32-bit, convert it to a temporary 32-bit RGBA buffer.
+    if (desc.BitsPerPixel == 32 &&
+        desc.AlphaMask == A_MASK &&
+        desc.RedMask == R_MASK &&
+        desc.GreenMask == G_MASK &&
+        desc.BlueMask == B_MASK) {
+        // Already in desired format for most readers (or readers expect 32-bit input for conversion)
+        bp->m_Format = desc; // Copy descriptor
+        bp->m_Data = desc.Image; // Use original image data directly
+    } else {
+        // Need to convert to a temporary 32-bit RGBA buffer
+        VxImageDescEx temp32BitDesc;
+        temp32BitDesc.Width = desc.Width;
+        temp32BitDesc.Height = desc.Height;
+        temp32BitDesc.BitsPerPixel = 32;
+        temp32BitDesc.BytesPerLine = desc.Width * 4;
+        // Standard ARGB32 masks
+        temp32BitDesc.RedMask = R_MASK;
+        temp32BitDesc.GreenMask = G_MASK;
+        temp32BitDesc.BlueMask = B_MASK;
+        temp32BitDesc.AlphaMask = A_MASK;
+
+        size_t bufferSize = temp32BitDesc.Height * temp32BitDesc.BytesPerLine;
+        if (bufferSize == 0) {
+            // Avoid 0-byte allocation
+            WriteDword(0);
+            return;
+        }
+        temp32BitBuffer = new CKBYTE[bufferSize];
+        if (!temp32BitBuffer) {
+            WriteDword(0);
+            return; // Out of memory
+        }
+        temp32BitDesc.Image = (CKBYTE *) temp32BitBuffer;
+
+        VxDoBlit(desc, temp32BitDesc); // Convert original 'desc' to 'temp32BitDesc'
+
+        bp->m_Format = temp32BitDesc; // Reader will save from this 32-bit format
+        bp->m_Data = temp32BitBuffer;
+    }
+
+    // 2. Use the reader to save the (potentially temporary 32-bit) image to a memory buffer
+    savedMemorySize = reader->SaveMemory(&memoryToSave, bp);
+
+    // 3. Clean up temporary 32-bit buffer if it was used
+    delete[] (CKBYTE *) temp32BitBuffer; // Safe if temp32BitBuffer is nullptr
+    bp->m_Data = nullptr; // Crucial: bp->m_Data should not point to freed memory or original desc.Image after this
+
+    // 4. Write the saved data to the chunk
+    if (savedMemorySize > 0 && memoryToSave != nullptr) {
+        // Path 1: Alpha is saved by reader OR there's no alpha mask in original
+        if (alphaIsSavedByReader || !desc.AlphaMask) {
+            WriteDword(1); // Type 1: Reader handles alpha or no alpha
+            WriteBufferNoSize(sizeof(CKFileExtension), &bp->m_Ext); // Write 4 bytes of extension
+            WriteGuid(bp->m_ReaderGuid);
+            WriteBuffer(savedMemorySize, memoryToSave);
+        }
+        // Path 2: Alpha NOT saved by reader AND original had an alpha mask
+        // AND original was 32bpp (this condition seems implied by palette gen logic)
+        else if (desc.BitsPerPixel == 32) {
+            // Only try to save separate alpha if original was 32bpp
+            WriteDword(2); // Type 2: Separate alpha palette/mask
+            WriteDword(*(CKDWORD *) &bp->m_Ext.m_Data); // Write extension as int
+            WriteGuid(bp->m_ReaderGuid);
+            WriteBuffer(savedMemorySize, memoryToSave);
+
+            // Calculate and write alpha palette/mask
+            CKDWORD alphaPalette[256];
+            memset(alphaPalette, 0, sizeof(alphaPalette));
+
+            // Calculate shifts for the original descriptor's alpha mask
+            if (!CalculateMaskShifts(0, 0, 0, desc.AlphaMask)) {
+                // Should not happen if desc.AlphaMask is valid
+                // Write empty palette info as a fallback
+                WriteDword(0); // 0 distinct alpha values
+            } else {
+                CKBYTE *pixelPtr = desc.Image;
+                int pixels = desc.Width * desc.Height;
+                int bytesPerPixel = desc.BitsPerPixel >> 3; // Bytes per pixel of original image
+
+                for (int p = 0; p < pixels; ++p) {
+                    CKDWORD pixelValue = 0;
+                    // Safely read pixel based on BPP
+                    if (bytesPerPixel == 1) {
+                        pixelValue = *pixelPtr;
+                    } else if (bytesPerPixel == 2) {
+                        pixelValue = *(CKWORD *) pixelPtr;
+                    } else if (bytesPerPixel == 3) {
+                        // 24bpp, needs careful read
+                        pixelValue = pixelPtr[0] | pixelPtr[1] << 8 | pixelPtr[2] << 16;
+                    } else if (bytesPerPixel == 4) {
+                        pixelValue = *(CKDWORD *) pixelPtr;
+                    }
+
+                    // Extract alpha using calculated shifts
+                    CKBYTE alphaByte = (CKBYTE) ((pixelValue & desc.AlphaMask) >> g_AlphaShift_LSB);
+                    alphaPalette[alphaByte] = 1; // Mark this alpha value as used
+
+                    pixelPtr += bytesPerPixel;
+                }
+
+                int distinctAlphaCount = 0;
+                for (int i = 0; i < 256; ++i) {
+                    if (alphaPalette[i]) {
+                        distinctAlphaCount++;
+                    }
+                }
+                WriteDword(distinctAlphaCount);
+
+                if (distinctAlphaCount == 1) {
+                    for (int i = 0; i < 256; ++i) {
+                        if (alphaPalette[i]) {
+                            WriteDword(i); // Write the single alpha value
+                            break;
+                        }
+                    }
+                } else if (distinctAlphaCount > 1 && distinctAlphaCount < 256) {
+                    // IDA's code also writes full mask if > 1
+                    // Create a compact alpha mask (1 bit per pixel)
+                    CKBYTE *alphaPlane = new CKBYTE[pixels];
+                    if (alphaPlane) {
+                        pixelPtr = desc.Image;
+                        for (int p = 0; p < pixels; ++p) {
+                            CKDWORD pixelValue = 0;
+                            if (bytesPerPixel == 1) {
+                                pixelValue = *pixelPtr;
+                            } else if (bytesPerPixel == 2) {
+                                pixelValue = *(CKWORD *) pixelPtr;
+                            } else if (bytesPerPixel == 3) {
+                                pixelValue = pixelPtr[0] | pixelPtr[1] << 8 | pixelPtr[2] << 16;
+                            } else if (bytesPerPixel == 4) {
+                                pixelValue = *(CKDWORD *) pixelPtr;
+                            }
+
+                            alphaPlane[p] = (CKBYTE) ((pixelValue & desc.AlphaMask) >> g_AlphaShift_LSB);
+                            pixelPtr += bytesPerPixel;
+                        }
+                        WriteBuffer(pixels, alphaPlane);
+                        delete[] alphaPlane;
+                    } else {
+                        // Allocation failed for alphaPlane
+                        // This case is not handled well by IDA (would likely corrupt data)
+                        // Fallback: Indicate 0 distinct alphas (or error)
+                        WriteDword(0); // Or handle error more gracefully
+                    }
+                }
+                // If distinctAlphaCount is 0 or 256, nothing more is written for alpha.
+            }
+        } else {
+            // Fallback for non-32bpp images that need alpha but reader doesn't save it
+            // This case wasn't explicitly handled by IDA's alpha palette logic (which assumed 32bpp source)
+            // So, act like Type 1.
+            WriteDword(1);
+            WriteBufferNoSize(sizeof(CKFileExtension), &bp->m_Ext);
+            WriteGuid(bp->m_ReaderGuid);
+            WriteBuffer(savedMemorySize, memoryToSave);
+        }
+        reader->ReleaseMemory(memoryToSave);
+    } else {
+        WriteDword(0);
+    }
 }
 
 CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
-    return FALSE;
+    CKDWORD formatType = ReadDword();
+    if (formatType == 0)
+        return FALSE;
+    if (!desc.Image)
+        return FALSE;
+
+    CKFileExtension ext;
+    CKGUID readerGuid;
+    CKBitmapProperties *props = nullptr;
+
+    ReadAndFillBuffer(sizeof(CKFileExtension), &ext);
+    readerGuid = ReadGuid();
+
+    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext, &readerGuid);
+    if (!reader)
+        return FALSE;
+
+    int size = ReadInt();
+    int dwordCount = (size + 3) / sizeof(CKDWORD);
+    if (m_ChunkParser->CurrentPos + dwordCount <= m_ChunkSize) {
+        if (size > 0) {
+            if (reader->ReadMemory(&m_Data[m_ChunkParser->CurrentPos], size, &props) != 0)
+                return FALSE;
+
+            props->m_Format.Image = (CKBYTE *) props->m_Data;
+            VxDoBlit(props->m_Format, desc);
+
+            reader->ReleaseMemory(props->m_Data);
+            props->m_Data = nullptr;
+            props->m_Format.ColorMap = nullptr;
+        }
+        Skip(dwordCount);
+        if (formatType == 2) {
+            int distinctAlphaCount = ReadInt();
+            if (distinctAlphaCount == 1) {
+                VxDoAlphaBlit(desc, (CKBYTE) ReadDword());
+            } else {
+                void *alphaPlaneBuffer = nullptr;
+                int alphaPlaneSize = ReadBuffer(&alphaPlaneBuffer);
+                if (alphaPlaneBuffer && alphaPlaneSize > 0) {
+                    VxDoAlphaBlit(desc, (CKBYTE *) alphaPlaneBuffer);
+                    delete[] (CKBYTE *) alphaPlaneBuffer;
+                }
+            }
+        }
+    }
+
+    reader->Release();
+    return TRUE;
 }
 
 void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
+    if (!m_ChunkParser)
+        return;
+
+    if (!desc.Image || desc.Width <= 0 || desc.Height <= 0 || desc.BitsPerPixel == 0) {
+        WriteInt(0); // Write 0 for BitsPerPixel to indicate no/invalid image data
+        return;
+    }
+
+    // Write image metadata
+    WriteInt(desc.BitsPerPixel);
+    WriteInt(desc.Width);
+    WriteInt(desc.Height);
+    WriteDword(desc.AlphaMask);
+    WriteDword(desc.RedMask);
+    WriteDword(desc.GreenMask);
+    WriteDword(desc.BlueMask);
+    WriteDword(0); // Placeholder for compression type (0 = raw, 1 = JPEG)
+
+    int bytesPerPixel = desc.BitsPerPixel >> 3;
+    if (bytesPerPixel == 0 && desc.BitsPerPixel > 0) bytesPerPixel = 1; // For < 8 bpp, treat as 1 BPP for iteration
+    if (bytesPerPixel == 0) {
+        // Should not happen if BitsPerPixel > 0
+        // Write empty buffers if BPP is invalid
+        WriteBuffer(0, nullptr); // R
+        WriteBuffer(0, nullptr); // G
+        WriteBuffer(0, nullptr); // B
+        WriteBuffer(0, nullptr); // A
+        return;
+    }
+
+    int planeSize = desc.Width * desc.Height; // Number of pixels, each channel plane will have this many bytes
+    CKBYTE *rPlane = new CKBYTE[planeSize];
+    CKBYTE *gPlane = new CKBYTE[planeSize];
+    CKBYTE *bPlane = new CKBYTE[planeSize];
+    CKBYTE *aPlane = (desc.AlphaMask != 0) ? new CKBYTE[planeSize] : nullptr;
+
+    if (!rPlane || !gPlane || !bPlane || (desc.AlphaMask && !aPlane)) {
+        // Memory allocation failure
+        delete[] rPlane;
+        delete[] gPlane;
+        delete[] bPlane;
+        delete[] aPlane;
+        // We've already written metadata, so we must write empty buffers to maintain chunk structure
+        WriteBuffer(0, nullptr); // R
+        WriteBuffer(0, nullptr); // G
+        WriteBuffer(0, nullptr); // B
+        WriteBuffer(0, nullptr); // A (even if AlphaMask was 0, write empty alpha buffer)
+        return;
+    }
+
+    // Process image from bottom-up (last scanline first)
+    // planar_idx is the current index into the R,G,B,A planes
+    for (int y = 0; y < desc.Height; ++y) {
+        // Source scanline: Starts from last line and goes up.
+        // desc.Image points to the top-left.
+        // Scanline y from top is desc.Image + y * desc.BytesPerLine
+        // Upside-down processing for channel separation:
+        const CKBYTE *srcScanline = desc.Image + (desc.Height - 1 - y) * desc.BytesPerLine;
+        CKBYTE *rPlanePtr = rPlane + y * desc.Width;
+        CKBYTE *gPlanePtr = gPlane + y * desc.Width;
+        CKBYTE *bPlanePtr = bPlane + y * desc.Width;
+        CKBYTE *aPlanePtr = aPlane ? (aPlane + y * desc.Width) : nullptr;
+
+        for (int x = 0; x < desc.Width; ++x) {
+            const CKBYTE *srcPixel = srcScanline + x * bytesPerPixel;
+            CKDWORD pixelValue = 0;
+
+            // Read pixel value based on BPP
+            if (bytesPerPixel == 1) {
+                // 8-bit (usually palettized or grayscale)
+                pixelValue = *srcPixel;
+            } else if (bytesPerPixel == 2) {
+                // 16-bit
+                pixelValue = *(CKWORD *) srcPixel;
+            } else if (bytesPerPixel == 3) {
+                // 24-bit
+                pixelValue = srcPixel[0] | (srcPixel[1] << 8) | (srcPixel[2] << 16);
+            } else if (bytesPerPixel == 4) {
+                // 32-bit
+                pixelValue = *(CKDWORD *) srcPixel;
+            }
+
+            if (desc.BitsPerPixel == 32) {
+                // Direct channel extraction for 32-bit (ARGB, RGBA etc.)
+                bPlanePtr[x] = srcPixel[0];
+                gPlanePtr[x] = srcPixel[1];
+                rPlanePtr[x] = srcPixel[2];
+                if (aPlanePtr) {
+                    aPlanePtr[x] = (bytesPerPixel == 4) ? srcPixel[3] : 0xFF;
+                }
+            } else if (desc.BitsPerPixel < 24) {
+                // Quantize for < 24 bpp
+                static VxImageDescEx lastMaskDesc;
+                if (memcmp(&lastMaskDesc, &desc, sizeof(VxImageDescEx)) != 0) {
+                    CalculateMaskShifts(desc.RedMask, desc.GreenMask, desc.BlueMask, desc.AlphaMask);
+                    lastMaskDesc = desc;
+                }
+
+                rPlanePtr[x] = (CKBYTE) (((pixelValue & desc.RedMask) >> g_RedShift_LSB) << g_RedQuantShift_MSB);
+                gPlanePtr[x] = (CKBYTE) (((pixelValue & desc.GreenMask) >> g_GreenShift_LSB) << g_GreenQuantShift_MSB);
+                bPlanePtr[x] = (CKBYTE) (((pixelValue & desc.BlueMask) >> g_BlueShift_LSB) << g_BlueQuantShift_MSB);
+                if (aPlanePtr && desc.AlphaMask) {
+                    aPlanePtr[x] = (CKBYTE) (((pixelValue & desc.AlphaMask) >> g_AlphaShift_LSB) << g_AlphaQuantShift_MSB);
+                } else if (aPlanePtr) {
+                    aPlanePtr[x] = 0xFF; // Default to opaque if no alpha mask but alpha plane exists
+                }
+            } else {
+                // 24-bit (BGR usually)
+                bPlanePtr[x] = srcPixel[0];
+                gPlanePtr[x] = srcPixel[1];
+                rPlanePtr[x] = srcPixel[2];
+                if (aPlanePtr) {
+                    aPlanePtr[x] = 0xFF; // 24-bit has no alpha, so opaque
+                }
+            }
+        }
+    }
+
+    // Write de-interleaved planes
+    WriteBuffer(planeSize, rPlane);
+    WriteBuffer(planeSize, gPlane);
+    WriteBuffer(planeSize, bPlane);
+    if (aPlane) {
+        WriteBuffer(planeSize, aPlane);
+    } else {
+        WriteBuffer(0, nullptr); // Write empty buffer if no alpha
+    }
+
+    // Cleanup
+    delete[] rPlane;
+    delete[] gPlane;
+    delete[] bPlane;
+    delete[] aPlane; // Safe if aPlane is nullptr
 }
 
 CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
-    return nullptr;
+    if (!m_ChunkParser)
+        return nullptr;
+
+    desc.BitsPerPixel = ReadInt();
+    if (desc.BitsPerPixel == 0) {
+        // Marker for no/invalid image data
+        desc.Width = 0;
+        desc.Height = 0;
+        // Clear other desc fields
+        desc.AlphaMask = 0;
+        desc.RedMask = 0;
+        desc.GreenMask = 0;
+        desc.BlueMask = 0;
+        desc.BytesPerLine = 0;
+        return nullptr;
+    }
+
+    desc.Width = ReadInt();
+    desc.Height = ReadInt();
+    desc.AlphaMask = ReadDword();
+    desc.RedMask = ReadDword();
+    desc.GreenMask = ReadDword();
+    desc.BlueMask = ReadDword();
+
+    CKDWORD compressionType = ReadDword() & 0xF; // 0 for raw, 1 for JPEG
+
+    // For raw data, BitsPerPixel in desc will be 32 because we reconstruct to ARGB
+    // The original BitsPerPixel is only used to know how many bytes/pixel to combine.
+    // The BytesPerLine will also be for the reconstructed 32bpp image.
+    desc.BytesPerLine = desc.Width * 4; // Reconstructing to 32bpp ARGB
+    desc.BitsPerPixel = 32;             // Reconstructing to 32bpp ARGB
+
+    CKBYTE *rPlane = nullptr, *gPlane = nullptr, *bPlane = nullptr, *aPlane = nullptr;
+    int planeSize = 0; // This will be Width * Height based on ReadBuffer
+
+    if (compressionType == 0) {
+        // Raw planar data
+        planeSize = ReadBuffer((void **) &rPlane); // Read R plane
+        ReadBuffer((void **) &gPlane);             // Read G plane
+        ReadBuffer((void **) &bPlane);             // Read B plane
+        ReadBuffer((void **) &aPlane);             // Read A plane (might be 0 size if no alpha)
+    } else if (compressionType == 1) {
+        // CCompressionTools::jpegDecode calls here.
+        // Since we are not using CCompressionTools, so we handle it as an error.
+        // We must still read/skip the buffers that would have contained JPEG data.
+        void *tempDescBuffer = nullptr;
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // desc for R
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // R data
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // desc for G
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // G data
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // desc for B
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // B data
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // desc for A (if any)
+        ReadBuffer(&tempDescBuffer);
+        delete[] (CKBYTE *) tempDescBuffer; // A data (if any)
+        return nullptr; // Or handle as an error appropriately
+    } else {
+        // Unknown compression type
+        return nullptr;
+    }
+
+    if (!rPlane || !gPlane || !bPlane || planeSize <= 0) {
+        // planeSize from R plane read
+        delete[] rPlane;
+        delete[] gPlane;
+        delete[] bPlane;
+        delete[] aPlane;
+        return nullptr;
+    }
+
+    int totalPixels = desc.Width * desc.Height;
+    if (planeSize != totalPixels) {
+        // Consistency check
+        delete[] rPlane;
+        delete[] gPlane;
+        delete[] bPlane;
+        delete[] aPlane;
+        return nullptr;
+    }
+
+    CKBYTE *outputBitmap = new CKBYTE[desc.BytesPerLine * desc.Height];
+    if (!outputBitmap) {
+        delete[] rPlane;
+        delete[] gPlane;
+        delete[] bPlane;
+        delete[] aPlane;
+        return nullptr;
+    }
+
+    // Reconstruct the image, assuming ARGB output format (0xAARRGGBB)
+    // Data was saved planar (R,G,B,A planes) from bottom-left of original image,
+    // so when we re-interleave, we iterate normally and it will be correct.
+    // The WriteRawBitmap writes planes as if from bottom-up, so reading planes directly
+    // and filling top-down will result in the correct orientation.
+    CKDWORD *outPtr = (CKDWORD *) outputBitmap;
+    for (int i = 0; i < totalPixels; ++i) {
+        CKBYTE r = rPlane[i];
+        CKBYTE g = gPlane[i];
+        CKBYTE b = bPlane[i];
+        CKBYTE a = aPlane ? aPlane[i] : 0xFF; // Default to opaque if no alpha plane
+
+        *outPtr++ = a << A_SHIFT | r << R_SHIFT | g << G_SHIFT | b;
+    }
+
+    // Cleanup planar buffers
+    delete[] rPlane;
+    delete[] gPlane;
+    delete[] bPlane;
+    delete[] aPlane; // Safe if aPlane is nullptr
+
+    // Update desc to reflect the reconstructed 32-bit ARGB format
+    // BitsPerPixel and BytesPerLine were already set.
+    // The masks for a standard ARGB32 format:
+    desc.AlphaMask = A_MASK;
+    desc.RedMask = R_MASK;
+    desc.GreenMask = G_MASK;
+    desc.BlueMask = B_MASK;
+    desc.ColorMapEntries = 0;
+    desc.BytesPerColorEntry = 0;
+    desc.ColorMap = nullptr;
+
+    return outputBitmap;
 }
 
 void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
+    if (!m_ChunkParser)
+        return;
+
+    CKFileExtension fileExt(ext); // If ext is NULL, CKFileExtension constructor handles it (empty or default)
+    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(fileExt, nullptr);
+
+    if (!reader) {
+        // Fallback to BMP if the provided extension's reader is not found
+        CKFileExtension bmpExt("bmp");
+        reader = CKGetPluginManager()->GetBitmapReader(bmpExt, nullptr);
+        if (!reader) {
+            // If still no reader, write empty data
+            WriteInt(0);
+            WriteBuffer(0, nullptr);
+            return;
+        }
+        fileExt = bmpExt;
+    }
+
+    if (!bitmap) {
+        reader->Release();
+        WriteInt(0);
+        WriteBuffer(0, nullptr);
+        return;
+    }
+
+    // Prepare the "CKxxx" signature (5 bytes + null terminator)
+    char signature[6];
+    strcpy(signature, "CK"); // First 2 chars
+    strncat(signature, fileExt.m_Data, 3); // Next 3 chars from extension (up to 3 chars)
+    // Convert to uppercase (IDA does this byte by byte)
+    for (int i = 0; signature[i] && i < 5; ++i) {
+        signature[i] = (char) toupper(signature[i]);
+    }
+    signature[5] = '\0';
+
+    VxImageDescEx imageDescFromBitmap;
+    CKBYTE *convertedPixelData = VxConvertBitmap(bitmap, imageDescFromBitmap);
+    if (!convertedPixelData) {
+        reader->Release();
+        WriteInt(0);
+        WriteBuffer(0, nullptr);
+        return;
+    }
+    imageDescFromBitmap.Image = convertedPixelData;
+
+    CKBitmapProperties tempProperties;
+    tempProperties.m_Data = convertedPixelData;
+    tempProperties.m_Format = imageDescFromBitmap;
+
+    void *savedMemoryBuffer = nullptr;
+    int savedMemorySize = reader->SaveMemory(&savedMemoryBuffer, &tempProperties);
+
+    delete[] convertedPixelData;
+
+    if (savedMemorySize > 0 && savedMemoryBuffer != nullptr) {
+        // Total size to write: signature (5 bytes) + savedMemorySize
+        int totalDataPayloadSize = 5 + savedMemorySize;
+        WriteInt(totalDataPayloadSize);
+        WriteInt(totalDataPayloadSize);
+
+        // Lock a buffer in the chunk big enough for signature + saved data
+        // Size is in DWORDS for LockWriteBuffer
+        int dwordsNeeded = (totalDataPayloadSize + sizeof(CKDWORD) - 1) / sizeof(CKDWORD);
+        CKDWORD *chunkBuffer = (CKDWORD *) LockWriteBuffer(dwordsNeeded);
+        if (chunkBuffer) {
+            memcpy(chunkBuffer, signature, 5);
+            memcpy((char *)chunkBuffer + 5, savedMemoryBuffer, savedMemorySize);
+            m_ChunkParser->CurrentPos += dwordsNeeded; // Manually advance cursor
+        } else {
+            // LockWriteBuffer failed, major issue.
+            // Chunk is likely corrupted from this point.
+        }
+        reader->ReleaseMemory(savedMemoryBuffer);
+    } else {
+        // SaveMemory failed
+        WriteInt(0);
+        WriteBuffer(0, nullptr);
+    }
+    reader->Release();
 }
 
 BITMAP_HANDLE CKStateChunk::ReadBitmap() {
@@ -1607,7 +2229,7 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
     CKBitmapProperties *bitmapProps = NULL;
 
     // Read bitmap header information
-    ReadInt(); // Skip version/flags field
+    ReadDword(); // Skip version/flags field
     int bufferSize = ReadBuffer(&buffer);
 
     if (!buffer || bufferSize < 5) {
