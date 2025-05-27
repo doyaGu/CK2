@@ -2,11 +2,11 @@
 
 int CKBehaviorPrototype::DeclareInput(CKSTRING name) {
     // Increase input count and reallocate array
-    CKBEHAVIORIO_DESC** newList = new CKBEHAVIORIO_DESC*[m_InIOCount + 1];
+    CKBEHAVIORIO_DESC **newList = new CKBEHAVIORIO_DESC *[m_InIOCount + 1];
 
     // Copy existing entries
     if (m_InIOList) {
-        memcpy(newList, m_InIOList, sizeof(CKBEHAVIORIO_DESC*) * m_InIOCount);
+        memcpy(newList, m_InIOList, sizeof(CKBEHAVIORIO_DESC *) * m_InIOCount);
         delete[] m_InIOList;
     }
 
@@ -30,10 +30,10 @@ int CKBehaviorPrototype::DeclareInput(CKSTRING name) {
 
 int CKBehaviorPrototype::DeclareOutput(CKSTRING name) {
     // Reallocate output IO list
-    CKBEHAVIORIO_DESC** newList = new CKBEHAVIORIO_DESC*[m_OutIOCount + 1];
+    CKBEHAVIORIO_DESC **newList = new CKBEHAVIORIO_DESC *[m_OutIOCount + 1];
 
     if (m_OutIOList) {
-        memcpy(newList, m_OutIOList, sizeof(CKBEHAVIORIO_DESC*) * m_OutIOCount);
+        memcpy(newList, m_OutIOList, sizeof(CKBEHAVIORIO_DESC *) * m_OutIOCount);
         delete[] m_OutIOList;
     }
     m_OutIOList = newList;
@@ -54,10 +54,10 @@ int CKBehaviorPrototype::DeclareOutput(CKSTRING name) {
 
 int CKBehaviorPrototype::DeclareInParameter(CKSTRING name, CKGUID guid_type, CKSTRING defaultval) {
     // Reallocate parameter list
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_InParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_InParameterCount + 1];
 
     if (m_InParameterList) {
-        memcpy(newList, m_InParameterList, sizeof(CKPARAMETER_DESC*) * m_InParameterCount);
+        memcpy(newList, m_InParameterList, sizeof(CKPARAMETER_DESC *) * m_InParameterCount);
         delete[] m_InParameterList;
     }
     m_InParameterList = newList;
@@ -84,10 +84,10 @@ int CKBehaviorPrototype::DeclareInParameter(CKSTRING name, CKGUID guid_type, CKS
 
 int CKBehaviorPrototype::DeclareInParameter(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize) {
     // Reallocate parameter list
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_InParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_InParameterCount + 1];
 
     if (m_InParameterList) {
-        memcpy(newList, m_InParameterList, sizeof(CKPARAMETER_DESC*) * m_InParameterCount);
+        memcpy(newList, m_InParameterList, sizeof(CKPARAMETER_DESC *) * m_InParameterCount);
         delete[] m_InParameterList;
     }
     m_InParameterList = newList;
@@ -115,10 +115,10 @@ int CKBehaviorPrototype::DeclareInParameter(CKSTRING name, CKGUID guid_type, voi
 }
 
 int CKBehaviorPrototype::DeclareOutParameter(CKSTRING name, CKGUID guid_type, CKSTRING defaultval) {
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_OutParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_OutParameterCount + 1];
 
     if (m_OutParameterList) {
-        memcpy(newList, m_OutParameterList, sizeof(CKPARAMETER_DESC*) * m_OutParameterCount);
+        memcpy(newList, m_OutParameterList, sizeof(CKPARAMETER_DESC *) * m_OutParameterCount);
         delete[] m_OutParameterList;
     }
     m_OutParameterList = newList;
@@ -141,10 +141,10 @@ int CKBehaviorPrototype::DeclareOutParameter(CKSTRING name, CKGUID guid_type, CK
 }
 
 int CKBehaviorPrototype::DeclareOutParameter(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize) {
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_OutParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_OutParameterCount + 1];
 
     if (m_OutParameterList) {
-        memcpy(newList, m_OutParameterList, sizeof(CKPARAMETER_DESC*) * m_OutParameterCount);
+        memcpy(newList, m_OutParameterList, sizeof(CKPARAMETER_DESC *) * m_OutParameterCount);
         delete[] m_OutParameterList;
     }
     m_OutParameterList = newList;
@@ -169,10 +169,10 @@ int CKBehaviorPrototype::DeclareOutParameter(CKSTRING name, CKGUID guid_type, vo
 }
 
 int CKBehaviorPrototype::DeclareLocalParameter(CKSTRING name, CKGUID guid_type, CKSTRING defaultval) {
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_LocalParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_LocalParameterCount + 1];
 
     if (m_LocalParameterList) {
-        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC*) * m_LocalParameterCount);
+        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC *) * m_LocalParameterCount);
         delete[] m_LocalParameterList;
     }
     m_LocalParameterList = newList;
@@ -194,10 +194,10 @@ int CKBehaviorPrototype::DeclareLocalParameter(CKSTRING name, CKGUID guid_type, 
 }
 
 int CKBehaviorPrototype::DeclareLocalParameter(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize) {
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_LocalParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_LocalParameterCount + 1];
 
     if (m_LocalParameterList) {
-        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC*) * m_LocalParameterCount);
+        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC *) * m_LocalParameterCount);
         delete[] m_LocalParameterList;
     }
     m_LocalParameterList = newList;
@@ -221,10 +221,10 @@ int CKBehaviorPrototype::DeclareLocalParameter(CKSTRING name, CKGUID guid_type, 
 }
 
 int CKBehaviorPrototype::DeclareSetting(CKSTRING name, CKGUID guid_type, CKSTRING defaultval) {
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_LocalParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_LocalParameterCount + 1];
 
     if (m_LocalParameterList) {
-        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC*) * m_LocalParameterCount);
+        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC *) * m_LocalParameterCount);
         delete[] m_LocalParameterList;
     }
     m_LocalParameterList = newList;
@@ -246,10 +246,10 @@ int CKBehaviorPrototype::DeclareSetting(CKSTRING name, CKGUID guid_type, CKSTRIN
 }
 
 int CKBehaviorPrototype::DeclareSetting(CKSTRING name, CKGUID guid_type, void *defaultval, int valsize) {
-    CKPARAMETER_DESC** newList = new CKPARAMETER_DESC*[m_LocalParameterCount + 1];
+    CKPARAMETER_DESC **newList = new CKPARAMETER_DESC *[m_LocalParameterCount + 1];
 
     if (m_LocalParameterList) {
-        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC*) * m_LocalParameterCount);
+        memcpy(newList, m_LocalParameterList, sizeof(CKPARAMETER_DESC *) * m_LocalParameterCount);
         delete[] m_LocalParameterList;
     }
     m_LocalParameterList = newList;
@@ -419,22 +419,22 @@ CKSTRING CKBehaviorPrototype::GetLocalParamIndex(int idx) {
 
 CKBehaviorPrototype::~CKBehaviorPrototype() {
     // Cleanup IO lists
-    for(int i = 0; i < m_InIOCount; ++i) {
+    for (int i = 0; i < m_InIOCount; ++i) {
         DELETESTRING(m_InIOList[i]->Name);
         delete m_InIOList[i];
     }
     delete[] m_InIOList;
 
-    for(int i = 0; i < m_OutIOCount; ++i) {
+    for (int i = 0; i < m_OutIOCount; ++i) {
         DELETESTRING(m_OutIOList[i]->Name);
         delete m_OutIOList[i];
     }
     delete[] m_OutIOList;
 
     // Cleanup parameters
-    auto CleanParameters = [](CKPARAMETER_DESC** list, int count) {
-        for(int i = 0; i < count; ++i) {
-            if(list[i]) {
+    auto CleanParameters = [](CKPARAMETER_DESC **list, int count) {
+        for (int i = 0; i < count; ++i) {
+            if (list[i]) {
                 DELETESTRING(list[i]->Name);
                 DELETESTRING(list[i]->DefaultValueString);
                 delete[] list[i]->DefaultValue;
