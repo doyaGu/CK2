@@ -140,7 +140,11 @@ CKERROR CKParameterOut::Load(CKStateChunk *chunk, CKFile *file) {
 
     CKParameter::Load(chunk, file);
 
-    m_ObjectFlags &= ~0x0F400000;
+    m_ObjectFlags &= ~(CK_PARAMETEROUT_SETTINGS |
+                       CK_PARAMETERIN_DISABLED |
+                       CK_PARAMETERIN_THIS |
+                       CK_PARAMETERIN_SHARED |
+                       CK_PARAMETEROUT_DELETEAFTERUSE);
 
     if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETEROUT_DESTINATIONS)) {
         m_Destinations.Clear();
