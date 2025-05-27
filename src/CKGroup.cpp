@@ -329,8 +329,8 @@ CKSTRING CKGroup::GetDependencies(int i, int mode) {
 }
 
 void CKGroup::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, CKBeObject::m_ClassID);
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_GROUP);
+    CKCLASSNOTIFYFROM(CKGroup, CKBeObject);
+    CKPARAMETERFROMCLASS(CKGroup, CKPGUID_GROUP);
 }
 
 CKGroup *CKGroup::CreateInstance(CKContext *Context) {

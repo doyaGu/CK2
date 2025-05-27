@@ -79,8 +79,8 @@ CKSTRING CKSceneObject::GetDependencies(int i, int mode) {
 }
 
 void CKSceneObject::Register() {
-    CKCLASSDEFAULTCOPYDEPENDENCIES(CKObject, 1);
-    CKPARAMETERFROMCLASS(CKObject, CKPGUID_SCENEOBJECT);
+    CKCLASSDEFAULTCOPYDEPENDENCIES(CKSceneObject, 1);
+    CKPARAMETERFROMCLASS(CKSceneObject, CKPGUID_SCENEOBJECT);
 }
 
 CKSceneObject *CKSceneObject::CreateInstance(CKContext *Context) {

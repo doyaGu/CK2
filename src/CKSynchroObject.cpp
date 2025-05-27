@@ -130,9 +130,9 @@ CKSTRING CKSynchroObject::GetDependencies(int i, int mode) {
 }
 
 void CKSynchroObject::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, CKBeObject::m_ClassID);
-    CKClassRegisterDefaultOptions(m_ClassID, 4);
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_SYNCHRO);
+    CKCLASSNOTIFYFROM(CKSynchroObject, CKBeObject);
+    CKCLASSDEFAULTOPTIONS(CKSynchroObject, 4);
+    CKPARAMETERFROMCLASS(CKSynchroObject, CKPGUID_SYNCHRO);
 }
 
 CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
@@ -205,8 +205,8 @@ CKSTRING CKStateObject::GetDependencies(int i, int mode) {
 }
 
 void CKStateObject::Register() {
-    CKClassRegisterDefaultOptions(m_ClassID, 4);
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_STATE);
+    CKCLASSDEFAULTOPTIONS(CKStateObject, 4);
+    CKPARAMETERFROMCLASS(CKStateObject, CKPGUID_STATE);
 }
 
 CKStateObject *CKStateObject::CreateInstance(CKContext *Context) {
@@ -297,9 +297,9 @@ CKSTRING CKCriticalSectionObject::GetDependencies(int i, int mode) {
 }
 
 void CKCriticalSectionObject::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, CKBeObject::m_ClassID);
-    CKClassRegisterDefaultOptions(m_ClassID, 4);
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_CRITICALSECTION);
+    CKCLASSNOTIFYFROM(CKCriticalSectionObject, CKBeObject);
+    CKCLASSDEFAULTOPTIONS(CKCriticalSectionObject, 4);
+    CKPARAMETERFROMCLASS(CKCriticalSectionObject, CKPGUID_CRITICALSECTION);
 }
 
 CKCriticalSectionObject *CKCriticalSectionObject::CreateInstance(CKContext *Context) {

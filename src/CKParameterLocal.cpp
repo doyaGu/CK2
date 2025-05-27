@@ -183,7 +183,7 @@ CKSTRING CKParameterLocal::GetDependencies(int i, int mode) {
 }
 
 void CKParameterLocal::Register() {
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKCLASSDEFAULTOPTIONS(CKParameterLocal, 1);
 }
 
 CKParameterLocal *CKParameterLocal::CreateInstance(CKContext *Context) {

@@ -558,11 +558,11 @@ CKSTRING CKLevel::GetDependencies(int i, int mode) {
 }
 
 void CKLevel::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, CKScene::m_ClassID);
-    CKClassNeedNotificationFrom(m_ClassID, CKCID_PLACE);
-    CKClassNeedNotificationFrom(m_ClassID, CKCID_RENDERCONTEXT);
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_LEVEL);
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKCLASSNOTIFYFROM(CKLevel, CKScene);
+    CKCLASSNOTIFYFROMCID(CKLevel, CKCID_PLACE);
+    CKCLASSNOTIFYFROMCID(CKLevel, CKCID_RENDERCONTEXT);
+    CKPARAMETERFROMCLASS(CKLevel, CKPGUID_LEVEL);
+    CKCLASSDEFAULTOPTIONS(CKLevel, 1);
 }
 
 CKLevel *CKLevel::CreateInstance(CKContext *Context) {

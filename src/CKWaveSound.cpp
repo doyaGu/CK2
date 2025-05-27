@@ -1289,8 +1289,8 @@ CKSTRING CKWaveSound::GetDependencies(int i, int Mode) {
 }
 
 void CKWaveSound::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, CKBeObject::m_ClassID);
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_WAVESOUND);
+    CKCLASSNOTIFYFROM(CKWaveSound, CKBeObject);
+    CKPARAMETERFROMCLASS(CKWaveSound, CKPGUID_WAVESOUND);
 }
 
 CKWaveSound *CKWaveSound::CreateInstance(CKContext *Context) {

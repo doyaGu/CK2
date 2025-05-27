@@ -605,8 +605,8 @@ CKSTRING CKParameter::GetDependencies(int i, int mode) {
 }
 
 void CKParameter::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, CKObject::m_ClassID);
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKCLASSNOTIFYFROM(CKParameter, CKObject);
+    CKCLASSDEFAULTOPTIONS(CKParameter, 1);
 }
 
 CKParameter *CKParameter::CreateInstance(CKContext *Context) {

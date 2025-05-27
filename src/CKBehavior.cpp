@@ -2063,8 +2063,8 @@ CKSTRING CKBehavior::GetDependencies(int i, int mode) {
 }
 
 void CKBehavior::Register() {
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_BEHAVIOR);
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKPARAMETERFROMCLASS(CKBehavior, CKPGUID_BEHAVIOR);
+    CKCLASSDEFAULTOPTIONS(CKBehavior, 1);
 }
 
 CKBehavior *CKBehavior::CreateInstance(CKContext *Context) {

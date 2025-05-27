@@ -1099,8 +1099,8 @@ CKSTRING CKScene::GetDependencies(int i, int mode) {
 }
 
 void CKScene::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, CKSceneObject::m_ClassID);
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_SCENE);
+    CKCLASSNOTIFYFROM(CKScene, CKSceneObject);
+    CKPARAMETERFROMCLASS(CKScene, CKPGUID_SCENE);
 }
 
 CKScene *CKScene::CreateInstance(CKContext *Context) {

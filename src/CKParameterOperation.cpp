@@ -379,7 +379,7 @@ CKSTRING CKParameterOperation::GetDependencies(int i, int mode) {
 }
 
 void CKParameterOperation::Register() {
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKCLASSDEFAULTOPTIONS(CKParameterOperation, 1);
 }
 
 CKParameterOperation *CKParameterOperation::CreateInstance(CKContext *Context) {

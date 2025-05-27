@@ -376,9 +376,9 @@ CKSTRING CKParameterIn::GetDependencies(int i, int mode) {
 }
 
 void CKParameterIn::Register() {
-    CKClassNeedNotificationFrom(m_ClassID, m_ClassID);
-    CKClassNeedNotificationFrom(m_ClassID, CKParameter::m_ClassID);
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKCLASSNOTIFYFROM(CKParameterIn, CKParameterIn);
+    CKCLASSNOTIFYFROM(CKParameterIn, CKParameter);
+    CKCLASSDEFAULTOPTIONS(CKParameterIn, 1);
 }
 
 CKParameterIn *CKParameterIn::CreateInstance(CKContext *Context) {

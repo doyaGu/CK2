@@ -144,7 +144,7 @@ CKSTRING CKMidiSound::GetDependencies(int i, int mode) {
 }
 
 void CKMidiSound::Register() {
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_MIDISOUND);
+    CKPARAMETERFROMCLASS(CKMidiSound, CKPGUID_MIDISOUND);
 }
 
 CKMidiSound *CKMidiSound::CreateInstance(CKContext *Context) {

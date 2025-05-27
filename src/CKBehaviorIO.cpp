@@ -126,7 +126,7 @@ CKSTRING CKBehaviorIO::GetDependencies(int i, int mode) {
 }
 
 void CKBehaviorIO::Register() {
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKCLASSDEFAULTOPTIONS(CKBehaviorIO, 1);
 }
 
 CKBehaviorIO *CKBehaviorIO::CreateInstance(CKContext *Context) {

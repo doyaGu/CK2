@@ -182,7 +182,7 @@ CKSTRING CKBehaviorLink::GetDependencies(int i, int mode) {
 }
 
 void CKBehaviorLink::Register() {
-    CKClassRegisterDefaultOptions(m_ClassID, 1);
+    CKCLASSDEFAULTOPTIONS(CKBehaviorLink, 1);
 }
 
 CKBehaviorLink *CKBehaviorLink::CreateInstance(CKContext *Context) {

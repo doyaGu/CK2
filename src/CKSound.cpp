@@ -90,7 +90,7 @@ CKSTRING CKSound::GetDependencies(int i, int mode) {
 }
 
 void CKSound::Register() {
-    CKClassRegisterAssociatedParameter(m_ClassID, CKPGUID_SOUND);
+    CKPARAMETERFROMCLASS(CKSound, CKPGUID_SOUND);
 }
 
 CKSound *CKSound::CreateInstance(CKContext *Context) {
