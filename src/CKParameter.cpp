@@ -68,7 +68,7 @@ CKERROR CKParameter::CopyValue(CKParameter *param, CKBOOL UpdateParam) {
         }
     }
 
-    m_ParamType->CopyFunction(param, this);
+    m_ParamType->CopyFunction(this, param);
     return CK_OK;
 }
 
