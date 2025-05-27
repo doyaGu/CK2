@@ -504,7 +504,7 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
         reader->ReleaseMemory(properties->m_Data);
         properties->m_Data = NULL;
 
-        delete properties->m_Format.ColorMap;
+        CKDeletePointer(properties->m_Format.ColorMap);
         properties->m_Format.ColorMap = NULL;
 
         reader->Release();
@@ -528,7 +528,7 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     reader->ReleaseMemory(properties->m_Data);
     properties->m_Data = NULL;
 
-    delete properties->m_Format.ColorMap;
+    CKDeletePointer(properties->m_Format.ColorMap);
     properties->m_Format.ColorMap = NULL;
 
     reader->Release();
