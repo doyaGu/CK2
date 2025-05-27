@@ -398,7 +398,7 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
 }
 
 CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, CKSTRING EnumData) {
-    if (!EnumData || !EnumName)
+    if (!EnumData || !EnumName || EnumName[0] == '\0')
         return CKERR_INVALIDPARAMETER;
 
     if (ParameterGuidToType(EnumGuid) >= 0) {
@@ -428,58 +428,79 @@ CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, 
     }
     m_Enums = newEnums;
 
-    int enumCount = 1;
-    const char *ptr = EnumData;
-    while ((ptr = strchr(ptr, ','))) {
-        enumCount++;
-        ptr++;
+    int entryCount = 1;
+    const char *counterPtr = EnumData;
+    while ((counterPtr = strchr(counterPtr, ','))) {
+        entryCount++;
+        counterPtr++;
     }
 
     CKEnumStruct &enumStruct = m_Enums[m_NbEnumsDefined];
-    enumStruct.NbData = enumCount;
-    enumStruct.Vals = new int[enumCount];
-    enumStruct.Desc = new CKSTRING[enumCount];
+    enumStruct.NbData = entryCount;
+    enumStruct.Vals = new int[entryCount];
+    enumStruct.Desc = new CKSTRING[entryCount];
 
-    int currentValue = 0;
-    char buffer[512];
-    const char *currentPos = EnumData;
-
-    for (int i = 0; i < enumCount; ++i) {
-        // Find next comma or end of string
-        const char *end = strchr(currentPos, ',');
-        size_t len = end ? (end - currentPos) : strlen(currentPos);
-
-        // Copy to temporary buffer
-        strncpy(buffer, currentPos, len);
-        buffer[len] = '\0';
-
-        // Check for explicit value assignment
-        char *equalSign = strchr(buffer, '=');
-        if (equalSign) {
-            *equalSign = '\0';
-            sscanf(equalSign + 1, "%d", &currentValue);
-            len = equalSign - buffer;
-        }
-
-        // Store enum name
-        enumStruct.Desc[i] = new char[len + 1];
-        strncpy(enumStruct.Desc[i], buffer, len);
-        enumStruct.Desc[i][len] = '\0';
-
-        // Store enum value
-        enumStruct.Vals[i] = currentValue;
-        currentValue++; // Auto-increment if no explicit value
-
-        // Move to next enum entry
-        currentPos = end ? end + 1 : currentPos + len;
+    if (!enumStruct.Vals || !enumStruct.Desc) {
+        delete[] enumStruct.Vals;
+        delete[] enumStruct.Desc;
+        enumStruct.Vals = nullptr;
+        enumStruct.Desc = nullptr;
+        enumStruct.NbData = 0;
+        return CKERR_OUTOFMEMORY;
+    }
+    for (int i = 0; i < entryCount; ++i) {
+        enumStruct.Desc[i] = nullptr;
     }
 
+    int currentValueForNextDefault = 0;
+    char buffer[512];
+    const char *currentPosInEnumData = EnumData;
+    int parsedValue;
+
+    for (int i = 0; i < entryCount; ++i) {
+        const char *entryEnd = strchr(currentPosInEnumData, ',');
+        size_t currentEntryLength = entryEnd ? entryEnd - currentPosInEnumData : strlen(currentPosInEnumData);
+
+        size_t copyLength = XMin((size_t) 511, currentEntryLength);
+        strncpy(buffer, currentPosInEnumData, copyLength);
+        buffer[copyLength] = '\0';
+
+        char *namePart = buffer;
+        char *equalSign = strchr(buffer, '=');
+        size_t nameLength;
+
+        if (equalSign) {
+            *equalSign = '\0';
+            nameLength = equalSign - buffer;
+            if (sscanf(equalSign + 1, "%d", &parsedValue) != 1) {
+                parsedValue = currentValueForNextDefault;
+            }
+        } else {
+            nameLength = strlen(buffer);
+            parsedValue = currentValueForNextDefault;
+        }
+
+        enumStruct.Desc[i] = new char[nameLength + 1];
+        if (!enumStruct.Desc[i]) { return CKERR_OUTOFMEMORY; }
+        strncpy(enumStruct.Desc[i], namePart, nameLength);
+        enumStruct.Desc[i][nameLength] = '\0';
+
+        enumStruct.Vals[i] = parsedValue;
+
+        currentValueForNextDefault = parsedValue + 1;
+
+        if (entryEnd) {
+            currentPosInEnumData = entryEnd + 1;
+        } else {
+            break;
+        }
+    }
     m_NbEnumsDefined++;
     return CK_OK;
 }
 
 CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING EnumData) {
-    if (!m_Enums || !EnumData)
+    if (!m_Enums || !EnumData || EnumData[0] == '\0')
         return CKERR_INVALIDPARAMETER;
 
     CKParameterType type = ParameterGuidToType(EnumGuid);
@@ -490,63 +511,101 @@ CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING Enum
     if (!typeDesc)
         return CKERR_INVALIDGUID;
 
-    const int enumIndex = (int)typeDesc->dwParam;
+    const int enumIndex = (int) typeDesc->dwParam;
     if (enumIndex >= m_NbEnumsDefined)
         return CKERR_INVALIDPARAMETER;
 
     int entryCount = 1;
-    const char *ptr = EnumData;
-    while ((ptr = strchr(ptr, ','))) {
+    const char *counterPtr = EnumData;
+    while ((counterPtr = strchr(counterPtr, ','))) {
         entryCount++;
-        ptr++;
+        counterPtr++; // Skip the comma
     }
 
     // Cleanup old data
     CKEnumStruct &enumStruct = m_Enums[enumIndex];
-    delete[] enumStruct.Vals;
-    for (int i = 0; i < enumStruct.NbData; ++i) {
-        delete[] enumStruct.Desc[i];
+    if (enumStruct.Vals) {
+        delete[] enumStruct.Vals;
+        enumStruct.Vals = nullptr;
     }
-    delete[] enumStruct.Desc;
+    if (enumStruct.Desc) {
+        for (int i = 0; i < enumStruct.NbData; ++i) {
+            if (enumStruct.Desc[i]) {
+                delete[] enumStruct.Desc[i];
+            }
+        }
+        delete[] enumStruct.Desc;
+        enumStruct.Desc = nullptr;
+    }
+    enumStruct.NbData = 0;
 
     // Allocate new storage
     enumStruct.NbData = entryCount;
     enumStruct.Vals = new int[entryCount];
     enumStruct.Desc = new CKSTRING[entryCount];
+    if (!enumStruct.Vals || !enumStruct.Desc) {
+        delete[] enumStruct.Vals;
+        delete[] enumStruct.Desc;
+        enumStruct.Vals = nullptr;
+        enumStruct.Desc = nullptr;
+        enumStruct.NbData = 0;
+        return CKERR_OUTOFMEMORY;
+    }
+    for (int i = 0; i < entryCount; ++i) {
+        enumStruct.Desc[i] = nullptr;
+    }
 
     // Parse new enum entries
-    int currentValue = 0;
+    int parsedValue;
+    int currentValueForNextDefault = 0;
     char buffer[512];
-    const char *currentPos = EnumData;
+    const char *currentPosInEnumData = EnumData;
 
     for (int i = 0; i < entryCount; ++i) {
-        // Find entry boundaries
-        const char *end = strchr(currentPos, ',');
-        size_t len = end ? (end - currentPos) : strlen(currentPos);
+        const char *entryEnd = strchr(currentPosInEnumData, ',');
+        size_t currentEntryLength;
 
-        // Extract entry to buffer
-        strncpy(buffer, currentPos, len);
-        buffer[len] = '\0';
-
-        // Handle explicit value assignment
-        char *equalSign = strchr(buffer, '=');
-        if (equalSign) {
-            *equalSign = '\0';
-            sscanf(equalSign + 1, "%d", &currentValue);
-            len = equalSign - buffer;
+        if (entryEnd) {
+            currentEntryLength = entryEnd - currentPosInEnumData;
+        } else {
+            currentEntryLength = strlen(currentPosInEnumData);
         }
 
-        // Allocate and store name
-        enumStruct.Desc[i] = new char[len + 1];
-        strncpy(enumStruct.Desc[i], buffer, len);
-        enumStruct.Desc[i][len] = '\0';
+        size_t copyLength = XMin((size_t) 511, currentEntryLength);
+        strncpy(buffer, currentPosInEnumData, copyLength);
+        buffer[copyLength] = '\0';
 
-        // Store value
-        enumStruct.Vals[i] = currentValue;
+        char *namePart = buffer;
+        char *equalSign = strchr(buffer, '=');
+        size_t nameLength;
 
-        // Prepare for next iteration
-        currentValue = equalSign ? currentValue : currentValue + 1;
-        currentPos = end ? end + 1 : currentPos + len;
+        if (equalSign) {
+            *equalSign = '\0';
+            nameLength = equalSign - buffer;
+            if (sscanf(equalSign + 1, "%d", &parsedValue) == 1) {
+                // Successfully parsed an explicit value
+            } else {
+                parsedValue = currentValueForNextDefault;
+            }
+        } else {
+            nameLength = strlen(buffer);
+            parsedValue = currentValueForNextDefault;
+        }
+
+        enumStruct.Desc[i] = new char[nameLength + 1];
+        if (!enumStruct.Desc[i]) { return CKERR_OUTOFMEMORY; }
+        strncpy(enumStruct.Desc[i], namePart, nameLength);
+        enumStruct.Desc[i][nameLength] = '\0';
+
+        enumStruct.Vals[i] = parsedValue;
+
+        currentValueForNextDefault = parsedValue + 1;
+
+        if (entryEnd) {
+            currentPosInEnumData = entryEnd + 1;
+        } else {
+            break;
+        }
     }
 
     return CK_OK;
