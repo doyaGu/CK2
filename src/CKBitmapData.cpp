@@ -28,7 +28,9 @@ CKBOOL CKBitmapData::CreateImage(int Width, int Height, int BPP, int Slot) {
         m_BitmapFlags |= CKBITMAPDATA_FORCERESTORE;
     } else if (m_Width != Width || m_Height != Height) {
         return FALSE;
-    } else if (m_Width == 0 || m_Height == 0) {
+    }
+
+    if (m_Width == 0 || m_Height == 0) {
         m_BitmapFlags |= CKBITMAPDATA_INVALID;
         return FALSE;
     }
@@ -243,7 +245,9 @@ CKBOOL CKBitmapData::SetSlotCount(int Count) {
     if (Count < slotCount) {
         for (int i = Count; i < slotCount; ++i) {
             CKBitmapSlot *slot = m_Slots[i];
-            delete slot;
+            if (slot) {
+                delete slot;
+            }
         }
     }
 
@@ -412,7 +416,8 @@ void CKBitmapData::SetTransparent(CKBOOL Transparency) {
 }
 
 void CKBitmapData::SetSaveFormat(CKBitmapProperties *format) {
-    CKDeletePointer(m_SaveProperties);
+    // CKDeletePointer(m_SaveProperties);
+    delete[] (CKBYTE *) m_SaveProperties;
     m_SaveProperties = format;
 }
 
@@ -606,7 +611,8 @@ CKBitmapData::~CKBitmapData() {
     }
 
     ReleaseAllSlots();
-    CKDeletePointer(m_SaveProperties);
+    // CKDeletePointer(m_SaveProperties);
+    delete[] (CKBYTE *) m_SaveProperties;
 }
 
 void CKBitmapData::SetAlphaForTransparentColor(const VxImageDescEx &desc) {
