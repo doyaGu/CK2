@@ -535,24 +535,37 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
     CKBufferParser *parser = *ParserPtr;
 
     if ((m_FileInfo.FileWriteMode & (CKFILE_CHUNKCOMPRESSED_OLD | CKFILE_WHOLECOMPRESSED)) != 0) {
-        parser = parser->UnPack(m_FileInfo.DataUnPackSize, m_FileInfo.DataPackSize);
+        CKBufferParser *unpacked = parser->UnPack(m_FileInfo.DataUnPackSize, m_FileInfo.DataPackSize);
+        if (!unpacked) {
+            m_Context->OutputToConsole((CKSTRING) "Error unpacking data chunk.");
+            return CKERR_INVALIDFILE;
+        }
+        parser = unpacked;
         (*ParserPtr)->Skip(m_FileInfo.DataPackSize);
     }
 
     if (m_FileInfo.FileVersion < 8) {
-        if (m_FileInfo.FileVersion < 2) {
+        if (m_FileInfo.FileVersion >= 2) {
+            if (m_FileInfo.Crc != parser->ComputeCRC(parser->Size() - parser->CursorPos())) {
+                if (parser != *ParserPtr)
+                    delete parser;
+
+                m_Context->OutputToConsole((CKSTRING) "Crc Error in m_File");
+                return CKERR_FILECRCERROR;
+            }
+        } else {
             WarningForOlderVersion = TRUE;
-        } else if (m_FileInfo.Crc != parser->ComputeCRC(parser->Size() - parser->CursorPos())) {
-            m_Context->OutputToConsole((CKSTRING) "Crc Error in m_File");
-            return CKERR_FILECRCERROR;
         }
 
         m_SaveIDMax = parser->ReadInt();
         m_FileInfo.ObjectCount = parser->ReadInt();
 
-        if (m_FileObjects.IsEmpty()) {
+        if (m_FileObjects.Size() != m_FileInfo.ObjectCount) {
             m_FileObjects.Resize(m_FileInfo.ObjectCount);
-            m_FileObjects.Memset(0);
+            const int fileObjectCount = m_FileObjects.Size();
+            for (int i = 0; i < fileObjectCount; ++i) {
+                new(&m_FileObjects[i]) CKFileObject();
+            }
         }
     }
 
@@ -562,7 +575,11 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
             for (XArray<CKFileManagerData>::Iterator mit = m_ManagersData.Begin(); mit != m_ManagersData.End(); ++mit) {
                 parser->Read(mit->Manager.d, sizeof(CKGUID));
                 const int managerDataSize = parser->ReadInt();
-                mit->data = parser->ExtractChunk(managerDataSize, this);
+                if (managerDataSize > 0) {
+                    mit->data = parser->ExtractChunk(managerDataSize, this);
+                } else {
+                    mit->data = NULL;
+                }
             }
         }
     }
@@ -575,12 +592,21 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                 }
 
                 const int fileObjectSize = parser->ReadInt();
-                if (m_FileInfo.FileVersion < 7 || !(m_Flags & CK_LOAD_ONLYBEHAVIORS) || oit->ObjectCid == CKCID_BEHAVIOR) {
-                    oit->Data = parser->ExtractChunk(fileObjectSize, this);
-                    if (oit->Data) {
-                        const int postPackSize = oit->Data->GetDataSize();
-                        oit->PostPackSize = postPackSize;
+                if (fileObjectSize > 0) {
+                    if (m_FileInfo.FileVersion < 7 || !(m_Flags & CK_LOAD_ONLYBEHAVIORS) || oit->ObjectCid == CKCID_BEHAVIOR) {
+                        CKStateChunk *chunk = parser->ExtractChunk(fileObjectSize, this);
+                        if (chunk) {
+                            oit->Data = chunk;
+                            oit->PostPackSize = chunk->GetDataSize();
+                            oit->PrePackSize = chunk->GetDataSize();
+                        } else {
+                            oit->Data = NULL;
+                        }
+                    } else {
+                        parser->Skip(fileObjectSize);
                     }
+                } else {
+                    oit->Data = NULL;
                 }
             }
         } else {
@@ -637,11 +663,11 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
         for (XClassArray<XString>::Iterator iit = m_IncludedFiles.Begin();
              iit != m_IncludedFiles.End(); ++iit) {
             const int fileNameLength = parser->ReadInt();
-            char fileName[256] = {};
-            if (fileNameLength > 0) {
+            char fileName[CKMAX_PATH] = {0};
+            if (fileNameLength > 0 && fileNameLength < CKMAX_PATH) {
                 parser->Read(fileName, fileNameLength);
+                fileName[fileNameLength] = '\0';
             }
-            fileName[fileNameLength] = '\0';
 
             const int fileSize = parser->ReadInt();
             if (fileSize > 0) {
@@ -1136,8 +1162,7 @@ CKBOOL CKFile::IncludeFile(CKSTRING FileName, int SearchPathCategory) {
         return FALSE;
 
     XString filename = FileName;
-    if (SearchPathCategory <= -1 || m_Context->GetPathManager()->ResolveFileName(filename, SearchPathCategory) ==
-        CK_OK) {
+    if (SearchPathCategory <= -1 || m_Context->GetPathManager()->ResolveFileName(filename, SearchPathCategory) == CK_OK) {
         m_IncludedFiles.PushBack(filename);
         return TRUE;
     }
