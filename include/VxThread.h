@@ -130,31 +130,22 @@ protected:
 
 private:
     friend void InitVxMath();
-
     friend void ShutDownVxMath();
 
     VxThread(const VxThread &);
-
     VxThread &operator=(const VxThread &);
 
     void SetPriority();
 
     static VxMutex &GetMutex();
-
     static XHashTable<VxThread *, GENERIC_HANDLE> &GetHashThread();
-
     static XULONG __stdcall ThreadFunc(void *args);
 
     GENERIC_HANDLE m_Thread;
-
     unsigned int m_ThreadID;
-
     unsigned int m_State;
-
     unsigned int m_Priority;
-
     VxThreadFunction *m_Func;
-
     void *m_Args;
 
     static VxThread *m_MainThread;
