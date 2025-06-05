@@ -1668,7 +1668,6 @@ int CKBoolStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
     if (!param) return 0;
 
     const size_t BUF_SIZE = 64;
-    char temp[BUF_SIZE];
     CKBOOL value = FALSE;
 
     if (ReadFromString) {
