@@ -3,8 +3,6 @@
 
 #include <new>
 
-#include "VxMathDefines.h"
-
 //------ Memory Management
 
 VX_EXPORT void *mynew(unsigned int n);
