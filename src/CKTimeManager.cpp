@@ -148,7 +148,7 @@ CKERROR CKTimeManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
         SetBehavioralRateLimit(chunk->ReadFloat());
         SetMaximumDeltaTime(1000.0f / chunk->ReadFloat());
         m_TimeScaleFactor = chunk->ReadFloat();
-        m_LimitOptions = chunk->ReadInt();
+        m_LimitOptions = chunk->ReadDword();
         if (size > 20)
         {
             SetMinimumDeltaTime(chunk->ReadFloat());
@@ -171,7 +171,7 @@ CKStateChunk *CKTimeManager::SaveData(CKFile *SavedFile) {
         chunk->WriteFloat(m_LimitBehRate);
         chunk->WriteFloat(1000.0f / m_MaximumDeltaTime);
         chunk->WriteFloat(m_TimeScaleFactor);
-        chunk->WriteInt(m_LimitOptions);
+        chunk->WriteDword(m_LimitOptions);
         chunk->WriteFloat(m_MinimumDeltaTime);
         chunk->CloseChunk();
     }
