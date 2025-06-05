@@ -1373,8 +1373,7 @@ void *CKWaveSound::ReallocSource(void *oSource, int alreadyWritten, int newSize)
     void *srcBuffer2 = nullptr;
     CKDWORD srcSize1 = 0, srcSize2 = 0;
 
-    if (m_SoundManager->Lock(oSource, 0, alreadyWritten, &srcBuffer1, &srcSize1, &srcBuffer2, &srcSize2,
-                             (CK_WAVESOUND_LOCKMODE)0)) {
+    if (m_SoundManager->Lock(oSource, 0, alreadyWritten, &srcBuffer1, &srcSize1, &srcBuffer2, &srcSize2, (CK_WAVESOUND_LOCKMODE)0)) {
         m_SoundManager->ReleaseSource(newSource);
         return nullptr;
     }
@@ -1383,8 +1382,7 @@ void *CKWaveSound::ReallocSource(void *oSource, int alreadyWritten, int newSize)
     void *dstBuffer2 = nullptr;
     CKDWORD dstSize1 = 0, dstSize2 = 0;
 
-    m_SoundManager->Lock(newSource, 0, alreadyWritten, &dstBuffer1, &dstSize1, &dstBuffer2, &dstSize2,
-                         CK_WAVESOUND_LOCKMODE(0));
+    m_SoundManager->Lock(newSource, 0, alreadyWritten, &dstBuffer1, &dstSize1, &dstBuffer2, &dstSize2, CK_WAVESOUND_LOCKMODE(0));
 
     if (newSize) {
         if (dstSize1)

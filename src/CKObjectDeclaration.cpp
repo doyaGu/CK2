@@ -94,7 +94,7 @@ CKObjectDeclaration::CKObjectDeclaration(CKSTRING Name) {
     m_AuthorGuid = CKGUID();
     m_AuthorName = NULL;
     m_Proto = NULL;
-    m_CompatibleClassID = 1;
+    m_CompatibleClassID = CKCID_OBJECT;
     m_Category = NULL;
     m_Name = Name;
     m_PluginIndex = -1;

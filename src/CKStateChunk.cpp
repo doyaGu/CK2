@@ -2521,7 +2521,7 @@ int CKStateChunk::IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it) {
             if (currentChunkInfoOffset + 2 >= it->ChunkSize) {
                 chunkListIdx++;
                 continue;
-            }                                                              // Need at least size and version fields
+            } // Need at least size and version fields
             const int subChunkBlockTotalDwords = subChunkHeaderPtr[0] + 1; // Field stores TotalDwords-1
             const int subChunkVersionAndClassidField = subChunkHeaderPtr[2];
 
