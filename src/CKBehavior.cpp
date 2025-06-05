@@ -16,14 +16,6 @@
 #include "CKDependencies.h"
 #include "CKDebugContext.h"
 
-static const CKDWORD s_MessageFlags[18] = {
-    0x00000000, 0x00000001, 0x00000002, 0x00000004,
-    0x00000008, 0x00000010, 0x00000020, 0x00000000,
-    0x00000000, 0x00001000, 0x00000100, 0x00000200,
-    0x00000400, 0x00000800, 0x00001000, 0x00002000,
-    0x00004000, 0x00008000
-};
-
 CK_CLASSID CKBehavior::m_ClassID = CKCID_BEHAVIOR;
 
 CK_BEHAVIOR_TYPE CKBehavior::GetType() {
@@ -213,13 +205,35 @@ void CKBehavior::SetCallbackFunction(CKBEHAVIORCALLBACKFCT fct) {
 }
 
 int CKBehavior::CallCallbackFunction(CKDWORD Message) {
+    static const CKDWORD MessageFlags[19] = {
+        0x00000000,
+        CKCB_BEHAVIORPRESAVE,
+        CKCB_BEHAVIORDELETE,
+        CKCB_BEHAVIORATTACH,
+        CKCB_BEHAVIORDETACH,
+        CKCB_BEHAVIORPAUSE,
+        CKCB_BEHAVIORRESUME,
+        0x00000000,
+        CKCB_BEHAVIORCREATE,
+        CKCB_BEHAVIORRESET,
+        CKCB_BEHAVIORPOSTSAVE,
+        CKCB_BEHAVIORLOAD,
+        CKCB_BEHAVIOREDITED,
+        CKCB_BEHAVIORSETTINGSEDITED,
+        CKCB_BEHAVIORREADSTATE,
+        CKCB_BEHAVIORNEWSCENE,
+        CKCB_BEHAVIORACTIVATESCRIPT,
+        CKCB_BEHAVIORDEACTIVATESCRIPT,
+        CKCB_BEHAVIORRESETINBREAKPOINT,
+    };
+
     // Get behavior block data and validate callback conditions
     BehaviorBlockData *blockData = m_BlockData;
     if (!blockData || !blockData->m_Callback)
         return CK_OK;
 
     // Check if this message type is enabled in the callback mask
-    if ((s_MessageFlags[Message] & blockData->m_CallbackMask) == 0)
+    if (!(MessageFlags[Message] & blockData->m_CallbackMask))
         return CK_OK;
 
     // Prepare context for callback
