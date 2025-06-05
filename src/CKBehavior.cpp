@@ -2146,8 +2146,7 @@ void CKBehavior::Reset() {
                 CKBEHAVIOR_WAITSFORMESSAGE |
                 CKBEHAVIOR_RESETNEXTFRAME |
                 CKBEHAVIOR_DEACTIVATENEXTFRAME |
-                CKBEHAVIOR_ACTIVATENEXTFRAME |
-                CKBEHAVIOR_LAUNCHEDONCE);
+                CKBEHAVIOR_ACTIVATENEXTFRAME);
     if ((m_Flags & CKBEHAVIOR_SCRIPT) != 0) {
         if (GetInputCount() > 0) {
             ActivateInput(0, TRUE);
