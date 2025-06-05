@@ -16,30 +16,35 @@ int CKObjectManager::ObjectsByClass(CK_CLASSID cid, CKBOOL derived, CK_ID *obj_i
     if (cid < 0 || cid >= g_MaxClassID)
         return 0;
 
+    int count = 0;
     if (derived) {
-        int count = 0;
-        if (g_MaxClassID > CKCID_OBJECT) {
-            for (CK_CLASSID i = CKCID_OBJECT; i < g_MaxClassID; ++i) {
-                if (CKIsChildClassOf(i, cid)) {
-                    XObjectArray &array = m_ObjectLists[i];
-                    const int size = array.Size();
-                    count += size;
-                    if (obj_ids) {
-                        memcpy(obj_ids, array.Begin(), sizeof(CK_ID) * size);
-                        obj_ids += size;
-                    }
-                }
+        // Iterate through all class IDs to find derived classes
+        for (CK_CLASSID currentCid = CKCID_OBJECT; currentCid < g_MaxClassID; ++currentCid) {
+            if (!CKIsChildClassOf(currentCid, cid))
+                continue;
+
+            XObjectArray &objArray = m_ObjectLists[currentCid];
+            const int classCount = objArray.Size();
+
+            if (obj_ids) {
+                memcpy(obj_ids + count, objArray.Begin(), classCount * sizeof(CK_ID));
             }
+
+            count += classCount;
         }
-        return count;
     } else {
-        XObjectArray &array = m_ObjectLists[cid];
-        const int size = array.Size();
+        // Direct class match
+        XObjectArray &objArray = m_ObjectLists[cid];
+        const int classCount = objArray.Size();
+
         if (obj_ids) {
-            memcpy(obj_ids, array.Begin(), sizeof(CK_ID) * size);
+            memcpy(obj_ids, objArray.Begin(), classCount * sizeof(CK_ID));
         }
-        return size;
+
+        count = classCount;
     }
+
+    return count;
 }
 
 int CKObjectManager::GetObjectsCount() {
@@ -51,16 +56,16 @@ CKObject *CKObjectManager::GetObject(CK_ID id) {
 }
 
 CKERROR CKObjectManager::DeleteAllObjects() {
-    for (CK_CLASSID i = CKCID_OBJECT; i < g_MaxClassID; ++i) {
-        m_ObjectLists[i].Clear();
+    for (CK_CLASSID cid = 0; cid < g_MaxClassID; ++cid) {
+        m_ObjectLists[cid].Clear();
     }
 
     if (m_Objects) {
-        for (int i = 0; i < m_ObjectsCount; ++i) {
-            CKObject *obj = m_Objects[i];
+        for (CK_ID id = 0; id < m_ObjectsCount; ++id) {
+            CKObject *obj = m_Objects[id];
             if (obj)
                 delete obj;
-            m_Objects[i] = nullptr;
+            m_Objects[id] = nullptr;
         }
     }
 
@@ -72,89 +77,113 @@ CKERROR CKObjectManager::DeleteAllObjects() {
 }
 
 CKERROR CKObjectManager::ClearAllObjects() {
-    XBitArray objs;
-    objs.CheckSize(m_ObjectsCount);
+    // Bit array to track protected objects during cleanup
+    XBitArray protectedObjects;
+    protectedObjects.CheckSize(m_ObjectsCount);
 
     m_Context->m_InClearAll = TRUE;
 
-    for (int i = 0; i < m_ObjectsCount; ++i) {
-        CKObject *obj = m_Objects[i];
-        obj->m_ObjectFlags |= CK_OBJECT_TOBEDELETED;
+    // Mark all objects for deletion
+    for (CK_ID id = 0; id < m_ObjectsCount; ++id) {
+        CKObject *obj = m_Objects[id];
+        if (obj)
+            obj->ModifyObjectFlags(CK_OBJECT_TOBEDELETED, 0);
     }
 
-    CKRenderManager *rm = m_Context->m_RenderManager;
-    if (rm) {
-        int rcCount = rm->GetRenderContextCount();
+    // Protect render-related objects from immediate deletion
+    if (m_Context->m_RenderManager) {
+        const int rcCount = m_Context->m_RenderManager->GetRenderContextCount();
         for (int i = 0; i < rcCount; ++i) {
-            CKRenderContext *rc = rm->GetRenderContext(i);
-            if (rc) {
-                objs.Set(rc->GetID());
-                rc->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
+            CKRenderContext *dev = m_Context->m_RenderManager->GetRenderContext(i);
+            if (!dev)
+                continue;
 
-                CK3dEntity *ent = rc->GetViewpoint();
-                if (ent) {
-                    objs.Set(ent->GetID());
-                    ent->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
-                }
+            // Protect render context
+            protectedObjects.Set(dev->GetID());
+            dev->ModifyObjectFlags(0, CK_OBJECT_TOBEDELETED);
 
-                CKMaterial *mat = rc->GetBackgroundMaterial();
-                if (mat) {
-                    mat->SetTexture0(nullptr);
-                    objs.Set(mat->GetID());
-                    mat->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
-                }
+            // Protect viewpoint
+            CK3dEntity *viewpoint = dev->GetViewpoint();
+            if (viewpoint) {
+                protectedObjects.Set(viewpoint->GetID());
+                viewpoint->ModifyObjectFlags(0, CK_OBJECT_TOBEDELETED);
+            }
 
-                CK2dEntity *backEnt = rc->Get2dRoot(TRUE);
-                if (backEnt) {
-                    objs.Set(backEnt->GetID());
-                    backEnt->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
-                }
+            // Protect background material
+            CKMaterial *bgMat = dev->GetBackgroundMaterial();
+            if (bgMat) {
+                bgMat->SetTexture0(nullptr);
+                protectedObjects.Set(bgMat->GetID());
+                bgMat->ModifyObjectFlags(0, CK_OBJECT_TOBEDELETED);
+            }
 
-                CK2dEntity *foreEnt = rc->Get2dRoot(FALSE);
-                if (foreEnt) {
-                    objs.Set(foreEnt->GetID());
-                    foreEnt->m_ObjectFlags &= ~CK_OBJECT_TOBEDELETED;
-                }
+            // Protect 2D roots
+            CK2dEntity *bg2dRoot = dev->Get2dRoot(TRUE);
+            if (bg2dRoot) {
+                protectedObjects.Set(bg2dRoot->GetID());
+                bg2dRoot->ModifyObjectFlags(0, CK_OBJECT_TOBEDELETED);
+            }
+            CK2dEntity *fg2dRoot = dev->Get2dRoot(FALSE);
+            if (fg2dRoot) {
+                protectedObjects.Set(fg2dRoot->GetID());
+                fg2dRoot->ModifyObjectFlags(0, CK_OBJECT_TOBEDELETED);
             }
         }
     }
 
+    // Destroy class lists and free arrays
     for (CK_CLASSID cid = 0; cid < g_MaxClassID; ++cid) {
         m_ObjectLists[cid].Clear();
     }
-
     m_FreeObjectIDs.Clear();
     m_DynamicObjects.Clear();
 
-    for (int i = m_ObjectsCount; i > 0; --i) {
-        if (i >= objs.Size() || objs.IsSet(i)) {
-            CKObject *obj = m_Objects[i];
-            if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
-                CKBehavior *beh = (CKBehavior *) obj;
-                beh->CallCallbackFunction(CKM_BEHAVIORDETACH);
-                beh->~CKBehavior();
-            }
+    // First pass: Delete non-protected behaviors
+    for (CK_ID id = m_ObjectsCount; id > 0; --id) {
+        if (protectedObjects.IsSet(id))
+            continue;
+
+        CKObject *obj = m_Objects[id];
+        if (!obj)
+            continue;
+
+        if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
+            CKBehavior *beh = (CKBehavior *) obj;
+            beh->CallCallbackFunction(CKM_BEHAVIORDETACH);
+            beh->~CKBehavior();
         }
     }
 
-    for (int i = m_ObjectsCount; i > 0; --i) {
-        if (i >= objs.Size() || objs.IsSet(i)) {
-            CKObject *obj = m_Objects[i];
+    // Second pass: Delete remaining non-protected objects
+    for (CK_ID id = m_ObjectsCount; id > 0; --id) {
+        if (protectedObjects.IsSet(id))
+            continue;
+
+        CKObject *obj = m_Objects[id];
+        if (obj) {
             obj->~CKObject();
-            --m_ObjectsCount;
         }
+        --m_ObjectsCount;
     }
 
     m_Context->m_InClearAll = FALSE;
 
-    for (int i = 0; i < m_ObjectsCount; ++i) {
-        CKObject *obj = m_Objects[i];
-        if (obj && obj->GetClassID() == CKCID_RENDERCONTEXT) {
+    // Finalize protected objects
+    for (CK_ID id = 0; id < m_ObjectsCount; ++id) {
+        CKObject *obj = m_Objects[id];
+        if (!obj)
+            continue;
+
+        // Render contexts need post-deletion
+        CK_CLASSID cid = obj->GetClassID();
+        if (cid == CKCID_RENDERCONTEXT)
             obj->CheckPostDeletion();
-        }
-        m_ObjectLists.PushBack(i);
+
+        // Re-add to class lists
+        m_ObjectLists[cid].PushBack(id);
     }
 
+    // Cleanup auxiliary data
     m_ObjectAppData.Clear();
     m_SingleObjectActivities.Clear();
 
@@ -165,8 +194,8 @@ CKBOOL CKObjectManager::IsObjectSafe(CKObject *iObject) {
     if (!iObject)
         return FALSE;
 
-    for (int i = 0; i < m_ObjectsCount; ++i) {
-        CKObject *obj = m_Objects[i];
+    for (CK_ID id = 0; id < m_ObjectsCount; ++id) {
+        CKObject *obj = m_Objects[id];
         if (obj == iObject)
             return TRUE;
     }
@@ -185,35 +214,35 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
     if (Flags & CK_DESTROY_FREEID)
         flags |= CK_OBJECT_FREEID;
 
-    XBitArray classIDs;
+    XBitArray protectedClasses;
     for (int i = 0; i < Count; ++i) {
         CK_ID id = obj_ids[i];
         CKObject *obj = m_Objects[id];
         if (obj) {
-            obj->m_ObjectFlags |= flags;
-            classIDs.Set(obj->GetClassID());
+            protectedClasses.Set(obj->GetClassID());
+            obj->ModifyObjectFlags(flags, 0);
         }
     }
 
     const int classCount = m_ObjectLists.Size();
-    for (int i = 0; i < classCount; ++i) {
-        if (i < classIDs.Size() && classIDs.IsSet(i)) {
-            XObjectArray &array = m_ObjectLists[i];
-            for (int j = 0; j < array.Size(); ++j) {
-                int newSize = CheckIDArrayPredeleted(array.Begin(), array.Size());
-                array.Resize(newSize);
+    for (CK_CLASSID classId = 0; classId < classCount; ++classId) {
+        if (classId < protectedClasses.Size() && protectedClasses.IsSet(classId)) {
+            XObjectArray &objects = m_ObjectLists[classId];
+            for (int i = 0; i < objects.Size(); ++i) {
+                const int newSize = CheckIDArrayPredeleted(objects.Begin(), objects.Size());
+                objects.Resize(newSize);
             }
         }
     }
 
-    if ((Flags & CK_DESTROY_NONOTIFY) == 0) {
+    if (!(Flags & CK_DESTROY_NONOTIFY)) {
         m_Context->ExecuteManagersOnSequenceToBeDeleted(obj_ids, Count);
-        if (classCount > 1) {
-            for (int i = classCount; i > 0; --i) {
-                if (classIDs.CheckCommon(g_CKClassInfo[i].CommonToBeNotify)) {
-                    XObjectArray &array = m_ObjectLists[i];
-                    for (int j = 0; j < array.Size(); ++j) {
-                        CKObject *obj = m_Objects[array[j]];
+        if (classCount > CKCID_OBJECT) {
+            for (CK_CLASSID classId = classCount - 1; classId > 0; --classId) {
+                if (protectedClasses.CheckCommon(g_CKClassInfo[classId].CommonToBeNotify)) {
+                    XObjectArray &objects = m_ObjectLists[classId];
+                    for (int i = 0; i < objects.Size(); ++i) {
+                        CKObject *obj = m_Objects[objects[i]];
                         if (obj) {
                             obj->CheckPreDeletion();
                         }
@@ -223,7 +252,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
         }
     }
 
-    for (int i = 0; i < Count; ++i) {
+    for (int i = Count; i > 0; --i) {
         CK_ID id = obj_ids[i];
         CKObject *obj = m_Objects[id];
         if (obj) {
@@ -240,12 +269,12 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
     }
 
     m_DynamicObjects.Check(m_Context);
-    if ((Flags & CK_DESTROY_NONOTIFY) == 0 && classCount > 1) {
-        for (int i = 0; i < classCount; ++i) {
-            if (classIDs.CheckCommon(g_CKClassInfo[i].CommonToBeNotify)) {
-                XObjectArray &array = m_ObjectLists[i];
-                for (int j = 0; j < array.Size(); ++j) {
-                    CKObject *obj = m_Objects[array[j]];
+    if (!(Flags & CK_DESTROY_NONOTIFY) && classCount > CKCID_OBJECT) {
+        for (CK_CLASSID classId = classCount - 1; classId > 0; --classId) {
+            if (protectedClasses.CheckCommon(g_CKClassInfo[classId].CommonToBeNotify)) {
+                XObjectArray &objects = m_ObjectLists[classId];
+                for (int i = 0; i < objects.Size(); ++i) {
+                    CKObject *obj = m_Objects[objects[i]];
                     if (obj) {
                         obj->CheckPostDeletion();
                     }
@@ -254,7 +283,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
         }
     }
 
-    if ((Flags & CK_DESTROY_NONOTIFY) == 0) {
+    if (!(Flags & CK_DESTROY_NONOTIFY)) {
         m_Context->ExecuteManagersOnSequenceDeleted(obj_ids, Count);
     }
 
@@ -265,10 +294,10 @@ CKERROR CKObjectManager::GetRootEntities(XObjectPointerArray &array) {
     if (g_MaxClassID == 0)
         return CK_OK;
 
-    for (CK_CLASSID cid = 0; cid < g_MaxClassID; ++cid) {
+    for (CK_CLASSID cid = CKCID_OBJECT; cid < g_MaxClassID; ++cid) {
         if (CKIsChildClassOf(cid, CKCID_3DENTITY)) {
-            auto &objs = m_ObjectLists[cid];
-            for (auto it = objs.Begin(); it != objs.End(); ++it) {
+            XObjectArray &objects = m_ObjectLists[cid];
+            for (CK_ID *it = objects.Begin(); it != objects.End(); ++it) {
                 CK3dEntity *ent = (CK3dEntity *) m_Objects[*it];
                 if (ent && ent->GetParent() == nullptr)
                     array.PushBack(ent);
@@ -339,12 +368,19 @@ CKObject *CKObjectManager::GetObjectByName(CKSTRING name, CKObject *previous) {
     if (!name)
         return nullptr;
 
-    CK_ID id = 0;
-    if (previous)
-        id = previous->GetID();
-    for (CK_ID i = id; i < m_ObjectsCount; ++i) {
-        CKObject *obj = m_Objects[i];
-        if (obj && strcmp(obj->GetName(), name) == 0) {
+    // Determine start position (after previous object)
+    CK_ID startId = 1;
+    if (previous) {
+        startId = previous->GetID() + 1;
+    }
+
+    // Search through all objects sequentially
+    for (CK_ID id = startId; id <= m_ObjectsCount; ++id) {
+        CKObject* obj = m_Objects[id];
+        if (!obj || !obj->GetName())
+            continue;
+
+        if (strcmp(obj->GetName(), name) == 0) {
             return obj;
         }
     }
@@ -356,24 +392,35 @@ CKObject *CKObjectManager::GetObjectByName(CKSTRING name, CK_CLASSID cid, CKObje
     if (!name)
         return nullptr;
 
-    CK_ID id = 0;
-    if (previous)
-        id = previous->GetID();
+    // Get the object array for the requested class
+    XObjectArray &objects = m_ObjectLists[cid];
+    const int count = objects.Size();
+    if (count == 0)
+        return nullptr;
 
-    int i = 0;
-    const int count = m_ObjectLists[cid].Size();
-    if (id != 0) {
-        while (i < count) {
-            if (id == m_ObjectLists[cid][i])
+    // Find starting index (after previous object)
+    int startIndex = -1;
+    if (previous) {
+        CK_ID prevId = previous->GetID();
+        for (int i = 0; i < count; ++i) {
+            if (objects[i] == prevId) {
+                startIndex = i; // Found previous object
                 break;
-            ++i;
+            }
         }
     }
 
-    for (int j = i + 1; j < count; ++j) {
-        id = m_ObjectLists[cid][j];
-        CKObject *obj = m_Objects[id];
-        if (obj && strcmp(obj->GetName(), name) == 0) {
+    // Search from next position
+    for (int i = startIndex + 1; i < count; ++i) {
+        CK_ID objId = objects[i];
+        CKObject *obj = m_Objects[objId];
+
+        // Skip invalid objects or those without names
+        if (!obj || !obj->GetName())
+            continue;
+
+        // Check for name match
+        if (strcmp(obj->GetName(), name) == 0) {
             return obj;
         }
     }
@@ -385,52 +432,56 @@ CKObject *CKObjectManager::GetObjectByNameAndParentClass(CKSTRING name, CK_CLASS
     if (!name)
         return nullptr;
 
-    CK_ID id = 0;
-    if (previous)
-        id = previous->GetID();
+    // Find starting position (class and index)
+    int startClassId = 0;
+    int startIndex = -1;
 
-    int i = 0;
-    int count = 0;
-    CK_CLASSID cid = CKCID_OBJECT;
-    if (id != 0 && g_MaxClassID > CKCID_OBJECT) {
-        while (cid < g_MaxClassID) {
-            auto &ci = g_CKClassInfo[cid];
-            if (ci.Parent == pcid && ci.Children.IsSet(cid)) {
-                count = m_ObjectLists[cid].Size();
-                while (i < count) {
-                    if (id == m_ObjectLists[cid][i])
-                        break;
-                    ++i;
+    if (previous) {
+        CK_ID prevId = previous->GetID();
+
+        // Locate previous object in class hierarchy
+        for (CK_CLASSID cid = CKCID_OBJECT; cid < g_MaxClassID; ++cid) {
+            if (!CKIsChildClassOf(cid, pcid))
+                continue;
+
+            XObjectArray &objects = m_ObjectLists[cid];
+            for (int i = 0; i < objects.Size(); ++i) {
+                if (objects[i] == prevId) {
+                    startClassId = cid;
+                    startIndex = i;
+                    break;
                 }
-                break;
             }
-            ++cid;
-        }
-    }
-
-    if (cid >= g_MaxClassID)
-        return nullptr;
-
-    CK_CLASSID c = cid;
-    while (c < g_MaxClassID) {
-        auto &ci = g_CKClassInfo[c];
-        if (c < ci.Children.Size() && ci.Children.IsSet(c)) {
-            if (++i < m_ObjectLists[c].Size())
+            if (startIndex != -1)
                 break;
         }
-        i = -1;
-        ++c;
     }
 
-    if (c >= g_MaxClassID)
-        return nullptr;
+    // Search through derived classes
+    for (CK_CLASSID cid = startClassId; cid < g_MaxClassID; ++cid) {
+        if (!CKIsChildClassOf(cid, pcid))
+            continue;
 
-    count = m_ObjectLists[c].Size();
-    for (int j = i; j < count; ++j) {
-        id = m_ObjectLists[c][j];
-        CKObject *obj = m_Objects[id];
-        if (obj && strcmp(obj->GetName(), name) == 0) {
-            return obj;
+        XObjectArray &objects = m_ObjectLists[cid];
+        const int count = objects.Size();
+
+        // Determine start index for current class
+        int start = 0;
+        if (cid == startClassId) {
+            start = startIndex + 1;
+            if (start >= count)
+                continue;
+        }
+
+        // Search within class
+        for (int i = start; i < count; ++i) {
+            CKObject *obj = m_Objects[objects[i]];
+            if (!obj || !obj->GetName())
+                continue;
+
+            if (strcmp(obj->GetName(), name) == 0) {
+                return obj;
+            }
         }
     }
 
@@ -439,21 +490,29 @@ CKObject *CKObjectManager::GetObjectByNameAndParentClass(CKSTRING name, CK_CLASS
 
 CKERROR CKObjectManager::GetObjectListByType(CK_CLASSID cid, XObjectPointerArray &array, CKBOOL derived) {
     if (derived) {
-        const int count = m_ObjectLists.Size();
-        for (int i = 0; i < count; ++i) {
-            if (CKIsChildClassOf(i, cid)) {
-                auto &objs = m_ObjectLists[i];
-                for (auto it = objs.Begin(); it != objs.End(); ++it) {
-                    CKObject *obj = m_Context->GetObject(*it);
+        // Iterate through all classes
+        for (CK_CLASSID classId = 0; classId < g_MaxClassID; ++classId) {
+            // Skip non-derived classes
+            if (!CKIsChildClassOf(classId, cid))
+                continue;
+
+            // Add all objects in this class
+            XObjectArray &objects = m_ObjectLists[classId];
+            for (int i = 0; i < objects.Size(); ++i) {
+                CKObject *obj = m_Objects[objects[i]];
+                if (obj) {
                     array.PushBack(obj);
                 }
             }
         }
     } else {
-        auto &objs = m_ObjectLists[cid];
-        for (auto it = objs.Begin(); it != objs.End(); ++it) {
-            CKObject *obj = m_Context->GetObject(*it);
-            array.PushBack(obj);
+        // Direct class match
+        XObjectArray &objects = m_ObjectLists[cid];
+        for (int i = 0; i < objects.Size(); ++i) {
+            CKObject *obj = m_Objects[objects[i]];
+            if (obj) {
+                array.PushBack(obj);
+            }
         }
     }
 
@@ -483,7 +542,7 @@ void CKObjectManager::EndLoadSession() {
 
 void CKObjectManager::RegisterLoadObject(CKObject *iObject, int ObjectID) {
     if (m_LoadSession && ObjectID >= 0 && ObjectID < m_MaxObjectID) {
-        m_LoadSession[ObjectID] = (iObject) ? iObject->GetID() : 0;
+        m_LoadSession[ObjectID] = iObject ? iObject->GetID() : 0;
     }
 }
 
@@ -496,43 +555,68 @@ CK_ID CKObjectManager::RealId(CK_ID id) {
 }
 
 int CKObjectManager::CheckIDArray(CK_ID *obj_ids, int Count) {
-    int i = 0;
-    for (; i < Count; ++i) {
-        CK_ID id = obj_ids[i];
-        CKObject *obj = m_Objects[id];
-        if (!obj)
-            break;
+    int validCount = 0;
+    int currentIndex = 0;
+    CKObject **objects = m_Objects; // Local copy for efficiency
+
+    // First segment: consecutive valid objects
+    while (currentIndex < Count) {
+        CK_ID id = obj_ids[currentIndex];
+        if (!objects[id]) break; // Stop at first invalid object
+
+        validCount++;
+        currentIndex++;
     }
 
-    for (int j = i + 1; j < Count; ++j) {
-        CK_ID id = obj_ids[j];
-        CKObject *obj = m_Objects[id];
-        if (obj) {
-            obj_ids[i++] = id;
+    // Second segment: process remaining objects after first invalid
+    int remaining = Count - currentIndex - 1;
+    if (remaining > 0) {
+        CK_ID *remainingIds = &obj_ids[currentIndex + 1];
+
+        for (int i = 0; i < remaining; i++) {
+            CK_ID id = remainingIds[i];
+            if (objects[id]) {
+                obj_ids[validCount++] = id;
+            }
         }
     }
-    return i;
+
+    return validCount;
 }
 
 int CKObjectManager::CheckIDArrayPredeleted(CK_ID *obj_ids, int Count) {
-    int i = 0;
-    for (; i < Count; ++i) {
-        CK_ID id = obj_ids[i];
+    int validCount = 0;
+    int currentIndex = 0;
+
+    // First segment: consecutive valid, non-predeleted objects
+    while (currentIndex < Count) {
+        CK_ID id = obj_ids[currentIndex];
         CKObject *obj = m_Objects[id];
-        if (!obj)
+
+        // Stop at first invalid or predeleted object
+        if (!obj || obj->IsToBeDeleted())
             break;
-        if (obj->IsToBeDeleted())
-            break;
+
+        validCount++;
+        currentIndex++;
     }
 
-    for (int j = i + 1; j < Count; ++j) {
-        CK_ID id = obj_ids[j];
-        CKObject *obj = m_Objects[id];
-        if (obj && !obj->IsToBeDeleted()) {
-            obj_ids[i++] = id;
+    // Second segment: process remaining objects
+    int remaining = Count - currentIndex - 1;
+    if (remaining > 0) {
+        CK_ID *remainingIds = &obj_ids[currentIndex + 1];
+
+        for (int i = 0; i < remaining; i++) {
+            CK_ID id = remainingIds[i];
+            CKObject *obj = m_Objects[id];
+
+            if (obj && !obj->IsToBeDeleted()) {
+                obj_ids[validCount++] = id;
+            }
         }
     }
-    return i;
+
+    return validCount;
 }
 
 CKDeferredDeletion *CKObjectManager::MatchDeletion(CKDependencies *depoptions, CKDWORD Flags) {
@@ -596,17 +680,6 @@ CKERROR CKObjectManager::OnCKReset() {
 CKObjectManager::~CKObjectManager() {
     delete[] m_Objects;
     delete[] m_LoadSession;
-    m_GroupGlobalIndex.Clear();
-    m_SceneGlobalIndex.Clear();
-    m_DynamicObjects.Clear();
-
-    for (int i = 0; i < 4; ++i)
-        m_DeferredDeletions[i].Clear();
-
-    m_FreeObjectIDs.Clear();
-    m_SingleObjectActivities.Clear();
-    m_ObjectAppData.Clear();
-    m_ObjectLists.Clear();
 }
 
 CKObjectManager::CKObjectManager(CKContext *Context) : CKBaseManager(Context, OBJECT_MANAGER_GUID, "Object Manager") {
@@ -616,8 +689,8 @@ CKObjectManager::CKObjectManager(CKContext *Context) : CKBaseManager(Context, OB
     m_Objects = new CKObject *[1000];
     memset(m_Objects, 0, m_Count * sizeof(CKObject *));
     m_LoadSession = nullptr;
-    m_InLoadSession = 0;
-    m_NeedDeleteAllDynamicObjects = 0;
+    m_InLoadSession = FALSE;
+    m_NeedDeleteAllDynamicObjects = FALSE;
     m_ObjectLists.Resize(g_MaxClassID);
     m_Context->RegisterNewManager(this);
 }
