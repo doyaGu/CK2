@@ -1161,34 +1161,34 @@ CKBehavior *CKBehavior::RemoveSubBehavior(int pos) {
         return nullptr;
 
     XObjectPointerArray &subBehaviors = m_GraphData->m_SubBehaviors;
+    if (subBehaviors.Size() == 0)
+        return nullptr;
+
     if (pos < 0 || pos >= subBehaviors.Size())
         return nullptr;
 
     CKBehavior *removed = (CKBehavior *) subBehaviors[pos];
     subBehaviors.RemoveAt(pos);
 
-    if (subBehaviors.Size() > 0) {
-        removed->m_Flags |= CKBEHAVIOR_TOPMOST;
+    removed->m_Flags |= CKBEHAVIOR_TOPMOST;
 
-        removed->SetParent(nullptr);
+    removed->SetParent(nullptr);
 
-        if (removed->GetCompatibleClassID() == m_CompatibleClassID) {
-            CK_CLASSID newCid = CKCID_BEOBJECT;
-            const int count = GetSubBehaviorCount();
-            for (int i = 0; i < count; ++i) {
-                CKBehavior *sb = GetSubBehavior(i);
-                if (sb && !sb->m_InputTargetParam) {
-                    CK_CLASSID subCid = sb->GetCompatibleClassID();
-                    if (CKIsChildClassOf(subCid, newCid)) {
-                        newCid = subCid;
-                    }
+    CK_CLASSID newCid = CKCID_BEOBJECT;
+    if (removed->GetCompatibleClassID() == m_CompatibleClassID) {
+        const int count = GetSubBehaviorCount();
+        for (int i = 0; i < count; ++i) {
+            CKBehavior *beh = GetSubBehavior(i);
+            if (beh && !beh->m_InputTargetParam) {
+                CK_CLASSID cid = beh->GetCompatibleClassID();
+                if (CKIsChildClassOf(cid, newCid)) {
+                    newCid = cid;
                 }
             }
-            m_CompatibleClassID = newCid;
         }
-    } else {
-        m_CompatibleClassID = CKCID_BEOBJECT;
     }
+    m_CompatibleClassID = newCid;
+
     return removed;
 }
 
