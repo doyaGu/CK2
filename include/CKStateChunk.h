@@ -372,6 +372,8 @@ public:
 
     void AttributePatch(CKBOOL, int *ConversionTable, int NbEntries);
 
+    void SetDynamic(CKBOOL dynamic) { m_Dynamic = dynamic; }
+
     //--------------------------------------------------------
     ////               Private Part
 
