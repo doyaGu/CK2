@@ -4,6 +4,8 @@
 #include "CKObject.h"
 #include "CKObjectDeclaration.h"
 
+#define STRINGDUPLICATION
+
 #ifdef STRINGDUPLICATION
 #define MAKESTRING(a) CKStrdup(a)
 #define DELETESTRING(a) CKDeletePointer(a)
