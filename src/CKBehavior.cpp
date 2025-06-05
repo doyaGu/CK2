@@ -58,8 +58,12 @@ void CKBehavior::UseFunction() {
     if (!m_BlockData) {
         m_BlockData = new BehaviorBlockData;
     }
-    delete m_GraphData;
-    m_GraphData = nullptr;
+    if (m_GraphData) {
+        if (m_GraphData->m_BehaviorIterators)
+            delete[] m_GraphData->m_BehaviorIterators;
+        delete m_GraphData;
+        m_GraphData = nullptr;
+    }
     m_Flags |= CKBEHAVIOR_BUILDINGBLOCK | CKBEHAVIOR_USEFUNCTION;
 }
 
@@ -79,9 +83,10 @@ CKBeObject *CKBehavior::GetTarget() {
     if (!targetParam)
         return nullptr;
 
-    CKParameter *param = targetParam->GetRealSource();
     CK_ID objId = 0;
-    param->GetValue(&objId);
+    CKParameter *param = targetParam->GetRealSource();
+    if (param)
+        param->GetValue(&objId);
     CKBeObject *obj = (CKBeObject *) m_Context->GetObject(objId);
     CKParameterManager *pm = m_Context->GetParameterManager();
     CK_CLASSID cid = pm->TypeToClassID(targetParam->GetType());
@@ -1427,6 +1432,8 @@ CKBehavior::~CKBehavior() {
 
     // Cleanup graph data
     if (m_GraphData) {
+        if (m_GraphData->m_BehaviorIterators)
+            delete[] m_GraphData->m_BehaviorIterators;
         delete m_GraphData;
         m_GraphData = nullptr;
     }
@@ -2041,6 +2048,8 @@ CKERROR CKBehavior::Copy(CKObject &o, CKDependenciesContext &context) {
 
     // Handle BehaviorGraphData
     if (m_GraphData) {
+        if (m_GraphData->m_BehaviorIterators)
+            delete[] m_GraphData->m_BehaviorIterators;
         delete m_GraphData;
         m_GraphData = nullptr;
     }
