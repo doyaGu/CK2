@@ -416,9 +416,8 @@ void CKBitmapData::SetTransparent(CKBOOL Transparency) {
 }
 
 void CKBitmapData::SetSaveFormat(CKBitmapProperties *format) {
-    // CKDeletePointer(m_SaveProperties);
-    delete[] (CKBYTE *) m_SaveProperties;
-    m_SaveProperties = format;
+    CKDeletePointer(m_SaveProperties);
+    m_SaveProperties = CKCopyBitmapProperties(format);
 }
 
 CKBOOL CKBitmapData::ResizeImages(int Width, int Height) {
@@ -611,8 +610,7 @@ CKBitmapData::~CKBitmapData() {
     }
 
     ReleaseAllSlots();
-    // CKDeletePointer(m_SaveProperties);
-    delete[] (CKBYTE *) m_SaveProperties;
+    CKDeletePointer(m_SaveProperties);
 }
 
 void CKBitmapData::SetAlphaForTransparentColor(const VxImageDescEx &desc) {
