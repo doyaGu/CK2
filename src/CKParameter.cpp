@@ -306,7 +306,7 @@ CKStateChunk *CKParameter::Save(CKFile *file, CKDWORD flags) {
     // Check object flags
     if ((m_ObjectFlags & CK_OBJECT_ONLYFORFILEREFERENCE) == 0) {
         if ((m_ObjectFlags & CK_PARAMETEROUT_PARAMOP) != 0 || m_ParamType == 0) {
-            chunk->WriteInt(3);
+            chunk->WriteDword(3);
         } else if (m_ParamType->Saver_Manager.IsValid()) {
             // Handle Saver_Manager case
             int savedValue = 0;
@@ -325,13 +325,13 @@ CKStateChunk *CKParameter::Save(CKFile *file, CKDWORD flags) {
             }
         } else if (CKIsChildClassOf(m_ParamType->Cid, CKCID_OBJECT)) {
             // Handle Object Reference case
-            chunk->WriteInt(2);
+            chunk->WriteDword(2);
             CK_ID objID = 0;
             GetValue(&objID, TRUE);
             CKObject *obj = m_Context->GetObject(objID);
             chunk->WriteObject(obj);
         } else {
-            chunk->WriteInt(1);
+            chunk->WriteDword(1);
 
             if (GetGUID() == CKPGUID_PARAMETERTYPE) {
                 // Special case handling
@@ -435,7 +435,7 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
     }
 
     // Read and process data
-    int paramState = chunk->ReadInt();
+    CKDWORD paramState = chunk->ReadDword();
     if (!m_ParamType) {
         m_Context->OutputToConsoleExBeep("%s : Unknown Parameter Type (DLL declaring this parameter may be missing)", m_Name);
         return CKERR_INVALIDPARAMETERTYPE;
