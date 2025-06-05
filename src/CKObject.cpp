@@ -68,13 +68,13 @@ void CKObject::PreSave(CKFile *file, CKDWORD flags) { /* Empty */ }
 
 CKStateChunk *CKObject::Save(CKFile *file, CKDWORD flags) {
     CKStateChunk *chunk = new CKStateChunk(CKCID_OBJECT, file);
-//    chunk->m_Dynamic = IsDynamic();
+    chunk->SetDynamic(IsDynamic());
     chunk->StartWrite();
     chunk->SetDataVersion(CHUNK_DEV_2_1);
     chunk->CheckSize(GetMemoryOccupation());
-    if ((m_ObjectFlags & CK_OBJECT_HIERACHICALHIDE) != 0)
+    if (m_ObjectFlags & CK_OBJECT_HIERACHICALHIDE)
         chunk->WriteIdentifier(CK_STATESAVE_OBJECTHIERAHIDDEN);
-    else if ((m_ObjectFlags & CK_OBJECT_VISIBLE) == 0)
+    else if (!(m_ObjectFlags & CK_OBJECT_VISIBLE))
         chunk->WriteIdentifier(CK_STATESAVE_OBJECTHIDDEN);
     return chunk;
 }
@@ -146,22 +146,22 @@ CKERROR CKObject::RemapDependencies(CKDependenciesContext &context) {
 CKERROR CKObject::Copy(CKObject &o, CKDependenciesContext &context) {
     // TODO: May need fix
     m_ObjectFlags &= ~(CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE);
-    m_ObjectFlags |= (o.m_ObjectFlags & (CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE));
+    m_ObjectFlags |= o.m_ObjectFlags & (CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE);
 
     CKDWORD dependencies = context.GetClassDependencies(CKObject::m_ClassID);
     CK_CLASSID cid = GetClassID();
-    if ((dependencies & CK_DEPENDENCIES_NONE) == 0) {
+    if (!(dependencies & CK_DEPENDENCIES_NONE)) {
         if (!context.m_CopyAppendString.Empty() && CKIsChildClassOf(cid, CKCID_BEOBJECT)) {
             XString name(o.GetName());
             name << context.m_CopyAppendString;
             SetName(name.Str());
-        } else if (context.m_Dependencies && (context.m_Dependencies->m_Flags & 1) != 0) {
+        } else if (context.m_Dependencies && (context.m_Dependencies->m_Flags & CK_DEPENDENCIES_NONE)) {
             SetName(o.GetName());
-        } else if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) != 0 || cid == CKCID_PARAMETEROUT || cid == CKCID_PARAMETERIN) {
+        } else if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) || cid == CKCID_PARAMETEROUT || cid == CKCID_PARAMETERIN) {
             SetName(o.GetName(), (o.m_ObjectFlags & CK_OBJECT_NAMESHARED) != 0);
         }
     } else {
-        if ((CKGetClassDesc(cid)->DefaultOptions & 5) != 0 || (dependencies & CK_DEPENDENCIES_FULL) == 0) {
+        if ((CKGetClassDesc(cid)->DefaultOptions & 5) || !(dependencies & CK_DEPENDENCIES_FULL)) {
             if (!context.m_CopyAppendString.Empty() && CKIsChildClassOf(cid, CKCID_BEOBJECT)) {
                 XString name(o.GetName());
                 name << context.m_CopyAppendString;
@@ -183,7 +183,7 @@ CKERROR CKObject::Copy(CKObject &o, CKDependenciesContext &context) {
     }
 
     void *AppData = o.GetAppData();
-    SetAppData(AppData); // Updated line
+    SetAppData(AppData);
     return CK_OK;
 }
 
