@@ -530,9 +530,8 @@ CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING Enum
     }
     if (enumStruct.Desc) {
         for (int i = 0; i < enumStruct.NbData; ++i) {
-            if (enumStruct.Desc[i]) {
+            if (enumStruct.Desc[i])
                 delete[] enumStruct.Desc[i];
-            }
         }
         delete[] enumStruct.Desc;
         enumStruct.Desc = nullptr;
@@ -593,7 +592,8 @@ CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING Enum
         }
 
         enumStruct.Desc[i] = new char[nameLength + 1];
-        if (!enumStruct.Desc[i]) { return CKERR_OUTOFMEMORY; }
+        if (!enumStruct.Desc[i])
+            return CKERR_OUTOFMEMORY;
         strncpy(enumStruct.Desc[i], namePart, nameLength);
         enumStruct.Desc[i][nameLength] = '\0';
 
@@ -638,7 +638,8 @@ CKERROR CKParameterManager::ChangeFlagsDeclaration(CKGUID FlagsGuid, CKSTRING Fl
     CKFlagsStruct &flagsStruct = m_Flags[flagsIndex];
     delete[] flagsStruct.Vals;
     for (int i = 0; i < flagsStruct.NbData; ++i) {
-        delete[] flagsStruct.Desc[i];
+        if (flagsStruct.Desc[i])
+            delete[] flagsStruct.Desc[i];
     }
     delete[] flagsStruct.Desc;
 
@@ -748,6 +749,10 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     if (err != CK_OK) {
         // Cleanup if registration fails
         delete[] structStruct.Guids;
+        for (int i = 0; i < memberCount; ++i) {
+            if (structStruct.Desc[i])
+                delete[] structStruct.Desc[i];
+        }
         delete[] structStruct.Desc;
         return err;
     }
