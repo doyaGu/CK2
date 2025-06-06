@@ -133,10 +133,9 @@ void CKParameterIn::PreSave(CKFile *file, CKDWORD flags) {
 }
 
 CKStateChunk *CKParameterIn::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETERIN, file);
-
     CKStateChunk *baseChunk = CKObject::Save(file, flags);
 
+    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETERIN, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
@@ -153,7 +152,7 @@ CKStateChunk *CKParameterIn::Save(CKFile *file, CKDWORD flags) {
 
     chunk->WriteObject(m_OutSource);
 
-    if ((m_ObjectFlags & CK_PARAMETERIN_DISABLED) == CK_PARAMETERIN_DISABLED) {
+    if (m_ObjectFlags & CK_PARAMETERIN_DISABLED) {
         chunk->WriteIdentifier(CK_STATESAVE_PARAMETERIN_DISABLED);
     }
 
@@ -176,10 +175,8 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
     if (!chunk)
         return CKERR_INVALIDPARAMETER;
 
-    // Call base class Load first
     CKObject::Load(chunk, file);
 
-    // Clear specific flags in ObjectFlags
     m_ObjectFlags &= ~CK_OBJECT_PARAMMASK;
 
     const int dataVersion = chunk->GetDataVersion();
@@ -198,10 +195,9 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
             }
 
             CKObject *obj = chunk->ReadObject(m_Context);
+            assert(obj != nullptr);
             m_InShared = (CKParameterIn *)obj;
-            if (m_InShared) {
-                m_ObjectFlags |= CK_PARAMETERIN_SHARED;
-            }
+            m_ObjectFlags |= CK_PARAMETERIN_SHARED;
         } else if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DATASOURCE)) {
             CKGUID guid = chunk->ReadGuid();
             ConvertLegacyGuid(guid);
@@ -222,13 +218,8 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
             CKParameterManager *pm = m_Context->GetParameterManager();
             m_ParamType = pm->GetParameterTypeDescription(guid);
 
-            // Read owner object
             m_Owner = chunk->ReadObject(m_Context);
-
-            // Read direct source parameter
             m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
-
-            // Read additional parameter (old shared source format)
             CKObject *param = chunk->ReadObject(m_Context);
             if (!m_OutSource) {
                 m_OutSource = (CKParameter *) param;
@@ -237,19 +228,11 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
             }
         }
 
-        // Handle disabled flag
         if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DISABLED)) {
             m_ObjectFlags |= CK_PARAMETERIN_DISABLED;
         }
     } else {
         // Handle legacy version (pre data version 1)
-        if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DEFAULTDATA)) {
-            CKGUID guid = chunk->ReadGuid();
-            ConvertLegacyGuid(guid);
-
-            CKParameterManager *pm = m_Context->GetParameterManager();
-            m_ParamType = pm->GetParameterTypeDescription(guid);
-        }
 
         if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_OWNER)) {
             m_Owner = chunk->ReadObject(m_Context);
@@ -258,20 +241,17 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
         if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_INSHARED)) {
             CKObject *param = chunk->ReadObject(m_Context);
             if (param) {
-                // Handle legacy shared parameter format
-                if (param->GetClassID() == CKCID_PARAMETERIN) {
-                    m_InShared = (CKParameterIn *)param;
-                    m_ObjectFlags |= CK_PARAMETERIN_SHARED;
-                } else {
-                    m_OutSource = (CKParameter *)param;
-                    m_ObjectFlags &= ~CK_PARAMETERIN_SHARED;
-                }
+                m_InShared = (CKParameterIn *) param;
+                m_ObjectFlags |= CK_PARAMETERIN_SHARED;
             }
         }
 
         if (!(m_ObjectFlags & CK_PARAMETERIN_SHARED) &&
             chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_OUTSOURCE)) {
-            m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
+            CKParameter *param = (CKParameter *) chunk->ReadObject(m_Context);
+            if (param) {
+                m_OutSource = param;
+            }
         }
     }
 
