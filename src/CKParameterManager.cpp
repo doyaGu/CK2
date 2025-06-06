@@ -1541,7 +1541,7 @@ int CKParameterManager::DichotomicSearch(int start, int end, TreeCell *tab, CKGU
         return -1;
 
     while (start <= end) {
-        int mid = (start + end) / 2;
+        int mid = start + (end - start) / 2;
         CKGUID &current = tab[mid].Guid;
 
         if (current == key) {
@@ -1555,7 +1555,7 @@ int CKParameterManager::DichotomicSearch(int start, int end, TreeCell *tab, CKGU
         }
     }
 
-    return -1;
+    return -(start + 1);
 }
 
 void CKParameterManager::RecurseDelete(TreeCell *cell) {
