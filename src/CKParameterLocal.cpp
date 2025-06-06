@@ -98,17 +98,14 @@ void CKParameterLocal::PreDelete() {
 }
 
 CKStateChunk *CKParameterLocal::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETERLOCAL, file);
-
-    // Save appropriate base data
     CKStateChunk *baseChunk = (m_ObjectFlags & CK_PARAMETERIN_THIS)
                                   ? CKObject::Save(file, flags)
                                   : CKParameter::Save(file, flags);
 
+    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETERLOCAL, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
-    // Write special flags
     if (m_ObjectFlags & CK_PARAMETERIN_THIS) {
         chunk->WriteIdentifier(CK_STATESAVE_PARAMETEROUT_MYSELF);
     }
@@ -125,15 +122,12 @@ CKERROR CKParameterLocal::Load(CKStateChunk *chunk, CKFile *file) {
     if (!chunk)
         return CKERR_INVALIDPARAMETER;
 
-    // Call appropriate base class Load
     CKParameter::Load(chunk, file);
 
-    // Handle "Myself" parameter flag
     if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETEROUT_MYSELF)) {
         SetAsMyselfParameter(TRUE);
     }
 
-    // Handle setting flag
     if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETEROUT_ISSETTING)) {
         m_ObjectFlags |= CK_PARAMETEROUT_SETTINGS;
     }
