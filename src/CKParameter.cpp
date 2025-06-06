@@ -138,16 +138,33 @@ void CKParameter::SetType(CKParameterType type) {
         return; // Invalid type, do nothing
     }
 
-    // If the type is already the same, no need to change it
     if (m_ParamType == desc) {
-        return;
+        return; // Type is already the same
     }
 
-    // Check if we need to replace the type completely
-    bool requiresFullReplacement = false;
+    if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
+        if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
+            m_ParamType->DeleteFunction(this);
+        }
 
-    if (!m_ParamType || desc->CreateDefaultFunction || m_ParamType->DeleteFunction) {
-        requiresFullReplacement = true;
+        // Free existing memory
+        delete[] m_Buffer;
+
+        // Assign the new parameter type
+        m_ParamType = desc;
+        m_Size = desc->DefaultSize;
+
+        if (m_Size > 0) {
+            m_Buffer = new CKBYTE[m_Size];
+            memset(m_Buffer, 0, m_Size);
+        } else {
+            m_Buffer = nullptr;
+        }
+
+        // Call CreateDefaultFunction if available
+        if (m_ParamType->CreateDefaultFunction) {
+            m_ParamType->CreateDefaultFunction(this);
+        }
     } else {
         // Ensure derivation masks are up to date
         if (!pm->m_DerivationMasksUpToDate) {
@@ -170,36 +187,29 @@ void CKParameter::SetType(CKParameterType type) {
         // If the new type is compatible, just update the type reference
         if (isCompatible) {
             m_ParamType = desc;
-            return;
-        }
-
-        // Otherwise, we need a full replacement
-        requiresFullReplacement = true;
-    }
-
-    // Perform full type replacement if necessary
-    if (requiresFullReplacement) {
-        if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
-            m_ParamType->DeleteFunction(this);
-        }
-
-        // Free existing memory
-        delete[] m_Buffer;
-
-        // Assign the new parameter type
-        m_ParamType = desc;
-        m_Size = desc->DefaultSize;
-
-        if (m_Size > 0) {
-            m_Buffer = new CKBYTE[m_Size];
-            memset(m_Buffer, 0, m_Size);
         } else {
-            m_Buffer = nullptr;
-        }
+            if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
+                m_ParamType->DeleteFunction(this);
+            }
 
-        // Call CreateDefaultFunction if available
-        if (m_ParamType->CreateDefaultFunction) {
-            m_ParamType->CreateDefaultFunction(this);
+            // Free existing memory
+            delete[] m_Buffer;
+
+            // Assign the new parameter type
+            m_ParamType = desc;
+            m_Size = desc->DefaultSize;
+
+            if (m_Size > 0) {
+                m_Buffer = new CKBYTE[m_Size];
+                memset(m_Buffer, 0, m_Size);
+            } else {
+                m_Buffer = nullptr;
+            }
+
+            // Call CreateDefaultFunction if available
+            if (m_ParamType->CreateDefaultFunction) {
+                m_ParamType->CreateDefaultFunction(this);
+            }
         }
     }
 }
