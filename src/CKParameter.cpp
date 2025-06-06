@@ -32,10 +32,12 @@ CKERROR CKParameter::GetValue(void *buf, CKBOOL update) {
 
 CKERROR CKParameter::SetValue(const void *buf, int size) {
     if (size > 0 && size != m_Size) {
-        CKBYTE *oldBuffer = m_Buffer;
+        CKBYTE *newBuffer = new CKBYTE[size];
+        if (!newBuffer)
+            return CKERR_OUTOFMEMORY;
+        delete[] m_Buffer;
+        m_Buffer = newBuffer;
         m_Size = size;
-        delete[] oldBuffer;
-        m_Buffer = new CKBYTE[m_Size];
     }
 
     if (!m_Buffer) {
@@ -46,8 +48,14 @@ CKERROR CKParameter::SetValue(const void *buf, int size) {
         return CKERR_NOTINITIALIZED;
     }
 
+    // Size check for memcpy
+    int copySize = m_Size;
+    if (size > 0 && size < m_Size) {
+        copySize = size;
+    }
+
     if (buf) {
-        memcpy(m_Buffer, buf, m_Size);
+        memcpy(m_Buffer, buf, copySize);
     }
 
     return CK_OK;
