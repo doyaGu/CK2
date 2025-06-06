@@ -359,7 +359,7 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
     flagStruct.Vals = new int[flagCount];
     flagStruct.Desc = new CKSTRING[flagCount];
 
-    int currentValue = 0;
+    int currentValue = 1;
     char buffer[512];
     const char *currentPos = FlagsData;
 
@@ -387,7 +387,7 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
 
         // Store flag value
         flagStruct.Vals[i] = currentValue;
-        currentValue++; // Auto-increment if no explicit value
+        currentValue <<= 1; // Shift left for next flag value
 
         // Move to next flag
         currentPos = end ? end + 1 : currentPos + len;
