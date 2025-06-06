@@ -19,30 +19,28 @@ CKERROR CKBehaviorManager::Execute(float delta) {
 
     // Process behavior activation first
     for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
-        CKBeObject *beo = (CKBeObject *)*it;
+        CKBeObject *beo = (CKBeObject *) *it;
         const int scriptCount = beo->GetScriptCount();
         for (int i = 0; i < scriptCount; ++i) {
             CKBehavior *beh = beo->GetScript(i);
             const CKDWORD flags = beh->GetFlags();
             if (flags & (CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME)) {
                 beh->Activate((flags & CKBEHAVIOR_ACTIVATENEXTFRAME) != 0, (flags & CKBEHAVIOR_RESETNEXTFRAME) != 0);
-                beh->ModifyFlags(
-                    0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME);
+                beh->ModifyFlags(0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME);
             }
         }
     }
 
     // Main execution loop
     for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
-        CKBeObject *obj = (CKBeObject *)*it;
-
-        if (m_Context->m_ProfilingEnabled) {
+        if (m_Context->m_ProfilingEnabled)
             behaviorProfiler.Reset();
-        }
+
+        CKBeObject *obj = (CKBeObject *)*it;
 
         // Special handling for characters
         if (obj->GetClassID() == CKCID_CHARACTER) {
-            CKCharacter *character = (CKCharacter *)obj;
+            CKCharacter *character = (CKCharacter *) obj;
             if (character->IsAutomaticProcess()) {
                 character->ProcessAnimation(delta);
             }
@@ -79,7 +77,7 @@ void CKBehaviorManager::ManageObjectsActivity() {
 
     CKBOOL changed = FALSE;
     for (auto it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End();) {
-        CKBeObject *beo = (CKBeObject *)m_Context->GetObject(it.GetKey());
+        CKBeObject *beo = (CKBeObject *) m_Context->GetObject(it.GetKey());
         if (*it < 0) {
             beo->ResetExecutionTime();
             m_BeObjects.Remove(beo);
@@ -99,7 +97,7 @@ int CKBehaviorManager::GetObjectsCount() {
 }
 
 CKBeObject *CKBehaviorManager::GetObject(int pos) {
-    return (CKBeObject *)m_BeObjects[pos];
+    return (CKBeObject *) m_BeObjects[pos];
 }
 
 CKERROR CKBehaviorManager::AddObject(CKBeObject *beo) {
@@ -121,7 +119,7 @@ void CKBehaviorManager::RemoveAllObjects() {
     m_BeObjectNextFrame.Clear();
 
     for (auto it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
-        CKBehavior *beh = (CKBehavior *)*it;
+        CKBehavior *beh = (CKBehavior *) *it;
         beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
     }
     m_Behaviors.Clear();
@@ -194,7 +192,7 @@ CKERROR CKBehaviorManager::OnCKPause() {
 
 CKERROR CKBehaviorManager::PreProcess() {
     for (auto it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
-        CKBehavior *beh = (CKBehavior *)*it;
+        CKBehavior *beh = (CKBehavior *) *it;
         beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
     }
     m_Behaviors.Clear();
@@ -208,7 +206,7 @@ CKERROR CKBehaviorManager::PreClearAll() {
 
 CKERROR CKBehaviorManager::SequenceDeleted(CK_ID *objids, int count) {
     for (auto it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End();) {
-        CKBeObject *beo = (CKBeObject *)m_Context->GetObject(it.GetKey());
+        CKBeObject *beo = (CKBeObject *) m_Context->GetObject(it.GetKey());
         if (beo) {
             ++it;
         } else {
