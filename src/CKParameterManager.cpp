@@ -1072,8 +1072,7 @@ CKParameterManager::GetOperationFunction(CKGUID &operation, CKGUID &type_paramre
     return result;
 }
 
-CKERROR CKParameterManager::UnRegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1,
-                                                        CKGUID &type_param2) {
+CKERROR CKParameterManager::UnRegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1, CKGUID &type_param2) {
     if (!m_OperationTree)
         return CKERR_INVALIDOPERATION;
 
@@ -1084,15 +1083,15 @@ CKERROR CKParameterManager::UnRegisterOperationFunction(CKGUID &operation, CKGUI
     OperationCell &opCell = m_OperationTree[opCode];
     int pos1 = DichotomicSearch(0, opCell.CellCount - 1, opCell.Tree, type_param1);
     if (pos1 < 0)
-        return NULL;
+        return CKERR_OPERATIONNOTIMPLEMENTED;
     TreeCell &param1Cell = opCell.Tree[pos1];
     int pos2 = DichotomicSearch(0, param1Cell.ChildCount - 1, param1Cell.Children, type_param2);
     if (pos2 < 0)
-        return NULL;
+        return CKERR_OPERATIONNOTIMPLEMENTED;
     TreeCell &param2Cell = param1Cell.Children[pos2];
     int posRes = DichotomicSearch(0, param2Cell.ChildCount - 1, param2Cell.Children, type_paramres);
     if (posRes < 0)
-        return NULL;
+        return CKERR_OPERATIONNOTIMPLEMENTED;
     TreeCell &resultCell = param2Cell.Children[posRes];
     resultCell.Operation = NULL;
 
