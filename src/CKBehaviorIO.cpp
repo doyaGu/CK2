@@ -10,46 +10,46 @@ CKBehaviorIO::CKBehaviorIO(CKContext *Context, CKSTRING name) : CKObject(Context
     m_OwnerBehavior = nullptr;
 }
 
-CKBehaviorIO::~CKBehaviorIO() {
-    m_Links.Clear();
-}
+CKBehaviorIO::~CKBehaviorIO() {}
 
 CK_CLASSID CKBehaviorIO::GetClassID() {
     return m_ClassID;
 }
 
 CKStateChunk *CKBehaviorIO::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = CKObject::Save(file, flags);
-    if (file || (flags & CK_STATESAVE_BEHAVIOONLY) != 0) {
-        CKStateChunk *ioChunk = new CKStateChunk(CKCID_BEHAVIORIO, file);
-        ioChunk->StartWrite();
-        ioChunk->AddChunkAndDelete(chunk);
+    CKStateChunk *baseChunk = CKObject::Save(file, flags);
+    if (file || flags & CK_STATESAVE_BEHAVIOONLY) {
+        CKStateChunk *chunk = new CKStateChunk(CKCID_BEHAVIORIO, file);
+        chunk->StartWrite();
+        chunk->AddChunkAndDelete(baseChunk);
 
-        ioChunk->WriteIdentifier(CK_STATESAVE_BEHAV_IOFLAGS);
-        ioChunk->WriteDword(GetOldFlags());
+        chunk->WriteIdentifier(CK_STATESAVE_BEHAV_IOFLAGS);
+        chunk->WriteDword(GetOldFlags());
 
         if (GetClassID() == CKCID_BEHAVIORIO) {
-            ioChunk->CloseChunk();
+            chunk->CloseChunk();
         } else {
-            ioChunk->UpdateDataSize();
+            chunk->UpdateDataSize();
         }
-        return ioChunk;
+        return chunk;
     }
-    return chunk;
+    return baseChunk;
 }
 
 CKERROR CKBehaviorIO::Load(CKStateChunk *chunk, CKFile *file) {
     if (!chunk)
         return CKERR_INVALIDPARAMETER;
-    CKObject::Load(chunk, file);
 
+    CKObject::Load(chunk, file);
     if (chunk->SeekIdentifier(CK_STATESAVE_BEHAV_IOFLAGS)) {
-        SetOldFlags(chunk->ReadInt());
+        SetOldFlags(chunk->ReadDword());
     }
     return CK_OK;
 }
 
 void CKBehaviorIO::PreDelete() {
+    CKObject::PreDelete();
+
     CKBehavior *owner = m_OwnerBehavior;
     if (owner && !owner->IsToBeDeleted()) {
         XSObjectPointerArray &array = (m_ObjectFlags & CK_BEHAVIORIO_IN) ? owner->m_InputArray : owner->m_OutputArray;
@@ -106,7 +106,8 @@ CKERROR CKBehaviorIO::Copy(CKObject &o, CKDependenciesContext &context) {
     if (err != CK_OK)
         return err;
 
-    m_ObjectFlags = (m_ObjectFlags & ~CK_OBJECT_IOMASK) | (o.m_ObjectFlags & CK_OBJECT_IOMASK);
+    m_ObjectFlags &= ~CK_OBJECT_IOMASK;
+    m_ObjectFlags |= o.m_ObjectFlags & CK_OBJECT_IOMASK;
 
     CKBehaviorIO *io = (CKBehaviorIO *)&o;
     m_OwnerBehavior = io->m_OwnerBehavior;
