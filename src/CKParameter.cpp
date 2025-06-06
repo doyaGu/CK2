@@ -289,30 +289,23 @@ CK_CLASSID CKParameter::GetClassID() {
 void CKParameter::PreSave(CKFile *file, CKDWORD flags) {
     CKObject::PreSave(file, flags);
 
-    // Check if parameter type is valid and if it is a child of class 1
     if (m_ParamType && CKIsChildClassOf(m_ParamType->Cid, CKCID_OBJECT)) {
-        // Retrieve the GUID
         CKGUID guid = m_ParamType->Guid;
-
         if (guid == CKPGUID_STATE ||
             guid == CKPGUID_CRITICALSECTION ||
             guid == CKPGUID_SYNCHRO) {
-            CK_ID ObjID = 0;
-            GetValue(&ObjID, TRUE);
-
-            // Retrieve the object
-            CKObject *ObjectA = m_Context->GetObjectA(ObjID);
-
-            // Save the object
-            file->SaveObject(ObjectA, flags);
+            CK_ID id = 0;
+            GetValue(&id, TRUE);
+            CKObject *obj = m_Context->GetObject(id);
+            file->SaveObject(obj, flags);
         }
     }
 }
 
 CKStateChunk *CKParameter::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETER, file);
     CKStateChunk *baseChunk = CKObject::Save(file, flags);
 
+    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETER, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
@@ -321,28 +314,22 @@ CKStateChunk *CKParameter::Save(CKFile *file, CKDWORD flags) {
 
     chunk->WriteGuid(GetGUID());
 
-    // Check object flags
-    if ((m_ObjectFlags & CK_OBJECT_ONLYFORFILEREFERENCE) == 0) {
-        if ((m_ObjectFlags & CK_PARAMETEROUT_PARAMOP) != 0 || m_ParamType == 0) {
+    if (!(m_ObjectFlags & CK_OBJECT_ONLYFORFILEREFERENCE)) {
+        if ((m_ObjectFlags & CK_PARAMETEROUT_PARAMOP) || m_ParamType == nullptr) {
             chunk->WriteDword(3);
         } else if (m_ParamType->Saver_Manager.IsValid()) {
-            // Handle Saver_Manager case
-            int savedValue = 0;
-            GetValue(&savedValue, TRUE);
-            chunk->WriteManagerInt(m_ParamType->Saver_Manager, savedValue);
+            int val = -1;
+            GetValue(&val, TRUE);
+            chunk->WriteManagerInt(m_ParamType->Saver_Manager, val);
         } else if (m_ParamType->SaveLoadFunction) {
-            // Call SaveLoadFunction
-            chunk->WriteInt(0);
+            chunk->WriteDword(0);
             CKStateChunk *subChunk = nullptr;
             m_ParamType->SaveLoadFunction(this, &subChunk, FALSE);
             chunk->WriteSubChunk(subChunk);
-
-            // Free subChunk if allocated
             if (subChunk) {
                 delete subChunk;
             }
         } else if (CKIsChildClassOf(m_ParamType->Cid, CKCID_OBJECT)) {
-            // Handle Object Reference case
             chunk->WriteDword(2);
             CK_ID objID = 0;
             GetValue(&objID, TRUE);
@@ -371,25 +358,20 @@ CKStateChunk *CKParameter::Save(CKFile *file, CKDWORD flags) {
 }
 
 CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
-    if (!chunk) {
-        return -1;
-    }
+    if (!chunk)
+        return CKERR_INVALIDPARAMETER;
 
-    // Call base class Load
     CKObject::Load(chunk, file);
 
-    // Clear specific flags in m_ObjectFlags
     m_ObjectFlags &= ~(CK_PARAMETEROUT_SETTINGS |
         CK_PARAMETERIN_DISABLED |
         CK_PARAMETERIN_THIS |
         CK_PARAMETERIN_SHARED |
         CK_PARAMETEROUT_DELETEAFTERUSE);
 
-    // Ensure the identifier exists in the chunk
     if (!chunk->SeekIdentifier(0x40))
         return CK_OK;
 
-    // Read GUID from chunk
     CKParameterManager *pm = m_Context->GetParameterManager();
     CKGUID paramGUID = chunk->ReadGuid();
     if (paramGUID == CKPGUID_OLDMESSAGE) {
@@ -466,10 +448,8 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
     if (paramState == 0 && m_ParamType->SaveLoadFunction) {
         CKStateChunk *subChunk = chunk->ReadSubChunk();
         m_ParamType->SaveLoadFunction(this, &subChunk, TRUE);
-
-        // Clean up sub-chunk
         if (subChunk) {
-            DeleteCKStateChunk(subChunk);
+            delete subChunk;
         }
         return CK_OK;
     }
@@ -509,7 +489,7 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
         SetValue(&time, sizeof(float));
     }
 
-    if ((m_ParamType->dwFlags & CKPARAMETERTYPE_VARIABLESIZE) != 0 || buffer && bufferSize > 0)
+    if ((m_ParamType->dwFlags & CKPARAMETERTYPE_VARIABLESIZE) || buffer && bufferSize > 0)
         SetValue(buffer, bufferSize);
 
     CKDeletePointer(buffer);
