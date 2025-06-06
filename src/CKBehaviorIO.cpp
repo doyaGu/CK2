@@ -66,8 +66,8 @@ void CKBehaviorIO::PreDelete() {
             for (int i = 0; i < graph->m_SubBehaviorLinks.Size(); ++i) {
                 CKBehaviorLink *link = (CKBehaviorLink *)graph->m_SubBehaviorLinks[i];
                 if (link) {
-                    if (link->m_InIO == this) link->m_InIO = NULL;
-                    if (link->m_OutIO == this) link->m_OutIO = NULL;
+                    if (link->m_InIO == this) link->m_InIO = nullptr;
+                    if (link->m_OutIO == this) link->m_OutIO = nullptr;
                 }
             }
         }
@@ -79,8 +79,8 @@ void CKBehaviorIO::PreDelete() {
                 for (int i = 0; i < parentGraph->m_SubBehaviorLinks.Size(); ++i) {
                     CKBehaviorLink *link = (CKBehaviorLink *)parentGraph->m_SubBehaviorLinks[i];
                     if (link) {
-                        if (link->m_InIO == this) link->m_InIO = NULL;
-                        if (link->m_OutIO == this) link->m_OutIO = NULL;
+                        if (link->m_InIO == this) link->m_InIO = nullptr;
+                        if (link->m_OutIO == this) link->m_OutIO = nullptr;
                     }
                 }
             }

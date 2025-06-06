@@ -450,7 +450,7 @@ CKMessageManager::~CKMessageManager() {
 }
 
 CKMessageManager::CKMessageManager(CKContext *Context) : CKBaseManager(Context, MESSAGE_MANAGER_GUID, (CKSTRING)"Message Manager") {
-    m_MsgWaitingList = NULL;
+    m_MsgWaitingList = nullptr;
 
     RegisterDefaultMessages();
     Context->RegisterNewManager(this);

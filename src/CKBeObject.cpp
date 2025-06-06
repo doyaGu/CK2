@@ -69,7 +69,7 @@ CKBOOL CKBeObject::SetAttribute(CKAttributeType AttribType, CK_ID parameter) {
 
     CKGUID guid = am->GetAttributeParameterGUID(AttribType);
     if (guid.IsValid() && !m_Context->GetObject(parameter)) {
-        CKParameterOut *pout = m_Context->CreateCKParameterOut(NULL, guid, IsDynamic());
+        CKParameterOut *pout = m_Context->CreateCKParameterOut(nullptr, guid, IsDynamic());
         if (pout) {
             CKSTRING defValue = am->GetAttributeDefaultValue(AttribType);
             if (defValue) {
@@ -207,11 +207,11 @@ CKERROR CKBeObject::AddScript(CKBehavior *script) {
 
 CKBehavior *CKBeObject::RemoveScript(CK_ID id) {
     if (!m_ScriptArray)
-        return NULL;
+        return nullptr;
 
     CKBehavior *script = (CKBehavior *)m_Context->GetObject(id);
     if (!script)
-        return NULL;
+        return nullptr;
 
     for (int i = 0; i < m_ScriptArray->Size(); ++i) {
         if ((*m_ScriptArray)[i] == script) {
@@ -219,27 +219,27 @@ CKBehavior *CKBeObject::RemoveScript(CK_ID id) {
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 CKBehavior *CKBeObject::RemoveScript(int pos) {
     if (!m_ScriptArray || pos >= m_ScriptArray->Size()) {
-        return NULL;
+        return nullptr;
     }
 
     CK_ID id = m_ScriptArray->GetObjectID(pos);
     if (id == 0) {
-        return NULL;
+        return nullptr;
     }
     m_ScriptArray->RemoveAt(pos);
 
     CKBehavior *script = (CKBehavior *)m_Context->GetObject(id);
     if (script) {
-        script->SetOwner(NULL, TRUE);
+        script->SetOwner(nullptr, TRUE);
 
         if (m_ScriptArray->IsEmpty()) {
             delete m_ScriptArray;
-            m_ScriptArray = NULL;
+            m_ScriptArray = nullptr;
         }
 
         if (script->GetFlags() & CKBEHAVIOR_SCRIPT)
@@ -260,7 +260,7 @@ CKERROR CKBeObject::RemoveAllScripts() {
     }
 
     delete m_ScriptArray;
-    m_ScriptArray = NULL;
+    m_ScriptArray = nullptr;
     return CK_OK;
 }
 
@@ -348,17 +348,17 @@ void CKBeObject::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjec
     }
 }
 
-CKBeObject::CKBeObject() : CKSceneObject(::GetCKContext(0), NULL) {
-    m_ScriptArray = NULL;
-    m_LastFrameMessages = NULL;
+CKBeObject::CKBeObject() : CKSceneObject(::GetCKContext(0), nullptr) {
+    m_ScriptArray = nullptr;
+    m_LastFrameMessages = nullptr;
     m_Waiting = 0;
     m_LastExecutionTime = 0.0f;
     m_Priority = 0;
 }
 
 CKBeObject::CKBeObject(CKContext *Context, CKSTRING name) : CKSceneObject(Context, name) {
-    m_ScriptArray = NULL;
-    m_LastFrameMessages = NULL;
+    m_ScriptArray = nullptr;
+    m_LastFrameMessages = nullptr;
     m_Waiting = 0;
     m_LastExecutionTime = 0.0f;
     m_Priority = 0;
@@ -447,7 +447,7 @@ CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
                 chunk->StartSubChunkSequence(attributesToSave.Size());
                 for (int i = 0; i < attributesToSave.Size(); ++i) {
                     CKObject *obj = m_Context->GetObject(attributesToSave[i].Parameter);
-                    CKStateChunk *paramChunk = obj ? obj->Save(NULL, flags) : NULL;
+                    CKStateChunk *paramChunk = obj ? obj->Save(nullptr, flags) : nullptr;
                     chunk->WriteSubChunkSequence(paramChunk);
                     CKDeletePointer(paramChunk);
                 }
@@ -501,7 +501,7 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
         // Cleanup existing scripts
         if (m_ScriptArray) {
             delete m_ScriptArray;
-            m_ScriptArray = NULL;
+            m_ScriptArray = nullptr;
         }
 
         if (chunk->GetDataVersion() < 5 && chunk->SeekIdentifier(CK_STATESAVE_BEHAVIORS)) {
@@ -580,7 +580,7 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
                 if (!file && attrChunks[i]) {
                     CKParameter *param = GetAttributeParameter(attrType);
                     if (param) {
-                        param->Load(attrChunks[i], NULL);
+                        param->Load(attrChunks[i], nullptr);
                         CKParameterType paramType = am->GetAttributeParameterType(attrType);
                         if (param->GetType() != paramType) {
                             param->SetType(paramType);
@@ -616,9 +616,9 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
             if (!oldVersion)
                 compatibleCid = chunk->ReadInt();
 
-            CKSTRING name = NULL;
+            CKSTRING name = nullptr;
             if (CKIsChildClassOf(compatibleCid, CKCID_OBJECT) && (chunk->ReadString(&name), name)) {
-                CKSTRING category = NULL;
+                CKSTRING category = nullptr;
                 chunk->ReadString(&category);
                 CKGUID paramGuid = chunk->ReadGuid();
 
@@ -648,7 +648,7 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
                 if (!file) {
                     CKStateChunk *subChunk = chunk->ReadSubChunk();
                     if (param && subChunk) {
-                        param->Load(subChunk, NULL);
+                        param->Load(subChunk, nullptr);
                         CKDeletePointer(subChunk);
                     }
                 }

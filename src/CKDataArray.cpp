@@ -177,7 +177,7 @@ void CKDataArray::InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID 
         CKDataRow *row = m_DataMatrix[i];
 
         if (type == CKARRAYTYPE_PARAMETER) {
-            CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, fmt->m_ParameterType, IsDynamic());
+            CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, fmt->m_ParameterType, IsDynamic());
             if (param) {
                 param->SetOwner(this);
             }
@@ -351,7 +351,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
                 break;
             }
             case CKARRAYTYPE_PARAMETER: {
-                CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, paramGuid, IsDynamic());
+                CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, paramGuid, IsDynamic());
                 if (param) {
                     param->SetOwner(this);
                     if (paramGuid == CKPGUID_INT) {
@@ -383,7 +383,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
                 break;
             }
             case CKARRAYTYPE_PARAMETER: {
-                CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, paramGuid, IsDynamic());
+                CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, paramGuid, IsDynamic());
                 if (param) {
                     param->SetOwner(this);
                     if (paramGuid == CKPGUID_FLOAT) {
@@ -418,7 +418,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
                 break;
             }
             case CKARRAYTYPE_PARAMETER: {
-                CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, paramGuid, IsDynamic());
+                CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, paramGuid, IsDynamic());
                 if (param) {
                     param->SetOwner(this);
                     param->SetStringValue(strValue);
@@ -444,7 +444,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
                 element = 0;
                 break;
             case CKARRAYTYPE_PARAMETER: {
-                CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, paramGuid, IsDynamic());
+                CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, paramGuid, IsDynamic());
                 if (param) {
                     param->SetOwner(this);
                     element = reinterpret_cast<CKDWORD>(param);
@@ -484,7 +484,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
                 break;
             }
             case CKARRAYTYPE_STRING: {
-                char *str = NULL;
+                char *str = nullptr;
                 if (oldParam && oldParam->GetGUID() == CKPGUID_STRING) {
                     str = CKStrdup(static_cast<char *>(oldParam->GetReadDataPtr()));
                 } else {
@@ -630,7 +630,7 @@ CKBOOL CKDataArray::SetElementValueFromParameter(int i, int c, CKParameter *pout
 
     switch (format->m_Type) {
     case CKARRAYTYPE_STRING: {
-        int strLen = pout->GetStringValue(NULL, 0);
+        int strLen = pout->GetStringValue(nullptr, 0);
         if (strLen > 0) {
             char *newStr = new char[strLen];
             pout->GetStringValue(newStr, strLen);
@@ -700,12 +700,12 @@ CKBOOL CKDataArray::PasteShortcut(int i, int c, CKParameter *pout) {
 CKParameterOut *CKDataArray::RemoveShortcut(int i, int c) {
     CKDWORD *element = GetElement(i, c);
     if (!element)
-        return NULL;
+        return nullptr;
 
     CKParameterOut *originalParam = reinterpret_cast<CKParameterOut *>(*element);
 
     if (!originalParam || originalParam->GetOwner() == this)
-        return NULL;
+        return nullptr;
 
     CKParameterOut *newParam = (CKParameterOut *) m_Context->CopyObject(originalParam);
     if (newParam) {
@@ -800,7 +800,7 @@ int CKDataArray::GetStringValue(CKDWORD key, int c, char *svalue) {
 
     const ColumnFormat *format = m_FormatArray[c];
     char buffer[256];
-    const char *result = NULL;
+    const char *result = nullptr;
 
     switch (format->m_Type) {
     case CKARRAYTYPE_INT:
@@ -842,7 +842,7 @@ int CKDataArray::GetStringValue(CKDWORD key, int c, char *svalue) {
             }
             return length + 1;
         } else {
-            length = param->GetStringValue(NULL, 0);
+            length = param->GetStringValue(nullptr, 0);
             if (length > 0) {
                 char *temp = new char[length];
                 param->GetStringValue(temp, length);
@@ -898,7 +898,7 @@ CKBOOL CKDataArray::LoadElements(CKSTRING filename, CKBOOL append, int column) {
 
     char *current = buffer;
     int lineNum = 0;
-    CKDataRow *row = NULL;
+    CKDataRow *row = nullptr;
 
     while (*current) {
         char *lineEnd = strchr(current, '\n');
@@ -944,7 +944,7 @@ CKBOOL CKDataArray::LoadElements(CKSTRING filename, CKBOOL append, int column) {
             case CKARRAYTYPE_PARAMETER: {
                 CKParameterOut *param = reinterpret_cast<CKParameterOut *>(*element);
                 if (!param) {
-                    param = m_Context->CreateCKParameterOut(NULL, fmt->m_ParameterType, IsDynamic());
+                    param = m_Context->CreateCKParameterOut(nullptr, fmt->m_ParameterType, IsDynamic());
                     *element = reinterpret_cast<CKDWORD>(param);
                 }
                 if (param) {
@@ -954,7 +954,7 @@ CKBOOL CKDataArray::LoadElements(CKSTRING filename, CKBOOL append, int column) {
             }
             }
 
-            token = strtok(NULL, "\t");
+            token = strtok(nullptr, "\t");
             col++;
         }
 
@@ -1058,7 +1058,7 @@ void CKDataArray::AddRow() {
     for (int i = 0; i < m_FormatArray.Size(); ++i) {
         ColumnFormat *fmt = m_FormatArray[i];
         if (fmt->m_Type == CKARRAYTYPE_PARAMETER) {
-            CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, fmt->m_ParameterType, IsDynamic());
+            CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, fmt->m_ParameterType, IsDynamic());
             if (param) {
                 param->SetOwner(this);
                 (*newRow)[i] = (CKDWORD) param;
@@ -1079,7 +1079,7 @@ CKDataRow *CKDataArray::InsertRow(int n) {
     }
 
     if (n < -1 || n > m_DataMatrix.Size()) {
-        return NULL;
+        return nullptr;
     }
 
     CKDataRow *newRow = new CKDataRow();
@@ -1089,7 +1089,7 @@ CKDataRow *CKDataArray::InsertRow(int n) {
         ColumnFormat *fmt = m_FormatArray[i];
 
         if (fmt->m_Type == CKARRAYTYPE_PARAMETER) {
-            CKParameterOut *param = m_Context->CreateCKParameterOut(NULL, fmt->m_ParameterType, IsDynamic());
+            CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, fmt->m_ParameterType, IsDynamic());
             if (param) {
                 param->SetOwner(this);
                 (*newRow)[i] = reinterpret_cast<CKDWORD>(param);
@@ -1147,7 +1147,7 @@ int CKDataArray::FindRowIndex(int c, CK_COMPOPERATOR op, CKDWORD key, int size, 
 
 CKDataRow *CKDataArray::FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size, int startIndex) {
     if (c < 0 || c >= m_FormatArray.Size() || startIndex < 0 || startIndex >= m_DataMatrix.Size()) {
-        return NULL;
+        return nullptr;
     }
 
     g_ColumnIndex = c;
@@ -1164,7 +1164,7 @@ CKDataRow *CKDataArray::FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 void CKDataArray::RemoveRow(int n) {
@@ -1855,9 +1855,9 @@ CKStateChunk *CKDataArray::Save(CKFile *file, CKDWORD flags) {
                 } else {
                     CKBOOL owned = (param->GetOwner() == this);
                     if (owned)
-                        param->SetOwner(NULL);
+                        param->SetOwner(nullptr);
 
-                    CKStateChunk *paramChunk = param->Save(NULL, CK_STATESAVE_PARAMETEROUT_ALL);
+                    CKStateChunk *paramChunk = param->Save(nullptr, CK_STATESAVE_PARAMETEROUT_ALL);
                     chunk->WriteSubChunk(paramChunk);
 
                     if (paramChunk) {
@@ -1962,7 +1962,7 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
                     break;
 
                 case CKARRAYTYPE_STRING: {
-                    char *str = NULL;
+                    char *str = nullptr;
                     chunk->ReadString(&str);
                     element = (CKDWORD) CKStrdup(str);
                     break;
@@ -1981,9 +1981,9 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
                         // Load parameter data
                         CKStateChunk *paramChunk = chunk->ReadSubChunk();
                         CKParameterOut *param = m_Context->
-                            CreateCKParameterOut(NULL, fmt->m_ParameterType, IsDynamic());
+                            CreateCKParameterOut(nullptr, fmt->m_ParameterType, IsDynamic());
                         if (param) {
-                            param->Load(paramChunk, NULL);
+                            param->Load(paramChunk, nullptr);
                             param->SetOwner(this);
                             element = (CKDWORD) param;
                         }
@@ -2033,7 +2033,7 @@ void CKDataArray::PostLoad() {
                     param->SetOwner(this);
                 }
             } else {
-                CKParameterOut *newParam = m_Context->CreateCKParameterOut(NULL, fmt->m_ParameterType);
+                CKParameterOut *newParam = m_Context->CreateCKParameterOut(nullptr, fmt->m_ParameterType);
                 if (newParam) {
                     newParam->SetOwner(this);
                     element = (CKDWORD) newParam;
@@ -2067,7 +2067,7 @@ void CKDataArray::CheckPreDeletion() {
                 continue;
 
             if (param->IsToBeDeleted() && param->GetOwner() != this) {
-                CKParameterOut *newParam = m_Context->CreateCKParameterOut(NULL, param->GetType(), IsDynamic());
+                CKParameterOut *newParam = m_Context->CreateCKParameterOut(nullptr, param->GetType(), IsDynamic());
                 if (newParam) {
                     newParam->CopyValue(param, TRUE);
                     newParam->SetOwner(this);

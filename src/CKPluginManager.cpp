@@ -1116,7 +1116,7 @@ void CKPluginManager::Clean() {
     for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
         for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
             if (*eit) {
-                delete (*eit);
+                delete *eit;
             }
         }
     }

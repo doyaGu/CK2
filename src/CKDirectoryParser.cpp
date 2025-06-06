@@ -6,11 +6,11 @@
 #include <windows.h>
 
 CKDirectoryParser::CKDirectoryParser(char *dir, char *fileMask, XBOOL recurse) {
-    m_FindData = NULL;
-    m_StartDir = NULL;
-    m_FullFileName = NULL;
-    m_FileMask = NULL;
-    m_SubParser = NULL;
+    m_FindData = nullptr;
+    m_StartDir = nullptr;
+    m_FullFileName = nullptr;
+    m_FileMask = nullptr;
+    m_SubParser = nullptr;
     m_hFile = -1;
     Reset(dir, fileMask, recurse);
 }
@@ -60,14 +60,14 @@ char *CKDirectoryParser::GetNextFile() {
         _findclose(m_hFile);
         m_hFile = -1;
         if ((m_State & 2) == 0)
-            return NULL;
+            return nullptr;
     } else {
         char *ret;
         if (m_hFile == -1) {
             sprintf(buf, "%s\\%s", m_StartDir, "*.*");
             m_hFile = _findfirst(buf, (_finddata_t *)m_FindData);
             if (m_hFile == -1)
-                return NULL;
+                return nullptr;
             if (strcmp(((_finddata_t *)m_FindData)->name, ".") != 0 &&
                 strcmp(((_finddata_t *)m_FindData)->name, "..") != 0 &&
                 ((((_finddata_t *)m_FindData)->attrib & 0x10) != 0)) {
@@ -81,7 +81,7 @@ char *CKDirectoryParser::GetNextFile() {
 
                     if (m_SubParser)
                         delete m_SubParser;
-                    m_SubParser = NULL;
+                    m_SubParser = nullptr;
                 }
             }
         }
@@ -99,15 +99,15 @@ char *CKDirectoryParser::GetNextFile() {
 
                     if (m_SubParser)
                         delete m_SubParser;
-                    m_SubParser = NULL;
+                    m_SubParser = nullptr;
                 }
             }
             _findclose(m_hFile);
             m_hFile = -1;
-            return NULL;
+            return nullptr;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void CKDirectoryParser::Reset(char *dir, char *fileMask, XBOOL recurse) {
@@ -132,7 +132,7 @@ void CKDirectoryParser::Reset(char *dir, char *fileMask, XBOOL recurse) {
         _findclose(m_hFile);
     m_State = recurse;
     m_hFile = -1;
-    m_SubParser = NULL;
+    m_SubParser = nullptr;
     if (m_StartDir[strlen(dir) - 1] == '\\' || m_StartDir[strlen(dir) - 1] == '/')
         m_StartDir[strlen(dir) - 1] = '\0';
 }

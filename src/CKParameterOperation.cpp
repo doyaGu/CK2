@@ -46,25 +46,25 @@ CKGUID CKParameterOperation::GetOperationGuid() {
 
 void CKParameterOperation::Reconstruct(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid) {
     m_OperationGuid = opguid;
-    m_OperationFunction = NULL;
+    m_OperationFunction = nullptr;
     m_HasOperationFunction = FALSE;
 
     if (m_In1) {
         m_In1->SetGUID(p1Guid, FALSE, FALSE);
     } else {
-        m_In1 = m_Context->CreateCKParameterIn(NULL, p1Guid, IsDynamic());
+        m_In1 = m_Context->CreateCKParameterIn(nullptr, p1Guid, IsDynamic());
     }
 
     if (m_In2) {
         m_In2->SetGUID(p2Guid, FALSE, FALSE);
     } else {
-        m_In2 = m_Context->CreateCKParameterIn(NULL, p2Guid, IsDynamic());
+        m_In2 = m_Context->CreateCKParameterIn(nullptr, p2Guid, IsDynamic());
     }
 
     if (m_Out) {
         m_Out->SetGUID(ResGuid);
     } else {
-        m_Out = m_Context->CreateCKParameterOut(NULL, ResGuid, IsDynamic());
+        m_Out = m_Context->CreateCKParameterOut(nullptr, ResGuid, IsDynamic());
     }
 
     Update();
@@ -177,8 +177,8 @@ CKStateChunk *CKParameterOperation::Save(CKFile *file, CKDWORD flags) {
             chunk->WriteIdentifier(CK_STATESAVE_OPERATIONINPUTS);
 
             // Save input parameters
-            CKStateChunk *in1Chunk = m_In1 ? m_In1->Save(NULL, 0xFFFF) : NULL;
-            CKStateChunk *in2Chunk = m_In2 ? m_In2->Save(NULL, 0xFFFF) : NULL;
+            CKStateChunk *in1Chunk = m_In1 ? m_In1->Save(nullptr, 0xFFFF) : nullptr;
+            CKStateChunk *in2Chunk = m_In2 ? m_In2->Save(nullptr, 0xFFFF) : nullptr;
 
             chunk->WriteObject(m_In1);
             chunk->WriteSubChunk(in1Chunk);
@@ -195,7 +195,7 @@ CKStateChunk *CKParameterOperation::Save(CKFile *file, CKDWORD flags) {
             chunk->WriteIdentifier(CK_STATESAVE_OPERATIONOUTPUT);
 
             // Save output parameter
-            CKStateChunk *outChunk = m_Out ? m_Out->Save(NULL, 0xFFFF) : NULL;
+            CKStateChunk *outChunk = m_Out ? m_Out->Save(nullptr, 0xFFFF) : nullptr;
 
             chunk->WriteObject(m_Out);
             chunk->WriteSubChunk(outChunk);
@@ -260,7 +260,7 @@ CKERROR CKParameterOperation::Load(CKStateChunk *chunk, CKFile *file) {
             m_Out = (CKParameterOut *)chunk->ReadObject(m_Context);
             CKStateChunk *outChunk = chunk->ReadSubChunk();
             if (m_Out && outChunk) {
-                m_Out->Load(outChunk, NULL);
+                m_Out->Load(outChunk, nullptr);
             }
             if (outChunk) {
                 delete outChunk;
@@ -272,7 +272,7 @@ CKERROR CKParameterOperation::Load(CKStateChunk *chunk, CKFile *file) {
             m_In1 = (CKParameterIn *)chunk->ReadObject(m_Context);
             CKStateChunk *in1Chunk = chunk->ReadSubChunk();
             if (m_In1 && in1Chunk) {
-                m_In1->Load(in1Chunk, NULL);
+                m_In1->Load(in1Chunk, nullptr);
             }
             if (in1Chunk) {
                 delete in1Chunk;
@@ -282,7 +282,7 @@ CKERROR CKParameterOperation::Load(CKStateChunk *chunk, CKFile *file) {
             m_In2 = (CKParameterIn *)chunk->ReadObject(m_Context);
             CKStateChunk *in2Chunk = chunk->ReadSubChunk();
             if (m_In2 && in2Chunk) {
-                m_In2->Load(in2Chunk, NULL);
+                m_In2->Load(in2Chunk, nullptr);
             }
             if (in2Chunk) {
                 delete in2Chunk;

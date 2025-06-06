@@ -209,15 +209,15 @@ CK2dCurve::CK2dCurve() {
 }
 
 CKStateChunk *CK2dCurve::Dump() {
-    CKStateChunk *chunk = new CKStateChunk(CKCHNK_2DCURVE, NULL);
+    CKStateChunk *chunk = new CKStateChunk(CKCHNK_2DCURVE, nullptr);
     chunk->StartWrite();
     chunk->SetDataVersion(CHUNK_DEV_2_1);
     chunk->WriteIdentifier(0x100);
 
     XSObjectArray objects;
     objects.Resize(m_ControlPoints.Size() / (int) sizeof(CK2dCurvePoint));
-    objects.Fill(NULL);
-    objects.Save(chunk, NULL);
+    objects.Fill(0);
+    objects.Save(chunk, nullptr);
 
     chunk->WriteFloat(FittingCoef);
     for (XArray<CK2dCurvePoint>::Iterator it = m_ControlPoints.Begin(); it != m_ControlPoints.End(); it++) {

@@ -1564,7 +1564,7 @@ CKStateChunk *CKBehavior::Save(CKFile *file, CKDWORD flags) {
                 for (XObjectPointerArray::Iterator it = m_GraphData->m_SubBehaviors.Begin();
                      it != m_GraphData->m_SubBehaviors.End(); ++it) {
                     CKObject *subBehavior = *it;
-                    CKStateChunk *subChunk = subBehavior ? subBehavior->Save(NULL, flags) : NULL;
+                    CKStateChunk *subChunk = subBehavior ? subBehavior->Save(nullptr, flags) : nullptr;
 
                     behaviorChunk->WriteObject(subBehavior);
                     behaviorChunk->WriteSubChunk(subChunk);
@@ -1595,7 +1595,7 @@ CKStateChunk *CKBehavior::Save(CKFile *file, CKDWORD flags) {
                 CKDWORD paramFlags = (flags == (CK_STATESAVE_BEHAVIORSUBBEHAV | CK_STATESAVE_BEHAVIORLOCALPARAMS))
                                          ? CK_STATESAVE_BEHAVIORFLAGS
                                          : -1;
-                CKStateChunk *paramChunk = param ? param->Save(NULL, paramFlags) : NULL;
+                CKStateChunk *paramChunk = param ? param->Save(nullptr, paramFlags) : nullptr;
 
                 behaviorChunk->WriteObject(param);
                 behaviorChunk->WriteSubChunk(paramChunk);
@@ -1659,7 +1659,7 @@ CKERROR CKBehavior::Load(CKStateChunk *chunk, CKFile *file) {
                 CKStateChunk *subChunk = chunk->ReadSubChunk();
 
                 if (obj && subChunk) {
-                    obj->Load(subChunk, NULL);
+                    obj->Load(subChunk, nullptr);
                     delete subChunk;
                 }
             }
@@ -1674,7 +1674,7 @@ CKERROR CKBehavior::Load(CKStateChunk *chunk, CKFile *file) {
                 CKStateChunk *paramChunk = chunk->ReadSubChunk();
 
                 if (param && paramChunk) {
-                    param->Load(paramChunk, NULL);
+                    param->Load(paramChunk, nullptr);
                     delete paramChunk;
                 }
             }
@@ -2155,7 +2155,7 @@ void CKBehavior::Reset() {
 }
 
 void CKBehavior::ErrorMessage(CKSTRING Error, CKSTRING Context, CKBOOL ShowOwner, CKBOOL ShowScript) {
-    CKBehavior *topBehavior = NULL;
+    CKBehavior *topBehavior = nullptr;
     if (ShowScript) {
         CKBehavior *parent = GetParent();
         topBehavior = this;
@@ -2213,7 +2213,7 @@ void CKBehavior::ErrorMessage(CKSTRING Error, CKSTRING Context, CKBOOL ShowOwner
 }
 
 void CKBehavior::ErrorMessage(CKSTRING Error, CKDWORD Context, CKBOOL ShowOwner, CKBOOL ShowScript) {
-    const char *contextStr = NULL;
+    const char *contextStr = nullptr;
     switch (Context) {
     case CKM_BEHAVIORPRESAVE:
         contextStr = "Pre Save";

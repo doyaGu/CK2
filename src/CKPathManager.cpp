@@ -197,7 +197,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
 
         // Check directory of last loaded CMO file
         CKPathSplitter cmoSplitter(m_Context->GetLastCmoLoaded());
-        CKPathMaker cmoMaker(cmoSplitter.GetDrive(), cmoSplitter.GetDir(), file.Str(), NULL);
+        CKPathMaker cmoMaker(cmoSplitter.GetDrive(), cmoSplitter.GetDir(), file.Str(), nullptr);
         XString cmoPath = cmoMaker.GetFileName();
         if (TryOpenAbsolutePath(cmoPath)) {
             file = cmoPath;
@@ -207,7 +207,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         // Check current working directory
         char curDir[4096];
         VxGetCurrentDirectory(curDir);
-        CKPathMaker curDirMaker(NULL, curDir, file.Str(), NULL);
+        CKPathMaker curDirMaker(nullptr, curDir, file.Str(), nullptr);
         XString curPath = curDirMaker.GetFileName();
         if (TryOpenAbsolutePath(curPath)) {
             file = curPath;
@@ -216,7 +216,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
 
         // Check Virtools temporary folder
         XString tempFolder = GetVirtoolsTemporaryFolder();
-        CKPathMaker tempMaker(NULL, tempFolder.Str(), file.Str(), NULL);
+        CKPathMaker tempMaker(nullptr, tempFolder.Str(), file.Str(), nullptr);
         XString tempPath = tempMaker.GetFileName();
         if (TryOpenAbsolutePath(tempPath)) {
             file = tempPath;

@@ -126,7 +126,7 @@ const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDep
 
 CKObject *CKContext::GetObject(CK_ID ObjID) {
     if (ObjID > m_ObjectManager->GetObjectsCount())
-        return NULL;
+        return nullptr;
     return m_ObjectManager->m_Objects[ObjID];
 }
 
@@ -386,17 +386,17 @@ CKRenderContext *CKContext::GetPlayerRenderContext() {
 CKScene *CKContext::GetCurrentScene() {
     CKLevel *level = GetCurrentLevel();
     if (!level)
-        return NULL;
+        return nullptr;
     return level->GetCurrentScene();
 }
 
 void CKContext::SetCurrentLevel(CKLevel *level) {
-    m_CurrentLevel = (level != NULL) ? level->GetID() : 0;
+    m_CurrentLevel = (level != nullptr) ? level->GetID() : 0;
     m_BehaviorContext.CurrentLevel = level;
 }
 
 CKParameterIn *CKContext::CreateCKParameterIn(CKSTRING Name, CKParameterType type, CKBOOL Dynamic) {
-    CKParameterIn *pIn = NULL;
+    CKParameterIn *pIn = nullptr;
     if (m_ParameterManager->CheckParamTypeValidity(type)) {
         pIn = (CKParameterIn *) CreateObject(
             CKCID_PARAMETERIN, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
@@ -438,7 +438,7 @@ CKParameterOut *CKContext::CreateCKParameterOut(CKSTRING Name, CKSTRING TypeName
 }
 
 CKParameterLocal *CKContext::CreateCKParameterLocal(CKSTRING Name, CKParameterType type, CKBOOL Dynamic) {
-    CKParameterLocal *pLocal = NULL;
+    CKParameterLocal *pLocal = nullptr;
     if (m_ParameterManager->CheckParamTypeValidity(type)) {
         pLocal = (CKParameterLocal *) CreateObject(
             CKCID_PARAMETERLOCAL, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
@@ -658,7 +658,7 @@ XManagerHashTableIt CKContext::GetManagers() {
 CKBaseManager *CKContext::GetManagerByGuid(CKGUID guid) {
     XManagerHashTableIt it = m_ManagerTable.Find(guid);
     if (it == m_ManagerTable.End())
-        return NULL;
+        return nullptr;
     return *it;
 }
 
@@ -673,7 +673,7 @@ CKBaseManager *CKContext::GetManagerByName(CKSTRING ManagerName) {
         if (!strcmp(manager->GetName(), ManagerName))
             return manager;
     }
-    return NULL;
+    return nullptr;
 }
 
 int CKContext::GetManagerCount() {
@@ -688,7 +688,7 @@ CKBaseManager *CKContext::GetManager(int index) {
         if (i > index)
             break;
     }
-    return NULL;
+    return nullptr;
 }
 
 CKBOOL CKContext::IsManagerActive(CKBaseManager *manager) {
@@ -812,7 +812,7 @@ CKGUID CKContext::GetSecureGuid() {
     } while (!CKGetObjectDeclarationFromGuid(guid) &&
         (m_ParameterManager->OperationGuidToCode(guid) >= 0 ||
             m_ParameterManager->ParameterGuidToType(guid) >= 0 ||
-            GetManagerByGuid(guid) != NULL));
+            GetManagerByGuid(guid) != nullptr));
 
 
     return guid;
@@ -880,7 +880,7 @@ CKERROR CKContext::Load(CKSTRING FileName, CKObjectArray *liste, CK_LOAD_FLAGS L
     if (!FileName)
         return CKERR_INVALIDPARAMETER;
     m_LastFileLoaded = FileName;
-    return g_ThePluginManager.Load(this, FileName, liste, LoadFlags, NULL, ReaderGuid);
+    return g_ThePluginManager.Load(this, FileName, liste, LoadFlags, nullptr, ReaderGuid);
 }
 
 CKERROR CKContext::Load(int BufferSize, void *MemoryBuffer, CKObjectArray *ckarray, CK_LOAD_FLAGS LoadFlags) {
@@ -891,7 +891,7 @@ CKERROR CKContext::Load(int BufferSize, void *MemoryBuffer, CKObjectArray *ckarr
     if (!file)
         return CKERR_INVALIDFILE;
     CKERROR err = file->Load(MemoryBuffer, BufferSize, ckarray, LoadFlags);
-    file->UpdateAndApplyAnimationsTo(NULL);
+    file->UpdateAndApplyAnimationsTo(nullptr);
     DeleteCKFile(file);
     return err;
 }
@@ -1084,7 +1084,7 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
             if (m_GeneralRenameOption == CKLOAD_RENAME) {
                 GetSecureName(NewName, OldName, Cid);
                 if (newobj)
-                    *newobj = NULL;
+                    *newobj = nullptr;
                 return CKLOAD_RENAME;
             } else if (m_GeneralRenameOption == CKLOAD_USECURRENT) {
                 if (newobj)
@@ -1111,13 +1111,13 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
         case 2:
             GetSecureName(NewName, OldName, Cid);
             if (newobj)
-                *newobj = NULL;
+                *newobj = nullptr;
             return CKLOAD_RENAME;
         case 3:
             m_GeneralRenameOption = CKLOAD_RENAME;
             GetSecureName(NewName, OldName, Cid);
             if (newobj)
-                *newobj = NULL;
+                *newobj = nullptr;
             return CKLOAD_RENAME;
         case 4:
             if (newobj)
@@ -1160,13 +1160,13 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
         case 2:
             GetSecureName(NewName, OldName, Cid);
             if (newobj)
-                *newobj = NULL;
+                *newobj = nullptr;
             return CKLOAD_RENAME;
         case 3:
             m_MatTexturesRenameOption = CKLOAD_RENAME;
             GetSecureName(NewName, OldName, Cid);
             if (newobj)
-                *newobj = NULL;
+                *newobj = nullptr;
             return CKLOAD_RENAME;
         case 4:
             if (newobj)
@@ -1643,7 +1643,7 @@ int CKContext::FinishDestroyObjects(CKDWORD Flags) {
 
     m_DependenciesContext.Clear();
 
-    m_ObjectManager->DeleteObjects(objectsToDelete.Begin(), objectsToDelete.Size(), NULL, Flags);
+    m_ObjectManager->DeleteObjects(objectsToDelete.Begin(), objectsToDelete.Size(), 0, Flags);
 
     return CK_OK;
 }
@@ -1667,7 +1667,7 @@ void CKContext::DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies
     CKDeferredDeletion *deferred = m_ObjectManager->MatchDeletion(Dependencies, Flags);
     if (!deferred) {
         deferred = new CKDeferredDeletion();
-        deferred->m_DependenciesPtr = NULL;
+        deferred->m_DependenciesPtr = nullptr;
         deferred->m_Flags = Flags;
         m_ObjectManager->RegisterDeletion(deferred);
     }
@@ -1708,9 +1708,9 @@ void CKContext::ReleaseMemoryPoolGlobalIndex(int index) {
 
 CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_DependenciesContext(this) {
     field_498 = 0;
-    field_494 = NULL;
+    field_494 = nullptr;
     field_4A0 = 0;
-    field_49C = NULL;
+    field_49C = nullptr;
 
     m_MainWindow = iWin;
     m_InitManagerOnRegister = FALSE;
@@ -1719,8 +1719,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_InterfaceMode = 0;
     m_VirtoolsBuild = 0x2010001;
     m_VirtoolsVersion = 0;
-    m_UICallBackFct = NULL;
-    m_InterfaceModeData = NULL;
+    m_UICallBackFct = nullptr;
+    m_InterfaceModeData = nullptr;
     m_DeferDestroyObjects = 0;
     m_Playing = FALSE;
     m_Reseted = TRUE;
@@ -1739,8 +1739,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_3DObjectsLoadMode = CKLOAD_INVALID;
     m_MeshLoadMode = CKLOAD_INVALID;
     m_MatTexturesLoadMode = CKLOAD_INVALID;
-    m_UserLoadCallBack = NULL;
-    m_UserLoadCallBackArgs = NULL;
+    m_UserLoadCallBack = nullptr;
+    m_UserLoadCallBackArgs = nullptr;
 
     field_3C8 = new char[260];
     field_3CC = new char[260];
@@ -1749,7 +1749,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
 
     m_CurrentLevel = 0;
     m_CompressionLevel = 5;
-    m_CurrentManager = NULL;
+    m_CurrentManager = nullptr;
 
     m_ObjectManager = new CKObjectManager(this);
     m_ParameterManager = new CKParameterManager(this);
@@ -1768,7 +1768,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
 
     m_ProfilingEnabled = FALSE;
     m_SelectedRenderEngine = iRenderEngine;
-    m_RenderManager = NULL;
+    m_RenderManager = nullptr;
 
     m_MemoryPools.Resize(8);
     for (XArray<VxMemoryPool *>::Iterator it = m_MemoryPools.Begin();
@@ -1785,13 +1785,13 @@ CKContext::~CKContext() {
     CKDeletePointer(m_GlobalImagesSaveFormat);
 
     delete[] field_3C8;
-    field_3C8 = NULL;
+    field_3C8 = nullptr;
     delete[] field_3CC;
-    field_3CC = NULL;
+    field_3CC = nullptr;
 
     if (m_DebugContext)
         delete m_DebugContext;
-    m_DebugContext = NULL;
+    m_DebugContext = nullptr;
 
     for (XArray<VxMemoryPool *>::Iterator it = m_MemoryPools.Begin();
          it != m_MemoryPools.End(); ++it) {

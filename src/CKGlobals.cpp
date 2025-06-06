@@ -66,7 +66,7 @@ void CKInitStartPath() {
 CKERROR CKStartUp() {
     CKInitStartPath();
 
-    srand(time(NULL));
+    srand(time(nullptr));
 
     Default32Desc.BitsPerPixel = 32;
     Default32Desc.RedMask = R_MASK;
@@ -384,8 +384,8 @@ CKERROR CKRemovePrototypeDeclaration(CKObjectDeclaration *decl) {
 
                 if (behaviorGuid == protoGuid) {
                     // Reset behavior configuration
-                    behavior->SetFunction(NULL);
-                    behavior->SetCallbackFunction(NULL);
+                    behavior->SetFunction(nullptr);
+                    behavior->SetCallbackFunction(nullptr);
 
                     ctx->OutputToConsoleExBeep(
                         "Warning: Behavior %s no longer has a valid prototype!",
@@ -552,13 +552,13 @@ void DeleteCKObjectArray(CKObjectArray *obj) {
 CKStateChunk *CKSaveObjectState(CKObject *obj, CKDWORD Flags) {
     if (!obj)
         return nullptr;
-    return obj->Save(NULL, Flags);
+    return obj->Save(nullptr, Flags);
 }
 
 CKERROR CKReadObjectState(CKObject *obj, CKStateChunk *chunk) {
     if (!obj || !chunk)
         return CKERR_INVALIDPARAMETER;
-    return obj->Load(chunk, NULL);
+    return obj->Load(chunk, nullptr);
 }
 
 BITMAP_HANDLE CKLoadBitmap(CKSTRING filename) {
@@ -611,12 +611,12 @@ char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize) {
     if (buffer && uncompress((Bytef *) buffer, (uLongf *) &DestSize, (const Bytef *) SrcBuffer, SrcSize) == Z_OK) {
         return buffer;
     }
-    return NULL;
+    return nullptr;
 }
 
 CKSTRING CKStrdup(CKSTRING string) {
     if (!string)
-        return NULL;
+        return nullptr;
 
     size_t len = strlen(string);
     CKSTRING str = new char[len + 1];
@@ -626,7 +626,7 @@ CKSTRING CKStrdup(CKSTRING string) {
 
 CKSTRING CKStrupr(CKSTRING string) {
     if (!string)
-        return NULL;
+        return nullptr;
 
     for (char *pch = string; *pch; ++pch) {
         char ch = *pch;
@@ -638,7 +638,7 @@ CKSTRING CKStrupr(CKSTRING string) {
 
 CKSTRING CKStrlwr(CKSTRING string) {
     if (!string)
-        return NULL;
+        return nullptr;
 
     for (char *pch = string; *pch; ++pch) {
         char ch = *pch;
@@ -678,7 +678,7 @@ CKDWORD CKEscapeURL(const char *InURL, XString &OutURL) {
         return 0;
     }
 
-    if (strstr(InURL, "://") == NULL) {
+    if (strstr(InURL, "://") == nullptr) {
         OutURL = XString("file://") + escaped;
     } else {
         OutURL = escaped;
@@ -706,9 +706,9 @@ void CKUnEscapeUrl(XString &str) {
 
 CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp) {
     if (!bp)
-        return NULL;
+        return nullptr;
     if (bp->m_Size <= 0 || bp->m_Size >= 256)
-        return NULL;
+        return nullptr;
     CKBitmapProperties *nbp = (CKBitmapProperties *) new CKBYTE[bp->m_Size];
     memcpy(nbp, bp, bp->m_Size);
     return nbp;
@@ -801,8 +801,8 @@ CKERROR CKMoveAllScripts(CKBeObject *Src, CKBeObject *Dest) {
 }
 
 CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh) {
-    CKScene *sourceLevelScene = NULL;
-    CKScene *targetLevelScene = NULL;
+    CKScene *sourceLevelScene = nullptr;
+    CKScene *targetLevelScene = nullptr;
     CKBOOL isLevelOperation = FALSE;
 
     if (CKIsChildClassOf(Src, CKCID_LEVEL) && CKIsChildClassOf(Dest, CKCID_LEVEL)) {
@@ -824,7 +824,7 @@ CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh) {
 
         CKSceneObjectDesc desc;
         desc.m_Object = sceneDesc->m_Object;
-        desc.m_InitialValue = NULL;
+        desc.m_InitialValue = nullptr;
         desc.m_Flags = sceneDesc->m_Flags;
         if (sceneDesc->m_InitialValue) {
             desc.m_InitialValue = new CKStateChunk(*sceneDesc->m_InitialValue);

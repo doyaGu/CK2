@@ -233,7 +233,7 @@ CKERROR CKFile::OpenMemory(void *MemoryBuffer, int BufferSize, CK_LOAD_FLAGS Fla
 
     if (!m_Parser->m_Buffer) {
         delete m_Parser;
-        m_Parser = NULL;
+        m_Parser = nullptr;
         return CKERR_INVALIDPARAMETER;
     }
 
@@ -262,12 +262,12 @@ CKERROR CKFile::LoadFileData(CKObjectArray *liste) {
         if (err == CK_OK) {
             if (m_Parser) {
                 delete m_Parser;
-                m_Parser = NULL;
+                m_Parser = nullptr;
             }
 
             if (m_MappedFile) {
                 delete m_MappedFile;
-                m_MappedFile = NULL;
+                m_MappedFile = nullptr;
             }
 
             FinishLoading(liste, m_Flags);
@@ -277,16 +277,16 @@ CKERROR CKFile::LoadFileData(CKObjectArray *liste) {
     }
 
     m_Context->SetAutomaticLoadMode(CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID);
-    m_Context->SetUserLoadCallback(NULL, NULL);
+    m_Context->SetUserLoadCallback(nullptr, nullptr);
 
     if (m_Parser) {
         delete m_Parser;
-        m_Parser = NULL;
+        m_Parser = nullptr;
     }
 
     if (m_MappedFile) {
         delete m_MappedFile;
-        m_MappedFile = NULL;
+        m_MappedFile = nullptr;
     }
 
     m_Context->ExecuteManagersPostLoad();
@@ -303,8 +303,8 @@ void CKFile::ClearData() {
             CKDeletePointer(it->Data);
         }
         CKDeletePointer(it->Name);
-        it->Data = NULL;
-        it->Name = NULL;
+        it->Data = nullptr;
+        it->Name = nullptr;
     }
 
     for (XArray<CKFileManagerData>::Iterator it = m_ManagersData.Begin();
@@ -312,7 +312,7 @@ void CKFile::ClearData() {
         if (it->data) {
             it->data->Clear();
             CKDeletePointer(it->data);
-            it->data = NULL;
+            it->data = nullptr;
         }
     }
 
@@ -324,16 +324,16 @@ void CKFile::ClearData() {
     m_IndexByClassId.Clear();
 
     CKDeletePointer(m_FileName);
-    m_FileName = NULL;
+    m_FileName = nullptr;
 
     if (m_Parser) {
         delete m_Parser;
-        m_Parser = NULL;
+        m_Parser = nullptr;
     }
 
     if (m_MappedFile) {
         delete m_MappedFile;
-        m_MappedFile = NULL;
+        m_MappedFile = nullptr;
     }
 
     m_Flags = 0;
@@ -415,9 +415,9 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
         m_SaveIDMax = m_FileInfo.MaxIDSaved;
         m_FileObjects.Resize(m_FileInfo.ObjectCount);
         for (XArray<CKFileObject>::Iterator oit = m_FileObjects.Begin(); oit != m_FileObjects.End(); ++oit) {
-            oit->ObjPtr = NULL;
-            oit->Name = NULL;
-            oit->Data = NULL;
+            oit->ObjPtr = nullptr;
+            oit->Name = nullptr;
+            oit->Data = nullptr;
             oit->Object = parser->ReadInt();
             oit->ObjectCid = parser->ReadInt();
             oit->FileIndex = parser->ReadInt();
@@ -476,17 +476,17 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
 
         if (m_Parser) {
             delete m_Parser;
-            m_Parser = NULL;
+            m_Parser = nullptr;
         }
 
         if (m_MappedFile) {
             delete m_MappedFile;
-            m_MappedFile = NULL;
+            m_MappedFile = nullptr;
         }
 
         if (ret != CK_OK) {
             m_Context->SetAutomaticLoadMode(CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID);
-            m_Context->SetUserLoadCallback(NULL, NULL);
+            m_Context->SetUserLoadCallback(nullptr, nullptr);
             m_Context->m_InLoad = FALSE;
             return ret;
         }
@@ -578,7 +578,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                 if (managerDataSize > 0) {
                     mit->data = parser->ExtractChunk(managerDataSize, this);
                 } else {
-                    mit->data = NULL;
+                    mit->data = nullptr;
                 }
             }
         }
@@ -600,13 +600,13 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                             oit->PostPackSize = chunk->GetDataSize();
                             oit->PrePackSize = chunk->GetDataSize();
                         } else {
-                            oit->Data = NULL;
+                            oit->Data = nullptr;
                         }
                     } else {
                         parser->Skip(fileObjectSize);
                     }
                 } else {
-                    oit->Data = NULL;
+                    oit->Data = nullptr;
                 }
             }
         } else {
@@ -638,7 +638,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                         !obj->Data->UnPack(fileObjectUnPackSize)) {
                         if (obj->Data) {
                             delete obj->Data;
-                            obj->Data = NULL;
+                            obj->Data = nullptr;
                         }
                         m_Context->OutputToConsoleEx("Crc Error While Unpacking : Object=>%d \n", o);
                     }
@@ -649,7 +649,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
 
     if (m_FileInfo.FileVersion < 7) {
         for (XArray<CKFileObject>::Iterator oit = m_FileObjects.Begin(); oit != m_FileObjects.End(); ++oit) {
-            oit->Name = NULL;
+            oit->Name = nullptr;
             if (oit->Data) {
                 if (oit->Data->SeekIdentifier(1)) {
                     oit->Data->ReadString(&oit->Name);
@@ -672,7 +672,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
             const int fileSize = parser->ReadInt();
             if (fileSize > 0) {
                 XString temp = m_Context->GetPathManager()->GetVirtoolsTemporaryFolder();
-                CKPathMaker pm(NULL, temp.Str(), fileName, NULL);
+                CKPathMaker pm(nullptr, temp.Str(), fileName, nullptr);
                 char *filePath = pm.GetFileName();
                 parser->ExtractFile(filePath, fileSize);
             }
@@ -1101,7 +1101,7 @@ CKERROR CKFile::EndSave() {
     ClearData();
 
     m_Context->SetAutomaticLoadMode(CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID);
-    m_Context->SetUserLoadCallback(NULL, NULL);
+    m_Context->SetUserLoadCallback(nullptr, nullptr);
 
     FILE *fp = fopen(m_FileName, "wb");
     if (!fp) {
@@ -1213,18 +1213,18 @@ XClassArray<CKFilePluginDependencies> *CKFile::GetMissingPlugins() {
 CKFile::CKFile(CKContext *Context)
     : m_SaveIDMax(0),
       m_SceneSaved(FALSE),
-      m_FileName(NULL),
+      m_FileName(nullptr),
       m_Context(Context),
       m_Flags(0),
-      m_Parser(NULL),
-      m_MappedFile(NULL),
+      m_Parser(nullptr),
+      m_MappedFile(nullptr),
       m_ReadFileDataDone(FALSE) {
 }
 
 CKFile::~CKFile() {
     ClearData();
     m_Context->SetAutomaticLoadMode(CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID);
-    m_Context->SetUserLoadCallback(NULL, NULL);
+    m_Context->SetUserLoadCallback(nullptr, nullptr);
 }
 
 void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
@@ -1255,7 +1255,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
         m_IndexByClassId[it->ObjectCid].PushBack(i);
         if (it->Data && it->ObjectCid != CKCID_RENDERCONTEXT) {
             int id = *(int *) &it->Object;
-            CKObject *obj = NULL;
+            CKObject *obj = nullptr;
             if (id >= 0) {
                 CK_CREATIONMODE res;
                 obj = m_Context->CreateObject(it->ObjectCid, it->Name, (CK_OBJECTCREATION_OPTIONS) options, &res);
@@ -1320,14 +1320,14 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
 
                 if (it->data) {
                     delete it->data;
-                    it->data = NULL;
+                    it->data = nullptr;
                 }
             }
         }
 
         if (!hasGridManager) {
             CKBaseManager *manager = m_Context->GetManagerByGuid(GRID_MANAGER_GUID);
-            manager->LoadData(NULL, this);
+            manager->LoadData(nullptr, this);
         }
 
         bool levelLoaded = false;
@@ -1393,7 +1393,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
 
             if (it->Data) {
                 delete it->Data;
-                it->Data = NULL;
+                it->Data = nullptr;
             }
         }
 
@@ -1422,7 +1422,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
 
             if (it->Data) {
                 delete it->Data;
-                it->Data = NULL;
+                it->Data = nullptr;
             }
         }
 
@@ -1452,7 +1452,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
 
             if (it->Data) {
                 delete it->Data;
-                it->Data = NULL;
+                it->Data = nullptr;
             }
         }
     }
@@ -1489,7 +1489,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
 
         if (it->Data) {
             delete it->Data;
-            it->Data = NULL;
+            it->Data = nullptr;
         }
     }
 
@@ -1544,25 +1544,25 @@ void CKFile::WriteStats(int InterfaceDataSize) {
 
 CKObject *CKFile::ResolveReference(CKFileObject *Data) {
     if (!CKIsChildClassOf(Data->ObjectCid, CKCID_PARAMETER))
-        return NULL;
+        return nullptr;
 
     if (!Data->Data)
-        return NULL;
+        return nullptr;
 
     CKStateChunk *chunk = Data->Data;
     chunk->StartRead();
     if (!chunk->SeekIdentifier(64))
-        return NULL;
+        return nullptr;
 
     CKParameterManager *pm = m_Context->GetParameterManager();
     CKGUID paramGuid = chunk->ReadGuid();
     CKParameterType paramType = pm->ParameterGuidToType(paramGuid);
     const int paramCount = m_Context->GetObjectsCountByClassID(Data->ObjectCid);
     if (paramCount <= 0)
-        return NULL;
+        return nullptr;
 
     CK_ID *paramIds = m_Context->GetObjectsListByClassID(Data->ObjectCid);
-    CKParameter *target = NULL;
+    CKParameter *target = nullptr;
     for (int i = 0; i < paramCount; ++i) {
         CKParameter *param = (CKParameter *) m_Context->GetObject(paramIds[i]);
         if (param && param->GetName() && param->GetType() == paramType && strcmp(param->GetName(), Data->Name) == 0) {

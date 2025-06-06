@@ -243,7 +243,7 @@ void CKScene::ActivateBeObject(CKBeObject *beo, CKBOOL activate, CKBOOL reset) {
             if (reset && (desc->m_Flags & CK_SCENEOBJECT_START_RESET)) {
                 CKStateChunk *chunk = desc->m_InitialValue;
                 if (chunk) {
-                    beo->Load(chunk, NULL);
+                    beo->Load(chunk, nullptr);
                 }
             }
 
@@ -379,7 +379,7 @@ CKBOOL CKScene::IsObjectActive(CKSceneObject *o) {
 }
 
 void CKScene::ApplyEnvironmentSettings(XObjectPointerArray *renderContexts) {
-    XObjectPointerArray *tempArray = NULL;
+    XObjectPointerArray *tempArray = nullptr;
     bool cleanupNeeded = false;
 
     // If no render contexts provided, get all from level
@@ -780,9 +780,9 @@ CKScene::~CKScene() {
     RemoveAllObjects();
     m_Context->m_ObjectManager->ReleaseSceneGlobalIndex(m_SceneGlobalIndex);
     if (m_Context->m_BehaviorContext.CurrentScene)
-        m_Context->m_BehaviorContext.CurrentScene = NULL;
+        m_Context->m_BehaviorContext.CurrentScene = nullptr;
     if (m_Context->m_BehaviorContext.PreviousScene)
-        m_Context->m_BehaviorContext.PreviousScene = NULL;
+        m_Context->m_BehaviorContext.PreviousScene = nullptr;
 }
 
 CK_CLASSID CKScene::GetClassID() {
@@ -843,8 +843,8 @@ CKStateChunk *CKScene::Save(CKFile *file, CKDWORD flags) {
         chunk->StartSubChunkSequence(descCount * 2);
         for (auto it = descArray.Begin(); it != descArray.End(); ++it) {
             CKSceneObjectDesc *desc = *it;
-            chunk->WriteSubChunkSequence(desc ? desc->m_InitialValue : NULL);
-            chunk->WriteSubChunkSequence(NULL);
+            chunk->WriteSubChunkSequence(desc ? desc->m_InitialValue : nullptr);
+            chunk->WriteSubChunkSequence(nullptr);
         }
 
         for (auto it = descArray.Begin(); it != descArray.End(); ++it) {
@@ -907,7 +907,7 @@ CKERROR CKScene::Load(CKStateChunk *chunk, CKFile *file) {
             chunk->StartReadSequence();
             for (int i = 0; i < descCount; ++i) {
                 CKSceneObjectDesc *desc = &descList[i];
-                desc->Init(NULL);
+                desc->Init(nullptr);
                 desc->m_Object = chunk->ReadObjectID();
             }
 

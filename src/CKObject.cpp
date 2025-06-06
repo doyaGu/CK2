@@ -7,7 +7,7 @@ CK_CLASSID CKObject::m_ClassID = CKCID_OBJECT;
 void CKObject::SetName(CKSTRING Name, CKBOOL shared) {
     if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) == 0)
         delete[] m_Name;
-    m_Name = NULL;
+    m_Name = nullptr;
     if (shared) {
         m_ObjectFlags |= CK_OBJECT_NAMESHARED;
         m_Name = Name;
@@ -46,7 +46,7 @@ CKObject::CKObject(CKContext *Context, CKSTRING name) {
     if (name)
         SetName(name);
     else
-        m_Name = NULL;
+        m_Name = nullptr;
 
     m_ID = 0;
     m_ObjectFlags = CK_OBJECT_VISIBLE;
@@ -126,7 +126,7 @@ CKERROR CKObject::PrepareDependencies(CKDependenciesContext &context) {
     if (context.m_Mode == CK_DEPENDENCIES_SAVE && (m_ObjectFlags & CK_OBJECT_NOTTOBESAVED) != 0)
         return CKERR_INCOMPATIBLEPARAMETERS;
 
-    CKObject *obj = (!context.m_DynamicObjects.IsEmpty()) ? context.m_DynamicObjects.Back() : NULL;
+    CKObject *obj = (!context.m_DynamicObjects.IsEmpty()) ? context.m_DynamicObjects.Back() : nullptr;
 
     if (obj && obj->IsDynamic() && !IsDynamic())
         return CKERR_INCOMPATIBLEPARAMETERS;
@@ -205,7 +205,7 @@ CKSTRING CKObject::GetDependencies(int i, int mode) {
         return "Name";
     if (mode == 1 && i == 1)
         return "Unique Name";
-    return NULL;
+    return nullptr;
 }
 
 void CKObject::Register() {

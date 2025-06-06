@@ -19,7 +19,7 @@ int CKBehaviorPrototype::DeclareInput(CKSTRING name) {
     if (name && *name) {
         m_InIOList[m_InIOCount]->Name = MAKESTRING(name);
     } else {
-        m_InIOList[m_InIOCount]->Name = NULL;
+        m_InIOList[m_InIOCount]->Name = nullptr;
     }
 
     // Set as input flag

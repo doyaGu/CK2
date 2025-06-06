@@ -452,7 +452,7 @@ CK_DEPENDENCIES_OPMODE GetOperationModeFromGUID(CKParameter *param) {
 }
 
 void CKDependenciesSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
-    CKDependencies *dependencies = NULL;
+    CKDependencies *dependencies = nullptr;
     param->GetValue(&dependencies);
 
     if (!load) {
@@ -721,7 +721,7 @@ void CKStructSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
                 if (subChunk) {
                     CKObject *member = context->GetObject(memberIDs[i]);
                     if (member) {
-                        member->Load(subChunk, NULL);
+                        member->Load(subChunk, nullptr);
                     }
                     delete subChunk;
                 }
@@ -729,7 +729,7 @@ void CKStructSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
         }
     } else {
         // Saving to chunk
-        CKStateChunk *saveChunk = new CKStateChunk(NULL);
+        CKStateChunk *saveChunk = new CKStateChunk(nullptr);
         saveChunk->StartWrite();
 
         // Write structure header
@@ -740,7 +740,7 @@ void CKStructSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
         for (int i = 0; i < desc->NbData; ++i) {
             CKObject *member = context->GetObject(memberIDs[i]);
             if (member) {
-                CKStateChunk *memberChunk = member->Save(NULL, 0xFFFFFFFF);
+                CKStateChunk *memberChunk = member->Save(nullptr, 0xFFFFFFFF);
                 if (memberChunk) {
                     saveChunk->WriteSubChunk(memberChunk);
                     delete memberChunk;
@@ -971,7 +971,7 @@ int CKObjectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
             CK_CLASSID classID = pm->TypeToClassID(paramType);
 
             // Find object by name and class
-            CKObject *obj = context->GetObjectByNameAndClass(ValueString, classID, NULL);
+            CKObject *obj = context->GetObjectByNameAndClass(ValueString, classID, nullptr);
 
             // Store object ID in parameter
             CK_ID objID = obj ? obj->GetID() : 0;
@@ -1109,7 +1109,7 @@ int CKCollectionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
     }
 
     // Get the collection from the parameter
-    XObjectArray *collection = NULL;
+    XObjectArray *collection = nullptr;
     param->GetValue(&collection);
     if (!collection) return 0;
 
@@ -1314,7 +1314,7 @@ int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromS
             }
 
             // Move to next token
-            current = commaPos ? commaPos + 1 : NULL;
+            current = commaPos ? commaPos + 1 : nullptr;
         }
 
         // Update parameter value
@@ -1783,5 +1783,5 @@ CK_PARAMETERUICREATORFUNCTION GetUICreatorFunction(CKContext *context, CKParamet
     if (interfaceManager) {
         return interfaceManager->GetEditorFunctionForParameterType(desc);
     }
-    return NULL;
+    return nullptr;
 }

@@ -16,7 +16,7 @@ CKBaseManager::~CKBaseManager() {
         m_Context->BuildSortedLists();
     }
     delete[] m_ManagerName;
-    m_ManagerName = NULL;
+    m_ManagerName = nullptr;
 }
 
 CKERROR CKBaseManager::CKDestroyObject(CKObject *obj, CKDWORD Flags, CKDependencies *depoptions) {

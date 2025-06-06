@@ -87,15 +87,15 @@ CKSTRING CKObjectDeclaration::GetCategory() {
 
 CKObjectDeclaration::CKObjectDeclaration(CKSTRING Name) {
     m_Version = -1;
-    m_Description = NULL;
+    m_Description = nullptr;
     m_Guid = CKGUID();
     m_Type = CKDLL_BEHAVIORPROTOTYPE;
-    m_CreationFunction = NULL;
+    m_CreationFunction = nullptr;
     m_AuthorGuid = CKGUID();
-    m_AuthorName = NULL;
-    m_Proto = NULL;
+    m_AuthorName = nullptr;
+    m_Proto = nullptr;
     m_CompatibleClassID = CKCID_OBJECT;
-    m_Category = NULL;
+    m_Category = nullptr;
     m_Name = Name;
     m_PluginIndex = -1;
 }

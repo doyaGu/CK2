@@ -10,7 +10,7 @@ int CKObjectArray::GetCurrentPos() {
 }
 
 CKObject *CKObjectArray::GetData(CKContext *context) {
-    return (m_Current) ? context->GetObject(m_Current->m_Data) : NULL;
+    return (m_Current) ? context->GetObject(m_Current->m_Data) : nullptr;
 }
 
 CK_ID CKObjectArray::GetDataId() {
@@ -214,7 +214,7 @@ CKBOOL CKObjectArray::AddIfNotHereSorted(CKObject *obj, OBJECTARRAYCMPFCT CmpFct
 void CKObjectArray::InsertFront(CK_ID id) {
     Node *node = new Node;
     if (m_Next) {
-        node->m_Prev = NULL;
+        node->m_Prev = nullptr;
         node->m_Next = m_Next;
         m_Next->m_Prev = node;
         node->m_Data = id;
@@ -224,8 +224,8 @@ void CKObjectArray::InsertFront(CK_ID id) {
     } else {
         m_Previous = node;
         m_Next = node;
-        node->m_Prev = NULL;
-        node->m_Next = NULL;
+        node->m_Prev = nullptr;
+        node->m_Next = nullptr;
         node->m_Data = id;
         ++m_Count;
         m_Position = 0;
@@ -237,7 +237,7 @@ void CKObjectArray::InsertRear(CK_ID id) {
     Node *node = new Node;
     ++m_Count;
     if (m_Next) {
-        node->m_Next = NULL;
+        node->m_Next = nullptr;
         node->m_Prev = m_Previous;
         m_Previous->m_Next = node;
         node->m_Data = id;
@@ -245,8 +245,8 @@ void CKObjectArray::InsertRear(CK_ID id) {
     } else {
         m_Previous = node;
         m_Next = node;
-        node->m_Prev = NULL;
-        node->m_Next = NULL;
+        node->m_Prev = nullptr;
+        node->m_Next = nullptr;
         node->m_Data = id;
         m_Position = 0;
         m_Current = m_Next;
@@ -305,7 +305,7 @@ CK_ID CKObjectArray::RemoveFront() {
     Node *node = m_Next;
     if (node) {
         if (node->m_Next) {
-            node->m_Next->m_Prev = NULL;
+            node->m_Next->m_Prev = nullptr;
             m_Next = node->m_Next;
             if (m_Current == node)
                 m_Current = node->m_Next;
@@ -313,9 +313,9 @@ CK_ID CKObjectArray::RemoveFront() {
                 --m_Position;
         } else {
             m_Position = -1;
-            m_Next = NULL;
-            m_Previous = NULL;
-            m_Current = NULL;
+            m_Next = nullptr;
+            m_Previous = nullptr;
+            m_Current = nullptr;
         }
         CK_ID id = node->m_Data;
         delete node;
@@ -331,7 +331,7 @@ CK_ID CKObjectArray::RemoveRear() {
     Node *node = m_Previous;
     if (node) {
         if (node->m_Prev) {
-            node->m_Prev->m_Next = NULL;
+            node->m_Prev->m_Next = nullptr;
             m_Previous = node->m_Prev;
             if (m_Current == node) {
                 --m_Position;
@@ -339,9 +339,9 @@ CK_ID CKObjectArray::RemoveRear() {
             }
         } else {
             m_Position = -1;
-            m_Next = NULL;
-            m_Previous = NULL;
-            m_Current = NULL;
+            m_Next = nullptr;
+            m_Previous = nullptr;
+            m_Current = nullptr;
         }
         CK_ID id = node->m_Data;
         delete node;
@@ -412,7 +412,7 @@ void CKObjectArray::Clear() {
         }
 
         if (node->m_Next) {
-            node->m_Next->m_Prev = NULL;
+            node->m_Next->m_Prev = nullptr;
             Node *next = node->m_Next;
             m_Next = next;
             if (m_Current == m_Next)
@@ -422,9 +422,9 @@ void CKObjectArray::Clear() {
             --m_Count;
         } else {
             m_Position = -1;
-            m_Next = NULL;
-            m_Previous = NULL;
-            m_Current = NULL;
+            m_Next = nullptr;
+            m_Previous = nullptr;
+            m_Current = nullptr;
             m_Count = 0;
         }
         delete node;
@@ -432,7 +432,7 @@ void CKObjectArray::Clear() {
 }
 
 CKBOOL CKObjectArray::EndOfList() {
-    return m_Current == NULL;
+    return m_Current == nullptr;
 }
 
 CKBOOL CKObjectArray::ListEmpty() {
@@ -486,7 +486,7 @@ CKBOOL CKObjectArray::Check(CKContext *context) {
             --m_Count;
             result = TRUE;
             delete current;
-            m_Current = NULL;
+            m_Current = nullptr;
         }
         m_Current = node;
     } while (node);

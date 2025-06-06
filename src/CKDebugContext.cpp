@@ -5,10 +5,10 @@
 
 void CKDebugContext::Init(XObjectPointerArray &array, float deltat) {
     delta = deltat;
-    CurrentObject = NULL;
-    CurrentScript = NULL;
-    CurrentBehavior = NULL;
-    SubBehavior = NULL;
+    CurrentObject = nullptr;
+    CurrentScript = nullptr;
+    CurrentBehavior = nullptr;
+    SubBehavior = nullptr;
 
     for (XObjectPointerArray::Iterator it = array.Begin(); it != array.End(); ++it)
         ObjectsToExecute.InsertRear(*it);
@@ -29,14 +29,14 @@ void CKDebugContext::StepBehavior() {
     CurrentBehavior->ExecuteStep(delta, this);
     if (CurrentBehaviorAction == CKDEBUG_BEHEXECUTEDONE) {
         if (BehaviorStack.ListEmpty()) {
-            CurrentBehavior = NULL;
+            CurrentBehavior = nullptr;
             CurrentBehaviorAction = CKDEBUG_SCRIPTEXECUTEDONE;
             if (CurrentObject) {
                 if (CurrentScript) {
                     CurrentObject->m_LastExecutionTime = CurrentScript->GetLastExecutionTime() + CurrentObject->m_LastExecutionTime;
                 }
             }
-            CurrentScript = NULL;
+            CurrentScript = nullptr;
         } else {
             SubBehavior = CurrentBehavior;
             CK_ID id = BehaviorStack.RemoveRear();
@@ -53,12 +53,12 @@ CKBOOL CKDebugContext::DebugStep() {
         BehaviorStack.InsertRear(CurrentScript);
         CurrentScript->ResetExecutionTime();
         CurrentScript->ExecuteStepStart();
-        SubBehavior = NULL;
+        SubBehavior = nullptr;
         CurrentBehavior = CurrentScript;
         CurrentBehaviorAction = CKDEBUG_BEHEXECUTE;
     } else if (CurrentObject) {
         if (ScriptsToExecute.ListEmpty()) {
-            CurrentObject = NULL;
+            CurrentObject = nullptr;
         } else {
             while (!ScriptsToExecute.ListEmpty()) {
                 CK_ID id = ScriptsToExecute.RemoveFront();
@@ -73,10 +73,10 @@ CKBOOL CKDebugContext::DebugStep() {
                 }
                 if (CurrentScript->IsActive())
                     break;
-                CurrentScript = NULL;
+                CurrentScript = nullptr;
             }
             if (!CurrentScript)
-                CurrentObject = NULL;
+                CurrentObject = nullptr;
         }
     } else {
         if (ObjectsToExecute.ListEmpty())
@@ -97,9 +97,9 @@ CKBOOL CKDebugContext::DebugStep() {
         ++m_Context->m_Stats.ActiveObjectsExecuted;
         CurrentObject->m_LastExecutionTime = 0.0f;
         ScriptsToExecute.Clear();
-        CurrentScript = NULL;
-        CurrentBehavior = NULL;
-        SubBehavior = NULL;
+        CurrentScript = nullptr;
+        CurrentBehavior = nullptr;
+        SubBehavior = nullptr;
 
         XObjectPointerArray *array = CurrentObject->m_ScriptArray;
         if (array) {
@@ -128,10 +128,10 @@ CKBOOL CKDebugContext::DebugStep() {
 }
 
 void CKDebugContext::Clear() {
-    CurrentObject = NULL;
-    CurrentScript = NULL;
-    CurrentBehavior = NULL;
-    SubBehavior = NULL;
+    CurrentObject = nullptr;
+    CurrentScript = nullptr;
+    CurrentBehavior = nullptr;
+    SubBehavior = nullptr;
 
     ObjectsToExecute.Clear();
     ScriptsToExecute.Clear();

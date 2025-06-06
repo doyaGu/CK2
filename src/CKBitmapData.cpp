@@ -11,7 +11,7 @@ extern CKSTRING CKJustFile(CKSTRING path);
 
 CKMovieInfo::CKMovieInfo(const XString &FileName)
     : m_MovieFileName(FileName),
-      m_MovieReader(NULL),
+      m_MovieReader(nullptr),
       m_MovieCurrentSlot(-1) {
 }
 
@@ -64,7 +64,7 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
 
     CKPathSplitter splitter(Name);
     char extension[_MAX_PATH] = ".bmp";
-    CKBitmapReader *reader = NULL;
+    CKBitmapReader *reader = nullptr;
     CKBitmapProperties *saveProps = m_SaveProperties;
 
     if (CKUseFormat && saveProps) {
@@ -72,7 +72,7 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
         if (reader) {
             snprintf(extension, sizeof(extension), ".%s", saveProps->m_Ext.m_Data);
         } else {
-            saveProps = NULL; // Fallback to default handling
+            saveProps = nullptr; // Fallback to default handling
         }
     } else {
         char *ext = splitter.GetExtension();
@@ -83,7 +83,7 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
 
     if (!reader) {
         CKFileExtension desiredExt(extension + 1); // Skip leading dot
-        reader = CKGetPluginManager()->GetBitmapReader(desiredExt, NULL);
+        reader = CKGetPluginManager()->GetBitmapReader(desiredExt, nullptr);
         if (reader) {
             reader->GetBitmapDefaultProperties(&saveProps);
         }
@@ -114,7 +114,7 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
 
     CKBOOL result = reader->SaveFile(fullPath.Str(), saveProps);
 
-    saveProps->m_Data = NULL;
+    saveProps->m_Data = nullptr;
     reader->Release();
 
     return result;
@@ -126,7 +126,7 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
 
     CKPathSplitter pathSplitter(Name);
     char extension[_MAX_PATH] = ".bmp";
-    CKBitmapReader *reader = NULL;
+    CKBitmapReader *reader = nullptr;
     CKBOOL result = FALSE;
 
     char *fileExt = pathSplitter.GetExtension();
@@ -135,11 +135,11 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
     }
 
     CKFileExtension desiredExt(extension + 1); // Skip leading dot
-    reader = CKGetPluginManager()->GetBitmapReader(desiredExt, NULL);
+    reader = CKGetPluginManager()->GetBitmapReader(desiredExt, nullptr);
     if (!reader)
         return FALSE;
 
-    CKBitmapProperties *saveProps = NULL;
+    CKBitmapProperties *saveProps = nullptr;
     reader->GetBitmapDefaultProperties(&saveProps);
 
     CKBYTE *surfaceData = LockSurfacePtr(Slot);
@@ -172,7 +172,7 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
     result = reader->SaveFile(outputPath.Str(), saveProps) != 0;
 
     delete[] alphaBuffer;
-    saveProps->m_Data = NULL;
+    saveProps->m_Data = nullptr;
     reader->Release();
 
     return result;
@@ -180,7 +180,7 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
 
 CKSTRING CKBitmapData::GetMovieFileName() {
     if (!m_MovieInfo)
-        return NULL;
+        return nullptr;
     return m_MovieInfo->m_MovieFileName.Str();
 }
 
@@ -189,7 +189,7 @@ CKBYTE *CKBitmapData::LockSurfacePtr(int Slot) {
         m_CurrentSlot = Slot;
 
     if (m_Slots.IsEmpty())
-        return NULL;
+        return nullptr;
 
     return (CKBYTE *)m_Slots[m_CurrentSlot]->m_DataBuffer;
 }
@@ -201,7 +201,7 @@ CKBOOL CKBitmapData::ReleaseSurfacePtr(int Slot) {
 
 CKSTRING CKBitmapData::GetSlotFileName(int Slot) {
     if (Slot < 0 || Slot >= m_Slots.Size())
-        return NULL;
+        return nullptr;
 
     return m_Slots[Slot]->m_FileName.Str();
 }
@@ -295,7 +295,7 @@ CKBOOL CKBitmapData::SetCurrentSlot(int Slot) {
 
     m_MovieInfo->m_MovieCurrentSlot = Slot;
 
-    CKMovieProperties *movieProps = NULL;
+    CKMovieProperties *movieProps = nullptr;
     if (reader->ReadFrame(Slot, &movieProps) != CK_OK) {
         return FALSE;
     }
@@ -475,7 +475,7 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     if (!reader)
         return FALSE;
 
-    CKBitmapProperties *properties = NULL;
+    CKBitmapProperties *properties = nullptr;
     if (reader->ReadFile((CKSTRING)Name.CStr(), &properties) != 0 || !properties || !properties->m_Data) {
         reader->Release();
         return FALSE;
@@ -494,10 +494,10 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     CKBYTE *data = LockSurfacePtr(Slot);
     if (!data) {
         reader->ReleaseMemory(properties->m_Data);
-        properties->m_Data = NULL;
+        properties->m_Data = nullptr;
 
         delete properties->m_Format.ColorMap;
-        properties->m_Format.ColorMap = NULL;
+        properties->m_Format.ColorMap = nullptr;
 
         reader->Release();
         return FALSE;
@@ -518,10 +518,10 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     SetSaveFormat(properties);
 
     reader->ReleaseMemory(properties->m_Data);
-    properties->m_Data = NULL;
+    properties->m_Data = nullptr;
 
     delete properties->m_Format.ColorMap;
-    properties->m_Format.ColorMap = NULL;
+    properties->m_Format.ColorMap = nullptr;
 
     reader->Release();
     return TRUE;
@@ -530,11 +530,11 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
 CKBOOL CKBitmapData::LoadMovieFile(XString Name) {
     if (m_MovieInfo) {
         delete m_MovieInfo;
-        m_MovieInfo = NULL;
+        m_MovieInfo = nullptr;
     }
 
     // Create new movie information
-    CKMovieProperties *movieProps = NULL;
+    CKMovieProperties *movieProps = nullptr;
     m_MovieInfo = CreateMovieInfo(Name, &movieProps);
     if (!m_MovieInfo) {
         return FALSE;
@@ -548,7 +548,7 @@ CKBOOL CKBitmapData::LoadMovieFile(XString Name) {
         0   // First slot
     )) {
         delete m_MovieInfo;
-        m_MovieInfo = NULL;
+        m_MovieInfo = nullptr;
         return FALSE;
     }
 
@@ -561,24 +561,24 @@ CKBOOL CKBitmapData::LoadMovieFile(XString Name) {
 CKMovieInfo *CKBitmapData::CreateMovieInfo(XString s, CKMovieProperties **mp) {
     CKMovieInfo *movieInfo = new CKMovieInfo(s);
     if (!movieInfo)
-        return NULL;
+        return nullptr;
 
     CKPathSplitter splitter(s.Str());
     CKFileExtension ext(splitter.GetExtension());
 
     CKPluginManager *pm = CKGetPluginManager();
-    CKMovieReader *reader = pm->GetMovieReader(ext, NULL);
+    CKMovieReader *reader = pm->GetMovieReader(ext, nullptr);
     if (!reader) {
         delete movieInfo;
-        return NULL;
+        return nullptr;
     }
 
     if (reader->OpenFile(s.Str()) != CK_OK ||
         reader->ReadFrame(0, mp) != CK_OK) {
         reader->Release();
-        movieInfo->m_MovieReader = NULL;
+        movieInfo->m_MovieReader = nullptr;
         delete movieInfo;
-        return NULL;
+        return nullptr;
     }
 
     movieInfo->m_MovieReader = reader;
@@ -594,19 +594,19 @@ void CKBitmapData::SetMovieInfo(CKMovieInfo *mi) {
 CKBitmapData::CKBitmapData() {
     m_Width = -1;
     m_Height = -1;
-    m_MovieInfo = NULL;
+    m_MovieInfo = nullptr;
     m_PickThreshold = 0;
     m_BitmapFlags = 1;
     m_TransColor = 0;
     m_CurrentSlot = 0;
-    m_SaveProperties = NULL;
+    m_SaveProperties = nullptr;
     m_SaveOptions = CKTEXTURE_USEGLOBAL;
 }
 
 CKBitmapData::~CKBitmapData() {
     if (m_MovieInfo) {
         delete m_MovieInfo;
-        m_MovieInfo = NULL;
+        m_MovieInfo = nullptr;
     }
 
     ReleaseAllSlots();

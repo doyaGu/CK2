@@ -51,15 +51,15 @@ CK_CLASSID CKWaveSound::m_ClassID = CKCID_WAVESOUND;
 CKSOUNDHANDLE
 CKWaveSound::PlayMinion(CKBOOL Background, CK3dEntity *Ent, VxVector *Position, VxVector *Direction, float MinDelay) {
     if (!m_SoundManager || !m_Source)
-        return NULL;
+        return nullptr;
 
     if (m_State & CK_WAVESOUND_NODUPLICATE)
-        return NULL;
+        return nullptr;
 
     // Create minion through sound manager
     SoundMinion *minion = m_SoundManager->CreateMinion(m_Source, MinDelay);
     if (!minion)
-        return NULL;
+        return nullptr;
 
     minion->m_OriginalSound = GetID();
 
@@ -68,7 +68,7 @@ CKWaveSound::PlayMinion(CKBOOL Background, CK3dEntity *Ent, VxVector *Position, 
         if (soundType != CK_WAVESOUND_BACKGROUND) {
             m_SoundManager->SetType(minion, CK_WAVESOUND_BACKGROUND);
         }
-        minion->m_Entity = NULL;
+        minion->m_Entity = 0;
     } else {
         if (soundType != CK_WAVESOUND_POINT) {
             m_SoundManager->SetType(minion, CK_WAVESOUND_POINT);
@@ -98,7 +98,7 @@ CKWaveSound::PlayMinion(CKBOOL Background, CK3dEntity *Ent, VxVector *Position, 
     }
 
     m_SoundManager->SetPlayPosition(minion, 0);
-    m_SoundManager->Play(NULL, minion, FALSE);
+    m_SoundManager->Play(nullptr, minion, FALSE);
     return minion;
 }
 
@@ -502,7 +502,7 @@ void CKWaveSound::SetMinMaxDistance(float MinDistance, float MaxDistance, CKDWOR
         CKWaveSound3DSettings settings;
         settings.m_MinDistance = MinDistance;
         settings.m_MaxDistance = MaxDistance;
-        settings.m_MuteAfterMax = MaxDistanceBehavior;
+        settings.m_MuteAfterMax = (CKWORD) MaxDistanceBehavior;
         m_SoundManager->Update3DSettings(m_Source, CK_WAVESOUND_3DSETTINGS_MINMAXDISTANCE, settings, TRUE);
     }
 }
@@ -571,8 +571,8 @@ CKERROR CKWaveSound::WriteData(CKBYTE *Buffer, int BufferSize) {
         return CKERR_INVALIDSIZE;
     }
 
-    void *ptr1 = NULL;
-    void *ptr2 = NULL;
+    void *ptr1 = nullptr;
+    void *ptr2 = nullptr;
     CKDWORD bytes1 = 0;
     CKDWORD bytes2 = 0;
 
@@ -692,7 +692,7 @@ CKERROR CKWaveSound::Recreate(CKBOOL Safe) {
 
         if (m_SoundReader) {
             m_SoundReader->Release();
-            m_SoundReader = NULL;
+            m_SoundReader = nullptr;
         }
 
         CKWaveFormat &wf = m_WaveFormat;
@@ -738,10 +738,10 @@ void CKWaveSound::Release() {
     if (m_SoundManager) {
         if (m_SoundReader) {
             m_SoundReader->Release();
-            m_SoundReader = NULL;
+            m_SoundReader = nullptr;
         }
         m_SoundManager->ReleaseSource(m_Source);
-        m_Source = NULL;
+        m_Source = nullptr;
     }
 }
 
@@ -767,7 +767,7 @@ CKERROR CKWaveSound::TryRecreate() {
 
     if (m_SoundReader->OpenFile(m_FileName) != CK_OK) {
         m_SoundReader->Release();
-        m_SoundReader = NULL;
+        m_SoundReader = nullptr;
         return CKERR_INVALIDPARAMETER;
     }
 
@@ -782,7 +782,7 @@ CKERROR CKWaveSound::TryRecreate() {
     if (m_DataToRead <= 0) {
         if (m_Duration <= 0) {
             m_SoundReader->Release();
-            m_SoundReader = NULL;
+            m_SoundReader = nullptr;
             return CKERR_INVALIDPARAMETER;
         }
         m_DataToRead = (int)((m_WaveFormat.nAvgBytesPerSec * m_Duration) * 0.001);
@@ -806,7 +806,7 @@ CKERROR CKWaveSound::TryRecreate() {
         streamingEnabled);
     if (!m_Source) {
         m_SoundReader->Release();
-        m_SoundReader = NULL;
+        m_SoundReader = nullptr;
         return CKERR_INVALIDPARAMETER;
     }
 
@@ -819,7 +819,7 @@ CKERROR CKWaveSound::TryRecreate() {
         int totalWritten = 0;
 
         while (true) {
-            CKBYTE *dataBuffer = NULL;
+            CKBYTE *dataBuffer = nullptr;
             int bufferSize = 0;
 
             if (m_SoundReader->GetDataBuffer(&dataBuffer, &bufferSize) != CK_OK)
@@ -850,7 +850,7 @@ CKERROR CKWaveSound::TryRecreate() {
         }
 
         m_SoundReader->Release();
-        m_SoundReader = NULL;
+        m_SoundReader = nullptr;
     }
 
     RestoreSettings();
@@ -914,7 +914,7 @@ CKERROR CKWaveSound::WriteDataFromReader() {
         return CK_OK;
     }
 
-    CKBYTE *dataBuffer = NULL;
+    CKBYTE *dataBuffer = nullptr;
     int dataSize = 0;
     m_SoundReader->GetDataBuffer(&dataBuffer, &dataSize);
     CKERROR err = WriteData(dataBuffer, dataSize);
@@ -974,8 +974,8 @@ void CKWaveSound::FillWithBlanks(CKBOOL IncBf) {
     if (!m_SoundManager || !m_Source)
         return;
 
-    void *ptr1 = NULL;
-    void *ptr2 = NULL;
+    void *ptr1 = nullptr;
+    void *ptr2 = nullptr;
     CKDWORD bytes1 = 0;
     CKDWORD bytes2 = 0;
 
@@ -1125,7 +1125,7 @@ CKERROR CKWaveSound::Load(CKStateChunk *chunk, CKFile *file) {
 
     CKSound::Load(chunk, file);
 
-    char* fileName = NULL;
+    char* fileName = nullptr;
     if (chunk->SeekIdentifier(CK_STATESAVE_WAVSOUNDFILE))
     {
         if (file) {

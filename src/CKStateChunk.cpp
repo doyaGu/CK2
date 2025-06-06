@@ -24,27 +24,27 @@ void DeleteCKStateChunk(CKStateChunk *chunk) {
 }
 
 CKStateChunk::CKStateChunk(CKStateChunk *chunk) {
-    m_Data = NULL;
+    m_Data = nullptr;
     m_ChunkClassID = 0;
     m_ChunkSize = 0;
-    m_ChunkParser = NULL;
-    m_Ids = NULL;
-    m_Chunks = NULL;
+    m_ChunkParser = nullptr;
+    m_Ids = nullptr;
+    m_Chunks = nullptr;
     m_DataVersion = 0;
     m_ChunkVersion = 0;
-    m_Managers = NULL;
-    m_File = NULL;
+    m_Managers = nullptr;
+    m_File = nullptr;
     m_Dynamic = TRUE;
     Clone(chunk);
 }
 
 CKStateChunk::CKStateChunk(CK_CLASSID Cid, CKFile *f) {
-    m_Data = NULL;
+    m_Data = nullptr;
     m_ChunkSize = 0;
-    m_ChunkParser = NULL;
-    m_Ids = NULL;
-    m_Chunks = NULL;
-    m_Managers = NULL;
+    m_ChunkParser = nullptr;
+    m_Ids = nullptr;
+    m_Chunks = nullptr;
+    m_Managers = nullptr;
     m_DataVersion = 0;
     m_ChunkVersion = 0;
     m_ChunkClassID = Cid;
@@ -69,11 +69,11 @@ void CKStateChunk::Clear() {
     if (m_Managers)
         delete m_Managers;
 
-    m_Managers = NULL;
-    m_Data = NULL;
-    m_Chunks = NULL;
-    m_ChunkParser = NULL;
-    m_Ids = NULL;
+    m_Managers = nullptr;
+    m_Data = nullptr;
+    m_Chunks = nullptr;
+    m_ChunkParser = nullptr;
+    m_Ids = nullptr;
 }
 
 void CKStateChunk::Clone(CKStateChunk *chunk) {
@@ -140,7 +140,7 @@ void CKStateChunk::StartRead() {
 
 void CKStateChunk::StartWrite() {
     delete[] m_Data;
-    m_Data = NULL;
+    m_Data = nullptr;
     m_ChunkVersion = CHUNK_VERSION4;
     if (m_ChunkParser) {
         m_ChunkParser->CurrentPos = 0;
@@ -187,11 +187,11 @@ void CKStateChunk::CloseChunk() {
         }
     } else {
         delete[] m_Data;
-        m_Data = NULL;
+        m_Data = nullptr;
     }
 
     delete m_ChunkParser;
-    m_ChunkParser = NULL;
+    m_ChunkParser = nullptr;
 
     if (m_Ids)
         m_Ids->Compact();
@@ -324,14 +324,14 @@ int CKStateChunk::GetCurrentPos() {
 
 void *CKStateChunk::LockWriteBuffer(int DwordCount) {
     if (!m_ChunkParser)
-        return NULL;
+        return nullptr;
     CheckSize(DwordCount * sizeof(int));
     return &m_Data[m_ChunkParser->CurrentPos];
 }
 
 void *CKStateChunk::LockReadBuffer() {
     if (!m_ChunkParser)
-        return NULL;
+        return nullptr;
     return &m_Data[m_ChunkParser->CurrentPos];
 }
 
@@ -404,10 +404,10 @@ void CKStateChunk::AddChunkAndDelete(CKStateChunk *chunk) {
         m_DataVersion = chunk->m_DataVersion;
         m_ChunkVersion = chunk->m_ChunkVersion;
         chunk->m_ChunkSize = 0;
-        chunk->m_Data = NULL;
-        chunk->m_Managers = NULL;
-        chunk->m_Chunks = NULL;
-        chunk->m_Ids = NULL;
+        chunk->m_Data = nullptr;
+        chunk->m_Managers = nullptr;
+        chunk->m_Chunks = nullptr;
+        chunk->m_Ids = nullptr;
     }
 
     delete chunk;
@@ -512,14 +512,14 @@ int CKStateChunk::ReadArray_LEndian(void **array) {
 
             // Bounds check before allocation
             if (parser->CurrentPos + dwordCount > m_ChunkSize) {
-                *array = NULL;
+                *array = nullptr;
                 return 0;
             }
 
             // Allocate and check allocation success
             void *arrayData = new CKBYTE[dataSizeBytes];
             if (!arrayData) {
-                *array = NULL;
+                *array = nullptr;
                 return 0;
             }
 
@@ -531,7 +531,7 @@ int CKStateChunk::ReadArray_LEndian(void **array) {
         }
 
         // Invalid size parameters
-        *array = NULL;
+        *array = nullptr;
     } else if (m_File) {
         // Report read error through context
         m_File->m_Context->OutputToConsole("Chunk Read Error", true);
@@ -625,7 +625,7 @@ CKObject *CKStateChunk::ReadObject(CKContext *context) {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
-        return NULL;
+        return nullptr;
     }
     return context->GetObject(ReadObjectID());
 }
@@ -784,26 +784,26 @@ CKObjectArray *CKStateChunk::ReadObjectArray() {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
-        return NULL;
+        return nullptr;
     }
 
     int count = m_Data[m_ChunkParser->CurrentPos++];
     if (count == 0)
-        return NULL;
+        return nullptr;
 
     if (m_ChunkVersion < CHUNK_VERSION1) {
         m_ChunkParser->CurrentPos += 4;
         count = m_Data[m_ChunkParser->CurrentPos++];
         if (count == 0)
-            return NULL;
+            return nullptr;
     }
 
-    CKObjectArray *array = NULL;
+    CKObjectArray *array = nullptr;
     if (count + m_ChunkParser->CurrentPos <= m_ChunkSize) {
         array = new CKObjectArray;
         if (!array) {
             m_ChunkParser->CurrentPos += count;
-            return NULL;
+            return nullptr;
         }
 
         if (m_File) {
@@ -845,7 +845,7 @@ void CKStateChunk::WriteSubChunk(CKStateChunk *sub) {
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkClassID;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion | sub->m_ChunkVersion << 16;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkSize;
-        m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != NULL;
+        m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != nullptr;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Ids) ? sub->m_Ids->Size : 0;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Chunks) ? sub->m_Chunks->Size : 0;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Managers) ? sub->m_Managers->Size : 0;
@@ -891,7 +891,7 @@ void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkClassID;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion | sub->m_ChunkVersion << 16;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkSize;
-        m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != NULL;
+        m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != nullptr;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Ids) ? sub->m_Ids->Size : 0;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Chunks) ? sub->m_Chunks->Size : 0;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Managers) ? sub->m_Managers->Size : 0;
@@ -910,15 +910,15 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
-        return NULL;
+        return nullptr;
     }
 
     int size = m_Data[m_ChunkParser->CurrentPos++];
     if (size <= 0 || size + m_ChunkParser->CurrentPos > m_ChunkSize)
-        return NULL;
+        return nullptr;
 
     int classID = m_Data[m_ChunkParser->CurrentPos++];
-    CKStateChunk *sub = new CKStateChunk(classID, NULL);
+    CKStateChunk *sub = new CKStateChunk(classID, nullptr);
 
     if (m_ChunkVersion >= CHUNK_VERSION1) {
         int version = m_Data[m_ChunkParser->CurrentPos++];
@@ -982,7 +982,7 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
     }
 
     delete sub;
-    return NULL;
+    return nullptr;
 }
 
 void CKStateChunk::WriteByte(CKCHAR byte) {
@@ -1110,7 +1110,7 @@ int CKStateChunk::ReadBuffer(void **buffer) {
         return 0;
     }
 
-    CKBYTE *buf = NULL;
+    CKBYTE *buf = nullptr;
     int size = m_Data[m_ChunkParser->CurrentPos];
     int sz = (size + 3) / sizeof(int);
     ++m_ChunkParser->CurrentPos;
@@ -1118,7 +1118,7 @@ int CKStateChunk::ReadBuffer(void **buffer) {
         if (size > 0) {
             buf = new CKBYTE[size];
             if (!buf) {
-                *buffer = NULL;
+                *buffer = nullptr;
                 return 0;
             }
             memcpy(buf, &m_Data[m_ChunkParser->CurrentPos], size);
@@ -1128,7 +1128,7 @@ int CKStateChunk::ReadBuffer(void **buffer) {
         return size;
     }
 
-    *buffer = NULL;
+    *buffer = nullptr;
     return 0;
 }
 
@@ -1193,7 +1193,7 @@ int CKStateChunk::ReadString(CKSTRING *str) {
         return 0;
     }
 
-    CKSTRING s = NULL;
+    CKSTRING s = nullptr;
     int size = m_Data[m_ChunkParser->CurrentPos];
     int sz = (size + 3) / sizeof(int);
     ++m_ChunkParser->CurrentPos;
@@ -1201,7 +1201,7 @@ int CKStateChunk::ReadString(CKSTRING *str) {
         if (size > 0) {
             s = new char[size];
             if (!s) {
-                *str = NULL;
+                *str = nullptr;
                 return 0;
             }
             memcpy(s, &m_Data[m_ChunkParser->CurrentPos], size);
@@ -1211,7 +1211,7 @@ int CKStateChunk::ReadString(CKSTRING *str) {
         return size;
     }
 
-    *str = NULL;
+    *str = nullptr;
     return 0;
 }
 
@@ -1379,7 +1379,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
             }
         }
 
-        m_File = NULL;
+        m_File = nullptr;
         return TRUE;
     } else if (m_ChunkVersion == CHUNK_VERSION2) {
         m_ChunkClassID = buf[pos++];
@@ -1430,7 +1430,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
             }
         }
 
-        m_File = NULL;
+        m_File = nullptr;
         return TRUE;
     } else if (m_ChunkVersion <= CHUNK_VERSION4) {
         m_DataVersion = (short) (val & 0x0000FFFF);
@@ -1450,7 +1450,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
         }
 
         if ((chunkOptions & CHNK_OPTION_FILE) == 0)
-            m_File = NULL;
+            m_File = nullptr;
 
         if ((chunkOptions & CHNK_OPTION_IDS) != 0) {
             int idCount = buf[pos++];
@@ -1506,9 +1506,9 @@ int CKStateChunk::RemapObject(CK_ID old_id, CK_ID new_id) {
     if (old_id == 0 || new_id == 0)
         return 0;
 
-    CKDependenciesContext depContext(NULL);
+    CKDependenciesContext depContext(nullptr);
     depContext.m_MapID.Insert(old_id, new_id);
-    return RemapObjects(NULL, &depContext);
+    return RemapObjects(nullptr, &depContext);
 }
 
 int CKStateChunk::RemapParameterInt(CKGUID ParameterType, int *ConversionTable, int NbEntries) {
@@ -2214,7 +2214,7 @@ void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
 
 BITMAP_HANDLE CKStateChunk::ReadBitmap() {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
-        return NULL;
+        return nullptr;
 
     // Bitmap format identifiers
     const char *CK_TGA_HEADER = "CKTGA";
@@ -2224,9 +2224,9 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
     const char *CK_GIF_HEADER = "CKGIF";
     const char *CK_PCX_HEADER = "CKPCX";
 
-    BITMAP_HANDLE bitmapHandle = NULL;
-    void *buffer = NULL;
-    CKBitmapProperties *bitmapProps = NULL;
+    BITMAP_HANDLE bitmapHandle = nullptr;
+    void *buffer = nullptr;
+    CKBitmapProperties *bitmapProps = nullptr;
 
     // Read bitmap header information
     ReadDword(); // Skip version/flags field
@@ -2234,14 +2234,14 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
 
     if (!buffer || bufferSize < 5) {
         delete[] (CKBYTE *) buffer;
-        return NULL;
+        return nullptr;
     }
 
     // Detect file format from header
     char formatHeader[6] = {0};
     memcpy(formatHeader, buffer, 5);
 
-    const char *fileExtension = NULL;
+    const char *fileExtension = nullptr;
     bool hasCustomHeader = true;
 
     if (!stricmp(formatHeader, CK_TGA_HEADER)) {
@@ -2284,8 +2284,8 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
             // Cleanup reader allocations
             reader->ReleaseMemory(bitmapProps->m_Data);
             reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
-            bitmapProps->m_Data = NULL;
-            bitmapProps->m_Format.ColorMap = NULL;
+            bitmapProps->m_Data = nullptr;
+            bitmapProps->m_Format.ColorMap = nullptr;
         }
         reader->Release();
     }
@@ -2296,7 +2296,7 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
 
 CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
-        return NULL;
+        return nullptr;
 
     // Bitmap format identifiers
     const char *CK_TGA_HEADER = "CKTGA";
@@ -2306,10 +2306,10 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
     const char *CK_GIF_HEADER = "CKGIF";
     const char *CK_PCX_HEADER = "CKPCX";
 
-    CKBYTE *bitmapData = NULL;
-    void *buffer = NULL;
-    CKBitmapProperties *bitmapProps = NULL;
-    CKBitmapReader *reader = NULL;
+    CKBYTE *bitmapData = nullptr;
+    void *buffer = nullptr;
+    CKBitmapProperties *bitmapProps = nullptr;
+    CKBitmapReader *reader = nullptr;
 
     // Read bitmap header information
     ReadInt(); // Skip version/flags field
@@ -2317,14 +2317,14 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
 
     if (!buffer || bufferSize < 5) {
         delete[] (CKBYTE *) buffer;
-        return NULL;
+        return nullptr;
     }
 
     // Detect file format from header
     char formatHeader[6] = {0};
     memcpy(formatHeader, buffer, 5);
 
-    const char *fileExtension = NULL;
+    const char *fileExtension = nullptr;
     bool hasCustomHeader = true;
 
     if (!_stricmp(formatHeader, CK_TGA_HEADER)) {
@@ -2365,11 +2365,11 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
 
             // Transfer ownership of bitmap data
             bitmapData = (CKBYTE *) bitmapProps->m_Data;
-            bitmapProps->m_Data = NULL; // Prevent double-free
+            bitmapProps->m_Data = nullptr; // Prevent double-free
 
             // Cleanup format resources
             reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
-            bitmapProps->m_Format.ColorMap = NULL;
+            bitmapProps->m_Format.ColorMap = nullptr;
 
             // Free bitmap properties if allocated by reader
             if (bitmapProps) {

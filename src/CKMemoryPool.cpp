@@ -6,7 +6,7 @@ CKMemoryPool::CKMemoryPool(CKContext *Context, int ByteCount) {
     if (Context) {
         m_Memory = m_Context->GetMemoryPoolGlobalIndex(ByteCount, m_Index);
     } else {
-        m_Memory = NULL;
+        m_Memory = nullptr;
     }
 }
 
