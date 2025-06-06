@@ -7,7 +7,7 @@
 #include "CKScene.h"
 
 void CKDependenciesContext::AddObjects(CK_ID *ids, int count) {
-    m_Objects.Resize(m_Objects.Size() + count);
+    m_Objects.Reserve(m_Objects.Size() + count);
     for (int i = 0; i < count; ++i) {
         if (m_CKContext->GetObject(ids[i]))
             m_Objects.PushBack(ids[i]);

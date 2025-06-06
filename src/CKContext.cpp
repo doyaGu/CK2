@@ -1637,8 +1637,9 @@ int CKContext::FinishDestroyObjects(CKDWORD Flags) {
     XHashID &depMap = m_DependenciesContext.m_MapID;
     XObjectArray objectsToDelete;
     objectsToDelete.Resize(depMap.Size());
+    int i = 0;
     for (auto it = depMap.Begin(); it != depMap.End(); ++it) {
-        objectsToDelete.PushBack(it.GetKey());
+        objectsToDelete[i++] = it.GetKey();
     }
 
     m_DependenciesContext.Clear();

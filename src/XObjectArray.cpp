@@ -58,7 +58,6 @@ void XObjectPointerArray::Remap(CKDependenciesContext &context) {
 
 void XSObjectArray::ConvertFromObjects(const XSArray<CKObject *> &array) {
     Clear();
-    Resize(array.Size());
     for (auto it = array.Begin(); it != array.End(); ++it) {
         PushBack((*it)->GetID());
     }
@@ -173,7 +172,7 @@ void XSObjectArray::Remap(CKDependenciesContext &context) {
 
 void XObjectArray::ConvertFromObjects(const XObjectPointerArray &array) {
     Clear();
-    Resize(array.Size());
+    Reserve(array.Size());
     for (auto it = array.Begin(); it != array.End(); ++it) {
         PushBack((*it)->GetID());
     }

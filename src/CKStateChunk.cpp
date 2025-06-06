@@ -699,7 +699,8 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
 }
 
 const XObjectArray &CKStateChunk::ReadXObjectArray() {
-    m_TempXOA.Clear();
+    m_TempXOPA.Resize(0);
+
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
