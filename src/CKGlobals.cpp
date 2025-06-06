@@ -42,7 +42,7 @@ CKDependencies g_DefaultReplaceDependencies;
 CKDependencies g_DefaultDeleteDependencies;
 CKDependencies g_DefaultSaveDependencies;
 CKStats g_MainStats;
-int g_MaxClassID = 55;
+int g_MaxClassID = CKCID_MAXCLASSID;
 ProcessorsType g_TheProcessor;
 CKPluginManager g_ThePluginManager;
 VxImageDescEx Default32Desc;
