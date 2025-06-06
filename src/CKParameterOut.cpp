@@ -48,7 +48,7 @@ int CKParameterOut::GetStringValue(CKSTRING Value, CKBOOL update) {
 
 void CKParameterOut::DataChanged() {
     for (auto it = m_Destinations.Begin(); it != m_Destinations.End(); ++it) {
-        CKParameter *param = (CKParameter *)*it;
+        CKParameter *param = (CKParameter *) *it;
         if (param) {
             param->CopyValue(this, FALSE);
         }
@@ -63,7 +63,7 @@ CKERROR CKParameterOut::AddDestination(CKParameter *param, CKBOOL CheckType) {
         return CKERR_INCOMPATIBLEPARAMETERS;
 
     if (CKIsChildClassOf(param, CKCID_PARAMETEROUT)) {
-        CKParameterOut *out = (CKParameterOut *)param;
+        CKParameterOut *out = (CKParameterOut *) param;
         for (auto it = out->m_Destinations.Begin(); it != out->m_Destinations.End(); ++it) {
             if (*it == this)
                 return CKERR_INVALIDPARAMETER;
@@ -86,7 +86,7 @@ int CKParameterOut::GetDestinationCount() {
 
 CKParameter *CKParameterOut::GetDestination(int pos) {
     if (pos >= 0 && pos < m_Destinations.Size()) {
-        return (CKParameter *)m_Destinations[pos];
+        return (CKParameter *) m_Destinations[pos];
     }
     return nullptr;
 }
@@ -113,10 +113,9 @@ void CKParameterOut::PreSave(CKFile *file, CKDWORD flags) {
 }
 
 CKStateChunk *CKParameterOut::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETEROUT, file);
-
-    // Save base class data
     CKStateChunk *baseChunk = CKParameter::Save(file, flags);
+
+    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETEROUT, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
@@ -150,7 +149,7 @@ CKERROR CKParameterOut::Load(CKStateChunk *chunk, CKFile *file) {
         m_Destinations.Clear();
         const int destCount = chunk->ReadInt();
         for (int i = 0; i < destCount; ++i) {
-            CKParameter *param = (CKParameter *)chunk->ReadObject(m_Context);
+            CKParameter *param = (CKParameter *) chunk->ReadObject(m_Context);
             AddDestination(param, FALSE);
         }
     }
@@ -166,9 +165,9 @@ void CKParameterOut::PreDelete() {
 
     CKBehavior *beh = nullptr;
     if (CKIsChildClassOf(owner, CKCID_BEHAVIOR)) {
-        beh = (CKBehavior *)owner;
+        beh = (CKBehavior *) owner;
     } else if (CKIsChildClassOf(owner, CKCID_PARAMETEROPERATION)) {
-        beh = ((CKParameterOperation *)owner)->GetOwner();
+        beh = ((CKParameterOperation *) owner)->GetOwner();
     }
 
     if (!beh)
@@ -179,7 +178,7 @@ void CKParameterOut::PreDelete() {
         CKObject *parent = owner;
         while (parent) {
             if (CKIsChildClassOf(owner, CKCID_BEHAVIOR)) {
-                beh = (CKBehavior *)owner;
+                beh = (CKBehavior *) owner;
                 if (!parent->IsToBeDeleted()) {
                     XSObjectPointerArray &outParams = beh->m_OutParameter;
                     for (auto it = outParams.Begin(); it != outParams.End(); ++it) {
@@ -192,7 +191,7 @@ void CKParameterOut::PreDelete() {
 
                 parent = beh->GetParent();
             } else if (CKIsChildClassOf(parent, CKCID_PARAMETEROPERATION)) {
-                CKParameterOperation *op = (CKParameterOperation *)parent;
+                CKParameterOperation *op = (CKParameterOperation *) parent;
 
                 if (op->GetOutParameter() == this) {
                     op->m_Out = nullptr;
@@ -256,7 +255,7 @@ CKERROR CKParameterOut::Copy(CKObject &o, CKDependenciesContext &context) {
     }
 
     for (auto it = m_Destinations.Begin(); it != m_Destinations.End(); ++it) {
-        CKParameter *param = (CKParameter *)*it;
+        CKParameter *param = (CKParameter *) *it;
         AddDestination(param, TRUE);
     }
     return CK_OK;
@@ -284,7 +283,7 @@ CKParameterOut *CKParameterOut::CreateInstance(CKContext *Context) {
 
 void CKParameterOut::Update() {
     if (IsToBeDeleted()) {
-        CKParameterOperation *op = (CKParameterOperation *)GetOwner();
+        CKParameterOperation *op = (CKParameterOperation *) GetOwner();
         if (op) {
             op->DoOperation();
         }
