@@ -2189,7 +2189,7 @@ CKERROR CKDataArray::PrepareDependencies(CKDependenciesContext &context) {
                 switch (format->m_Type) {
                 case CKARRAYTYPE_OBJECT: {
                     if (classDeps & 1) {
-                        CK_ID id = (CK_ID) element;
+                        CK_ID id = element;
                         CKObject *obj = m_Context->GetObject(id);
                         if (obj && !CKIsChildClassOf(obj, CKCID_LEVEL) && !CKIsChildClassOf(obj, CKCID_SCENE)) {
                             obj->PrepareDependencies(context);
@@ -2242,7 +2242,7 @@ CKERROR CKDataArray::RemapDependencies(CKDependenciesContext &context) {
 
                 switch (format->m_Type) {
                 case CKARRAYTYPE_OBJECT: {
-                    CK_ID id = (CK_ID) element;
+                    CK_ID id = element;
                     CKObject *oldObj = m_Context->GetObject(id);
                     CKObject *newObj = context.Remap(oldObj);
                     if (newObj) {

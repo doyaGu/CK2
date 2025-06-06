@@ -470,7 +470,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
     CurrentFileVersion = header.Part0.FileVersion;
     CurrentFileWriteMode = header.Part0.FileWriteMode;
 
-    if ((m_Flags & CK_LOAD_CHECKDEPENDENCIES) && m_FileInfo.FileVersion < 8) {
+    if (m_FileInfo.FileVersion < 8 && (m_Flags & CK_LOAD_CHECKDEPENDENCIES)) {
         m_ReadFileDataDone = TRUE;
         CKERROR ret = ReadFileData(ParserPtr);
 

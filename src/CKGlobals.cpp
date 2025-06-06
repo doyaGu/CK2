@@ -74,7 +74,7 @@ CKERROR CKStartUp() {
     Default32Desc.BlueMask = B_MASK;
     Default32Desc.AlphaMask = A_MASK;
 
-    g_CKClassInfo.Reserve(56);
+    g_CKClassInfo.Reserve(CKCID_MAXCLASSID + 1);
 
     g_TheProcessor = GetProcessorType();
 
