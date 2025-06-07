@@ -1195,12 +1195,12 @@ void CKStateChunk::WriteString(char *str) {
     } else {
         int len = strlen(str);
         int size = len + 1;
-        int sz = (size + sizeof(int)) / sizeof(int);
-        CheckSize((sz + 1) * sizeof(int));
-        m_Data[this->m_ChunkParser->CurrentPos++] = size;
+        int dwords = (size + sizeof(int) - 1) / sizeof(int);
+        CheckSize((dwords + 1) * sizeof(int));
+        m_Data[m_ChunkParser->CurrentPos++] = size;
         if (size > 0) {
             memcpy(&m_Data[m_ChunkParser->CurrentPos], str, size);
-            m_ChunkParser->CurrentPos += size;
+            m_ChunkParser->CurrentPos += dwords;
         }
     }
 }
