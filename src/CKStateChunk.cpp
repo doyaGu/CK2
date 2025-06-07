@@ -106,6 +106,7 @@ void CKStateChunk::Clone(CKStateChunk *chunk) {
             m_ChunkParser->DataSize = m_ChunkSize;
     }
     m_File = chunk->m_File;
+    m_Dynamic = chunk->m_Dynamic;
 }
 
 CK_CLASSID CKStateChunk::GetChunkClassID() {
