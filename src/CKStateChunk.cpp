@@ -2020,106 +2020,54 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
     if (!m_ChunkParser)
         return nullptr;
 
-    desc.BitsPerPixel = ReadInt();
-    if (desc.BitsPerPixel == 0) {
-        // Marker for no/invalid image data
-        desc.Width = 0;
-        desc.Height = 0;
-        // Clear other desc fields
-        desc.AlphaMask = 0;
-        desc.RedMask = 0;
-        desc.GreenMask = 0;
-        desc.BlueMask = 0;
-        desc.BytesPerLine = 0;
+    int originalBpp = ReadInt();
+    if (originalBpp == 0)
         return nullptr;
-    }
 
+    // Read metadata
     desc.Width = ReadInt();
     desc.Height = ReadInt();
     desc.AlphaMask = ReadDword();
     desc.RedMask = ReadDword();
     desc.GreenMask = ReadDword();
     desc.BlueMask = ReadDword();
+    desc.BytesPerLine = desc.Width * 4;
+    desc.BitsPerPixel = 32;
+
+    if (desc.Width <= 0 || desc.Height <= 0)
+        return nullptr;
 
     CKDWORD compressionType = ReadDword() & 0xF; // 0 for raw, 1 for JPEG
-
-    // For raw data, BitsPerPixel in desc will be 32 because we reconstruct to ARGB
-    // The original BitsPerPixel is only used to know how many bytes/pixel to combine.
-    // The BytesPerLine will also be for the reconstructed 32bpp image.
-    desc.BytesPerLine = desc.Width * 4; // Reconstructing to 32bpp ARGB
-    desc.BitsPerPixel = 32;             // Reconstructing to 32bpp ARGB
-
-    CKBYTE *rPlane = nullptr, *gPlane = nullptr, *bPlane = nullptr, *aPlane = nullptr;
-    int planeSize = 0; // This will be Width * Height based on ReadBuffer
-
-    if (compressionType == 0) {
-        // Raw planar data
-        planeSize = ReadBuffer((void **) &rPlane); // Read R plane
-        ReadBuffer((void **) &gPlane);             // Read G plane
-        ReadBuffer((void **) &bPlane);             // Read B plane
-        ReadBuffer((void **) &aPlane);             // Read A plane (might be 0 size if no alpha)
-    } else if (compressionType == 1) {
-        // CCompressionTools::jpegDecode calls here.
-        // Since we are not using CCompressionTools, so we handle it as an error.
-        // We must still read/skip the buffers that would have contained JPEG data.
-        void *tempDescBuffer = nullptr;
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // desc for R
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // R data
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // desc for G
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // G data
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // desc for B
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // B data
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // desc for A (if any)
-        ReadBuffer(&tempDescBuffer);
-        delete[] (CKBYTE *) tempDescBuffer; // A data (if any)
-        return nullptr; // Or handle as an error appropriately
-    } else {
-        // Unknown compression type
+    if (compressionType != 0) {
+        // Unsupported compression type
+        void *compressedData = nullptr;
+        ReadBuffer(&compressedData);
+        ReadBuffer(&compressedData);
+        ReadBuffer(&compressedData);
         return nullptr;
     }
 
-    if (!rPlane || !gPlane || !bPlane || planeSize <= 0) {
-        // planeSize from R plane read
-        delete[] rPlane;
-        delete[] gPlane;
-        delete[] bPlane;
-        delete[] aPlane;
-        return nullptr;
-    }
+    // Read the separate color planes
+    CKBYTE *bPlane = nullptr;
+    CKBYTE *gPlane = nullptr;
+    CKBYTE *rPlane = nullptr;
+    CKBYTE *aPlane = nullptr;
+    ReadBuffer((void**)&bPlane);
+    ReadBuffer((void**)&gPlane);
+    ReadBuffer((void**)&rPlane);
+    ReadBuffer((void**)&aPlane);
 
-    int totalPixels = desc.Width * desc.Height;
-    if (planeSize != totalPixels) {
-        // Consistency check
-        delete[] rPlane;
-        delete[] gPlane;
+    if (!bPlane || !gPlane || !rPlane) {
         delete[] bPlane;
+        delete[] gPlane;
+        delete[] rPlane;
         delete[] aPlane;
         return nullptr;
     }
 
     CKBYTE *outputBitmap = new CKBYTE[desc.BytesPerLine * desc.Height];
-    if (!outputBitmap) {
-        delete[] rPlane;
-        delete[] gPlane;
-        delete[] bPlane;
-        delete[] aPlane;
-        return nullptr;
-    }
-
-    // Reconstruct the image, assuming ARGB output format (0xAARRGGBB)
-    // Data was saved planar (R,G,B,A planes) from bottom-left of original image,
-    // so when we re-interleave, we iterate normally and it will be correct.
-    // The WriteRawBitmap writes planes as if from bottom-up, so reading planes directly
-    // and filling top-down will result in the correct orientation.
     CKDWORD *outPtr = (CKDWORD *) outputBitmap;
-    for (int i = 0; i < totalPixels; ++i) {
+    for (int i = 0; i < desc.Width; ++i) {
         CKBYTE r = rPlane[i];
         CKBYTE g = gPlane[i];
         CKBYTE b = bPlane[i];
@@ -2128,22 +2076,13 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
         *outPtr++ = a << A_SHIFT | r << R_SHIFT | g << G_SHIFT | b;
     }
 
+    desc.AlphaMask = A_MASK;
+
     // Cleanup planar buffers
     delete[] rPlane;
     delete[] gPlane;
     delete[] bPlane;
-    delete[] aPlane; // Safe if aPlane is nullptr
-
-    // Update desc to reflect the reconstructed 32-bit ARGB format
-    // BitsPerPixel and BytesPerLine were already set.
-    // The masks for a standard ARGB32 format:
-    desc.AlphaMask = A_MASK;
-    desc.RedMask = R_MASK;
-    desc.GreenMask = G_MASK;
-    desc.BlueMask = B_MASK;
-    desc.ColorMapEntries = 0;
-    desc.BytesPerColorEntry = 0;
-    desc.ColorMap = nullptr;
+    delete[] aPlane;
 
     return outputBitmap;
 }
