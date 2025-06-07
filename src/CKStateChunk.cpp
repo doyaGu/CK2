@@ -614,6 +614,11 @@ CK_ID CKStateChunk::ReadObjectID() {
     } else {
         ++m_ChunkParser->CurrentPos;
         if (id != 0) {
+            if (m_ChunkParser->CurrentPos + 3 > m_ChunkSize) {
+                if (m_File)
+                    m_File->m_Context->OutputToConsole("Chunk Read error (legacy format)");
+                return 0;
+            }
             m_ChunkParser->CurrentPos += 2;
             return m_Data[m_ChunkParser->CurrentPos++];
         }
@@ -935,8 +940,11 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
             managerCount = m_Data[m_ChunkParser->CurrentPos++];
         if (sub->m_ChunkSize != 0) {
             sub->m_Data = new int[sub->m_ChunkSize];
-            if (sub->m_Data)
-                ReadAndFillBuffer_LEndian(sub->m_ChunkSize * sizeof(int), sub->m_Data);
+            if (!sub->m_Data) {
+                delete sub;
+                return nullptr;
+            }
+            ReadAndFillBuffer(sub->m_ChunkSize * sizeof(int), sub->m_Data);
         }
 
         if (idCount > 0) {
@@ -944,8 +952,11 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
             sub->m_Ids->AllocatedSize = idCount;
             sub->m_Ids->Size = idCount;
             sub->m_Ids->Data = new int[idCount];
-            if (sub->m_Ids->Data)
-                ReadAndFillBuffer_LEndian(idCount * sizeof(int), sub->m_Ids->Data);
+            if (!sub->m_Ids->Data) {
+                delete sub;
+                return nullptr;
+            }
+            ReadAndFillBuffer(idCount * sizeof(int), sub->m_Ids->Data);
         }
 
         if (chunkCount > 0) {
@@ -953,8 +964,11 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
             sub->m_Chunks->AllocatedSize = chunkCount;
             sub->m_Chunks->Size = chunkCount;
             sub->m_Chunks->Data = new int[chunkCount];
-            if (sub->m_Chunks->Data)
-                ReadAndFillBuffer_LEndian(chunkCount * sizeof(int), sub->m_Chunks->Data);
+            if (!sub->m_Chunks->Data) {
+                delete sub;
+                return nullptr;
+            }
+            ReadAndFillBuffer(chunkCount * sizeof(int), sub->m_Chunks->Data);
         }
 
         if (managerCount > 0) {
@@ -962,8 +976,11 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
             sub->m_Managers->AllocatedSize = managerCount;
             sub->m_Managers->Size = managerCount;
             sub->m_Managers->Data = new int[managerCount];
-            if (sub->m_Managers->Data)
-                ReadAndFillBuffer_LEndian(managerCount * sizeof(int), sub->m_Managers->Data);
+            if (!sub->m_Managers->Data) {
+                delete sub;
+                return nullptr;
+            }
+            ReadAndFillBuffer(managerCount * sizeof(int), sub->m_Managers->Data);
         }
 
         if (hasFile && m_File)
