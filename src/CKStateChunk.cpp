@@ -2091,9 +2091,8 @@ void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
     if (!m_ChunkParser)
         return;
 
-    CKFileExtension fileExt(ext); // If ext is NULL, CKFileExtension constructor handles it (empty or default)
+    CKFileExtension fileExt(ext);
     CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(fileExt, nullptr);
-
     if (!reader) {
         // Fallback to BMP if the provided extension's reader is not found
         CKFileExtension bmpExt("bmp");
@@ -2116,57 +2115,57 @@ void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
 
     // Prepare the "CKxxx" signature (5 bytes + null terminator)
     char signature[6];
-    strcpy(signature, "CK"); // First 2 chars
-    strncat(signature, fileExt.m_Data, 3); // Next 3 chars from extension (up to 3 chars)
-    // Convert to uppercase (IDA does this byte by byte)
+    strcpy(signature, "CK");
+    strncat(signature, fileExt.m_Data, 3);
     for (int i = 0; signature[i] && i < 5; ++i) {
         signature[i] = (char) toupper(signature[i]);
     }
     signature[5] = '\0';
 
-    VxImageDescEx imageDescFromBitmap;
-    CKBYTE *convertedPixelData = VxConvertBitmap(bitmap, imageDescFromBitmap);
-    if (!convertedPixelData) {
+    VxImageDescEx desc;
+    CKBYTE *imageData = VxConvertBitmap(bitmap, desc);
+    if (!imageData) {
         reader->Release();
         WriteInt(0);
         WriteBuffer(0, nullptr);
         return;
     }
-    imageDescFromBitmap.Image = convertedPixelData;
 
-    CKBitmapProperties tempProperties;
-    tempProperties.m_Data = convertedPixelData;
-    tempProperties.m_Format = imageDescFromBitmap;
+    CKBitmapProperties props;
+    props.m_Data = imageData;
+    props.m_Format = desc;
 
-    void *savedMemoryBuffer = nullptr;
-    int savedMemorySize = reader->SaveMemory(&savedMemoryBuffer, &tempProperties);
+    void *buffer = nullptr;
+    int bufferSize = reader->SaveMemory(&buffer, &props);
 
-    delete[] convertedPixelData;
+    delete[] imageData;
 
-    if (savedMemorySize > 0 && savedMemoryBuffer != nullptr) {
+    if (bufferSize > 0 && buffer != nullptr) {
         // Total size to write: signature (5 bytes) + savedMemorySize
-        int totalDataPayloadSize = 5 + savedMemorySize;
-        WriteInt(totalDataPayloadSize);
-        WriteInt(totalDataPayloadSize);
+        int size = 5 + bufferSize;
+        WriteInt(size);
+        WriteInt(size);
 
         // Lock a buffer in the chunk big enough for signature + saved data
         // Size is in DWORDS for LockWriteBuffer
-        int dwordsNeeded = (totalDataPayloadSize + sizeof(CKDWORD) - 1) / sizeof(CKDWORD);
-        CKDWORD *chunkBuffer = (CKDWORD *) LockWriteBuffer(dwordsNeeded);
+        int dwords = (size + sizeof(CKDWORD) - 1) / sizeof(CKDWORD);
+        CKDWORD *chunkBuffer = (CKDWORD *) LockWriteBuffer(dwords);
         if (chunkBuffer) {
             memcpy(chunkBuffer, signature, 5);
-            memcpy((char *)chunkBuffer + 5, savedMemoryBuffer, savedMemorySize);
-            m_ChunkParser->CurrentPos += dwordsNeeded; // Manually advance cursor
+            memcpy((char *) chunkBuffer + 5, buffer, bufferSize);
+            m_ChunkParser->CurrentPos += dwords;
         } else {
             // LockWriteBuffer failed, major issue.
             // Chunk is likely corrupted from this point.
         }
-        reader->ReleaseMemory(savedMemoryBuffer);
+
+        reader->ReleaseMemory(buffer);
     } else {
         // SaveMemory failed
         WriteInt(0);
         WriteBuffer(0, nullptr);
     }
+
     reader->Release();
 }
 
