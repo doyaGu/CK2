@@ -1847,8 +1847,8 @@ CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
         return FALSE;
 
     int size = ReadInt();
-    int dwordCount = (size + 3) / sizeof(CKDWORD);
-    if (m_ChunkParser->CurrentPos + dwordCount <= m_ChunkSize) {
+    int dwords = (size + 3) / sizeof(CKDWORD);
+    if (m_ChunkParser->CurrentPos + dwords <= m_ChunkSize) {
         if (size > 0) {
             if (reader->ReadMemory(&m_Data[m_ChunkParser->CurrentPos], size, &props) != 0)
                 return FALSE;
@@ -1860,17 +1860,17 @@ CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
             props->m_Data = nullptr;
             props->m_Format.ColorMap = nullptr;
         }
-        Skip(dwordCount);
+        Skip(dwords);
         if (formatType == 2) {
             int distinctAlphaCount = ReadInt();
             if (distinctAlphaCount == 1) {
                 VxDoAlphaBlit(desc, (CKBYTE) ReadDword());
             } else {
-                void *alphaPlaneBuffer = nullptr;
-                int alphaPlaneSize = ReadBuffer(&alphaPlaneBuffer);
-                if (alphaPlaneBuffer && alphaPlaneSize > 0) {
-                    VxDoAlphaBlit(desc, (CKBYTE *) alphaPlaneBuffer);
-                    delete[] (CKBYTE *) alphaPlaneBuffer;
+                void *buffer = nullptr;
+                int bufferSize = ReadBuffer(&buffer);
+                if (buffer && bufferSize > 0) {
+                    VxDoAlphaBlit(desc, (CKBYTE *) buffer);
+                    delete[] (CKBYTE *) buffer;
                 }
             }
         }
