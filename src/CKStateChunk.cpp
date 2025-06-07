@@ -2173,45 +2173,34 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
         return nullptr;
 
-    // Bitmap format identifiers
-    const char *CK_TGA_HEADER = "CKTGA";
-    const char *CK_JPG_HEADER = "CKJPG";
-    const char *CK_BMP_HEADER = "CKBMP";
-    const char *CK_TIF_HEADER = "CKTIF";
-    const char *CK_GIF_HEADER = "CKGIF";
-    const char *CK_PCX_HEADER = "CKPCX";
-
-    BITMAP_HANDLE bitmapHandle = nullptr;
     void *buffer = nullptr;
-    CKBitmapProperties *bitmapProps = nullptr;
 
     // Read bitmap header information
-    ReadDword(); // Skip version/flags field
+    ReadInt();
     int bufferSize = ReadBuffer(&buffer);
-
     if (!buffer || bufferSize < 5) {
         delete[] (CKBYTE *) buffer;
         return nullptr;
     }
 
     // Detect file format from header
-    char formatHeader[6] = {0};
-    memcpy(formatHeader, buffer, 5);
+    char signature[6] = {0};
+    memcpy(signature, buffer, 5);
 
     const char *fileExtension = nullptr;
     bool hasCustomHeader = true;
 
-    if (!stricmp(formatHeader, CK_TGA_HEADER)) {
+    if (!stricmp(signature, "CKTGA")) {
         fileExtension = "TGA";
-    } else if (!stricmp(formatHeader, CK_JPG_HEADER)) {
+    } else if (!stricmp(signature, "CKJPG")) {
         fileExtension = "JPG";
-    } else if (!stricmp(formatHeader, CK_BMP_HEADER)) {
+    } else if (!stricmp(signature, "CKDIB") || !stricmp(signature, "CKBMP")) {
         fileExtension = "BMP";
-    } else if (!stricmp(formatHeader, CK_TIF_HEADER)) {
+    } else if (!stricmp(signature, "CKDIB")) {
         fileExtension = "TIF";
-    } else if (!stricmp(formatHeader, CK_GIF_HEADER)) {
+    } else if (!stricmp(signature, "CKGIF")) {
         fileExtension = "GIF";
-    } else if (!stricmp(formatHeader, CK_PCX_HEADER)) {
+    } else if (!stricmp(signature, "CKPCX")) {
         fileExtension = "PCX";
     } else {
         fileExtension = "TGA";
@@ -2221,31 +2210,37 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
     // Get appropriate bitmap reader
     CKFileExtension ext(fileExtension);
     CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext);
-
-    if (reader) {
-        char *dataStart = static_cast<char *>(buffer);
-        int dataSize = bufferSize;
-
-        // Skip custom header if present
-        if (hasCustomHeader) {
-            dataStart += 5;
-            dataSize -= 5;
-        }
-
-        // Read bitmap from memory
-        if (reader->ReadMemory(dataStart, dataSize, &bitmapProps)) {
-            // Create bitmap from decoded data
-            bitmapProps->m_Format.Image = (XBYTE *) bitmapProps->m_Data;
-            bitmapHandle = VxCreateBitmap(bitmapProps->m_Format);
-
-            // Cleanup reader allocations
-            reader->ReleaseMemory(bitmapProps->m_Data);
-            reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
-            bitmapProps->m_Data = nullptr;
-            bitmapProps->m_Format.ColorMap = nullptr;
-        }
-        reader->Release();
+    if (!reader) {
+        delete[] (CKBYTE *) buffer;
+        return nullptr;
     }
+
+    char *dataStart = static_cast<char *>(buffer);
+    int dataSize = bufferSize;
+
+    // Skip custom header if present
+    if (hasCustomHeader) {
+        dataStart += 5;
+        dataSize -= 5;
+    }
+
+    BITMAP_HANDLE bitmapHandle = nullptr;
+
+    // Read bitmap from memory
+    CKBitmapProperties *bitmapProps = nullptr;
+    if (reader->ReadMemory(dataStart, dataSize, &bitmapProps) == 0 && bitmapProps) {
+        // Create bitmap from decoded data
+        bitmapProps->m_Format.Image = (XBYTE *) bitmapProps->m_Data;
+        bitmapHandle = VxCreateBitmap(bitmapProps->m_Format);
+
+        // Cleanup reader allocations
+        reader->ReleaseMemory(bitmapProps->m_Data);
+        reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
+        bitmapProps->m_Data = nullptr;
+        bitmapProps->m_Format.ColorMap = nullptr;
+    }
+
+    reader->Release();
 
     delete[] (CKBYTE *) buffer;
     return bitmapHandle;
