@@ -2250,46 +2250,35 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize)
         return nullptr;
 
-    // Bitmap format identifiers
-    const char *CK_TGA_HEADER = "CKTGA";
-    const char *CK_JPG_HEADER = "CKJPG";
-    const char *CK_BMP_HEADER = "CKBMP";
-    const char *CK_TIF_HEADER = "CKTIF";
-    const char *CK_GIF_HEADER = "CKGIF";
-    const char *CK_PCX_HEADER = "CKPCX";
-
     CKBYTE *bitmapData = nullptr;
     void *buffer = nullptr;
-    CKBitmapProperties *bitmapProps = nullptr;
-    CKBitmapReader *reader = nullptr;
 
     // Read bitmap header information
-    ReadInt(); // Skip version/flags field
+    ReadInt();
     int bufferSize = ReadBuffer(&buffer);
-
     if (!buffer || bufferSize < 5) {
         delete[] (CKBYTE *) buffer;
         return nullptr;
     }
 
     // Detect file format from header
-    char formatHeader[6] = {0};
-    memcpy(formatHeader, buffer, 5);
+    char signature[6] = {0};
+    memcpy(signature, buffer, 5);
 
     const char *fileExtension = nullptr;
     bool hasCustomHeader = true;
 
-    if (!_stricmp(formatHeader, CK_TGA_HEADER)) {
+    if (!stricmp(signature, "CKTGA")) {
         fileExtension = "TGA";
-    } else if (!_stricmp(formatHeader, CK_JPG_HEADER)) {
+    } else if (!stricmp(signature, "CKJPG")) {
         fileExtension = "JPG";
-    } else if (!_stricmp(formatHeader, CK_BMP_HEADER)) {
+    } else if (!stricmp(signature, "CKDIB") || !stricmp(signature, "CKBMP")) {
         fileExtension = "BMP";
-    } else if (!_stricmp(formatHeader, CK_TIF_HEADER)) {
+    } else if (!stricmp(signature, "CKDIB")) {
         fileExtension = "TIF";
-    } else if (!_stricmp(formatHeader, CK_GIF_HEADER)) {
+    } else if (!stricmp(signature, "CKGIF")) {
         fileExtension = "GIF";
-    } else if (!_stricmp(formatHeader, CK_PCX_HEADER)) {
+    } else if (!stricmp(signature, "CKPCX")) {
         fileExtension = "PCX";
     } else {
         fileExtension = "TGA";
@@ -2298,49 +2287,30 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
 
     // Get appropriate bitmap reader
     CKFileExtension ext(fileExtension);
-    reader = CKGetPluginManager()->GetBitmapReader(ext);
-    if (reader) {
-        char *dataStart = static_cast<char *>(buffer);
-        int dataSize = bufferSize;
-
-        // Skip custom header if present
-        if (hasCustomHeader) {
-            dataStart += 5;
-            dataSize -= 5;
-        }
-
-        // Read bitmap from memory
-        bool readSuccess = reader->ReadMemory(dataStart, dataSize, &bitmapProps);
-        if (readSuccess && bitmapProps) {
-            // Copy image description to output
-            memcpy(&desc, &bitmapProps->m_Format, sizeof(VxImageDescEx));
-
-            // Transfer ownership of bitmap data
-            bitmapData = (CKBYTE *) bitmapProps->m_Data;
-            bitmapProps->m_Data = nullptr; // Prevent double-free
-
-            // Cleanup format resources
-            reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
-            bitmapProps->m_Format.ColorMap = nullptr;
-
-            // Free bitmap properties if allocated by reader
-            if (bitmapProps) {
-                delete bitmapProps;
-            }
-        } else {
-            // Clean up if read failed
-            if (bitmapProps) {
-                if (bitmapProps->m_Data) {
-                    reader->ReleaseMemory(bitmapProps->m_Data);
-                }
-                if (bitmapProps->m_Format.ColorMap) {
-                    reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
-                }
-                delete bitmapProps;
-            }
-        }
-        reader->Release();
+    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext);
+    if (!reader) {
+        delete[] (CKBYTE*) buffer;
+        return nullptr;
     }
+
+    char *dataStart = static_cast<char *>(buffer);
+    int dataSize = bufferSize;
+
+    // Skip custom header if present
+    if (hasCustomHeader) {
+        dataStart += 5;
+        dataSize -= 5;
+    }
+
+    // Read bitmap from memory
+    CKBitmapProperties *bitmapProps = nullptr;
+    if (reader->ReadMemory(dataStart, dataSize, &bitmapProps) == 0 && bitmapProps) {
+        desc = bitmapProps->m_Format;
+        bitmapData = (CKBYTE *) bitmapProps->m_Data;
+        bitmapProps->m_Data = nullptr;
+    }
+
+    reader->Release();
 
     delete[] (CKBYTE *) buffer;
     return bitmapData;
