@@ -853,39 +853,37 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
 }
 
 CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, CKDWORD Identifiers[5]) {
-    XBitArray slotsProcessedFromChunkData(GetSlotCount() > 0 ? GetSlotCount() : 1);
+    XBitArray slotsProcessed;
     CKBOOL anyDataBlockProcessed = FALSE;
 
-    for (int s = 0; s < m_Slots.Size(); ++s) {
-        if (m_Slots[s]) {
-            m_Slots[s]->m_FileName = "";
-            VxDeleteAligned(m_Slots[s]->m_DataBuffer);
-            m_Slots[s]->m_DataBuffer = nullptr;
-        }
-    }
+    // for (int s = 0; s < m_Slots.Size(); ++s) {
+    //     if (m_Slots[s]) {
+    //         m_Slots[s]->m_FileName = "";
+    //         VxDeleteAligned(m_Slots[s]->m_DataBuffer);
+    //         m_Slots[s]->m_DataBuffer = nullptr;
+    //     }
+    // }
 
     // --- 1. Identifiers[1] (Reader-formatted bitmap data) ---
     if (chnk->SeekIdentifier(Identifiers[1])) {
         anyDataBlockProcessed = TRUE;
-        VxImageDescEx imageDescForReader;
+        VxImageDescEx desc;
 
-        const int slotCountInChunk = chnk->ReadInt();
+        const int slotCount = chnk->ReadInt();
         const int width = chnk->ReadInt();
         const int height = chnk->ReadInt();
         const int bpp = chnk->ReadInt();
 
-        if (slotCountInChunk > GetSlotCount()) SetSlotCount(slotCountInChunk);
-        slotsProcessedFromChunkData.CheckSize(slotCountInChunk);
+        SetSlotCount(slotCount);
+        slotsProcessed.CheckSize(slotCount);
 
-        for (int i = 0; i < slotCountInChunk; ++i) {
+        for (int i = 0; i < slotCount; ++i) {
             if (width > 0 && height > 0) {
                 if (CreateImage(width, height, bpp, i)) {
-                    GetImageDesc(imageDescForReader);
-                    imageDescForReader.Image = LockSurfacePtr(i);
-                    if (imageDescForReader.Image) {
-                        if (chnk->ReadReaderBitmap(imageDescForReader)) {
-                            slotsProcessedFromChunkData.Set(i);
-                        }
+                    GetImageDesc(desc);
+                    desc.Image = LockSurfacePtr(i);
+                    if (chnk->ReadReaderBitmap(desc)) {
+                        slotsProcessed.Unset(i);
                         ReleaseSurfacePtr(i);
                     }
                 }
@@ -895,71 +893,68 @@ CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f
     // --- 2. Identifiers[2] (Raw bitmap data) ---
     else if (chnk->SeekIdentifier(Identifiers[2])) {
         anyDataBlockProcessed = TRUE;
-        const int slotCountInChunk = chnk->ReadInt();
-        if (slotCountInChunk > GetSlotCount()) SetSlotCount(slotCountInChunk);
-        slotsProcessedFromChunkData.CheckSize(slotCountInChunk);
+        const int slotCount = chnk->ReadInt();
+        SetSlotCount(slotCount);
+        slotsProcessed.CheckSize(slotCount);
 
-        for (int i = 0; i < slotCountInChunk; ++i) {
-            VxImageDescEx sourceDescFromRaw;
-            CKBYTE *rawPixelData = chnk->ReadRawBitmap(sourceDescFromRaw);
-
-            if (rawPixelData) {
-                if (CreateImage(sourceDescFromRaw.Width, sourceDescFromRaw.Height, sourceDescFromRaw.BitsPerPixel, i)) {
-                    VxImageDescEx destinationDesc;
-                    GetImageDesc(destinationDesc);
-                    CKBYTE *destinationPixels = LockSurfacePtr(i);
-
-                    if (destinationPixels) {
-                        destinationDesc.Image = destinationPixels;
-                        sourceDescFromRaw.Image = rawPixelData;
-                        VxDoBlitUpsideDown(sourceDescFromRaw, destinationDesc);
+        for (int i = 0; i < slotCount; ++i) {
+            VxImageDescEx srcDesc;
+            CKBYTE *srcImageData = chnk->ReadRawBitmap(srcDesc);
+            if (srcImageData) {
+                slotsProcessed.Unset(i);
+                if (CreateImage(srcDesc.Width, srcDesc.Height, srcDesc.BitsPerPixel, i)) {
+                    VxImageDescEx destDesc;
+                    GetImageDesc(destDesc);
+                    CKBYTE *destImageData = LockSurfacePtr(i);
+                    if (destImageData) {
+                        srcDesc.Image = srcImageData;
+                        destDesc.Image = destImageData;
+                        VxDoBlitUpsideDown(srcDesc, destDesc);
                         ReleaseSurfacePtr(i);
-                        slotsProcessedFromChunkData.Set(i);
                     }
                 }
-                delete[] rawPixelData;
+                delete[] srcImageData;
+            } else {
+                slotsProcessed.Set(i);
             }
         }
     }
     // --- 3. Identifiers[4] (Bitmap2 format - old format) ---
     else if (chnk->SeekIdentifier(Identifiers[4])) {
         anyDataBlockProcessed = TRUE;
-        VxImageDescEx imageDescForBitmap2;
+        VxImageDescEx desc;
 
-        const int slotCountInChunk = chnk->ReadInt();
-        if (slotCountInChunk > GetSlotCount()) SetSlotCount(slotCountInChunk);
-        slotsProcessedFromChunkData.CheckSize(slotCountInChunk);
+        const int slotCount = chnk->ReadInt();
+        SetSlotCount(slotCount);
+        slotsProcessed.CheckSize(slotCount);
 
-        for (int i = 0; i < slotCountInChunk; ++i) {
-            CKBYTE *bitmap2PixelData = chnk->ReadBitmap2(imageDescForBitmap2);
-            if (bitmap2PixelData) {
-                if (SetSlotImage(i, bitmap2PixelData, imageDescForBitmap2)) {
-                    slotsProcessedFromChunkData.Set(i);
-                }
+        for (int i = 0; i < slotCount; ++i) {
+            CKBYTE *imageData = chnk->ReadBitmap2(desc);
+            if (imageData) {
+                SetSlotImage(i, imageData, desc);
+            } else {
+                slotsProcessed.Set(i);
             }
         }
     }
 
     // --- 4. Identifiers[3] (Slot Filenames / External references) ---
     if (chnk->SeekIdentifier(Identifiers[3])) {
-        const int slotCountInChunk = chnk->ReadInt();
-        if (slotCountInChunk > GetSlotCount()) {
-            SetSlotCount(slotCountInChunk);
-        }
-        slotsProcessedFromChunkData.CheckSize(slotCountInChunk);
+        const int slotCount = chnk->ReadInt();
+        SetSlotCount(slotCount);
+        slotsProcessed.CheckSize(slotCount);
 
-        for (int i = 0; i < slotCountInChunk; ++i) {
-            XString fileNameFromChunk;
-            chnk->ReadString(fileNameFromChunk);
-
-            if (fileNameFromChunk.Length() > 0) {
-                bool needsLoadingFromFile = !slotsProcessedFromChunkData.IsSet(i);
+        for (int i = 0; i < slotCount; ++i) {
+            XString fileName;
+            chnk->ReadString(fileName);
+            if (fileName.Length() > 1) {
+                bool needsLoadingFromFile = !slotsProcessed.IsSet(i);
                 if (!anyDataBlockProcessed) {
                     needsLoadingFromFile = true;
                 }
 
                 if (needsLoadingFromFile) {
-                    XString resolvedFileName = fileNameFromChunk;
+                    XString resolvedFileName = fileName;
                     ctx->GetPathManager()->ResolveFileName(resolvedFileName, BITMAP_PATH_IDX);
                     if (!LoadSlotImage(resolvedFileName.Str(), i)) {
                         SetSlotFileName(i, resolvedFileName.Str());
@@ -971,10 +966,10 @@ CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f
 
     // --- 5. Identifiers[0] (Movie file reference) ---
     if (chnk->SeekIdentifier(Identifiers[0])) {
-        XString movieFileFromChunk;
-        chnk->ReadString(movieFileFromChunk);
-        if (movieFileFromChunk.Length() > 0) {
-            XString resolvedMovieFile = movieFileFromChunk;
+        XString movieFile;
+        chnk->ReadString(movieFile);
+        if (movieFile.Length() > 1) {
+            XString resolvedMovieFile = movieFile;
             ctx->GetPathManager()->ResolveFileName(resolvedMovieFile, BITMAP_PATH_IDX);
             LoadMovieFile(resolvedMovieFile.Str());
         }
