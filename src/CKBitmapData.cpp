@@ -475,8 +475,8 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     if (!reader)
         return FALSE;
 
-    CKBitmapProperties *properties = nullptr;
-    if (reader->ReadFile((CKSTRING)Name.CStr(), &properties) != 0 || !properties || !properties->m_Data) {
+    CKBitmapProperties *props = nullptr;
+    if (reader->ReadFile((CKSTRING)Name.CStr(), &props) != 0 || !props || !props->m_Data) {
         reader->Release();
         return FALSE;
     }
@@ -485,7 +485,7 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     if (Slot > slotCount)
         SetSlotCount(Slot + 1);
 
-    if (!CreateImage(properties->m_Format.Width, properties->m_Format.Height, 32, Slot)) {
+    if (!CreateImage(props->m_Format.Width, props->m_Format.Height, 32, Slot)) {
         SetSlotCount(slotCount);
         reader->Release();
         return FALSE;
@@ -493,11 +493,11 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
 
     CKBYTE *data = LockSurfacePtr(Slot);
     if (!data) {
-        reader->ReleaseMemory(properties->m_Data);
-        properties->m_Data = nullptr;
+        reader->ReleaseMemory(props->m_Data);
+        props->m_Data = nullptr;
 
-        delete properties->m_Format.ColorMap;
-        properties->m_Format.ColorMap = nullptr;
+        delete props->m_Format.ColorMap;
+        props->m_Format.ColorMap = nullptr;
 
         reader->Release();
         return FALSE;
@@ -506,22 +506,22 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     VxImageDescEx desc;
     GetImageDesc(desc);
 
-    properties->m_Format.Image = (XBYTE *)properties->m_Data;
+    props->m_Format.Image = (XBYTE *)props->m_Data;
     desc.Image = data;
 
-    VxDoBlit(properties->m_Format, desc);
+    VxDoBlit(props->m_Format, desc);
 
-    if (properties->m_Format.AlphaMask == 0)
+    if (props->m_Format.AlphaMask == 0)
         VxDoAlphaBlit(desc, 0xFF);
 
     SetSlotFileName(Slot, (CKSTRING)Name.CStr());
-    SetSaveFormat(properties);
+    SetSaveFormat(props);
 
-    reader->ReleaseMemory(properties->m_Data);
-    properties->m_Data = nullptr;
+    reader->ReleaseMemory(props->m_Data);
+    props->m_Data = nullptr;
 
-    delete properties->m_Format.ColorMap;
-    properties->m_Format.ColorMap = nullptr;
+    delete props->m_Format.ColorMap;
+    props->m_Format.ColorMap = nullptr;
 
     reader->Release();
     return TRUE;
@@ -541,12 +541,7 @@ CKBOOL CKBitmapData::LoadMovieFile(XString Name) {
     }
 
     // Create image slot with movie dimensions
-    if (!CreateImage(
-        movieProps->m_Format.Width,
-        movieProps->m_Format.Height,
-        32, // 32bpp ARGB format
-        0   // First slot
-    )) {
+    if (!CreateImage(movieProps->m_Format.Width, movieProps->m_Format.Height, 32, 0)) {
         delete m_MovieInfo;
         m_MovieInfo = nullptr;
         return FALSE;
