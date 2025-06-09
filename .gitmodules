@@ -1,3 +1,6 @@
 [submodule "deps/miniz"]
 	path = deps/miniz
 	url = https://github.com/richgel999/miniz.git
+[submodule "deps/spdlog"]
+	path = deps/spdlog
+	url = https://github.com/gabime/spdlog.git
