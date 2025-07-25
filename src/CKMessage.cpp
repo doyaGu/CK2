@@ -22,13 +22,10 @@ CKERROR CKMessage::AddParameter(CKParameter *param, CKBOOL DeleteParameterWithMe
 }
 
 CKERROR CKMessage::RemoveParameter(CKParameter *param) {
-    if (!param)
+    if (!param || !m_Parameters)
         return CKERR_INVALIDPARAMETER;
 
-    if (!m_Parameters)
-        return CKERR_INVALIDPARAMETER;
-
-    m_Parameters->Remove(param->GetID());
+    m_Parameters->RemoveObject(param);
     if (m_Parameters->Size() == 0) {
         delete m_Parameters;
         m_Parameters = nullptr;
@@ -38,9 +35,7 @@ CKERROR CKMessage::RemoveParameter(CKParameter *param) {
 }
 
 int CKMessage::GetParameterCount() {
-    if (m_Parameters)
-        return m_Parameters->Size();
-    return 0;
+    return m_Parameters ? m_Parameters->Size() : 0;
 }
 
 CKParameter *CKMessage::GetParameter(int pos) {
@@ -63,11 +58,10 @@ CKMessage::~CKMessage() {
     if (m_Parameters) {
         for (XObjectArray::Iterator it = m_Parameters->Begin(); it != m_Parameters->End(); ++it) {
             CKObject *obj = m_Context->GetObject(*it);
-            if (obj && obj->GetObjectFlags() & CK_PARAMETEROUT_DELETEAFTERUSE) {
-                CKDestroyObject(obj, CK_DESTROY_TEMPOBJECT);
+            if (obj && (obj->GetObjectFlags() & CK_PARAMETEROUT_DELETEAFTERUSE)) {
+                m_Context->DestroyObject(obj->GetID(), CK_DESTROY_TEMPOBJECT);
             }
         }
-
         delete m_Parameters;
     }
 }
@@ -77,10 +71,10 @@ int CKMessage::AddRef() {
 }
 
 int CKMessage::Release() {
-    int count = --m_RefCount;
+    --m_RefCount;
     if (m_RefCount <= 0) {
         delete this;
         return 0;
     }
-    return count;
+    return m_RefCount;
 }
