@@ -25,7 +25,9 @@ CKERROR CKBehaviorManager::Execute(float delta) {
             CKBehavior *beh = beo->GetScript(i);
             const CKDWORD flags = beh->GetFlags();
             if (flags & (CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME)) {
-                beh->Activate((flags & CKBEHAVIOR_ACTIVATENEXTFRAME) != 0, (flags & CKBEHAVIOR_RESETNEXTFRAME) != 0);
+                CKBOOL active = (flags & CKBEHAVIOR_ACTIVATENEXTFRAME) != 0;
+                CKBOOL reset = (flags & CKBEHAVIOR_RESETNEXTFRAME) != 0;
+                beh->Activate(active, reset);
                 beh->ModifyFlags(0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME);
             }
         }
@@ -33,10 +35,11 @@ CKERROR CKBehaviorManager::Execute(float delta) {
 
     // Main execution loop
     for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
-        if (m_Context->m_ProfilingEnabled)
-            behaviorProfiler.Reset();
-
         CKBeObject *obj = (CKBeObject *)*it;
+
+        if (m_Context->m_ProfilingEnabled) {
+            behaviorProfiler.Reset();
+        }
 
         // Special handling for characters
         if (obj->GetClassID() == CKCID_CHARACTER) {
