@@ -76,8 +76,13 @@ void CKBehaviorManager::ManageObjectsActivity() {
         return;
 
     CKBOOL changed = FALSE;
-    for (auto it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End();) {
+    for (auto it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End(); ++it) {
         CKBeObject *beo = (CKBeObject *) m_Context->GetObject(it.GetKey());
+
+        if (!beo) {
+            continue;
+        }
+
         if (*it < 0) {
             beo->ResetExecutionTime();
             m_BeObjects.Remove(beo);
