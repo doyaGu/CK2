@@ -155,7 +155,7 @@ CKERROR CKParameterManager::UnRegisterParameterType(CKGUID guid) {
 }
 
 CKParameterTypeDesc *CKParameterManager::GetParameterTypeDescription(int type) {
-    if (type < 0 || type > m_RegisteredTypes.Size())
+    if (type < 0 || type >= m_RegisteredTypes.Size())
         return nullptr;
     return m_RegisteredTypes[type];
 }
