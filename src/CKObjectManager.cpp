@@ -665,7 +665,44 @@ void CKObjectManager::UnSetDynamic(CKObject *iObject) {
 }
 
 CKERROR CKObjectManager::PostProcess() {
-    return CKBaseManager::PostProcess();
+    // Process deferred deletions
+    for (CKDWORD flag = 0; flag < 4; ++flag) {
+        XArray<CKDeferredDeletion *> &deletions = m_DeferredDeletions[flag];
+
+        if (!deletions.IsEmpty()) {
+            for (int i = 0; i < deletions.Size(); ++i) {
+                CKDeferredDeletion *deletion = deletions[i];
+                if (deletion) {
+                    m_Context->PrepareDestroyObjects(deletion->m_Dependencies.Begin(),
+                                                     deletion->m_Dependencies.Size(),
+                                                     flag,
+                                                     deletion->m_DependenciesPtr);
+                }
+            }
+
+            m_Context->FinishDestroyObjects(flag);
+
+            for (int i = 0; i < deletions.Size(); ++i) {
+                CKDeferredDeletion *deletion = deletions[i];
+                if (deletion) {
+                    delete deletion->m_DependenciesPtr;
+                    delete deletion;
+                }
+            }
+            deletions.Clear();
+        }
+    }
+
+    // Process deletion of all dynamic objects if requested
+    if (m_NeedDeleteAllDynamicObjects) {
+        if (!m_DynamicObjects.IsEmpty()) {
+            m_Context->DestroyObjects(m_DynamicObjects.Begin(), m_DynamicObjects.Size());
+            m_DynamicObjects.Clear();
+        }
+        m_NeedDeleteAllDynamicObjects = FALSE;
+    }
+
+    return CK_OK;
 }
 
 CKERROR CKObjectManager::OnCKReset() {
