@@ -24,8 +24,8 @@ void CKBeObject::ExecuteBehaviors(float delta) {
     if (m_ScriptArray) {
         const int count = m_ScriptArray->Size();
         for (int i = 0; i < count; ++i) {
-            CKBehavior *beh = (CKBehavior *)m_ScriptArray->GetObject(i);
-            if (beh->IsActive()) {
+            CKBehavior *beh = (CKBehavior *) m_ScriptArray->GetObject(i);
+            if (beh && beh->IsActive()) {
                 executed = TRUE;
                 beh->Execute(delta);
                 m_LastExecutionTime += beh->GetLastExecutionTime();
@@ -43,7 +43,7 @@ CKBOOL CKBeObject::IsInGroup(CKGroup *group) {
     if (!group)
         return FALSE;
 
-    if (group->m_GroupIndex < m_Groups.Size())
+    if (group->m_GroupIndex >= m_Groups.Size())
         return FALSE;
 
     return m_Groups.IsSet(group->m_GroupIndex);
@@ -61,9 +61,11 @@ CKBOOL CKBeObject::SetAttribute(CKAttributeType AttribType, CK_ID parameter) {
         return FALSE;
 
     CKAttributeManager *am = m_Context->GetAttributeManager();
+    if (!am->IsAttributeIndexValid(AttribType))
+        return FALSE;
 
     CK_CLASSID cid = am->GetAttributeCompatibleClassId(AttribType);
-    if (!CKIsChildClassOf(GetClassID(), cid))
+    if (!CKIsChildClassOf(this, cid))
         return FALSE;
 
     CKGUID guid = am->GetAttributeParameterGUID(AttribType);
@@ -76,7 +78,6 @@ CKBOOL CKBeObject::SetAttribute(CKAttributeType AttribType, CK_ID parameter) {
                     pout->SetValue(defValue);
                 }
                 pout->SetOwner(this);
-
                 parameter = pout->GetID();
             } else {
                 parameter = 0;
@@ -86,7 +87,7 @@ CKBOOL CKBeObject::SetAttribute(CKAttributeType AttribType, CK_ID parameter) {
 
     CKAttributeVal attrVal = {AttribType, parameter};
     const int count = m_Attributes.Size();
-    m_Attributes.Insert(parameter, attrVal);
+    m_Attributes.Insert(AttribType, attrVal);
     am->AddAttributeToObject(AttribType, this);
     return count != m_Attributes.Size();
 }
