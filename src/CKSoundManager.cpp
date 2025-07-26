@@ -10,8 +10,9 @@ void CKSoundManager::SetListener(CK3dEntity *listener) {
             listener->GetPosition(&m_OldListenerPos);
         }
         m_ListenerEntity = listener->GetID();
+    } else {
+        m_ListenerEntity = 0;
     }
-    m_ListenerEntity = 0;
 }
 
 CK3dEntity *CKSoundManager::GetListener() {
