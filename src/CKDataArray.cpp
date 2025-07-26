@@ -874,9 +874,9 @@ int CKDataArray::GetStringValue(CKDWORD key, int c, char *svalue) {
 }
 
 int CKDataArray::GetElementStringValue(int i, int c, char *svalue) {
-    if (i < 0 || i >= m_DataMatrix.Size() || c < 0 || c >= m_FormatArray.Size())
-        return 0;
-    return GetStringValue((*m_DataMatrix[i])[c], c, svalue);
+    CKDWORD *element = GetElement(i, c);
+    if (!element) return 0;
+    return GetStringValue(*element, c, svalue);
 }
 
 CKBOOL CKDataArray::LoadElements(CKSTRING filename, CKBOOL append, int column) {
@@ -1282,15 +1282,11 @@ void CKDataArray::Clear(CKBOOL Params) {
         delete row;
         m_DataMatrix.RemoveAt(i);
     }
-
-    if (Params && paramsToDestroy.Size() > 0) {
-        m_Context->DestroyObjects(paramsToDestroy.Begin(), paramsToDestroy.Size(), CK_DESTROY_TEMPOBJECT);
-    }
-
     m_DataMatrix.Clear();
 
-    m_Order = FALSE;
-    m_ColumnIndex = -1;
+    if (Params && !paramsToDestroy.IsEmpty()) {
+        m_Context->DestroyObjects(paramsToDestroy.Begin(), paramsToDestroy.Size());
+    }
 }
 
 void CKDataArray::DataDelete(CKBOOL Params) {
