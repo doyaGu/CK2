@@ -7,22 +7,15 @@
 #include "CKParameterManager.h"
 
 template <class T>
-CKBOOL OpCompare(CK_COMPOPERATOR op, T &a, T &b) {
+CKBOOL OpCompare(CK_COMPOPERATOR op, T a, T b) {
     switch (op) {
-    case CKEQUAL:
-        return b == a;
-    case CKNOTEQUAL:
-        return a != b;
-    case CKLESSER:
-        return a < b;
-    case CKLESSEREQUAL:
-        return a <= b;
-    case CKGREATER:
-        return a > b;
-    case CKGREATEREQUAL:
-        return a >= b;
-    default:
-        return FALSE;
+    case CKEQUAL:       return a == b;
+    case CKNOTEQUAL:    return a != b;
+    case CKLESSER:      return a < b;
+    case CKLESSEREQUAL: return a <= b;
+    case CKGREATER:     return a > b;
+    case CKGREATEREQUAL:return a >= b;
+    default:            return FALSE;
     }
 }
 
@@ -33,61 +26,40 @@ int DataRowCompare(const void *elem1, const void *elem2) {
 }
 
 int ArrayIntComp(CKDataRow *row1, CKDataRow *row2) {
-    int diff = (*row2)[CKDataArray::g_ColumnIndex] > (*row1)[CKDataArray::g_ColumnIndex];
-    if (diff == 0)
-        return 0;
-    if (!CKDataArray::g_Order)
-        diff = (*row1)[CKDataArray::g_ColumnIndex] > (*row2)[CKDataArray::g_ColumnIndex];
-    return diff;
+    int val1 = (*row1)[CKDataArray::g_ColumnIndex];
+    int val2 = (*row2)[CKDataArray::g_ColumnIndex];
+    if (CKDataArray::g_Order) return val1 - val2;
+    return val2 - val1;
 }
 
 int ArrayFloatComp(CKDataRow *row1, CKDataRow *row2) {
-    const float diff = (float) (*row2)[CKDataArray::g_ColumnIndex] - (float) (*row1)[CKDataArray::g_ColumnIndex];
-    if (fabsf(diff) < EPSILON)
-        return 0;
-    const int result = diff <= 0 ? -2 : 2;
-    if (!CKDataArray::g_Order)
-        return -result;
-    return result;
+    float val1 = *(float *) &((*row1)[CKDataArray::g_ColumnIndex]);
+    float val2 = *(float *) &((*row2)[CKDataArray::g_ColumnIndex]);
+    if (val1 < val2) return CKDataArray::g_Order ? -1 : 1;
+    if (val1 > val2) return CKDataArray::g_Order ? 1 : -1;
+    return 0;
 }
 
 int ArrayStringComp(CKDataRow *row1, CKDataRow *row2) {
     const char *s1 = (const char *) (*row1)[CKDataArray::g_ColumnIndex];
     const char *s2 = (const char *) (*row2)[CKDataArray::g_ColumnIndex];
-    if (!s1)
-        s1 = "";
-    if (!s2)
-        s2 = "";
-    const int diff = strcmp(s1, s2);
-    if (diff == 0)
-        return 0;
-    if (!CKDataArray::g_Order)
-        return -diff;
-    return diff;
+    if (!s1) s1 = "";
+    if (!s2) s2 = "";
+    int diff = strcmp(s1, s2);
+    return CKDataArray::g_Order ? diff : -diff;
 }
 
 int ArrayParameterComp(CKDataRow *row1, CKDataRow *row2) {
     CKParameter *p1 = (CKParameter *) (*row1)[CKDataArray::g_ColumnIndex];
     CKParameter *p2 = (CKParameter *) (*row2)[CKDataArray::g_ColumnIndex];
-    if (p1 == p2)
-        return 0;
+    if (p1 == p2) return 0;
+    if (!p1 || !p2) return p1 ? 1 : -1;
 
-    const int p1size = p1->GetDataSize();
-    const int p2size = p2->GetDataSize();
-    CKParameter *p = (p1size < p2size) ? p1 : p2;
-    const int size = p->GetDataSize();
-    if (size == 0)
-        return 0;
+    int size = XMin(p1->GetDataSize(), p2->GetDataSize());
+    if (size == 0) return 0;
 
-    const void *ptr1 = p1->GetReadDataPtr();
-    const void *ptr2 = p2->GetReadDataPtr();
-    const int result = memcmp(ptr2, ptr1, size);
-    if (result == 0)
-        return 0;
-
-    if (!CKDataArray::g_Order)
-        return -result;
-    return result;
+    int result = memcmp(p1->GetReadDataPtr(), p2->GetReadDataPtr(), size);
+    return CKDataArray::g_Order ? result : -result;
 }
 
 CKBOOL ArrayIntEqual(CKDataRow *row) {
@@ -97,39 +69,32 @@ CKBOOL ArrayIntEqual(CKDataRow *row) {
 }
 
 CKBOOL ArrayFloatEqual(CKDataRow *row) {
-    float v1 = (float) (*row)[CKDataArray::g_ColumnIndex];
-    float v2 = (float) CKDataArray::g_Value;
+    float v1 = *(float *) &(*row)[CKDataArray::g_ColumnIndex];
+    float v2 = *(float *) &CKDataArray::g_Value;
     return OpCompare(CKDataArray::g_Operator, v1, v2);
 }
 
 CKBOOL ArrayStringEqual(CKDataRow *row) {
     const char *s1 = (const char *) (*row)[CKDataArray::g_ColumnIndex];
     const char *s2 = (const char *) CKDataArray::g_Value;
-    if (!s1)
-        s1 = "";
-    if (!s2)
-        s2 = "";
-    int a = strcmp(s1, s2);
-    int b = 0;
-    return OpCompare(CKDataArray::g_Operator, a, b);
+    if (!s1) s1 = "";
+    if (!s2) s2 = "";
+    return OpCompare(CKDataArray::g_Operator, strcmp(s1, s2), 0);
 }
 
 CKBOOL ArrayParameterEqual(CKDataRow *row) {
     CKParameter *p = (CKParameter *) (*row)[CKDataArray::g_ColumnIndex];
+    if (!p) return FALSE;
     const int size = XMin(p->GetDataSize(), (int) CKDataArray::g_ValueSize);
-    if (size == 0)
-        return FALSE;
-
+    if (size == 0) return FALSE;
     const void *ptr = p->GetReadDataPtr();
-    int a = memcmp(ptr, (void *) CKDataArray::g_Value, size);
-    int b = 0;
-    return OpCompare(CKDataArray::g_Operator, a, b);
+    return OpCompare(CKDataArray::g_Operator, memcmp(ptr, (void *) CKDataArray::g_Value, size), 0);
 }
 
 CK_CLASSID CKDataArray::m_ClassID = CKCID_DATAARRAY;
 
 int CKDataArray::g_ColumnIndex = 0;
-CKBOOL CKDataArray::g_Order = FALSE; // Ascending order
+CKBOOL CKDataArray::g_Order = TRUE;
 CK_COMPOPERATOR CKDataArray::g_Operator = CKEQUAL;
 CKDWORD CKDataArray::g_Value = 0;
 CKDWORD CKDataArray::g_ValueSize = 0;
