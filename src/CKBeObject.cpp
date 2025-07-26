@@ -142,8 +142,7 @@ CKParameterOut *CKBeObject::GetAttributeParameterByIndex(int index) {
 }
 
 void CKBeObject::GetAttributeList(CKAttributeVal *liste) {
-    if (!liste)
-        return;
+    if (!liste) return;
     for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
         liste->AttribType = (*it).AttribType;
         liste->Parameter = (*it).Parameter;
@@ -169,12 +168,7 @@ CKERROR CKBeObject::AddScript(CKBehavior *script) {
 
     // Check for duplicate script
     if (m_ScriptArray) {
-        XObjectPointerArray::Iterator it = m_ScriptArray->Begin();
-        XObjectPointerArray::Iterator end = m_ScriptArray->End();
-        while (it != end && *it != script)
-            ++it;
-
-        if (it != end) {
+        if (m_ScriptArray->FindObject(script)) {
             return CKERR_ALREADYPRESENT;
         }
     }
@@ -191,7 +185,7 @@ CKERROR CKBeObject::AddScript(CKBehavior *script) {
     CKBeObject *previousOwner = script->GetOwner();
     CKERROR err = script->SetOwner(this, TRUE);
     if (err != CK_OK) {
-        script->SetOwner(previousOwner, TRUE); // Revert owner
+        script->SetOwner(previousOwner, TRUE);
         return err;
     }
 
@@ -199,9 +193,7 @@ CKERROR CKBeObject::AddScript(CKBehavior *script) {
     if (!m_ScriptArray) {
         m_ScriptArray = new XObjectPointerArray();
     }
-
-    if (!m_ScriptArray)
-        return CKERR_OUTOFMEMORY;
+    if (!m_ScriptArray) return CKERR_OUTOFMEMORY;
 
     // Add script to array
     m_ScriptArray->PushBack(script);
@@ -219,7 +211,7 @@ CKBehavior *CKBeObject::RemoveScript(CK_ID id) {
     if (!m_ScriptArray)
         return nullptr;
 
-    CKBehavior *script = (CKBehavior *)m_Context->GetObject(id);
+    CKBehavior *script = (CKBehavior *) m_Context->GetObject(id);
     if (!script)
         return nullptr;
 
@@ -256,10 +248,9 @@ CKBehavior *CKBeObject::RemoveScript(int pos) {
 }
 
 CKERROR CKBeObject::RemoveAllScripts() {
-    if (!m_ScriptArray)
-        return CK_OK;
+    if (!m_ScriptArray) return CK_OK;
 
-    for (auto it = m_ScriptArray->Begin(); it != m_ScriptArray->End(); ++it) {
+    for (XObjectPointerArray::Iterator it = m_ScriptArray->Begin(); it != m_ScriptArray->End(); ++it) {
         CKBehavior *script = (CKBehavior *) *it;
         if (script->GetFlags() & CKBEHAVIOR_SCRIPT)
             RemoveFromSelfScenes(script);
@@ -277,9 +268,7 @@ CKBehavior *CKBeObject::GetScript(int pos) {
 }
 
 int CKBeObject::GetScriptCount() {
-    if (m_ScriptArray)
-        return m_ScriptArray->Size();
-    return 0;
+    return m_ScriptArray ? m_ScriptArray->Size() : 0;
 }
 
 int CKBeObject::GetPriority() {
@@ -294,24 +283,22 @@ void CKBeObject::SetPriority(int priority) {
 }
 
 int CKBeObject::GetLastFrameMessageCount() {
-    if (m_LastFrameMessages)
-        return m_LastFrameMessages->Size();
-    return 0;
+    return m_LastFrameMessages ? m_LastFrameMessages->Size() : 0;
 }
 
 CKMessage *CKBeObject::GetLastFrameMessage(int pos) {
-    if (!m_LastFrameMessages)
-        return nullptr;
-    if (pos < 0 || pos >= m_LastFrameMessages->Size())
-        return nullptr;
-    return (*m_LastFrameMessages)[pos];
+    if (m_LastFrameMessages && pos >= 0 && pos < m_LastFrameMessages->Size())
+        return (*m_LastFrameMessages)[pos];
+    return nullptr;
 }
 
 void CKBeObject::SetAsWaitingForMessages(CKBOOL wait) {
-    if (wait)
+    if (wait) {
         ++m_Waiting;
-    else if (--m_Waiting < 0)
-        m_Waiting = 0;
+    } else {
+        --m_Waiting;
+        if (m_Waiting < 0) m_Waiting = 0;
+    }
 }
 
 CKBOOL CKBeObject::IsWaitingForMessages() {
@@ -320,17 +307,13 @@ CKBOOL CKBeObject::IsWaitingForMessages() {
 
 int CKBeObject::CallBehaviorCallbackFunction(CKDWORD Message, CKGUID *behguid) {
     int result = 0;
+    if (!m_ScriptArray) return result;
 
-    if (!m_ScriptArray)
-        return result;
-
-    const int scriptCount = m_ScriptArray->Size();
-    for (int i = 0; i < scriptCount; ++i) {
+    for (int i = 0; i < m_ScriptArray->Size(); ++i) {
         CKBehavior *script = (CKBehavior *) (*m_ScriptArray)[i];
         if (script)
             result = script->CallSubBehaviorsCallbackFunction(Message, behguid);
     }
-
     return result;
 }
 
@@ -339,14 +322,13 @@ float CKBeObject::GetLastExecutionTime() {
 }
 
 void CKBeObject::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects) {
-    if (!m_ScriptArray)
-        return;
+    if (!m_ScriptArray) return;
 
-    for (auto it = m_ScriptArray->Begin(); it != m_ScriptArray->End();) {
+    for (XObjectPointerArray::Iterator it = m_ScriptArray->Begin(); it != m_ScriptArray->End();) {
         CKBehavior *script = (CKBehavior *) *it;
         if (script && !(script->GetFlags() & CKBEHAVIOR_SCRIPT)) {
             WarningForOlderVersion = TRUE;
-            it = m_ScriptArray->Remove(script);
+            it = m_ScriptArray->Remove(it);
         } else {
             ++it;
         }
@@ -377,8 +359,6 @@ CKBeObject::~CKBeObject() {
     if (m_LastFrameMessages) {
         delete m_LastFrameMessages;
     }
-    m_Attributes.Clear();
-    m_Groups.Clear();
 }
 
 CK_CLASSID CKBeObject::GetClassID() {
@@ -474,9 +454,7 @@ CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
             CKSceneObjectDesc *desc = scene->GetSceneObjectDesc(this);
             if (desc) {
                 CKDWORD sceneFlags = desc->m_Flags;
-                if (desc->m_InitialValue) {
-                    sceneFlags |= CK_SCENEOBJECT_INTERNAL_IC;
-                }
+                if (desc->m_InitialValue) sceneFlags |= CK_SCENEOBJECT_INTERNAL_IC;
                 chunk->WriteIdentifier(CK_STATESAVE_SINGLEACTIVITY);
                 chunk->WriteDword(sceneFlags);
             }
@@ -692,20 +670,14 @@ void CKBeObject::PreDelete() {
 
 int CKBeObject::GetMemoryOccupation() {
     int size = CKSceneObject::GetMemoryOccupation() + 52;
-    if (m_ScriptArray)
-        size += m_ScriptArray->GetMemoryOccupation();
-    if (m_LastFrameMessages)
-        size += m_LastFrameMessages->GetMemoryOccupation();
+    if (m_ScriptArray) size += m_ScriptArray->GetMemoryOccupation();
+    if (m_LastFrameMessages) size += m_LastFrameMessages->GetMemoryOccupation();
     return size;
 }
 
 CKBOOL CKBeObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
-    if (cid == CKCID_BEHAVIOR && m_ScriptArray) {
-        for (int i = 0; i < m_ScriptArray->Size(); ++i) {
-            CKBehavior *beh = (CKBehavior *) (*m_ScriptArray)[i];
-            if (beh == obj)
-                return TRUE;
-        }
+    if (cid == CKCID_BEHAVIOR && m_ScriptArray && m_ScriptArray->FindObject(obj)) {
+        return TRUE;
     }
     return CKObject::IsObjectUsed(obj, cid);
 }
@@ -735,7 +707,7 @@ CKERROR CKBeObject::PrepareDependencies(CKDependenciesContext &context) {
 
         if (context.IsInMode(CK_DEPENDENCIES_DELETE)) {
             CKAttributeManager *am = m_Context->GetAttributeManager();
-            for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
+            for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
                 CKAttributeVal &val = *it;
                 if (!(am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY)) {
                     CKParameter *param = (CKParameter *) m_Context->GetObject(val.Parameter);
@@ -749,7 +721,7 @@ CKERROR CKBeObject::PrepareDependencies(CKDependenciesContext &context) {
 
     if (classDeps & 2) {
         CKAttributeManager *am = m_Context->GetAttributeManager();
-        for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
+        for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
             CKAttributeVal &val = *it;
             if (!(am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY)) {
                 CKParameter *param = (CKParameter *) m_Context->GetObject(val.Parameter);
@@ -770,16 +742,11 @@ CKERROR CKBeObject::RemapDependencies(CKDependenciesContext &context) {
 
     CKDWORD classDeps = context.GetClassDependencies(m_ClassID);
     if (classDeps & 1) {
-        if (m_ScriptArray) {
-            m_ScriptArray->Remap(context);
-        }
+        if (m_ScriptArray) m_ScriptArray->Remap(context);
     }
-
-    // Remap attribute dependencies if needed
     if (classDeps & 2) {
-        for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-            CKAttributeVal &val = *it;
-            val.Parameter = context.RemapID(val.Parameter);
+        for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
+            (*it).Parameter = context.RemapID((*it).Parameter);
         }
     }
 
@@ -791,7 +758,7 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
     if (err != CK_OK)
         return err;
 
-    CKBeObject *beo = (CKBeObject *)&o;
+    CKBeObject *beo = (CKBeObject *) &o;
 
     // Get dependency flags for BeObject class
     const CKDWORD classDeps = context.GetClassDependencies(m_ClassID);
@@ -805,7 +772,7 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
             m_ScriptArray = new XObjectPointerArray();
 
             // Clone valid scripts
-            for (auto it = beo->m_ScriptArray->Begin(); it != beo->m_ScriptArray->End(); ++it) {
+            for (XAttributeList::Iterator it = beo->m_ScriptArray->Begin(); it != beo->m_ScriptArray->End(); ++it) {
                 CKBehavior *srcScript = (CKBehavior *) *it;
                 if (!(srcScript->GetFlags() & CKBEHAVIOR_LOCKED)) {
                     m_ScriptArray->PushBack(srcScript);
@@ -818,7 +785,7 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
     if (classDeps & 2) {
         CKAttributeManager *am = m_Context->GetAttributeManager();
 
-        for (auto it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
+        for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
             CKAttributeVal &val = *it;
             if (!(am->GetAttributeFlags(val.AttribType) & CK_ATTRIBUT_DONOTCOPY)) {
                 SetAttribute(val.AttribType, val.Parameter);
@@ -843,41 +810,35 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
 }
 
 void CKBeObject::AddToScene(CKScene *scene, CKBOOL dependencies) {
-    if (!scene)
-        return;
+    if (!scene) return;
     CKSceneObject::AddToScene(scene, dependencies);
     if (dependencies && m_ScriptArray) {
         for (int i = 0; i < m_ScriptArray->Size(); ++i) {
             CKBehavior *beh = (CKBehavior *) m_ScriptArray->GetObject(i);
-            if (beh && beh->GetFlags() & CKBEHAVIOR_SCRIPT) {
+            if (beh && (beh->GetFlags() & CKBEHAVIOR_SCRIPT))
                 scene->AddObject(beh);
-            }
         }
     }
 }
 
 void CKBeObject::RemoveFromScene(CKScene *scene, CKBOOL dependencies) {
-    if (!scene)
-        return;
+    if (!scene) return;
     if (dependencies && m_ScriptArray) {
         for (int i = 0; i < m_ScriptArray->Size(); ++i) {
             CKBehavior *beh = (CKBehavior *) m_ScriptArray->GetObject(i);
-            if (beh && beh->GetFlags() & CKBEHAVIOR_SCRIPT) {
+            if (beh && (beh->GetFlags() & CKBEHAVIOR_SCRIPT))
                 scene->RemoveObject(beh);
-            }
         }
     }
     CKSceneObject::RemoveFromScene(scene, dependencies);
 }
 
 void CKBeObject::AddToGroup(CKGroup *group) {
-    if (group)
-        m_Groups.Set(group->m_GroupIndex);
+    if (group) m_Groups.Set(group->m_GroupIndex);
 }
 
 void CKBeObject::RemoveFromGroup(CKGroup *group) {
-    if (group)
-        m_Groups.Unset(group->m_GroupIndex);
+    if (group) m_Groups.Unset(group->m_GroupIndex);
 }
 
 CKSTRING CKBeObject::GetClassName() {
@@ -885,7 +846,7 @@ CKSTRING CKBeObject::GetClassName() {
 }
 
 int CKBeObject::GetDependenciesCount(int mode) {
-    if (mode == 1 || mode == 4)
+    if (mode == CK_DEPENDENCIES_COPY || mode == CK_DEPENDENCIES_SAVE)
         return 3;
     return 0;
 }
@@ -954,32 +915,20 @@ void CKBeObject::RemoveFromAllGroups() {
 }
 
 CKERROR CKBeObject::AddLastFrameMessage(CKMessage *msg) {
-    if (!msg)
-        return CKERR_INVALIDPARAMETER;
-    if (!m_LastFrameMessages) {
-        m_LastFrameMessages = new XArray<CKMessage *>();
+    if (!msg) return CKERR_INVALIDPARAMETER;
+    if (!m_LastFrameMessages) m_LastFrameMessages = new XArray<CKMessage *>();
+    if (!m_LastFrameMessages) return CKERR_OUTOFMEMORY;
+    if (m_LastFrameMessages->Find(msg) == m_LastFrameMessages->End()) {
+        m_LastFrameMessages->PushBack(msg);
+        msg->AddRef();
     }
-
-    if (!m_LastFrameMessages)
-        return CKERR_OUTOFMEMORY;
-
-    for (auto it = m_LastFrameMessages->Begin(); it != m_LastFrameMessages->End(); ++it) {
-        if (*it == msg)
-            return CK_OK;
-    }
-
-    m_LastFrameMessages->PushBack(msg);
-    msg->AddRef();
     return CK_OK;
 }
 
 CKERROR CKBeObject::RemoveAllLastFrameMessage() {
     if (m_LastFrameMessages) {
-        for (auto it = m_LastFrameMessages->Begin(); it != m_LastFrameMessages->End(); ++it) {
-            CKMessage *msg = *it;
-            if (msg) {
-                msg->Release();
-            }
+        for (XArray<CKMessage *>::Iterator it = m_LastFrameMessages->Begin(); it != m_LastFrameMessages->End(); ++it) {
+            if (*it) (*it)->Release();
         }
         m_LastFrameMessages->Clear();
     }
@@ -989,17 +938,13 @@ CKERROR CKBeObject::RemoveAllLastFrameMessage() {
 void CKBeObject::ApplyOwner() {
     if (m_ScriptArray) {
         for (int i = 0; i < m_ScriptArray->Size(); ++i) {
-            CKBehavior *beh = (CKBehavior *)m_ScriptArray->GetObject(i);
-            if (beh) {
-                beh->SetOwner(this, TRUE);
-            }
+            CKBehavior *beh = (CKBehavior *) m_ScriptArray->GetObject(i);
+            if (beh) beh->SetOwner(this, TRUE);
         }
     }
     for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-        CKParameterOut *param = (CKParameterOut *)m_Context->GetObject((*it).Parameter);
-        if (param) {
-            param->SetOwner(this);
-        }
+        CKParameterOut *param = (CKParameterOut *) m_Context->GetObject((*it).Parameter);
+        if (param) param->SetOwner(this);
     }
 }
 
@@ -1008,15 +953,15 @@ void CKBeObject::ResetExecutionTime() {
     if (m_ScriptArray) {
         XObjectPointerArray &array = *m_ScriptArray;
         for (int i = 0; i < array.Size(); ++i) {
-            CKBehavior *beh = (CKBehavior *)array[i];
+            CKBehavior *beh = (CKBehavior *) array[i];
             beh->ResetExecutionTime();
         }
     }
 }
 
 int CKBeObject::BeObjectPrioritySort(const void *o1, const void *o2) {
-    CKBeObject *obj1 = *(CKBeObject **)o1;
-    CKBeObject *obj2 = *(CKBeObject **)o2;
+    CKBeObject *obj1 = *(CKBeObject **) o1;
+    CKBeObject *obj2 = *(CKBeObject **) o2;
     if (obj1 && obj2) {
         return obj2->GetPriority() - obj1->GetPriority();
     }
