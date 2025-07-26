@@ -503,7 +503,7 @@ CKMessage *CKMessageManager::CreateMessageGroup(CKMessageType type, CKGroup *gro
     if (msg) {
         msg->m_MessageType = type;
         msg->m_Sender = sender ? sender->GetID() : 0;
-        msg->m_BroadcastCid = group ? group->GetClassID() : 0;
+        msg->m_Recipient = group ? group->GetID() : 0;
         msg->m_SendingType = CK_MESSAGE_GROUP;
     }
     return msg;
