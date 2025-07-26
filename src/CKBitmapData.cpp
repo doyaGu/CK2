@@ -185,7 +185,7 @@ CKSTRING CKBitmapData::GetMovieFileName() {
 }
 
 CKBYTE *CKBitmapData::LockSurfacePtr(int Slot) {
-    if (0 < Slot && Slot < m_Slots.Size())
+    if (0 <= Slot && Slot < m_Slots.Size())
         m_CurrentSlot = Slot;
 
     if (m_Slots.IsEmpty())
