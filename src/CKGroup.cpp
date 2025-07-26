@@ -29,7 +29,7 @@ CKERROR CKGroup::AddObjectFront(CKBeObject *o) {
 CKERROR CKGroup::InsertObjectAt(CKBeObject *o, int pos) {
     if (!o || o == this || !CKIsChildClassOf(o, CKCID_BEOBJECT))
         return CKERR_INVALIDPARAMETER;
-    if (pos < 0 || pos >= m_ObjectArray.Size())
+    if (pos < 0 || pos > m_ObjectArray.Size())
         return CKERR_INVALIDPARAMETER;
     if (o->IsInGroup(this))
         return CKERR_ALREADYPRESENT;
