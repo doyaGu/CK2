@@ -105,6 +105,8 @@ int CKBehaviorManager::GetObjectsCount() {
 }
 
 CKBeObject *CKBehaviorManager::GetObject(int pos) {
+    if (pos < 0 || pos >= m_BeObjects.Size())
+        return nullptr;
     return (CKBeObject *) m_BeObjects[pos];
 }
 
