@@ -772,8 +772,6 @@ CKERROR CKAttributeManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
             int newCategoryIdx = -1;
             if (oldCategoryIdx >= 0 && oldCategoryIdx < categoryCount) {
                 newCategoryIdx = categoryConversions[oldCategoryIdx];
-            } else {
-                newCategoryIdx = -1;
             }
 
             if (GetAttributeTypeByName(name) < 0) {
