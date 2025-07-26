@@ -233,17 +233,13 @@ CKBehavior *CKBeObject::RemoveScript(CK_ID id) {
 }
 
 CKBehavior *CKBeObject::RemoveScript(int pos) {
-    if (!m_ScriptArray || pos >= m_ScriptArray->Size()) {
+    if (!m_ScriptArray || pos < 0 || pos >= m_ScriptArray->Size()) {
         return nullptr;
     }
 
-    CK_ID id = m_ScriptArray->GetObjectID(pos);
-    if (id == 0) {
-        return nullptr;
-    }
+    CKBehavior *script = (CKBehavior *) (*m_ScriptArray)[pos];
     m_ScriptArray->RemoveAt(pos);
 
-    CKBehavior *script = (CKBehavior *) m_Context->GetObject(id);
     if (script) {
         script->SetOwner(nullptr, TRUE);
 
