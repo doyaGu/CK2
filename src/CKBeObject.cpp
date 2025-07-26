@@ -98,10 +98,11 @@ CKBOOL CKBeObject::RemoveAttribute(CKAttributeType AttribType) {
         return FALSE;
 
     CKAttributeVal val = *it;
+    CK_ID paramToDestroy = val.Parameter;
 
-    m_Context->GetAttributeManager()->RemoveAttributeFromObject(this);
+    m_Context->GetAttributeManager()->RemoveAttributeFromObject(AttribType, this);
     m_Attributes.Remove(AttribType);
-    m_Context->DestroyObject(val.Parameter);
+    m_Context->DestroyObject(paramToDestroy);
     return TRUE;
 }
 
@@ -111,7 +112,6 @@ CKParameterOut *CKBeObject::GetAttributeParameter(CKAttributeType AttribType) {
         return nullptr;
 
     CKAttributeVal val = *it;
-
     return (CKParameterOut *) m_Context->GetObject(val.Parameter);
 }
 
@@ -152,9 +152,12 @@ void CKBeObject::GetAttributeList(CKAttributeVal *liste) {
 }
 
 void CKBeObject::RemoveAllAttributes() {
-    CKAttributeManager *am = m_Context->m_AttributeManager;
+    if (m_Attributes.Size() == 0) return;
+
+    CKAttributeManager *am = m_Context->GetAttributeManager();
+
     for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-        am->RemoveAttributeFromObject(this);
+        am->RemoveAttributeFromObject((*it).AttribType, this);
         m_Context->DestroyObject((*it).Parameter);
     }
     m_Attributes.Clear();
@@ -686,7 +689,7 @@ void CKBeObject::PreDelete() {
 
     CKAttributeManager *am = m_Context->GetAttributeManager();
     for (XAttributeList::Iterator it = m_Attributes.Begin(); it != m_Attributes.End(); ++it) {
-        am->RemoveAttributeFromObject(this);
+        am->RemoveAttributeFromObject((*it).AttribType, this);
     }
     m_Attributes.Clear();
 }
