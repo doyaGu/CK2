@@ -46,8 +46,8 @@ CKBeObject *CKGroup::RemoveObject(int pos) {
     if (o) {
         o->RemoveFromGroup(this);
     }
-    m_ClassIdUpdated = FALSE;
     m_ObjectArray.RemoveAt(pos);
+    m_ClassIdUpdated = FALSE;
     return o;
 }
 
@@ -131,7 +131,6 @@ CKGroup::CKGroup(CKContext *Context, CKSTRING Name) : CKBeObject(Context, Name) 
 
 CKGroup::~CKGroup() {
     m_Context->m_ObjectManager->ReleaseGroupGlobalIndex(m_GroupIndex);
-    m_ObjectArray.Clear();
 }
 
 CK_CLASSID CKGroup::GetClassID() {
@@ -139,38 +138,31 @@ CK_CLASSID CKGroup::GetClassID() {
 }
 
 void CKGroup::AddToScene(CKScene *scene, CKBOOL dependencies) {
-    if (scene) {
-        CKBeObject::AddToScene(scene, dependencies);
-        if (dependencies) {
-            for (int i = 0; i < m_ObjectArray.Size(); ++i) {
-                CKBeObject *o = (CKBeObject *)m_ObjectArray[i];
-                if (o) {
-                    o->AddToScene(scene, dependencies);
-                }
-            }
+    if (!scene) return;
+    CKBeObject::AddToScene(scene, dependencies);
+    if (dependencies) {
+        for (int i = 0; i < m_ObjectArray.Size(); ++i) {
+            CKBeObject *o = (CKBeObject *)m_ObjectArray[i];
+            if (o) o->AddToScene(scene, dependencies);
         }
     }
 }
 
 void CKGroup::RemoveFromScene(CKScene *scene, CKBOOL dependencies) {
-    if (scene) {
-        if (dependencies) {
-            for (int i = 0; i < m_ObjectArray.Size(); ++i) {
-                CKBeObject *o = (CKBeObject *)m_ObjectArray[i];
-                if (o) {
-                    o->RemoveFromScene(scene, dependencies);
-                }
-            }
+    if (!scene) return;
+    if (dependencies) {
+        for (int i = 0; i < m_ObjectArray.Size(); ++i) {
+            CKBeObject *o = (CKBeObject *)m_ObjectArray[i];
+            if (o) o->RemoveFromScene(scene, dependencies);
         }
-        CKBeObject::RemoveFromScene(scene, dependencies);
     }
+    CKBeObject::RemoveFromScene(scene, dependencies);
 }
 
 void CKGroup::PreSave(CKFile *file, CKDWORD flags) {
     CKBeObject::PreSave(file, flags);
-    if (!file)
-        return;
-    for (auto it = m_ObjectArray.Begin(); it != m_ObjectArray.End(); ++it) {
+    if (!file) return;
+    for (XObjectPointerArray::Iterator it = m_ObjectArray.Begin(); it != m_ObjectArray.End(); ++it) {
         CKBeObject *o = (CKBeObject *)*it;
         if (o && !CKIsChildClassOf(o, CKCID_LEVEL) && !CKIsChildClassOf(o, CKCID_SCENE)) {
             file->SaveObject(o, flags);
@@ -240,7 +232,7 @@ void CKGroup::PostLoad() {
 
 void CKGroup::PreDelete() {
     CKBeObject::PreDelete();
-    for (auto it = m_ObjectArray.Begin(); it != m_ObjectArray.End(); ++it) {
+    for (XObjectPointerArray::Iterator it = m_ObjectArray.Begin(); it != m_ObjectArray.End(); ++it) {
         CKBeObject *o = (CKBeObject *)*it;
         if (o && !o->IsToBeDeleted()) {
             o->RemoveFromGroup(this);
@@ -255,18 +247,14 @@ void CKGroup::CheckPreDeletion() {
 }
 
 int CKGroup::GetMemoryOccupation() {
-    int size = CKBeObject::GetMemoryOccupation() + 24;
-    size += m_ObjectArray.GetMemoryOccupation();
-    return size;
+    return CKBeObject::GetMemoryOccupation() + 24 + m_ObjectArray.GetMemoryOccupation();
 }
 
 int CKGroup::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     if (!CKIsChildClassOf(o, CKCID_BEOBJECT))
         return CKBeObject::IsObjectUsed(o, cid);
-    for (int i = 0; i < m_ObjectArray.Size(); ++i) {
-        if (m_ObjectArray[i] == o)
-            return TRUE;
-    }
+    if (m_ObjectArray.FindObject(o))
+        return TRUE;
     return CKBeObject::IsObjectUsed(o, cid);
 }
 
@@ -318,11 +306,13 @@ CKSTRING CKGroup::GetClassName() {
 }
 
 int CKGroup::GetDependenciesCount(int mode) {
-    return mode == 1 || mode == 2 || mode == 4 ? 1 : 0;
+    if (mode == CK_DEPENDENCIES_COPY || mode == CK_DEPENDENCIES_DELETE || mode == CK_DEPENDENCIES_SAVE)
+        return 1;
+    return 0;
 }
 
 CKSTRING CKGroup::GetDependencies(int i, int mode) {
-    return i == 0 ? "Objects" : nullptr;
+    return (i == 0) ? "Objects" : nullptr;
 }
 
 void CKGroup::Register() {
