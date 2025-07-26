@@ -772,7 +772,7 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
             m_ScriptArray = new XObjectPointerArray();
 
             // Clone valid scripts
-            for (XAttributeList::Iterator it = beo->m_ScriptArray->Begin(); it != beo->m_ScriptArray->End(); ++it) {
+            for (XObjectPointerArray::Iterator it = beo->m_ScriptArray->Begin(); it != beo->m_ScriptArray->End(); ++it) {
                 CKBehavior *srcScript = (CKBehavior *) *it;
                 if (!(srcScript->GetFlags() & CKBEHAVIOR_LOCKED)) {
                     m_ScriptArray->PushBack(srcScript);
