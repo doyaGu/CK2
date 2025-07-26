@@ -215,7 +215,7 @@ CKStateChunk *CK2dCurve::Dump() {
     chunk->WriteIdentifier(0x100);
 
     XSObjectArray objects;
-    objects.Resize(m_ControlPoints.Size() / (int) sizeof(CK2dCurvePoint));
+    objects.Resize(m_ControlPoints.Size());
     objects.Fill(0);
     objects.Save(chunk, nullptr);
 
