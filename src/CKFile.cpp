@@ -1325,7 +1325,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        if (!hasGridManager) {
+        if (hasGridManager) {
             CKBaseManager *manager = m_Context->GetManagerByGuid(GRID_MANAGER_GUID);
             manager->LoadData(nullptr, this);
         }
