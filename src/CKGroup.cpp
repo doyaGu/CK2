@@ -198,17 +198,14 @@ CKStateChunk *CKGroup::Save(CKFile *file, CKDWORD flags) {
 }
 
 CKERROR CKGroup::Load(CKStateChunk *chunk, CKFile *file) {
-    if (!chunk)
-        return CKERR_INVALIDPARAMETER;
-
+    if (!chunk) return CKERR_INVALIDPARAMETER;
     CKBeObject::Load(chunk, file);
     Clear();
 
     if (chunk->SeekIdentifier(CK_STATESAVE_GROUPALL)) {
         m_ObjectArray.Load(m_Context, chunk);
-
         if (!file) {
-            for (auto it = m_ObjectArray.Begin(); it != m_ObjectArray.End();) {
+            for (XObjectPointerArray::Iterator it = m_ObjectArray.Begin(); it != m_ObjectArray.End();) {
                 CKBeObject *o = (CKBeObject *)*it;
                 if (o) {
                     if (!o->IsInGroup(this)) {
@@ -216,7 +213,7 @@ CKERROR CKGroup::Load(CKStateChunk *chunk, CKFile *file) {
                     }
                     ++it;
                 } else {
-                    it = m_ObjectArray.Remove(o);
+                    it = m_ObjectArray.Remove(it);
                 }
             }
         }
@@ -227,7 +224,7 @@ CKERROR CKGroup::Load(CKStateChunk *chunk, CKFile *file) {
 }
 
 void CKGroup::PostLoad() {
-    for (auto it = m_ObjectArray.Begin(); it != m_ObjectArray.End();) {
+    for (XObjectPointerArray::Iterator it = m_ObjectArray.Begin(); it != m_ObjectArray.End();) {
         CKBeObject *o = (CKBeObject *)*it;
         if (o && CKIsChildClassOf(o, CKCID_BEOBJECT)) {
             if (!o->IsInGroup(this)) {
@@ -235,7 +232,7 @@ void CKGroup::PostLoad() {
             }
             ++it;
         } else {
-            it = m_ObjectArray.Remove(o);
+            it = m_ObjectArray.Remove(it);
         }
     }
     CKObject::PostLoad();
