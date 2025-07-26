@@ -497,6 +497,21 @@ void CKAttributeManager::AddAttributeToObject(CKAttributeType AttribType, CKBeOb
     }
 }
 
+void CKAttributeManager::RemoveAttributeFromObject(CKAttributeType AttribType, CKBeObject *beo) {
+    if (AttribType < 0 || !beo)
+        return;
+
+    CKAttributeDesc *desc = m_AttributeInfos[AttribType];
+    if (desc) {
+        desc->AttributeList.Remove(beo);
+        if (desc->GlobalAttributeList.Remove(beo)) {
+            if (desc->CallbackFct) {
+                desc->CallbackFct(AttribType, FALSE, beo, desc->CallbackArg);
+            }
+        }
+    }
+}
+
 void CKAttributeManager::RefreshList(CKObject *obj, CKScene *scene) {
     if (CKIsChildClassOf(obj, CKCID_BEOBJECT) && scene == m_Context->GetCurrentScene()) {
         CKBeObject *beo = (CKBeObject *) obj;
@@ -570,27 +585,6 @@ void CKAttributeManager::ObjectRemovedFromScene(CKBeObject *beo, CKScene *scene)
             CKAttributeDesc *attrDesc = m_AttributeInfos[attrType];
             if (attrDesc) {
                 attrDesc->AttributeList.Remove(beo);
-            }
-        }
-    }
-}
-
-void CKAttributeManager::RemoveAttributeFromObject(CKBeObject *beo) {
-    if (!beo)
-        return;
-
-    const int count = beo->GetAttributeCount();
-    for (int i = 0; i < count; ++i) {
-        CKAttributeType attrType = beo->GetAttributeType(i);
-        if (attrType >= 0 && attrType < m_AttributeInfoCount) {
-            CKAttributeDesc *desc = m_AttributeInfos[attrType];
-            if (desc) {
-                desc->AttributeList.Remove(beo);
-                if (desc->GlobalAttributeList.Remove(beo)) {
-                    if (desc->CallbackFct) {
-                        desc->CallbackFct(attrType, FALSE, beo, desc->CallbackArg);
-                    }
-                }
             }
         }
     }

@@ -132,6 +132,7 @@ public:
     DLL_EXPORT CKAttributeCategory GetAttributeCategoryIndex(CKAttributeType AttribType);
 
     DLL_EXPORT void AddAttributeToObject(CKAttributeType AttribType, CKBeObject *beo);
+    DLL_EXPORT void RemoveAttributeFromObject(CKAttributeType AttribType, CKBeObject *beo);
 
     DLL_EXPORT void RefreshList(CKObject *obj, CKScene *scene);
 
@@ -147,8 +148,6 @@ public:
 
     DLL_EXPORT void ObjectAddedToScene(CKBeObject *beo, CKScene *scene);
     DLL_EXPORT void ObjectRemovedFromScene(CKBeObject *beo, CKScene *scene);
-
-    DLL_EXPORT void RemoveAttributeFromObject(CKBeObject *beo);
 
     DLL_EXPORT void PatchRemapBeObjectFileChunk(CKStateChunk *chunk);
     DLL_EXPORT void PatchRemapBeObjectStateChunk(CKStateChunk *chunk);
