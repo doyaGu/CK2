@@ -347,7 +347,7 @@ CKDWORD CKBitmapData::GetPixel(int x, int y, int slot) {
 }
 
 void CKBitmapData::SetTransparentColor(CKDWORD Color) {
-    if (m_BitmapFlags & CKBITMAPDATA_TRANSPARENT && (m_TransColor != Color)) {
+    if ((m_BitmapFlags & CKBITMAPDATA_TRANSPARENT) && (m_TransColor != Color)) {
         m_BitmapFlags |= CKBITMAPDATA_FORCERESTORE;
     }
     m_TransColor = Color;
@@ -539,7 +539,7 @@ CKBitmapData::CKBitmapData() {
     m_Height = -1;
     m_MovieInfo = nullptr;
     m_PickThreshold = 0;
-    m_BitmapFlags = 1;
+    m_BitmapFlags = CKBITMAPDATA_INVALID;
     m_TransColor = 0;
     m_CurrentSlot = 0;
     m_SaveProperties = nullptr;
