@@ -349,7 +349,10 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
         return CK_OK;
 
     CKParameterManager *pm = m_Context->GetParameterManager();
-    CKGUID paramGUID = chunk->ReadGuid();
+
+    CKGUID originalGuid = chunk->ReadGuid();
+    CKGUID paramGUID = originalGuid;
+
     if (paramGUID == CKPGUID_OLDMESSAGE) {
         paramGUID = CKPGUID_MESSAGE;
     } else if (paramGUID == CKPGUID_OLDATTRIBUTE) {
@@ -452,20 +455,24 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
     char *buffer = nullptr;
     int bufferSize = chunk->ReadBuffer((void **)&buffer);
 
-    if (paramGUID == CKPGUID_OLDMESSAGE) {
+    if (originalGuid == CKPGUID_OLDMESSAGE) {
         CKMessageManager *msgManager = m_Context->GetMessageManager();
         CKMessageType msgType = msgManager->AddMessageType(buffer);
         SetValue(&msgType, sizeof(CKMessageType));
-    } else if (paramGUID == CKPGUID_OLDATTRIBUTE) {
+    } else if (originalGuid == CKPGUID_OLDATTRIBUTE) {
         CKAttributeManager *attrManager = m_Context->GetAttributeManager();
         CKAttributeType attrType = attrManager->GetAttributeTypeByName(buffer);
         SetValue(&attrType, sizeof(CKAttributeType));
-    } else if (paramGUID == CKPGUID_OLDTIME) {
+    } else if (originalGuid == CKPGUID_OLDTIME) {
         float time = *(float *)buffer;
         SetValue(&time, sizeof(float));
     }
 
-    if ((m_ParamType->dwFlags & CKPARAMETERTYPE_VARIABLESIZE) || buffer && bufferSize > 0)
+    if (!(m_ParamType->dwFlags & CKPARAMETERTYPE_NOENDIANCONV) && (bufferSize & 3) == 0) {
+        CKConvertEndianArray32(buffer, bufferSize >> 2);
+    }
+
+    if ((m_ParamType->dwFlags & CKPARAMETERTYPE_VARIABLESIZE) || (buffer && bufferSize > 0))
         SetValue(buffer, bufferSize);
 
     CKDeletePointer(buffer);
