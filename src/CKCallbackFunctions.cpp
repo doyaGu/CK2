@@ -270,6 +270,7 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
     scriptTypeDesc.DerivedFrom = CKPGUID_OBJECT;
     scriptTypeDesc.TypeName = "Script";
     scriptTypeDesc.Valid = TRUE;
+    scriptTypeDesc.DefaultSize = sizeof(CKDWORD);
     scriptTypeDesc.CopyFunction = CK_ParameterCopier_Dword;
     scriptTypeDesc.Cid = CKCID_BEHAVIOR;
     man->RegisterParameterType(&scriptTypeDesc);
