@@ -101,8 +101,7 @@ CKDWORD CKDataArray::g_ValueSize = 0;
 ArraySortFunction CKDataArray::g_SortFunction = nullptr;
 
 void CKDataArray::InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramGuid) {
-    if (!name)
-        return;
+    if (!name) return;
 
     ColumnFormat *fmt = new ColumnFormat();
     fmt->m_Name = CKStrdup(name);
@@ -190,8 +189,7 @@ void CKDataArray::MoveColumn(int csrc, int cdest) {
 }
 
 void CKDataArray::RemoveColumn(int c) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return;
+    if (c < 0 || c >= m_FormatArray.Size()) return;
 
     // Update sorting state if needed
     if (m_Order) {
@@ -239,35 +237,25 @@ void CKDataArray::RemoveColumn(int c) {
 }
 
 void CKDataArray::SetColumnName(int c, char *name) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return;
-    if (!name)
-        return;
+    if (c < 0 || c >= m_FormatArray.Size() || !name) return;
     ColumnFormat *fmt = m_FormatArray[c];
-    if (!fmt)
-        return;
+    if (!fmt) return;
     delete[] fmt->m_Name;
     fmt->m_Name = CKStrdup(name);
 }
 
 char *CKDataArray::GetColumnName(int c) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return nullptr;
+    if (c < 0 || c >= m_FormatArray.Size()) return nullptr;
     ColumnFormat *fmt = m_FormatArray[c];
-    if (!fmt)
-        return nullptr;
-    return fmt->m_Name;
+    return fmt ? fmt->m_Name : nullptr;
 }
 
 void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return;
+    if (c < 0 || c >= m_FormatArray.Size()) return;
 
     ColumnFormat *format = m_FormatArray[c];
     CK_ARRAYTYPE oldType = format->m_Type;
-
-    if (oldType == newType && !(oldType == CKARRAYTYPE_PARAMETER && format->m_ParameterType != paramGuid))
-        return;
+    if (oldType == newType && (oldType != CKARRAYTYPE_PARAMETER || format->m_ParameterType == paramGuid)) return;
 
     // Update column format
     format->m_Type = newType;
@@ -469,21 +457,15 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
 }
 
 CK_ARRAYTYPE CKDataArray::GetColumnType(int c) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return CK_ARRAYTYPE(0);
+    if (c < 0 || c >= m_FormatArray.Size()) return (CK_ARRAYTYPE) 0;
     ColumnFormat *fmt = m_FormatArray[c];
-    if (!fmt)
-        return CK_ARRAYTYPE(0);
-    return fmt->m_Type;
+    return fmt ? fmt->m_Type : (CK_ARRAYTYPE) 0;
 }
 
 CKGUID CKDataArray::GetColumnParameterGuid(int c) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return CKGUID();
+    if (c < 0 || c >= m_FormatArray.Size()) return CKGUID();
     ColumnFormat *fmt = m_FormatArray[c];
-    if (!fmt)
-        return CKGUID();
-    return fmt->m_ParameterType;
+    return fmt ? fmt->m_ParameterType : CKGUID();
 }
 
 int CKDataArray::GetKeyColumn() {
@@ -491,9 +473,8 @@ int CKDataArray::GetKeyColumn() {
 }
 
 void CKDataArray::SetKeyColumn(int c) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return;
-    m_KeyColumn = c;
+    if (c >= -1 && c < m_FormatArray.Size())
+        m_KeyColumn = c;
 }
 
 int CKDataArray::GetColumnCount() {
@@ -513,23 +494,19 @@ CKDWORD *CKDataArray::GetElement(int i, int c) {
 
 CKBOOL CKDataArray::GetElementValue(int i, int c, void *value) {
     CKDWORD *element = GetElement(i, c);
-    if (!element)
-        return FALSE;
+    if (!element) return FALSE;
     if (GetColumnType(c) == CKARRAYTYPE_PARAMETER) {
         CKParameter *param = (CKParameter *) *element;
-        if (!param)
-            return FALSE;
-        param->GetValue(value);
+        if (!param) return FALSE;
+        return param->GetValue(value);
     }
-    if (value)
-        memcpy(value, element, sizeof(CKDWORD));
+    if (value) memcpy(value, element, sizeof(CKDWORD));
     return TRUE;
 }
 
 CKObject *CKDataArray::GetElementObject(int i, int c) {
     CKDWORD *element = GetElement(i, c);
-    if (!element)
-        return nullptr;
+    if (!element) return nullptr;
     return m_Context->GetObject(*element);
 }
 
@@ -630,9 +607,7 @@ CKBOOL CKDataArray::SetElementValueFromParameter(int i, int c, CKParameter *pout
 }
 
 CKBOOL CKDataArray::SetElementObject(int i, int c, CKObject *object) {
-    if (!object)
-        return FALSE;
-    CK_ID id = object->GetID();
+    CK_ID id = object ? object->GetID() : 0;
     return SetElementValue(i, c, &id);
 }
 
@@ -760,8 +735,7 @@ CKBOOL CKDataArray::SetElementStringValue(int i, int c, char *svalue) {
 }
 
 int CKDataArray::GetStringValue(CKDWORD key, int c, char *svalue) {
-    if (c < 0 || c >= m_FormatArray.Size())
-        return 0;
+    if (c < 0 || c >= m_FormatArray.Size()) return 0;
 
     const ColumnFormat *format = m_FormatArray[c];
     char buffer[256];
