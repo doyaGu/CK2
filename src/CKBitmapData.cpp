@@ -21,7 +21,7 @@ CKMovieInfo::~CKMovieInfo() {
 }
 
 CKBOOL CKBitmapData::CreateImage(int Width, int Height, int BPP, int Slot) {
-    if ((m_BitmapFlags & CKBITMAPDATA_INVALID) != 0 || (m_Slots.Size() <= 1 && Slot == 0)) {
+    if ((m_BitmapFlags & CKBITMAPDATA_INVALID) != 0 || (m_Slots.Size() == 1 && Slot == 0)) {
         m_Width = Width;
         m_Height = Height;
         m_BitmapFlags &= ~CKBITMAPDATA_INVALID;
