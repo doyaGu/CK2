@@ -452,7 +452,7 @@ void CKScene::UseEnvironmentSettings(CKBOOL use) {
 }
 
 CKBOOL CKScene::EnvironmentSettings() {
-    return m_EnvironmentSettings & CK_SCENE_USEENVIRONMENTSETTINGS;
+    return (m_EnvironmentSettings & CK_SCENE_USEENVIRONMENTSETTINGS) != 0;
 }
 
 void CKScene::SetAmbientLight(CKDWORD Color) {
@@ -551,7 +551,11 @@ CKERROR CKScene::Merge(CKScene *mergedScene, CKLevel *fromLevel) {
 
         if (obj && !obj->IsInScene(this)) {
             CKSceneObjectDesc *newDesc = AddObjectDesc(obj);
-            *newDesc = desc;
+            if (!newDesc) continue;
+
+            newDesc->m_Flags = desc.m_Flags;
+            newDesc->m_InitialValue = desc.m_InitialValue;
+            desc.m_InitialValue = nullptr;
 
             if (fromLevel) {
                 CKLevel *currentLevel = m_Context->GetCurrentLevel();
@@ -573,7 +577,7 @@ CKERROR CKScene::Merge(CKScene *mergedScene, CKLevel *fromLevel) {
 
     CKRemapObjectParameterValue(m_Context, mergedScene->GetID(), GetID());
 
-    if (m_AddObjectCount == 0) {
+    if (m_AddObjectCount == 0 && !m_AddObjectList.IsEmpty()) {
         m_Context->ExecuteManagersOnSequenceAddedToScene(
             this,
             m_AddObjectList.Begin(),
