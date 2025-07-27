@@ -204,31 +204,24 @@ CKSTRING CKParameterManager::ParameterTypeToName(CKParameterType type) {
 }
 
 CKGUID CKParameterManager::ParameterNameToGuid(CKSTRING name) {
-    CKGUID result;
-
     if (!name || name[0] == '\0') {
-        return result;
+        return CKGUID();
     }
 
     const int typeCount = m_RegisteredTypes.Size();
-
     for (int i = 0; i < typeCount; ++i) {
         CKParameterTypeDesc *typeDesc = m_RegisteredTypes[i];
         if (!typeDesc) continue;
 
-        // Get type name with null safety
         const char *registeredName = typeDesc->TypeName.CStr();
-        if (!registeredName) {
-            registeredName = "";
-        }
+        if (!registeredName) registeredName = "";
 
         if (strcmp(registeredName, name) == 0) {
-            result = typeDesc->Guid;
-            break;
+            return typeDesc->Guid;
         }
     }
 
-    return result;
+    return CKGUID();
 }
 
 CKParameterType CKParameterManager::ParameterNameToType(CKSTRING name) {
