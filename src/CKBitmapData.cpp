@@ -199,7 +199,7 @@ CKBOOL CKBitmapData::ReleaseSurfacePtr(int Slot) {
 
 CKSTRING CKBitmapData::GetSlotFileName(int Slot) {
     if (Slot < 0 || Slot >= m_Slots.Size())
-        return nullptr;
+        return (CKSTRING)"";
 
     return m_Slots[Slot]->m_FileName.Str();
 }
