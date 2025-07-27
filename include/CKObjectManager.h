@@ -8,8 +8,7 @@
 
 typedef XHashTable<void *, CK_ID> XObjectAppDataTable;
 
-class CKDeferredDeletion {
-public:
+struct CKDeferredDeletion {
     CKDependencies m_Dependencies;
     CKDependencies *m_DependenciesPtr;
     CKDWORD m_Flags;
