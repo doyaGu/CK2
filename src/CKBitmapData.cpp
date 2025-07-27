@@ -183,13 +183,13 @@ CKSTRING CKBitmapData::GetMovieFileName() {
 }
 
 CKBYTE *CKBitmapData::LockSurfacePtr(int Slot) {
-    if (0 <= Slot && Slot < m_Slots.Size())
-        m_CurrentSlot = Slot;
+    if (Slot < 0 || Slot >= m_Slots.Size())
+        Slot = m_CurrentSlot;
 
     if (m_Slots.IsEmpty())
         return nullptr;
 
-    return (CKBYTE *)m_Slots[m_CurrentSlot]->m_DataBuffer;
+    return (CKBYTE *)m_Slots[Slot]->m_DataBuffer;
 }
 
 CKBOOL CKBitmapData::ReleaseSurfacePtr(int Slot) {
