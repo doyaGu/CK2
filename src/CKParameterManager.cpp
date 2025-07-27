@@ -1659,7 +1659,7 @@ CKBOOL CKParameterManager::RemoveAllOperations() {
         for (CKOperationType i = 0; i < m_NbOperations; ++i) {
             UnRegisterOperationType(i);
         }
-        delete m_OperationTree;
+        delete[] m_OperationTree;
         m_OperationTree = nullptr;
     }
     m_NbOperations = 0;
