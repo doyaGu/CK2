@@ -305,7 +305,7 @@ CKBOOL CKBitmapData::ReleaseSlot(int Slot) {
     m_Slots.RemoveAt(Slot);
 
     if (m_CurrentSlot >= m_Slots.Size()) {
-        m_CurrentSlot = m_Slots.IsEmpty() ? -1 : m_Slots.Size() - 1;
+        m_CurrentSlot = m_Slots.Size() - 1;
         m_BitmapFlags |= CKBITMAPDATA_FORCERESTORE;
     }
     if (m_Slots.IsEmpty()) m_BitmapFlags |= CKBITMAPDATA_INVALID;
