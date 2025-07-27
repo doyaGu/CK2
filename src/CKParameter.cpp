@@ -10,21 +10,13 @@ CK_CLASSID CKParameter::m_ClassID = CKCID_PARAMETER;
 
 CKObject *CKParameter::GetValueObject(CKBOOL update) {
     CK_ID *idPtr = (CK_ID *)GetReadDataPtr(update);
+    if (!idPtr) return nullptr;
     return m_Context->GetObject(*idPtr);
 }
 
 CKERROR CKParameter::GetValue(void *buf, CKBOOL update) {
-    if (!buf) {
-        return CKERR_INVALIDPARAMETER;
-    }
-
-    if (!m_Buffer) {
-        return CKERR_NOTINITIALIZED;
-    }
-
-    if (m_Size == 0) {
-        return CKERR_NOTINITIALIZED;
-    }
+    if (!buf) return CKERR_INVALIDPARAMETER;
+    if (!m_Buffer || m_Size == 0) return CKERR_NOTINITIALIZED;
 
     memcpy(buf, m_Buffer, m_Size);
     return CK_OK;
@@ -62,13 +54,8 @@ CKERROR CKParameter::SetValue(const void *buf, int size) {
 }
 
 CKERROR CKParameter::CopyValue(CKParameter *param, CKBOOL UpdateParam) {
-    if (!param) {
-        return CKERR_INVALIDPARAMETER;
-    }
-
-    if (!IsCompatibleWith(param)) {
-        return CKERR_INVALIDPARAMETERTYPE;
-    }
+    if (!param) return CKERR_INVALIDPARAMETER;
+    if (!IsCompatibleWith(param)) return CKERR_INVALIDPARAMETERTYPE;
 
     if (UpdateParam) {
         if ((param->m_ObjectFlags & CK_PARAMETEROUT_PARAMOP) != 0) {
@@ -76,20 +63,16 @@ CKERROR CKParameter::CopyValue(CKParameter *param, CKBOOL UpdateParam) {
         }
     }
 
-    m_ParamType->CopyFunction(this, param);
+    if(m_ParamType && m_ParamType->CopyFunction) {
+        m_ParamType->CopyFunction(this, param);
+    }
     return CK_OK;
 }
 
 CKBOOL CKParameter::IsCompatibleWith(CKParameter *param) {
-    if (!param) {
-        return FALSE;
-    }
-
-    int type1 = param->GetType();
-    int type2 = GetType();
-
-    CKParameterManager *paramManager = m_Context->GetParameterManager();
-    return paramManager->IsTypeCompatible(type1, type2);
+    if (!param) return FALSE;
+    CKParameterManager *pm = m_Context->GetParameterManager();
+    return pm->IsTypeCompatible(GetType(), param->GetType());
 }
 
 int CKParameter::GetDataSize() {
@@ -105,25 +88,18 @@ void *CKParameter::GetWriteDataPtr() {
 }
 
 CKERROR CKParameter::SetStringValue(CKSTRING Value) {
-    if (m_ParamType && m_ParamType->Valid && m_ParamType->StringFunction) {
-        CK_PARAMETERSTRINGFUNCTION func = m_ParamType->StringFunction;
-        return func(this, Value, TRUE);
+    if (m_ParamType && m_ParamType->StringFunction) {
+        return m_ParamType->StringFunction(this, Value, TRUE);
     }
-
     return CKERR_INVALIDOPERATION;
 }
 
 int CKParameter::GetStringValue(CKSTRING Value, CKBOOL update) {
-    if (m_ParamType && m_ParamType->Valid && m_ParamType->StringFunction) {
-        CK_PARAMETERSTRINGFUNCTION func = m_ParamType->StringFunction;
-        return func(this, Value, FALSE);
+    if (m_ParamType && m_ParamType->StringFunction) {
+        return m_ParamType->StringFunction(this, Value, FALSE);
     }
-
-    if (Value) {
-        *Value = '\0';
-    }
-
-    return CK_OK;
+    if (Value) *Value = '\0';
+    return 0;
 }
 
 CKParameterType CKParameter::GetType() {
