@@ -1941,11 +1941,11 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
                     } else {
                         // Load parameter data
                         CKStateChunk *paramChunk = chunk->ReadSubChunk();
-                        CKParameterOut *param = m_Context->
-                            CreateCKParameterOut(nullptr, fmt->m_ParameterType, IsDynamic());
+                        CKParameterOut *param = m_Context->CreateCKParameterOut(nullptr, fmt->m_ParameterType, IsDynamic());
                         if (param) {
                             param->Load(paramChunk, nullptr);
-                            param->SetOwner(this);
+                            if (param->GetOwner() == nullptr)
+                                param->SetOwner(this);
                             element = (CKDWORD) param;
                         }
 
