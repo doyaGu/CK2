@@ -16,15 +16,6 @@ CKMemoryPool::~CKMemoryPool() {
     }
 }
 
-CKMemoryPool &CKMemoryPool::operator=(const CKMemoryPool &rhs) {
-    if (this != &rhs) {
-        m_Context = rhs.m_Context;
-        m_Memory = rhs.m_Memory;
-        m_Index = rhs.m_Index;
-    }
-    return *this;
-}
-
-VxMemoryPool *CKMemoryPool::Mem() const {
+void *CKMemoryPool::Mem() const {
     return m_Memory;
 }

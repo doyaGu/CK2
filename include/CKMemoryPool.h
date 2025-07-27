@@ -7,16 +7,14 @@
 class DLL_EXPORT CKMemoryPool
 {
 public:
-    CKMemoryPool(CKContext *Context, int ByteCount = 0);
+    explicit CKMemoryPool(CKContext *Context, int ByteCount = 0);
     ~CKMemoryPool();
 
-    CKMemoryPool &operator=(const CKMemoryPool &rhs);
-
-    VxMemoryPool *Mem() const;
+    void *Mem() const;
 
 protected:
     CKContext *m_Context;
-    VxMemoryPool *m_Memory;
+    void *m_Memory;
     int m_Index;
 };
 

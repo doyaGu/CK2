@@ -1623,7 +1623,8 @@ int CKContext::PrepareDestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, C
     m_DependenciesContext.StartDependencies(Dependencies);
 
     for (int i = 0; i < Count; ++i) {
-        if (CKObject *obj = GetObject(obj_ids[i])) {
+        CKObject *obj = GetObject(obj_ids[i]);
+        if (obj) {
             obj->PrepareDependencies(m_DependenciesContext);
         }
     }
@@ -1685,10 +1686,10 @@ void CKContext::DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies
     }
 }
 
-VxMemoryPool *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
+void *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
     int newIndex = m_MemoryPoolMask.GetUnsetBitPosition(0);
-    while (m_MemoryPools.Size() < index) {
-        m_MemoryPools.PushBack(new VxMemoryPool());
+    while (m_MemoryPools.Size() < newIndex) {
+        m_MemoryPools.PushBack(new VxMemoryPool);
     }
 
     VxMemoryPool *pool = m_MemoryPools[newIndex];
@@ -1696,10 +1697,10 @@ VxMemoryPool *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
         pool->Allocate(count);
         m_MemoryPoolMask.Set(newIndex);
         index = newIndex;
-    } else {
-        index = -1;
+        return pool->Buffer();
     }
-    return pool;
+
+    return nullptr;
 }
 
 void CKContext::ReleaseMemoryPoolGlobalIndex(int index) {
@@ -1774,7 +1775,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_MemoryPools.Resize(8);
     for (XArray<VxMemoryPool *>::Iterator it = m_MemoryPools.Begin();
          it != m_MemoryPools.End(); ++it) {
-        (*it) = new VxMemoryPool;
+        *it = new VxMemoryPool;
     }
 
     memset(&m_Stats, 0, sizeof(CKStats));
