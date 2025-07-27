@@ -1444,18 +1444,18 @@ void CKParameterManager::UpdateParameterEnum() {
     m_ParameterTypeEnumUpToDate = TRUE;
 }
 
-CKParameterManager::CKParameterManager(CKContext *Context) : CKBaseManager(
-    Context, PARAMETER_MANAGER_GUID, "Parameter Manager") {
+CKParameterManager::CKParameterManager(CKContext *Context) : CKBaseManager(Context, PARAMETER_MANAGER_GUID, "Parameter Manager") {
     m_NbOperations = 0;
     m_NbAllocatedOperations = 0;
     m_OperationTree = nullptr;
-    m_DerivationMasksUpToDate = 0;
+    m_DerivationMasksUpToDate = FALSE;
     m_NbFlagsDefined = 0;
     m_Flags = nullptr;
     m_NbStructDefined = 0;
     m_Structs = nullptr;
     m_NbEnumsDefined = 0;
     m_Enums = nullptr;
+    m_ParameterTypeEnumUpToDate = FALSE;
     m_Context->RegisterNewManager(this);
     CKInitializeParameterTypes(this);
 }
