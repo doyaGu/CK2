@@ -108,86 +108,50 @@ CKParameterType CKParameter::GetType() {
 
 void CKParameter::SetType(CKParameterType type) {
     CKParameterManager *pm = m_Context->GetParameterManager();
-    CKParameterTypeDesc *desc = pm->GetParameterTypeDescription(type);
+    CKParameterTypeDesc *newType = pm->GetParameterTypeDescription(type);
+    if (!newType) return; // Unknown type
 
-    if (!desc) {
-        return; // Invalid type, do nothing
-    }
+    CKParameterTypeDesc *oldType = m_ParamType;
+    if (oldType == newType) return; // Already this type
 
-    if (m_ParamType == desc) {
-        return; // Type is already the same
-    }
-
-    if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
-        if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
-            m_ParamType->DeleteFunction(this);
-        }
-
-        // Free existing memory
-        delete[] m_Buffer;
-
-        // Assign the new parameter type
-        m_ParamType = desc;
-        m_Size = desc->DefaultSize;
-
-        if (m_Size > 0) {
-            m_Buffer = new CKBYTE[m_Size];
-            memset(m_Buffer, 0, m_Size);
-        } else {
-            m_Buffer = nullptr;
-        }
-
-        // Call CreateDefaultFunction if available
-        if (m_ParamType->CreateDefaultFunction) {
-            m_ParamType->CreateDefaultFunction(this);
-        }
-    } else {
-        // Ensure derivation masks are up to date
-        if (!pm->m_DerivationMasksUpToDate) {
+    // Fast compatible path: old type has no custom life-cycle
+    if (oldType && !newType->CreateDefaultFunction && !oldType->DeleteFunction) {
+        // Ensure derivation tables are current
+        if (!pm->m_DerivationMasksUpToDate)
             pm->UpdateDerivationTables();
-        }
 
-        CKParameterTypeDesc *oldType = m_ParamType;
-        bool isCompatible = false;
+        // Check derivation masks in both directions
+        bool derivOk = oldType->DerivationMask.IsSet(newType->Index) ||
+            newType->DerivationMask.IsSet(oldType->Index);
 
-        // Check type compatibility using derivation masks
-        if (oldType->DerivationMask.IsSet(desc->Index) || desc->DerivationMask.IsSet(oldType->Index)) {
-            isCompatible = true;
-        }
+        // Verify class-id compatibility
+        bool cidOk = (oldType->Cid == 0) ||
+            CKIsChildClassOf(oldType->Cid, newType->Cid);
 
-        // Check class ID compatibility
-        if (oldType->Cid == 0 || CKIsChildClassOf(oldType->Cid, desc->Cid)) {
-            isCompatible = true;
-        }
-
-        // If the new type is compatible, just update the type reference
-        if (isCompatible) {
-            m_ParamType = desc;
-        } else {
-            if (m_ParamType && m_ParamType->Valid && m_ParamType->DeleteFunction) {
-                m_ParamType->DeleteFunction(this);
-            }
-
-            // Free existing memory
-            delete[] m_Buffer;
-
-            // Assign the new parameter type
-            m_ParamType = desc;
-            m_Size = desc->DefaultSize;
-
-            if (m_Size > 0) {
-                m_Buffer = new CKBYTE[m_Size];
-                memset(m_Buffer, 0, m_Size);
-            } else {
-                m_Buffer = nullptr;
-            }
-
-            // Call CreateDefaultFunction if available
-            if (m_ParamType->CreateDefaultFunction) {
-                m_ParamType->CreateDefaultFunction(this);
-            }
+        if (derivOk && cidOk) {
+            m_ParamType = newType; // Compatible switch
+            return;
         }
     }
+
+    // Full rebuild path: destroy old data, create new default
+    if (oldType && oldType->Valid && oldType->DeleteFunction)
+        oldType->DeleteFunction(this);
+
+    delete [] m_Buffer;
+
+    m_ParamType = newType;
+    m_Size = newType->DefaultSize;
+
+    if (m_Size > 0) {
+        m_Buffer = new CKBYTE[m_Size];
+        memset(m_Buffer, 0, m_Size);
+    } else {
+        m_Buffer = nullptr;
+    }
+
+    if (newType->CreateDefaultFunction)
+        newType->CreateDefaultFunction(this);
 }
 
 CKGUID CKParameter::GetGUID() {
