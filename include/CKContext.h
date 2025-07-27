@@ -263,8 +263,8 @@ public:
     void BuildSortedLists();
     void DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies *Dependencies, CKDWORD Flags);
 
-    void *GetMemoryPoolGlobalIndex(int count, int &index);
-    void ReleaseMemoryPoolGlobalIndex(int index);
+    void *AllocateMemoryPool(int count, int &index);
+    void ReleaseMemoryPool(int index);
 
     CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags);
     ~CKContext();

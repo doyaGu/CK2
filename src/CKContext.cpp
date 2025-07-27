@@ -1686,7 +1686,7 @@ void CKContext::DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies
     }
 }
 
-void *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
+void *CKContext::AllocateMemoryPool(int count, int &index) {
     int newIndex = m_MemoryPoolMask.GetUnsetBitPosition(0);
     while (m_MemoryPools.Size() < newIndex) {
         m_MemoryPools.PushBack(new VxMemoryPool);
@@ -1703,7 +1703,7 @@ void *CKContext::GetMemoryPoolGlobalIndex(int count, int &index) {
     return nullptr;
 }
 
-void CKContext::ReleaseMemoryPoolGlobalIndex(int index) {
+void CKContext::ReleaseMemoryPool(int index) {
     if (index >= 0)
         m_MemoryPoolMask.Unset(index);
 }
