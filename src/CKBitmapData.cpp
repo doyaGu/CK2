@@ -324,7 +324,6 @@ CKBOOL CKBitmapData::ReleaseAllSlots() {
 
     m_Slots.Clear();
     m_BitmapFlags |= CKBITMAPDATA_INVALID;
-    m_CurrentSlot = -1;
     return TRUE;
 }
 
