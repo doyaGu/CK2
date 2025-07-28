@@ -95,21 +95,13 @@ CKERROR CKObject::Load(CKStateChunk *chunk, CKFile *file) {
     return CK_OK;
 }
 
-void CKObject::PostLoad() {
-    /* Empty? */
-}
+void CKObject::PostLoad() { /* Empty */ }
 
-void CKObject::PreDelete() {
-    /* Empty? */
-}
+void CKObject::PreDelete() { /* Empty */ }
 
-void CKObject::CheckPreDeletion() {
-    /* Empty? */
-}
+void CKObject::CheckPreDeletion() { /* Empty */ }
 
-void CKObject::CheckPostDeletion() {
-    /* Empty? */
-}
+void CKObject::CheckPostDeletion() { /* Empty */ }
 
 int CKObject::GetMemoryOccupation() {
     if (m_Name && !(m_ObjectFlags & CK_OBJECT_NAMESHARED))
