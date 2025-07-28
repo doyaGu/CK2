@@ -58,8 +58,10 @@ void CKInitStartPath() {
         g_StartPath = ps.GetDrive();
         g_StartPath << ps.GetDir();
         VxAddLibrarySearchPath(g_StartPath.Str());
-        VxMakePath(buffer, g_StartPath.Str(), "Plugins");
-        g_StartPath = buffer;
+
+        char pluginsPath[260];
+        VxMakePath(pluginsPath, g_StartPath.Str(), "Plugins");
+        g_PluginPath = pluginsPath;
     }
 }
 
