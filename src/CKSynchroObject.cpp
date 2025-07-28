@@ -46,7 +46,7 @@ int CKSynchroObject::GetRendezVousNumberOfArrivedObjects() {
 }
 
 CKBeObject *CKSynchroObject::GetRendezVousArrivedObject(int pos) {
-    return (CKBeObject *)m_Context->GetObject(m_Arrived.Seek(pos));
+    return (CKBeObject *) m_Context->GetObject(m_Arrived.Seek(pos));
 }
 
 CKSynchroObject::CKSynchroObject(CKContext *Context, CKSTRING name) : CKObject(Context, name) {
@@ -62,10 +62,9 @@ CK_CLASSID CKSynchroObject::GetClassID() {
 }
 
 CKStateChunk *CKSynchroObject::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk* chunk = new CKStateChunk(CKCID_SYNCHRO, file);
+    CKStateChunk *baseChunk = CKObject::Save(file, flags);
 
-    CKStateChunk* baseChunk = CKObject::Save(file, flags);
-
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_SYNCHRO, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
@@ -86,8 +85,7 @@ CKERROR CKSynchroObject::Load(CKStateChunk *chunk, CKFile *file) {
     // Load base CKObject data
     CKObject::Load(chunk, file);
 
-    if (chunk->SeekIdentifier(CK_STATESAVE_SYNCHRODATA))
-    {
+    if (chunk->SeekIdentifier(CK_STATESAVE_SYNCHRODATA)) {
         m_MaxWaiters = chunk->ReadInt();
 
         chunk->ReadObjectArray(&m_Arrived);
@@ -164,10 +162,9 @@ CK_CLASSID CKStateObject::GetClassID() {
 }
 
 CKStateChunk *CKStateObject::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk* chunk = new CKStateChunk(CKCID_STATE, file);
+    CKStateChunk *baseChunk = CKObject::Save(file, flags);
 
-    CKStateChunk* baseChunk = CKObject::Save(file, flags);
-
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_STATE, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
@@ -244,10 +241,9 @@ CK_CLASSID CKCriticalSectionObject::GetClassID() {
 }
 
 CKStateChunk *CKCriticalSectionObject::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk* chunk = new CKStateChunk(CKCID_CRITICALSECTION, file);
+    CKStateChunk *baseChunk = CKObject::Save(file, flags);
 
-    CKStateChunk* baseChunk = CKObject::Save(file, flags);
-
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_CRITICALSECTION, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
