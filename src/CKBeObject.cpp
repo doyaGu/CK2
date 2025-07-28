@@ -866,7 +866,7 @@ CKSTRING CKBeObject::GetDependencies(int i, int mode) {
 
 void CKBeObject::Register() {
     CKPARAMETERFROMCLASS(CKBeObject, CKPGUID_BEOBJECT);
-    CKCLASSDEFAULTCOPYDEPENDENCIES(CKBeObject, 1);
+    CKCLASSDEFAULTCOPYDEPENDENCIES(CKBeObject, CK_DEPENDENCIES_COPY_OBJECT_NAME);
 }
 
 CKBeObject *CKBeObject::CreateInstance(CKContext *Context) {

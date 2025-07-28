@@ -210,7 +210,7 @@ CKSTRING CKObject::GetDependencies(int i, int mode) {
 
 void CKObject::Register() {
     CKPARAMETERFROMCLASS(CKObject, CKPGUID_OBJECT);
-    CKCLASSDEFAULTCOPYDEPENDENCIES(CKObject, 1);
+    CKCLASSDEFAULTCOPYDEPENDENCIES(CKObject, CK_DEPENDENCIES_COPY_OBJECT_NAME);
 }
 
 CKObject *CKObject::CreateInstance(CKContext *Context) {
