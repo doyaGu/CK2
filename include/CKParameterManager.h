@@ -238,7 +238,6 @@ public:
 
     DLL_EXPORT int GetParameterOperationCount();
 
-    DLL_EXPORT void BuildParameterHierarchy(CKParameterType type, CKGUID *parents, int &count);
     DLL_EXPORT void ProcessParameterCombinations(
         OperationCell &opCell,
         CKGUID *p1Hierarchy, int p1Count,
