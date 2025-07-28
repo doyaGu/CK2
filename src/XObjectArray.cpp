@@ -183,7 +183,7 @@ CKBOOL XObjectArray::Check(CKContext *Context) {
         return FALSE;
 
     const int size = Size();
-    const int newSize = Context->m_ObjectManager->CheckIDArray(Begin(), Size());
+    const int newSize = Context->m_ObjectManager->CheckIDArray(Begin(), size);
     return size != newSize;
 }
 
