@@ -910,8 +910,8 @@ void CKClassRegisterDefaultOptions(CK_CLASSID Cid, CKDWORD options_Mask) {
 
 CK_CLASSID CKClassGetNewIdentifier() {
     CK_CLASSID cid = g_CKClassInfo.Size();
-    if (cid < 55)
-        cid = 55;
+    if (cid < CKCID_MAXCLASSID)
+        cid = CKCID_MAXCLASSID;
     if (cid >= g_MaxClassID)
         g_MaxClassID = cid + 1;
     return cid;
