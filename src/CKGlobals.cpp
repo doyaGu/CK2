@@ -118,7 +118,7 @@ CKERROR CKStartUp() {
 }
 
 CKERROR CKShutdown() {
-    for (auto it = g_PrototypeDeclarationList.Begin(); it != g_PrototypeDeclarationList.End(); ++it) {
+    for (XObjDeclHashTableIt it = g_PrototypeDeclarationList.Begin(); it != g_PrototypeDeclarationList.End(); ++it) {
         CKObjectDeclaration *decl = *it;
         if (decl) {
             if (decl->m_Proto)
@@ -133,6 +133,7 @@ CKERROR CKShutdown() {
     g_CKClassInfo.Clear();
     g_Contextes.Clear();
     g_PrototypeDeclarationList.Clear();
+
     return CK_OK;
 }
 
@@ -143,14 +144,16 @@ CKContext *GetCKContext(int pos) {
 }
 
 CKObject *CKGetObject(CKContext *iCtx, CK_ID iID) {
-    return iCtx->GetObject(iID);
+    return iCtx ? iCtx->GetObject(iID) : nullptr;
 }
 
 CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) {
     if (iRenderEngine < 0 || iRenderEngine >= g_ThePluginManager.GetPluginCount(CKPLUGIN_RENDERENGINE_DLL))
         iRenderEngine = 0;
 
-    auto *ctx = new CKContext(iWin, iRenderEngine, Flags);
+    CKContext *ctx = new CKContext(iWin, iRenderEngine, Flags);
+    if (!ctx) return CKERR_OUTOFMEMORY;
+
     g_Contextes.PushBack(ctx);
     g_ThePluginManager.InitializePlugins(ctx);
     memset(&g_MainStats, 0, sizeof(g_MainStats));
@@ -178,7 +181,7 @@ CKSTRING CKGetPluginsPath() {
 }
 
 void CKDestroyObject(CKObject *o, CKDWORD Flags, CKDependencies *dep) {
-    if (o)
+    if (o && o->m_Context)
         o->m_Context->DestroyObject(o, Flags, dep);
 }
 
