@@ -201,9 +201,9 @@ int CKObject::GetDependenciesCount(int mode) {
 }
 
 CKSTRING CKObject::GetDependencies(int i, int mode) {
-    if (!i)
+    if (i == 0)
         return "Name";
-    if (mode == 1 && i == 1)
+    if (mode == CK_DEPENDENCIES_COPY && i == 1)
         return "Unique Name";
     return nullptr;
 }
