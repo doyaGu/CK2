@@ -66,7 +66,7 @@ void CKInitStartPath() {
 CKERROR CKStartUp() {
     CKInitStartPath();
 
-    srand(time(nullptr));
+    srand((unsigned int)time(nullptr));
 
     Default32Desc.BitsPerPixel = 32;
     Default32Desc.RedMask = R_MASK;
@@ -78,14 +78,14 @@ CKERROR CKStartUp() {
 
     g_TheProcessor = GetProcessorType();
 
-    g_ThePluginManager.AddCategory("Bitmap Readers");
-    g_ThePluginManager.AddCategory("Sound Readers");
-    g_ThePluginManager.AddCategory("Model Readers");
-    g_ThePluginManager.AddCategory("Managers");
-    g_ThePluginManager.AddCategory("BuildingBlocks");
-    g_ThePluginManager.AddCategory("Render Engines");
-    g_ThePluginManager.AddCategory("Movie Readers");
-    g_ThePluginManager.AddCategory("Extensions");
+    g_ThePluginManager.AddCategory(CKPLUGIN_BITMAP);
+    g_ThePluginManager.AddCategory(CKPLUGIN_SOUND);
+    g_ThePluginManager.AddCategory(CKPLUGIN_MODEL);
+    g_ThePluginManager.AddCategory(CKPLUGIN_MANAGER);
+    g_ThePluginManager.AddCategory(CKPLUGIN_BEHAVIOR);
+    g_ThePluginManager.AddCategory(CKPLUGIN_RENDERENGINE);
+    g_ThePluginManager.AddCategory(CKPLUGIN_MOVIE);
+    g_ThePluginManager.AddCategory(CKPLUGIN_EXTENSIONS);
 
     CKCLASSREGISTER(CKObject, CKObject);
     CKCLASSREGISTER(CKParameterIn, CKObject);
@@ -109,6 +109,7 @@ CKERROR CKStartUp() {
     CKCLASSREGISTER(CKDataArray, CKBeObject);
     CKCLASSREGISTER(CKWaveSound, CKSound);
     CKCLASSREGISTER(CKMidiSound, CKSound);
+
     CKBuildClassHierarchyTable();
 
     return CK_OK;
