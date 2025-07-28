@@ -21,15 +21,18 @@ CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
     if (it != m_RegisteredMessageTypes.End())
         return it - m_RegisteredMessageTypes.Begin();
 
+    int newIndex = m_RegisteredMessageTypes.Size();
     m_RegisteredMessageTypes.PushBack(name);
-    CKWaitingObjectArray **waitingList = new CKWaitingObjectArray *[m_RegisteredMessageTypes.Size()];
+
+    CKWaitingObjectArray **newList = new CKWaitingObjectArray *[newIndex + 1];
     if (m_MsgWaitingList) {
-        memcpy(waitingList, m_MsgWaitingList, (m_RegisteredMessageTypes.Size() - 1) * sizeof(CKWaitingObjectArray *));
+        memcpy(newList, m_MsgWaitingList, newIndex * sizeof(CKWaitingObjectArray *));
         delete[] m_MsgWaitingList;
     }
-    waitingList[m_RegisteredMessageTypes.Size() - 1] = nullptr;
-    m_MsgWaitingList = waitingList;
-    return m_RegisteredMessageTypes.Size() - 1;
+    newList[newIndex] = nullptr;
+    m_MsgWaitingList = newList;
+
+    return newIndex;
 }
 
 CKSTRING CKMessageManager::GetMessageTypeName(CKMessageType MsgType) {
@@ -111,28 +114,25 @@ CKERROR CKMessageManager::RegisterWait(CKMessageType MsgType, CKBehavior *behav,
                                        CKBeObject *obj) {
     if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
         return CKERR_INVALIDMESSAGE;
-
     if (!behav)
         return CKERR_INVALIDPARAMETER;
-
     CKBehaviorIO *output = behav->GetOutput(OutputToActivate);
     if (!output)
         return CKERR_INVALIDPARAMETER;
 
     behav->ModifyFlags(CKBEHAVIOR_WAITSFORMESSAGE, 0);
 
-    CKWaitingObjectArray *waitList = m_MsgWaitingList[MsgType];
-    if (waitList) {
-        for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End(); ++it) {
-            if (it->m_Behavior == behav && it->m_Output == output)
-                return CKERR_ALREADYPRESENT;
-        }
-    } else {
+    CKWaitingObjectArray *&waitList = m_MsgWaitingList[MsgType];
+    if (!waitList) {
         waitList = new CKWaitingObjectArray;
-        m_MsgWaitingList[MsgType] = waitList;
     }
 
-    CKWaitingObject newEntry = {};
+    for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End(); ++it) {
+        if (it->m_Behavior == behav && it->m_Output == output)
+            return CKERR_ALREADYPRESENT;
+    }
+
+    CKWaitingObject newEntry;
     newEntry.m_Behavior = behav;
     newEntry.m_Output = output;
     newEntry.m_BeObject = obj;
@@ -148,12 +148,14 @@ CKERROR CKMessageManager::RegisterWait(CKSTRING MsgName, CKBehavior *behav, int 
 CKERROR CKMessageManager::UnRegisterWait(CKMessageType MsgType, CKBehavior *behav, int OutputToActivate) {
     if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
         return CKERR_INVALIDMESSAGE;
+    if (!behav)
+        return CKERR_INVALIDPARAMETER;
 
-    XArray<CKWaitingObject> *waitList = m_MsgWaitingList[MsgType];
-    if (!waitList || waitList->IsEmpty())
+    CKWaitingObjectArray *waitList = m_MsgWaitingList[MsgType];
+    if (!waitList)
         return CK_OK;
 
-    CKBehaviorIO *output = behav ? behav->GetOutput(OutputToActivate) : nullptr;
+    CKBehaviorIO *output = behav->GetOutput(OutputToActivate);
 
     // Remove matching entries
     for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End();) {
@@ -165,7 +167,6 @@ CKERROR CKMessageManager::UnRegisterWait(CKMessageType MsgType, CKBehavior *beha
             ++it;
         }
     }
-
     return CK_OK;
 }
 
@@ -180,27 +181,13 @@ CKERROR CKMessageManager::RegisterDefaultMessages() {
 }
 
 CKStateChunk *CKMessageManager::SaveData(CKFile *SavedFile) {
-    XBitArray usedMessageTypes(1);
-    CKStateChunk *chunk = nullptr;
-
+    XBitArray usedMessageTypes(m_RegisteredMessageTypes.Size());
     CKParameterType msgParamType = m_Context->GetParameterManager()->ParameterGuidToType(CKPGUID_MESSAGE);
 
-    const XArray<CKFileObject> &fileObjects = SavedFile->m_FileObjects;
-
+    // Check for messages used in output parameters
     const int paramOutCount = SavedFile->m_IndexByClassId[CKCID_PARAMETEROUT].Size();
     for (int i = 0; i < paramOutCount; ++i) {
-        CKParameterOut *param = (CKParameterOut *)fileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETEROUT][i]].ObjPtr;
-        if (param && param->GetType() == msgParamType) {
-            int msgType;
-            param->GetValue(&msgType);
-            if (msgType >= 0)
-                usedMessageTypes.Set(msgType);
-        }
-    }
-
-    const int paramLocalCount = SavedFile->m_IndexByClassId[CKCID_PARAMETERLOCAL].Size();
-    for (int i = 0; i < paramLocalCount; ++i) {
-        CKParameterLocal *param = (CKParameterLocal *)fileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETERLOCAL][i]].ObjPtr;
+        CKParameterOut *param = (CKParameterOut *) SavedFile->m_FileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETEROUT][i]].ObjPtr;
         if (param && param->GetType() == msgParamType) {
             int msgType;
             param->GetValue(&msgType);
@@ -208,57 +195,47 @@ CKStateChunk *CKMessageManager::SaveData(CKFile *SavedFile) {
         }
     }
 
-    if (usedMessageTypes.GetSetBitPosition(0) > 0) {
-        chunk = new CKStateChunk(CKCID_MESSAGEMANAGER, SavedFile);
-        chunk->StartWrite();
-        chunk->WriteIdentifier(0x53);
-
-        const int typeCount = m_RegisteredMessageTypes.Size();
-        chunk->WriteInt(typeCount);
-
-        for (int i = 0; i < typeCount; ++i) {
-            XString &typeName = m_RegisteredMessageTypes[i];
-            chunk->WriteString(usedMessageTypes.IsSet(i) ? typeName.Str() : (CKSTRING)"");
+    // Check for messages used in local parameters
+    const int paramLocalCount = SavedFile->m_IndexByClassId[CKCID_PARAMETERLOCAL].Size();
+    for (int i = 0; i < paramLocalCount; ++i) {
+        CKParameterLocal *param = (CKParameterLocal *) SavedFile->m_FileObjects[SavedFile->m_IndexByClassId[CKCID_PARAMETERLOCAL][i]].ObjPtr;
+        if (param && param->GetType() == msgParamType) {
+            int msgType;
+            param->GetValue(&msgType);
+            if (msgType >= 0) usedMessageTypes.Set(msgType);
         }
-
-        chunk->CloseChunk();
     }
 
-    return chunk;
+    if (usedMessageTypes.BitSet() > 0) {
+        CKStateChunk *chunk = new CKStateChunk(CKCID_MESSAGEMANAGER, SavedFile);
+        chunk->StartWrite();
+        chunk->WriteIdentifier(0x53);
+        chunk->WriteInt(m_RegisteredMessageTypes.Size());
+        for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
+            chunk->WriteString(usedMessageTypes.IsSet(i) ? m_RegisteredMessageTypes[i].Str() : (CKSTRING) "");
+        }
+        chunk->CloseChunk();
+        return chunk;
+    }
+    return nullptr;
 }
 
 CKERROR CKMessageManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
-    if (!chunk)
-        return CKERR_INVALIDPARAMETER;
-
+    if (!chunk) return CKERR_INVALIDPARAMETER;
     chunk->StartRead();
-    if (!chunk->SeekIdentifier(0x53))
-        return CK_OK;
+    if (!chunk->SeekIdentifier(0x53)) return CK_OK;
 
     const int typeCount = chunk->ReadInt();
-    if (typeCount <= 0)
-        return CK_OK;
+    if (typeCount <= 0) return CK_OK;
 
-    XArray<CKSTRING> typeNames(typeCount);
     XArray<CKMessageType> typeIDs(typeCount);
-
     for (int i = 0; i < typeCount; ++i) {
-        CKSTRING name;
+        CKSTRING name = nullptr;
         chunk->ReadString(&name);
-        typeNames.PushBack(name);
+        typeIDs.PushBack(AddMessageType(name));
+        delete[] name;
     }
-
-    for (int i = 0; i < typeCount; ++i) {
-        CKMessageType id = AddMessageType(typeNames[i]);
-        typeIDs.PushBack(id);
-    }
-
     LoadedFile->RemapManagerInt(MESSAGE_MANAGER_GUID, typeIDs.Begin(), typeCount);
-
-    for (int i = 0; i < typeCount; ++i) {
-        CKDeletePointer(typeNames[i]);
-    }
-
     return CK_OK;
 }
 
@@ -271,13 +248,10 @@ CKERROR CKMessageManager::PreClearAll() {
                 m_MsgWaitingList[i] = nullptr;
             }
         }
-
         delete[] m_MsgWaitingList;
         m_MsgWaitingList = nullptr;
     }
-
     m_RegisteredMessageTypes.Clear();
-
     for (int i = 0; i < m_ReceivedMsgThisFrame.Size(); ++i) {
         CKMessage *msg = m_ReceivedMsgThisFrame[i];
         if (msg) {
@@ -285,9 +259,7 @@ CKERROR CKMessageManager::PreClearAll() {
         }
     }
     m_ReceivedMsgThisFrame.Clear();
-
     m_LastFrameObjects.Clear();
-
     return RegisterDefaultMessages();
 }
 
@@ -309,6 +281,7 @@ CKERROR CKMessageManager::PostProcess() {
         CKMessageType msgType = msg->GetMsgType();
         CK_MESSAGE_SENDINGTYPE sendType = msg->GetSendingType();
 
+        // Dispatch to general listeners
         if (sendType == CK_MESSAGE_BROADCAST) {
             CK_CLASSID broadcastCid = msg->m_BroadcastCid;
             for (CK_CLASSID cid = 0; cid < g_MaxClassID; ++cid) {
@@ -328,46 +301,39 @@ CKERROR CKMessageManager::PostProcess() {
         }
 
         if (msgType >= 0 && msgType < m_RegisteredMessageTypes.Size()) {
-            CKWaitingObjectArray *waitingList = m_MsgWaitingList[msgType];
-            if (!waitingList)
-                continue;
+            CKWaitingObjectArray *&waitingList = m_MsgWaitingList[msgType];
+            if (!waitingList) continue;
 
-            for (CKWaitingObject *it = waitingList->Begin(); it != waitingList->End();) {
-                CKBeObject *beo = it->m_BeObject;
-                CKObject *recipient = msg->GetRecipient();
+            for (CKWaitingObjectArray::Iterator it = waitingList->Begin(); it != waitingList->End();) {
+                CKBeObject *waitTarget = it->m_BeObject;
+                bool received = false;
 
-                bool shouldReceive = false;
-                if (beo == recipient) {
+                if (!waitTarget) {
+                    // Global listener, receives all messages of this type
+                    received = true;
+                } else {
                     switch (sendType) {
-                    case CK_MESSAGE_BROADCAST:
-                        shouldReceive = CKIsChildClassOf(beo, msg->m_BroadcastCid);
+                    case CK_MESSAGE_SINGLE:
+                        received = (waitTarget == msg->GetRecipient());
                         break;
                     case CK_MESSAGE_GROUP:
-                        shouldReceive = beo->IsInGroup((CKGroup *)recipient);
+                        received = waitTarget->IsInGroup((CKGroup *) msg->GetRecipient());
                         break;
-                    case CK_MESSAGE_SINGLE:
-                        shouldReceive = CKIsChildClassOf(beo, CKCID_BODYPART) && beo == ((CKBodyPart *)recipient)->GetCharacter();
-                        break;
-                    default:
+                    case CK_MESSAGE_BROADCAST:
+                        received = CKIsChildClassOf(waitTarget, msg->m_BroadcastCid);
                         break;
                     }
                 }
 
-                if (shouldReceive) {
-                    beo->AddLastFrameMessage(msg);
-                    m_LastFrameObjects.AddIfNotHere(beo);
-
-                    if (it->m_Output && it->m_Behavior->GetFlags() & CKBEHAVIOR_WAITSFORMESSAGE) {
+                if (received) {
+                    if (it->m_Output && (it->m_Behavior->GetFlags() & CKBEHAVIOR_WAITSFORMESSAGE)) {
                         it->m_Output->Activate();
                     }
-
                     it->m_Behavior->ModifyFlags(0, CKBEHAVIOR_WAITSFORMESSAGE);
-
-                    waitingList->Remove(it);
-                    break;
+                    it = waitingList->Remove(it);
+                } else {
+                    ++it;
                 }
-
-                ++it;
             }
         }
     }
@@ -377,15 +343,13 @@ CKERROR CKMessageManager::PostProcess() {
         if (msg) msg->Release();
     }
     m_ReceivedMsgThisFrame.Clear();
-
     return CK_OK;
 }
 
 CKERROR CKMessageManager::OnCKReset() {
     for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-        CKWaitingObjectArray *waitingList = m_MsgWaitingList[i];
-        if (waitingList) {
-            waitingList->Clear();
+        if (m_MsgWaitingList[i]) {
+            m_MsgWaitingList[i]->Clear();
         }
     }
 
@@ -405,8 +369,7 @@ CKERROR CKMessageManager::OnCKReset() {
 CKERROR CKMessageManager::SequenceToBeDeleted(CK_ID *objids, int count) {
     for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
         CKWaitingObjectArray *waitingList = m_MsgWaitingList[i];
-        if (!waitingList)
-            continue;
+        if (!waitingList) continue;
 
         for (auto it = waitingList->Begin(); it != waitingList->End();) {
             CKWaitingObject &wo = *it;
@@ -451,36 +414,31 @@ CKMessageManager::~CKMessageManager() {
 
 CKMessageManager::CKMessageManager(CKContext *Context) : CKBaseManager(Context, MESSAGE_MANAGER_GUID, (CKSTRING)"Message Manager") {
     m_MsgWaitingList = nullptr;
-
     RegisterDefaultMessages();
     Context->RegisterNewManager(this);
 }
 
 void CKMessageManager::AddMessageToObject(CKObject *obj, CKMessage *msg, CKScene *currentscene, CKBOOL recurse) {
-    if (!obj || !msg)
-        return;
+    if (!obj || !msg) return;
 
     if (CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
-        CKBeObject *beo = (CKBeObject *)obj;
+        CKBeObject *beo = (CKBeObject *) obj;
         if (beo->IsWaitingForMessages() && currentscene->IsObjectActive(beo)) {
             beo->AddLastFrameMessage(msg);
             m_LastFrameObjects.AddIfNotHere(beo);
         }
 
         if (recurse) {
-            if (CKIsChildClassOf(obj, CKCID_BODYPART)) {
-                CKBodyPart *bodyPart = (CKBodyPart *)obj;
+            if (msg->GetSendingType() == CK_MESSAGE_GROUP && obj->GetClassID() == CKCID_GROUP) {
+                CKGroup *group = (CKGroup *) obj;
+                for (int i = 0; i < group->GetObjectCount(); ++i) {
+                    AddMessageToObject(group->GetObject(i), msg, currentscene, TRUE);
+                }
+            } else if (obj->GetClassID() == CKCID_BODYPART) {
+                CKBodyPart *bodyPart = (CKBodyPart *) obj;
                 CKCharacter *character = bodyPart->GetCharacter();
                 if (character) {
-                    AddMessageToObject(character, msg, currentscene, recurse);
-                }
-            }
-
-            if (msg->GetSendingType() == CK_MESSAGE_GROUP && CKIsChildClassOf(obj, CKCID_GROUP)) {
-                CKGroup *group = (CKGroup *)obj;
-                const int count = group->GetObjectCount();
-                for (int i = 0; i < count; ++i) {
-                    AddMessageToObject(group->GetObject(i), msg, currentscene, recurse);
+                    AddMessageToObject(character, msg, currentscene, TRUE);
                 }
             }
         }
