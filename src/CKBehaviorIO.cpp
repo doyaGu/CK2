@@ -19,7 +19,7 @@ CK_CLASSID CKBehaviorIO::GetClassID() {
 CKStateChunk *CKBehaviorIO::Save(CKFile *file, CKDWORD flags) {
     CKStateChunk *baseChunk = CKObject::Save(file, flags);
     if (file || flags & CK_STATESAVE_BEHAVIOONLY) {
-        CKStateChunk *chunk = new CKStateChunk(CKCID_BEHAVIORIO, file);
+        CKStateChunk *chunk = CreateCKStateChunk(CKCID_BEHAVIORIO, file);
         chunk->StartWrite();
         chunk->AddChunkAndDelete(baseChunk);
 

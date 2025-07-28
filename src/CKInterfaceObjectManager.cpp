@@ -75,9 +75,9 @@ CK_CLASSID CKInterfaceObjectManager::GetClassID() {
 }
 
 CKStateChunk *CKInterfaceObjectManager::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_INTERFACEOBJECTMANAGER, file);
     CKStateChunk *baseChunk = CKObject::Save(file, flags);
 
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_INTERFACEOBJECTMANAGER, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 

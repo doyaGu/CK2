@@ -925,7 +925,7 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
         return nullptr;
 
     int classID = m_Data[m_ChunkParser->CurrentPos++];
-    CKStateChunk *sub = new CKStateChunk(classID, nullptr);
+    CKStateChunk *sub = CreateCKStateChunk(classID, nullptr);
 
     if (m_ChunkVersion >= CHUNK_VERSION1) {
         int version = m_Data[m_ChunkParser->CurrentPos++];

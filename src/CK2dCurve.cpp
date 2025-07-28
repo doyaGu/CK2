@@ -209,7 +209,7 @@ CK2dCurve::CK2dCurve() {
 }
 
 CKStateChunk *CK2dCurve::Dump() {
-    CKStateChunk *chunk = new CKStateChunk(CKCHNK_2DCURVE, nullptr);
+    CKStateChunk *chunk = CreateCKStateChunk(CKCHNK_2DCURVE, nullptr);
     chunk->StartWrite();
     chunk->SetDataVersion(CHUNK_DEV_2_1);
     chunk->WriteIdentifier(0x100);

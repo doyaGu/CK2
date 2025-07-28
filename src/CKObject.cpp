@@ -67,7 +67,7 @@ CK_CLASSID CKObject::GetClassID() {
 void CKObject::PreSave(CKFile *file, CKDWORD flags) { /* Empty */ }
 
 CKStateChunk *CKObject::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_OBJECT, file);
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_OBJECT, file);
     chunk->SetDynamic(IsDynamic());
     chunk->StartWrite();
     chunk->SetDataVersion(CHUNK_DEV_2_1);

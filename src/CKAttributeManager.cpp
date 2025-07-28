@@ -793,10 +793,7 @@ CKERROR CKAttributeManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
 }
 
 CKStateChunk *CKAttributeManager::SaveData(CKFile *SavedFile) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_ATTRIBUTEMANAGER, SavedFile);
-    if (!chunk)
-        return nullptr;
-
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_ATTRIBUTEMANAGER, SavedFile);
     chunk->StartWrite();
     chunk->WriteIdentifier(0x52);
 

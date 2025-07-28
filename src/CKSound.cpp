@@ -30,10 +30,9 @@ CK_CLASSID CKSound::GetClassID() {
 }
 
 CKStateChunk *CKSound::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk* baseChunk = CKBeObject::Save(file, flags);
+    CKStateChunk *baseChunk = CKBeObject::Save(file, flags);
 
-    CKStateChunk* chunk = new CKStateChunk(CKCID_SOUND, file);
-
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_SOUND, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
@@ -46,7 +45,7 @@ CKStateChunk *CKSound::Save(CKFile *file, CKDWORD flags) {
 
     chunk->WriteIdentifier(CK_STATESAVE_SOUNDFILENAME);
     chunk->WriteInt(m_SaveOptions);
-    chunk->WriteString(CKJustFile(m_FileName));  // Write the file name without path
+    chunk->WriteString(CKJustFile(m_FileName)); // Write the file name without path
 
     if (GetClassID() == CKCID_SOUND)
         chunk->CloseChunk();
@@ -65,7 +64,7 @@ CKERROR CKSound::Load(CKStateChunk *chunk, CKFile *file) {
         delete[] m_FileName;
         m_FileName = nullptr;
 
-        m_SaveOptions = (CK_SOUND_SAVEOPTIONS)chunk->ReadDword();
+        m_SaveOptions = (CK_SOUND_SAVEOPTIONS) chunk->ReadDword();
 
         chunk->ReadString(&m_FileName);
     }

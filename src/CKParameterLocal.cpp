@@ -102,7 +102,7 @@ CKStateChunk *CKParameterLocal::Save(CKFile *file, CKDWORD flags) {
                                   ? CKObject::Save(file, flags)
                                   : CKParameter::Save(file, flags);
 
-    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETERLOCAL, file);
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_PARAMETERLOCAL, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 

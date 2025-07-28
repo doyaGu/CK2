@@ -171,9 +171,9 @@ void CKGroup::PreSave(CKFile *file, CKDWORD flags) {
 }
 
 CKStateChunk *CKGroup::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_GROUP, file);
     CKStateChunk *baseChunk = CKBeObject::Save(file, flags);
 
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_GROUP, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 

@@ -96,8 +96,7 @@ CKStateChunk *CKMidiSound::Save(CKFile *file, CKDWORD flags) {
     if (!file && (flags & CK_STATESAVE_MIDISOUNDONLY) == 0)
         return baseChunk;
 
-    CKStateChunk *chunk = new CKStateChunk(CKCID_MIDISOUND, file);
-
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_MIDISOUND, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 

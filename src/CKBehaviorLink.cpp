@@ -49,7 +49,7 @@ CK_CLASSID CKBehaviorLink::GetClassID() {
 CKStateChunk *CKBehaviorLink::Save(CKFile *file, CKDWORD flags) {
     CKStateChunk *baseChunk = CKObject::Save(file, flags);
     if (file || (flags & CK_STATESAVE_BEHAV_LINKONLY)) {
-        CKStateChunk *chunk = new CKStateChunk(CKCID_BEHAVIORLINK, file);
+        CKStateChunk *chunk = CreateCKStateChunk(CKCID_BEHAVIORLINK, file);
         chunk->StartWrite();
         chunk->AddChunkAndDelete(baseChunk);
         chunk->WriteIdentifier(CK_STATESAVE_BEHAV_LINK_NEWDATA);

@@ -1474,7 +1474,7 @@ CKStateChunk *CKBehavior::Save(CKFile *file, CKDWORD flags) {
     if (!file && !(flags & CK_STATESAVE_BEHAVIORONLY))
         return baseChunk;
 
-    CKStateChunk *behaviorChunk = new CKStateChunk(CKCID_BEHAVIOR, file);
+    CKStateChunk *behaviorChunk = CreateCKStateChunk(CKCID_BEHAVIOR, file);
     behaviorChunk->StartWrite();
     behaviorChunk->AddChunkAndDelete(baseChunk);
 

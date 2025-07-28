@@ -458,7 +458,7 @@ void CKDependenciesSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) 
 
     if (!load) {
         // Save mode
-        CKStateChunk *saveChunk = new CKStateChunk(nullptr);
+        CKStateChunk *saveChunk = CreateCKStateChunk(nullptr);
         saveChunk->StartWrite();
 
         // Write appropriate identifier based on dependencies flags
@@ -525,7 +525,7 @@ void CKDependenciesCopier(CKParameter *dest, CKParameter *src) {
 }
 
 CKERROR CKStateChunkCreator(CKParameter *param) {
-    CKStateChunk *chunk = new CKStateChunk(nullptr);
+    CKStateChunk *chunk = CreateCKStateChunk(nullptr);
     if (!chunk) {
         return CKERR_OUTOFMEMORY;
     }
@@ -549,7 +549,7 @@ void CKStateChunkSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
             stateChunk->Clone(*chunk);
         }
     } else {
-        *chunk = new CKStateChunk(stateChunk);
+        *chunk = CreateCKStateChunk(stateChunk);
     }
 }
 
@@ -592,7 +592,7 @@ void CKCollectionSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
     } else {
         CKStateChunk *saveChunk = nullptr;
         if (array) {
-            saveChunk = new CKStateChunk(CKCID_OBJECTARRAY, nullptr);
+            saveChunk = CreateCKStateChunk(CKCID_OBJECTARRAY, nullptr);
             saveChunk->StartWrite();
             saveChunk->WriteIdentifier(0x50);
             array->Save(saveChunk, param->m_Context);
@@ -730,7 +730,7 @@ void CKStructSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
         }
     } else {
         // Saving to chunk
-        CKStateChunk *saveChunk = new CKStateChunk(nullptr);
+        CKStateChunk *saveChunk = CreateCKStateChunk(nullptr);
         saveChunk->StartWrite();
 
         // Write structure header
@@ -827,7 +827,7 @@ void CK2dCurveSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) {
             }
         }
     } else {
-        CKStateChunk *saveChunk = new CKStateChunk(CKCHNK_2DCURVE, nullptr);
+        CKStateChunk *saveChunk = CreateCKStateChunk(CKCHNK_2DCURVE, nullptr);
         CKStateChunk *curveChunk = nullptr;
         if (curve)
             curveChunk = curve->Dump();

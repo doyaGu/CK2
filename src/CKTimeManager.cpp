@@ -162,7 +162,7 @@ CKStateChunk *CKTimeManager::SaveData(CKFile *SavedFile) {
     if (SavedFile->m_IndexByClassId[CKCID_LEVEL].Size() == 0)
         return CK_OK;
 
-    CKStateChunk *chunk = new CKStateChunk(CKCID_OBJECT, SavedFile);
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_OBJECT, SavedFile);
     if (chunk)
     {
         chunk->StartWrite();

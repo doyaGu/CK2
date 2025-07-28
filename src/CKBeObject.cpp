@@ -385,7 +385,7 @@ CKStateChunk *CKBeObject::Save(CKFile *file, CKDWORD flags) {
         return baseChunk;
     }
 
-    CKStateChunk *chunk = new CKStateChunk(CKCID_BEOBJECT, file);
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_BEOBJECT, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 

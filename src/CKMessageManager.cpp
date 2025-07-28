@@ -207,7 +207,7 @@ CKStateChunk *CKMessageManager::SaveData(CKFile *SavedFile) {
     }
 
     if (usedMessageTypes.BitSet() > 0) {
-        CKStateChunk *chunk = new CKStateChunk(CKCID_MESSAGEMANAGER, SavedFile);
+        CKStateChunk *chunk = CreateCKStateChunk(CKCID_MESSAGEMANAGER, SavedFile);
         chunk->StartWrite();
         chunk->WriteIdentifier(0x53);
         chunk->WriteInt(m_RegisteredMessageTypes.Size());

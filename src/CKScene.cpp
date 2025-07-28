@@ -807,9 +807,8 @@ void CKScene::PreSave(CKFile *file, CKDWORD flags) {
 CKStateChunk *CKScene::Save(CKFile *file, CKDWORD flags) {
     CKStateChunk *baseChunk = CKBeObject::Save(file, flags);
 
-    CKStateChunk *chunk = new CKStateChunk(CKCID_SCENE, file);
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_SCENE, file);
     chunk->StartWrite();
-
     chunk->AddChunkAndDelete(baseChunk);
 
     chunk->WriteIdentifier(CK_STATESAVE_SCENENEWDATA);

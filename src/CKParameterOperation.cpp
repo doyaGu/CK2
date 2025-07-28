@@ -145,9 +145,9 @@ void CKParameterOperation::PreSave(CKFile *file, CKDWORD flags) {
 }
 
 CKStateChunk *CKParameterOperation::Save(CKFile *file, CKDWORD flags) {
-    CKStateChunk *chunk = new CKStateChunk(CKCID_PARAMETEROPERATION, file);
-
     CKStateChunk *baseChunk = CKObject::Save(file, flags);
+
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_PARAMETEROPERATION, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 

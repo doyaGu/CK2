@@ -359,11 +359,9 @@ void CKLevel::PreSave(CKFile *file, CKDWORD flags) {
 
 CKStateChunk *CKLevel::Save(CKFile *file, CKDWORD flags) {
     CKStateChunk *baseChunk = CKBeObject::Save(file, flags);
-    if (!file)
-        return baseChunk;
+    if (!file) return baseChunk;
 
-    CKStateChunk *chunk = new CKStateChunk(CKCID_LEVEL, file);
-
+    CKStateChunk *chunk = CreateCKStateChunk(CKCID_LEVEL, file);
     chunk->StartWrite();
     chunk->AddChunkAndDelete(baseChunk);
 
