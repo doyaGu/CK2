@@ -112,8 +112,8 @@ void CKObject::CheckPostDeletion() {
 }
 
 int CKObject::GetMemoryOccupation() {
-    if (m_Name && (m_ObjectFlags & CK_OBJECT_VISIBLE) == 0)
-        return strlen(m_Name) + 21;
+    if (m_Name && !(m_ObjectFlags & CK_OBJECT_NAMESHARED))
+        return 21 + strlen(m_Name);
     else
         return 20;
 }
