@@ -733,7 +733,7 @@ CKObjectManager::CKObjectManager(CKContext *Context) : CKBaseManager(Context, OB
 }
 
 CKDWORD CKObjectManager::GetGroupGlobalIndex() {
-    int index = m_GroupGlobalIndex.GetSetBitPosition(0);
+    int index = m_GroupGlobalIndex.GetUnsetBitPosition(0);
     m_GroupGlobalIndex.Set(index);
     return index;
 }
@@ -743,7 +743,7 @@ void CKObjectManager::ReleaseGroupGlobalIndex(CKDWORD index) {
 }
 
 int CKObjectManager::GetSceneGlobalIndex() {
-    int index = m_SceneGlobalIndex.GetSetBitPosition(0);
+    int index = m_SceneGlobalIndex.GetUnsetBitPosition(0);
     m_SceneGlobalIndex.Set(index);
     return index;
 }
