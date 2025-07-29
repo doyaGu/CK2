@@ -469,7 +469,7 @@ CKERROR CKParameter::PrepareDependencies(CKDependenciesContext &context) {
         m_ParamType = nullptr;
     } else if (context.IsInMode(CK_DEPENDENCIES_BUILD)) {
         if (GetParameterClassID()) {
-            CKObject *object = m_Context->GetObjectA(*reinterpret_cast<CK_ID *>(m_Buffer));
+            CKObject *object = m_Context->GetObject(*reinterpret_cast<CK_ID *>(m_Buffer));
             if (object) {
                 object->PrepareDependencies(context);
             }

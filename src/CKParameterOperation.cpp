@@ -37,6 +37,7 @@ CKERROR CKParameterOperation::DoOperation() {
     if (m_Context && m_Context->m_ProfilingEnabled) {
         m_Context->m_Stats.ParametricOperations += profiler.Current();
     }
+
     return CK_OK;
 }
 
