@@ -132,6 +132,8 @@ class CKStateObject : public CKObject
 {
 
 public:
+    DLL_EXPORT void Reset();
+
     //-----------------------------------
     // Event
     DLL_EXPORT CKBOOL IsStateActive();

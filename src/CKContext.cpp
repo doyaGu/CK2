@@ -310,7 +310,7 @@ CKERROR CKContext::Reset() {
     int stateCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_STATE);
     CK_ID *stateList = m_ObjectManager->GetObjectsListByClassID(CKCID_STATE);
     for (int i = 0; i < stateCount; ++i) {
-        CKCriticalSectionObject *stateObject = (CKCriticalSectionObject *) m_ObjectManager->m_Objects[stateList[i]];
+        CKStateObject *stateObject = (CKStateObject *) m_ObjectManager->m_Objects[stateList[i]];
         if (stateObject)
             stateObject->Reset();
     }

@@ -139,6 +139,10 @@ CKSynchroObject *CKSynchroObject::CreateInstance(CKContext *Context) {
 
 CK_CLASSID CKStateObject::m_ClassID = CKCID_STATE;
 
+void CKStateObject::Reset() {
+    LeaveState();
+}
+
 CKBOOL CKStateObject::IsStateActive() {
     return m_Event;
 }
