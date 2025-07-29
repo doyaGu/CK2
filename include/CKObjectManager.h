@@ -92,11 +92,11 @@ public:
     int GetSingleObjectActivity(CKSceneObject *o, CK_ID &id);
 
 public:
-    int m_ObjectsCount;
+    int m_ObjectCount;
     CKObject **m_Objects;
-    XClassArray<XObjectArray> m_ObjectLists;
+    XClassArray<XObjectArray> m_ClassLists;
     CK_ID *m_LoadSession;
-    int m_Count;
+    int m_AllocatedObjectCount;
     CKBOOL m_NeedDeleteAllDynamicObjects;
     CKBOOL m_InLoadSession;
     CKDWORD m_MaxObjectID;
