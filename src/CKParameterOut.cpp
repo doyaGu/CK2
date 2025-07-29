@@ -282,7 +282,7 @@ CKParameterOut *CKParameterOut::CreateInstance(CKContext *Context) {
 }
 
 void CKParameterOut::Update() {
-    if (IsToBeDeleted()) {
+    if (!IsToBeDeleted()) {
         CKParameterOperation *op = (CKParameterOperation *) GetOwner();
         if (op) {
             op->DoOperation();
