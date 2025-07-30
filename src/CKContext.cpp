@@ -359,15 +359,15 @@ CKERROR CKContext::ClearAll() {
     m_RunTime = FALSE;
     m_InClearAll = TRUE;
     ExecuteManagersPreClearAll();
+    m_ObjectManager->ClearAllObjects();
     m_CurrentLevel = 0;
     m_PVInformation = m_VirtoolsVersion;
     ExecuteManagersPostClearAll();
 
-    XManagerArray managers = m_InactiveManagers;
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
-        CKBaseManager *manager = *it;
-        ActivateManager(manager, TRUE);
+    for (XManagerArray::Iterator it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
+        ActivateManager(*it, TRUE);
     }
+
     return CK_OK;
 }
 
