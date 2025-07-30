@@ -918,7 +918,7 @@ CKERROR CKBeObject::AddLastFrameMessage(CKMessage *msg) {
     if (!msg) return CKERR_INVALIDPARAMETER;
     if (!m_LastFrameMessages) m_LastFrameMessages = new XArray<CKMessage *>();
     if (!m_LastFrameMessages) return CKERR_OUTOFMEMORY;
-    if (m_LastFrameMessages->Find(msg) == m_LastFrameMessages->End()) {
+    if (!m_LastFrameMessages->IsHere(msg)) {
         m_LastFrameMessages->PushBack(msg);
         msg->AddRef();
     }
