@@ -7,6 +7,8 @@
 #include "CKScene.h"
 
 void CKDependenciesContext::AddObjects(CK_ID *ids, int count) {
+    if (!ids || count <= 0) return;
+
     m_Objects.Reserve(m_Objects.Size() + count);
     for (int i = 0; i < count; ++i) {
         if (m_CKContext->GetObject(ids[i]))
@@ -24,24 +26,23 @@ CKObject *CKDependenciesContext::GetObjects(int i) {
 
 CK_ID CKDependenciesContext::RemapID(CK_ID &id) {
     XHashItID it = m_MapID.Find(id);
-    id = (*it) ? (*it) : 0;
+    id = (it != m_MapID.End()) ? (*it) : 0;
     return id;
 }
 
 CKObject *CKDependenciesContext::Remap(const CKObject *o) {
-    if (!o)
-        return nullptr;
+    if (!o) return nullptr;
 
     CK_ID id = o->m_ID;
     XHashItID it = m_MapID.Find(id);
-    id = (*it) ? (*it) : 0;
+    id = (it != m_MapID.End()) ? (*it) : 0;
     return m_CKContext->GetObject(id);
 }
 
 XObjectArray CKDependenciesContext::FillDependencies() {
     XObjectArray objects;
     objects.Reserve(m_MapID.Size());
-    for (XHashID::Iterator it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
+    for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
         objects.PushBack(it.GetKey());
     }
     return objects;
@@ -50,7 +51,7 @@ XObjectArray CKDependenciesContext::FillDependencies() {
 XObjectArray CKDependenciesContext::FillRemappedDependencies() {
     XObjectArray objects;
     objects.Reserve(m_MapID.Size());
-    for (XHashID::Iterator it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
+    for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
         objects.PushBack(*it);
     }
     return objects;
@@ -58,16 +59,14 @@ XObjectArray CKDependenciesContext::FillRemappedDependencies() {
 
 CKDWORD CKDependenciesContext::GetClassDependencies(int c) {
     if (m_Dependencies) {
-        if (m_Dependencies->m_Flags & CK_DEPENDENCIES_NONE)
-            return 0;
-        if (m_Dependencies->m_Flags & CK_DEPENDENCIES_FULL)
-            return 0xFFFF;
-        return (*m_Dependencies)[c];
+        if (m_Dependencies->m_Flags & CK_DEPENDENCIES_NONE) return 0;
+        if (m_Dependencies->m_Flags & CK_DEPENDENCIES_FULL) return 0xFFFF;
+        if (c >= 0 && c < m_Dependencies->Size()) return (*m_Dependencies)[c];
+        return 0;
     }
 
-    CKDependencies *deps = CKGetDefaultClassDependencies((CK_DEPENDENCIES_OPMODE)m_Mode);
-    if (!deps)
-        return 0;
+    CKDependencies *deps = CKGetDefaultClassDependencies((CK_DEPENDENCIES_OPMODE) m_Mode);
+    if (!deps || c < 0 || c >= deps->Size()) return 0;
     return (*deps)[c];
 }
 
@@ -82,11 +81,12 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
     for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
         CK_ID originalId = it.GetKey();
         CKObject *original = m_CKContext->GetObject(originalId);
+        if (!original) continue;
 
         m_ObjectsClassMask.Set(original->GetClassID());
 
         if (CKIsChildClassOf(original, CKCID_BEHAVIOR)) {
-            CKBehavior *beh = (CKBehavior *)original;
+            CKBehavior *beh = (CKBehavior *) original;
             if (beh->GetType() & CKBEHAVIOR_SCRIPT) {
                 m_Scripts.PushBack(beh->GetID());
             }
@@ -98,11 +98,15 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
     for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
         CK_ID originalId = it.GetKey();
         CKObject *original = m_CKContext->GetObject(originalId);
+        if (!original) continue;
+
         CKObject *copy = m_CKContext->CreateObject(original->GetClassID(), nullptr);
-
-        *it = copy->GetID();
-
-        copy->Copy(*original, *this);
+        if (copy) {
+            *it = copy->GetID();
+            copy->Copy(*original, *this);
+        } else {
+            *it = 0;
+        }
     }
 
     for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
@@ -112,31 +116,36 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
         }
     }
 
+    CKDWORD sceneObjectDependencies = GetClassDependencies(CKCID_SCENEOBJECT);
     CKLevel *currentLevel = m_CKContext->GetCurrentLevel();
     if (currentLevel) {
         CKScene *levelScene = currentLevel->GetLevelScene();
+        const int sceneCount = m_CKContext->GetObjectsCountByClassID(CKCID_SCENE);
+        CK_ID *sceneIds = m_CKContext->GetObjectsListByClassID(CKCID_SCENE);
+        for (int i = 0; i < sceneCount; ++i) {
+            CKScene *scene = (CKScene *) m_CKContext->GetObject(sceneIds[i]);
+            if (!scene) continue;
 
-        int count = m_CKContext->m_ObjectManager->GetObjectsCountByClassID(CKCID_SCENE);
-        CK_ID *ids = m_CKContext->m_ObjectManager->GetObjectsListByClassID(CKCID_SCENE);
-
-        for (int i = 0; i < count; ++i) {
-            CKScene *scene = (CKScene *)m_CKContext->GetObject(ids[i]);
-            if (scene == levelScene || m_CreationMode & CK_OBJECTCREATION_ACTIVATE) {
+            if (scene == levelScene || (sceneObjectDependencies & CK_DEPENDENCIES_COPY_SCENEOBJECT_SCENES)) {
                 scene->BeginAddSequence(TRUE);
                 for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
                     CKObject *original = m_CKContext->GetObject(it.GetKey());
                     CKObject *copy = m_CKContext->GetObject(*it);
+                    if (!original || !copy) continue;
+
                     if (CKIsChildClassOf(copy, CKCID_SCENE)) {
-                        currentLevel->AddToScene((CKScene *)copy, TRUE);
+                        // The copied scene itself needs to be added to the level
+                        currentLevel->AddScene((CKScene *) copy);
                     } else if (CKIsChildClassOf(copy, CKCID_SCENEOBJECT)) {
-                        CKSceneObject *sceneObjOrig = (CKSceneObject *)original;
-                        CKSceneObject *sceneObjCopy = (CKSceneObject *)copy;
+                        CKSceneObject *sceneObjOrig = (CKSceneObject *) original;
+                        CKSceneObject *sceneObjCopy = (CKSceneObject *) copy;
                         if (sceneObjOrig->IsInScene(scene)) {
                             scene->AddObject(sceneObjCopy);
                             CKDWORD origFlags = scene->GetObjectFlags(sceneObjOrig);
-                            scene->SetObjectFlags(sceneObjCopy, (CK_SCENEOBJECT_FLAGS)(origFlags & ~CK_SCENEOBJECT_ACTIVE));
-                            if (m_CreationMode & CK_OBJECTCREATION_ACTIVATE && CKIsChildClassOf(
-                                sceneObjCopy, CKCID_BEOBJECT) || sceneObjOrig->IsActiveInScene(scene)) {
+                            scene->SetObjectFlags(sceneObjCopy, (CK_SCENEOBJECT_FLAGS) (origFlags & ~CK_SCENEOBJECT_ACTIVE));
+
+                            // Activate the object if required by creation options or if it was originally active
+                            if ((m_CreationMode & CK_OBJECTCREATION_ACTIVATE) || sceneObjOrig->IsActiveInScene(scene)) {
                                 scene->Activate(sceneObjCopy, TRUE);
                             }
                         }
@@ -148,13 +157,12 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
     }
 
     m_Scripts.Remap(*this);
-
     m_CKContext->ExecuteManagersOnPostCopy(this);
-
     m_Objects.Remap(*this);
 }
 
 CKBOOL CKDependenciesContext::ContainClassID(CK_CLASSID Cid) {
+    if (Cid < 0 || Cid >= m_ObjectsClassMask.Size()) return FALSE;
     return m_ObjectsClassMask.IsSet(Cid);
 }
 
