@@ -8,12 +8,17 @@ void CKObject::SetName(CKSTRING Name, CKBOOL shared) {
     if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) == 0)
         delete[] m_Name;
     m_Name = nullptr;
-    if (shared) {
-        m_ObjectFlags |= CK_OBJECT_NAMESHARED;
-        m_Name = Name;
+
+    if (Name) {
+        if (shared) {
+            m_ObjectFlags |= CK_OBJECT_NAMESHARED;
+            m_Name = Name;
+        } else {
+            m_ObjectFlags &= ~CK_OBJECT_NAMESHARED;
+            m_Name = CKStrdup(Name);
+        }
     } else {
         m_ObjectFlags &= ~CK_OBJECT_NAMESHARED;
-        m_Name = CKStrdup(Name);
     }
 }
 
@@ -27,9 +32,9 @@ void CKObject::SetAppData(void *Data) {
 
 void CKObject::Show(CK_OBJECT_SHOWOPTION show) {
     m_ObjectFlags &= ~(CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE);
-    if ((show & CKSHOW) != 0) {
+    if (show == CKSHOW) {
         m_ObjectFlags |= CK_OBJECT_VISIBLE;
-    } else if ((show & CKHIERARCHICALHIDE) != 0) {
+    } else if (show == CKHIERARCHICALHIDE) {
         m_ObjectFlags |= CK_OBJECT_HIERACHICALHIDE;
     }
 }
@@ -51,11 +56,15 @@ CKObject::CKObject(CKContext *Context, CKSTRING name) {
     m_ID = 0;
     m_ObjectFlags = CK_OBJECT_VISIBLE;
     m_Context = Context;
-    m_ID = Context->m_ObjectManager->RegisterObject(this);
+    if (m_Context) {
+        m_ID = m_Context->m_ObjectManager->RegisterObject(this);
+    }
 }
 
 CKObject::~CKObject() {
-    m_Context->m_ObjectManager->UnRegisterObject(m_ID);
+    if (m_Context) {
+        m_Context->m_ObjectManager->UnRegisterObject(m_ID);
+    }
     if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) == 0)
         delete[] m_Name;
 }
@@ -115,13 +124,15 @@ CKBOOL CKObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
 }
 
 CKERROR CKObject::PrepareDependencies(CKDependenciesContext &context) {
-    if (context.m_Mode == CK_DEPENDENCIES_SAVE && (m_ObjectFlags & CK_OBJECT_NOTTOBESAVED) != 0)
+    if (context.m_Mode == CK_DEPENDENCIES_SAVE && (m_ObjectFlags & CK_OBJECT_NOTTOBESAVED))
         return CKERR_INCOMPATIBLEPARAMETERS;
 
-    CKObject *obj = (!context.m_DynamicObjects.IsEmpty()) ? context.m_DynamicObjects.Back() : nullptr;
-
-    if (obj && obj->IsDynamic() && !IsDynamic())
-        return CKERR_INCOMPATIBLEPARAMETERS;
+    if (!context.m_DynamicObjects.IsEmpty()) {
+        CKObject *lastObjInStack = context.m_DynamicObjects.Back();
+        if (lastObjInStack && lastObjInStack->IsDynamic() && !IsDynamic()) {
+            return CKERR_INCOMPATIBLEPARAMETERS;
+        }
+    }
 
     if (!context.AddDependencies(m_ID))
         return CKERR_ALREADYPRESENT;
@@ -136,24 +147,16 @@ CKERROR CKObject::RemapDependencies(CKDependenciesContext &context) {
 }
 
 CKERROR CKObject::Copy(CKObject &o, CKDependenciesContext &context) {
-    // TODO: May need fix
     m_ObjectFlags &= ~(CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE);
     m_ObjectFlags |= o.m_ObjectFlags & (CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE);
 
     CKDWORD dependencies = context.GetClassDependencies(CKObject::m_ClassID);
     CK_CLASSID cid = GetClassID();
-    if (!(dependencies & CK_DEPENDENCIES_NONE)) {
-        if (!context.m_CopyAppendString.Empty() && CKIsChildClassOf(cid, CKCID_BEOBJECT)) {
-            XString name(o.GetName());
-            name << context.m_CopyAppendString;
-            SetName(name.Str());
-        } else if (context.m_Dependencies && (context.m_Dependencies->m_Flags & CK_DEPENDENCIES_NONE)) {
-            SetName(o.GetName());
-        } else if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) || cid == CKCID_PARAMETEROUT || cid == CKCID_PARAMETERIN) {
-            SetName(o.GetName(), (o.m_ObjectFlags & CK_OBJECT_NAMESHARED) != 0);
-        }
-    } else {
-        if ((CKGetClassDesc(cid)->DefaultOptions & 5) || !(dependencies & CK_DEPENDENCIES_FULL)) {
+
+    if (dependencies & CK_DEPENDENCIES_COPY_OBJECT_NAME) {
+        if ((CKGetClassDesc(cid)->DefaultOptions & 5) || !(dependencies & CK_DEPENDENCIES_COPY_OBJECT_UNIQUENAME)) {
+            // Case 1: Class allows using current objects OR unique name is not forced
+            // -> Copy name, potentially with suffix
             if (!context.m_CopyAppendString.Empty() && CKIsChildClassOf(cid, CKCID_BEOBJECT)) {
                 XString name(o.GetName());
                 name << context.m_CopyAppendString;
@@ -162,6 +165,7 @@ CKERROR CKObject::Copy(CKObject &o, CKDependenciesContext &context) {
                 SetName(o.GetName(), (o.m_ObjectFlags & CK_OBJECT_NAMESHARED) != 0);
             }
         } else {
+            // Case 2: Unique name is required
             XString secureName;
             if (!context.m_CopyAppendString.Empty()) {
                 XString name(o.GetName());
@@ -172,10 +176,23 @@ CKERROR CKObject::Copy(CKObject &o, CKDependenciesContext &context) {
             }
             SetName(secureName.Str());
         }
+    } else {
+        // Case 3: Name dependency is NOT set
+        if (!context.m_CopyAppendString.Empty() && CKIsChildClassOf(cid, CKCID_BEOBJECT)) {
+            XString name(o.GetName());
+            name << context.m_CopyAppendString;
+            SetName(name.Str());
+        } else {
+            // Special handling for shared names, parameters, etc.
+             if (context.m_Dependencies && (context.m_Dependencies->m_Flags & CK_DEPENDENCIES_COPY_OBJECT_NAME)) {
+                 SetName(o.GetName());
+             } else if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) || cid == CKCID_PARAMETEROUT || cid == CKCID_PARAMETERIN) {
+                 SetName(o.GetName(), (o.m_ObjectFlags & CK_OBJECT_NAMESHARED) != 0);
+             }
+        }
     }
 
-    void *AppData = o.GetAppData();
-    SetAppData(AppData);
+    SetAppData(o.GetAppData());
     return CK_OK;
 }
 
