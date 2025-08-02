@@ -64,7 +64,7 @@ CKERROR CKObjectManager::DeleteAllObjects() {
         for (CK_ID id = 0; id < m_ObjectCount; ++id) {
             CKObject *obj = m_Objects[id];
             if (obj)
-                obj->~CKObject();
+                delete obj;
             m_Objects[id] = nullptr;
         }
     }
@@ -146,7 +146,7 @@ CKERROR CKObjectManager::ClearAllObjects() {
         if (CKIsChildClassOf(m_Objects[id], CKCID_BEHAVIOR)) {
             CKBehavior *beh = (CKBehavior *) m_Objects[id];
             beh->CallCallbackFunction(CKM_BEHAVIORDETACH);
-            beh->~CKBehavior();
+            delete beh;
         }
     }
 
@@ -157,7 +157,7 @@ CKERROR CKObjectManager::ClearAllObjects() {
 
         CKObject *obj = m_Objects[id];
         if (obj) {
-            obj->~CKObject();
+            delete obj;
         }
         --m_ObjectCount;
     }
@@ -258,7 +258,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
         CK_ID id = obj_ids[i];
         CKObject *obj = m_Objects[id];
         if (obj) {
-            obj->~CKObject();
+            delete obj;
         }
     }
 
