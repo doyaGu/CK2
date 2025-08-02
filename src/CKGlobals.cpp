@@ -654,62 +654,6 @@ CKSTRING CKStrlwr(CKSTRING string) {
     return string;
 }
 
-CKDWORD CKEscapeURL(const char *InURL, XString &OutURL) {
-    if (!InURL) {
-        OutURL = "";
-        return -1;
-    }
-
-    if (strncmp(InURL, "file://", strlen("file://")) == 0) {
-        OutURL = InURL;
-        return 0;
-    }
-
-    XString escaped;
-    bool needsEscape = false;
-
-    for (const char *p = InURL; *p; ++p) {
-        if (strchr(" #$%&\\+,;=@[]^{}", *p)) {
-            needsEscape = true;
-            char buf[4];
-            snprintf(buf, sizeof(buf), "%%%02X", (unsigned char) (*p));
-            escaped << buf;
-        } else {
-            escaped << *p;
-        }
-    }
-
-    if (!needsEscape) {
-        OutURL = InURL;
-        return 0;
-    }
-
-    if (strstr(InURL, "://") == nullptr) {
-        OutURL = XString("file://") + escaped;
-    } else {
-        OutURL = escaped;
-    }
-
-    return 0;
-}
-
-void CKUnEscapeUrl(XString &str) {
-    XString url;
-    int len = str.Length();
-
-    for (int i = 0; i < len; ++i) {
-        if (str[i] == '%' && i + 2 < len) {
-            char hex[3] = {str[i + 1], str[i + 2], '\0'};
-            url << (char) strtol(hex, nullptr, 16);
-            i += 2;
-        } else {
-            url << str[i];
-        }
-    }
-
-    str = url;
-}
-
 CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp) {
     if (!bp)
         return nullptr;

@@ -312,13 +312,13 @@ CKBOOL CKPathManager::PathIsFile(XString &file) {
 
 void CKPathManager::RemoveEscapedSpace(char *str) {
     XString tmp = str;
-    CKUnEscapeUrl(tmp);
+    VxUnEscapeUrl(tmp);
     strcpy(str, tmp.Str());
 }
 
 void CKPathManager::AddEscapedSpace(XString &str) {
     XString tmp = str;
-    CKEscapeURL(tmp.Str(), str);
+    VxEscapeURL(tmp.Str(), str);
 }
 
 XString CKPathManager::GetVirtoolsTemporaryFolder() {

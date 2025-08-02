@@ -56,6 +56,8 @@ option(CK2_BUILD_TESTS "Build the test suite" OFF)
 set(CK2_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 set(CK2_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 
+find_package(VxMath REQUIRED)
+
 add_subdirectory(deps)
 add_subdirectory(src)
 if (CK2_BUILD_TESTS)

@@ -2,8 +2,61 @@
 #define CKDEFINES_H
 
 #include "VxDefines.h"
-#include "CKPathSplitter.h"
 #include "XHashFun.h"
+#include "XString.h"
+#include "XBitArray.h"
+#include "XSArray.h"
+#include "XArray.h"
+#include "CKPathSplitter.h"
+#include "CKTypes.h"
+#include "CKEnums.h"
+#include "CKError.h"
+
+// EXPORT DEFINES FOR LIB / DLL VERSIONS
+
+#ifndef DLL_EXPORT
+#ifndef CK_LIB
+#ifdef CK_API
+#if defined(WIN32)
+#define DLL_EXPORT __declspec(dllexport)
+#else
+#define DLL_EXPORT
+#endif
+#else
+#if defined(WIN32)
+#define DLL_EXPORT __declspec(dllimport)
+#else
+#define DLL_EXPORT
+#endif
+#endif // CK_API
+#else
+#define DLL_EXPORT
+#endif // CK_LIB
+#endif // !DLL_EXPORT
+
+#ifndef PLUGIN_EXPORT
+#ifndef CK_LIB
+#define PLUGIN_EXPORT extern "C" __declspec(dllexport)
+#else
+#define PLUGIN_EXPORT
+#endif // !CK_LIB
+#endif // !PLUGIN_EXPORT
+
+#ifndef BEGIN_CDECLS
+#ifdef __cplusplus
+#define BEGIN_CDECLS extern "C" {
+#else
+#define BEGIN_CDECLS
+#endif // __cplusplus
+#endif // !BEGIN_CDECLS
+
+#ifndef END_CDECLS
+#ifdef __cplusplus
+#define END_CDECLS }
+#else
+#define END_CDECLS
+#endif // __cplusplus
+#endif// !END_CDECLS
 
 // GetObject,LoadImage and GetClassName are #defined by windows.h which can cause unresolved externals
 // when linking : to avoid this we use the same defines .... :(
@@ -60,15 +113,6 @@
 #define CKMAX_MANAGERFUNCTIONS 32
 
 #define CKANIMATION_FORCESETSTEP 0xFFFFFFFF
-
-#include "VxDefines.h"
-#include "CKTypes.h"
-#include "CKError.h"
-#include "CKEnums.h"
-#include "XBitArray.h"
-#include "XString.h"
-#include "XSArray.h"
-#include "XArray.h"
 
 /*************************************************
 Summary: Returns the Unique Identifier for a CKObject or derivative.
