@@ -13,14 +13,14 @@
 CK_CLASSID CKLevel::m_ClassID = CKCID_LEVEL;
 
 CKERROR CKLevel::AddObject(CKObject *obj) {
-    if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT) || CKIsChildClassOf(obj, CKCID_LEVEL))
+    if (!obj || !CKIsChildClassOf(obj, CKCID_SCENEOBJECT) || CKIsChildClassOf(obj, CKCID_LEVEL))
         return CKERR_INVALIDPARAMETER;
     GetLevelScene()->AddObjectToScene((CKSceneObject *)obj);
     return CK_OK;
 }
 
 CKERROR CKLevel::RemoveObject(CKObject *obj) {
-    if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT))
+    if (!obj || !CKIsChildClassOf(obj, CKCID_SCENEOBJECT))
         return CKERR_INVALIDPARAMETER;
     GetLevelScene()->RemoveObjectFromScene((CKSceneObject *)obj);
     return CK_OK;
@@ -31,11 +31,17 @@ CKERROR CKLevel::RemoveObject(CK_ID objID) {
 }
 
 void CKLevel::BeginAddSequence(CKBOOL Begin) {
-    GetLevelScene()->BeginAddSequence(Begin);
+    CKScene *levelScene = GetLevelScene();
+    if (levelScene) {
+        levelScene->BeginAddSequence(Begin);
+    }
 }
 
 void CKLevel::BeginRemoveSequence(CKBOOL Begin) {
-    GetLevelScene()->BeginRemoveSequence(Begin);
+    CKScene *levelScene = GetLevelScene();
+    if (levelScene) {
+        levelScene->BeginRemoveSequence(Begin);
+    }
 }
 
 const XObjectPointerArray &CKLevel::ComputeObjectList(CK_CLASSID cid, CKBOOL derived) {
@@ -45,22 +51,20 @@ const XObjectPointerArray &CKLevel::ComputeObjectList(CK_CLASSID cid, CKBOOL der
 }
 
 CKERROR CKLevel::AddPlace(CKPlace *pl) {
-    if (!pl)
-        return CKERR_INVALIDPARAMETER;
-    pl->AddToScene(GetLevelScene());
+    if (!pl) return CKERR_INVALIDPARAMETER;
+    pl->AddToScene(GetLevelScene(), TRUE);
     return CK_OK;
 }
 
 CKERROR CKLevel::RemovePlace(CKPlace *pl) {
-    if (!pl)
-        return CKERR_INVALIDPARAMETER;
-    pl->RemoveFromScene(GetLevelScene());
+    if (!pl) return CKERR_INVALIDPARAMETER;
+    pl->RemoveFromScene(GetLevelScene(), TRUE);
     return CK_OK;
 }
 
 CKPlace *CKLevel::RemovePlace(int pos) {
     CKPlace *pl = GetPlace(pos);
-    pl->RemoveFromScene(GetLevelScene());
+    if (pl) pl->RemoveFromScene(GetLevelScene(), TRUE);
     return pl;
 }
 
@@ -84,6 +88,7 @@ int CKLevel::GetPlaceCount() {
 CKERROR CKLevel::AddScene(CKScene *scn) {
     if (!scn)
         return CKERR_INVALIDPARAMETER;
+    scn->SetLevel(this);
     scn->AddObjectToScene(this);
     for (auto it = m_SceneList.Begin(); it != m_SceneList.End(); ++it) {
         if (*it == scn)
@@ -113,6 +118,7 @@ CKScene *CKLevel::RemoveScene(int pos) {
     if (pos >= 0 && pos < m_SceneList.Size()) {
         CKScene *scene = (CKScene *)m_SceneList[pos];
         m_SceneList.RemoveAt(pos);
+        scene->SetLevel(nullptr);
         return scene;
     }
     return nullptr;
@@ -128,8 +134,7 @@ int CKLevel::GetSceneCount() {
     return m_SceneList.Size();
 }
 
-CKERROR CKLevel::SetNextActiveScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS Active,
-                                    CK_SCENEOBJECTRESET_FLAGS Reset) {
+CKERROR CKLevel::SetNextActiveScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS Active, CK_SCENEOBJECTRESET_FLAGS Reset) {
     m_NextActiveScene = scene ? scene->GetID() : 0;
     m_NextSceneActivityFlags = Active;
     m_NextSceneResetFlags = Reset;
@@ -138,11 +143,10 @@ CKERROR CKLevel::SetNextActiveScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS
 
 CKERROR CKLevel::LaunchScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS Active, CK_SCENEOBJECTRESET_FLAGS Reset) {
     CKScene *sceneToLaunch = scene ? scene : (CKScene *)m_Context->GetObject(m_DefaultScene);
-    if (!sceneToLaunch)
-        return CKERR_INVALIDPARAMETER;
+    if (!sceneToLaunch) return CKERR_INVALIDPARAMETER;
 
     CKRenderContext *renderContext = GetRenderContext(0);
-    CKCamera *previousCamera = renderContext ? renderContext->GetAttachedCamera() : nullptr;
+    CKCamera *previousCamera = (renderContext) ? renderContext->GetAttachedCamera() : nullptr;
     CKScene *previousScene = GetCurrentScene();
 
     m_Context->ExecuteManagersPreLaunchScene(previousScene, sceneToLaunch);
@@ -152,25 +156,22 @@ CKERROR CKLevel::LaunchScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS Active
         previousScene->Stop(m_RenderContextList, previousScene != sceneToLaunch);
 
     m_NextActiveScene = 0;
-    m_CurrentScene = sceneToLaunch ? sceneToLaunch->m_ID : 0;
+    m_CurrentScene = sceneToLaunch->m_ID;
 
     if (GetScriptCount() > 0)
         m_Context->m_BehaviorManager->AddObject(this);
 
-    if (sceneToLaunch)
-        sceneToLaunch->Init(m_RenderContextList, Active, Reset);
-
-    m_Context->m_AttributeManager->NewActiveScene(sceneToLaunch);
+    sceneToLaunch->Init(m_RenderContextList, Active, Reset);
+    m_Context->GetAttributeManager()->NewActiveScene(sceneToLaunch);
 
     if (m_Context->m_RenderManager)
         m_Context->m_RenderManager->FlushTextures();
 
     m_Context->m_BehaviorContext.CurrentScene = sceneToLaunch;
     m_Context->m_BehaviorContext.PreviousScene = previousScene;
-
     m_Context->WarnAllBehaviors(CKM_BEHAVIORNEWSCENE);
 
-    if (renderContext && !renderContext->GetAttachedCamera() && sceneToLaunch) {
+    if (renderContext && !renderContext->GetAttachedCamera()) {
         CKCamera *startingCamera = sceneToLaunch->GetStartingCamera();
         if (startingCamera) {
             renderContext->AttachViewpointToCamera(startingCamera);
@@ -192,13 +193,7 @@ CKScene *CKLevel::GetCurrentScene() {
 }
 
 void CKLevel::AddRenderContext(CKRenderContext *dev, CKBOOL Main) {
-    if (!dev)
-        return;
-
-    for (int i = 0; i < m_RenderContextList.Size(); ++i) {
-        if (m_RenderContextList[i] == dev)
-            return;
-    }
+    if (!dev || m_RenderContextList.IsHere(dev)) return;
 
     if (Main) {
         m_RenderContextList.PushFront(dev);
@@ -210,15 +205,14 @@ void CKLevel::AddRenderContext(CKRenderContext *dev, CKBOOL Main) {
     }
 
     CKScene *scene = GetCurrentScene();
-    if (!scene)
-        scene = GetLevelScene();
-    CKSceneObjectIterator it = scene->GetObjectIterator();
-    while (!it.End()) {
-        CKSceneObject *obj = (CKSceneObject *)m_Context->GetObject(it.GetObjectID());
+    if (!scene) scene = GetLevelScene();
+
+    for (CKSceneObjectIterator it = scene->GetObjectIterator(); !it.End(); it++) {
+        CKObject *obj = m_Context->GetObject(it.GetObjectID());
         if (CKIsChildClassOf(obj, CKCID_RENDEROBJECT))
             dev->AddObject((CKRenderObject *)obj);
-        it++;
     }
+
     if (scene->EnvironmentSettings()) {
         scene->ApplyEnvironmentSettings(&m_RenderContextList);
     }
@@ -241,8 +235,7 @@ int CKLevel::GetRenderContextCount() {
 }
 
 CKRenderContext *CKLevel::GetRenderContext(int count) {
-    if (count >= m_RenderContextList.Size())
-        return nullptr;
+    if (count < 0 || count >= m_RenderContextList.Size()) return nullptr;
     return (CKRenderContext *)m_RenderContextList[count];
 }
 
@@ -251,8 +244,7 @@ CKScene *CKLevel::GetLevelScene() {
 }
 
 CKERROR CKLevel::Merge(CKLevel *mergedLevel, CKBOOL asScene) {
-    if (!mergedLevel)
-        return CKERR_INVALIDPARAMETER;
+    if (!mergedLevel) return CKERR_INVALIDPARAMETER;
 
     CKScene *scene = GetLevelScene();
     if (asScene) {
@@ -275,7 +267,7 @@ CKERROR CKLevel::Merge(CKLevel *mergedLevel, CKBOOL asScene) {
         CKRemapObjectParameterValue(m_Context, mergedLevel->m_ID, m_ID, CKCID_OBJECT, TRUE);
     }
 
-    for (auto it = mergedLevel->m_SceneList.Begin(); it != mergedLevel->m_SceneList.End(); ++it) {
+    for (XObjectPointerArray::Iterator it = mergedLevel->m_SceneList.Begin(); it != mergedLevel->m_SceneList.End(); ++it) {
         AddScene((CKScene *)*it);
     }
 
@@ -287,13 +279,10 @@ void CKLevel::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects)
     int scriptCount = GetScriptCount();
     for (int i = 0; i < scriptCount; ++i) {
         CKBehavior *script = GetScript(i);
-        if (!script)
-            continue;
-
-        const int sceneInCount = GetSceneInCount();
-        for (int s = 0; s < sceneInCount; ++s) {
+        if (!script) continue;
+        for (int s = 0; s < GetSceneInCount(); ++s) {
             CKScene *scene = GetSceneIn(s);
-            if (!scene->GetSceneObjectDesc(script)) {
+            if (scene && !scene->GetSceneObjectDesc(script)) {
                 scene->AddObjectDesc(script);
             }
         }
@@ -303,8 +292,8 @@ void CKLevel::ApplyPatchForOlderVersion(int NbObject, CKFileObject *FileObjects)
     XObjectArray scriptsToRemove;
     CKSceneObjectIterator it = scene->GetObjectIterator();
     while (!it.End()) {
-        CKSceneObject *obj = (CKSceneObject *)m_Context->GetObject(it.GetObjectID());
-        if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
+        CKObject *obj = m_Context->GetObject(it.GetObjectID());
+        if (obj && obj->GetClassID() == CKCID_BEHAVIOR) {
             CKBehavior *beh = (CKBehavior *)obj;
             CKBeObject *owner = beh->GetOwner();
             if (owner) {
@@ -354,7 +343,10 @@ CK_CLASSID CKLevel::GetClassID() {
 void CKLevel::PreSave(CKFile *file, CKDWORD flags) {
     CKBeObject::PreSave(file, flags);
     file->SaveObjects(m_SceneList.Begin(), m_SceneList.Size());
-    GetLevelScene()->PreSave(file, flags);
+    CKScene *levelScene = GetLevelScene();
+    if (levelScene) {
+        levelScene->PreSave(file, flags);
+    }
 }
 
 CKStateChunk *CKLevel::Save(CKFile *file, CKDWORD flags) {
@@ -411,11 +403,7 @@ CKStateChunk *CKLevel::Save(CKFile *file, CKDWORD flags) {
 }
 
 CKERROR CKLevel::Load(CKStateChunk *chunk, CKFile *file) {
-    if (!file)
-        return CK_OK;
-    if (!chunk)
-        return CKERR_INVALIDPARAMETER;
-
+    if (!file || !chunk) return CKERR_INVALIDPARAMETER;
     CKBeObject::Load(chunk, file);
 
     if (chunk->SeekIdentifier(CK_STATESAVE_LEVELDEFAULTDATA)) {
@@ -447,10 +435,9 @@ CKERROR CKLevel::Load(CKStateChunk *chunk, CKFile *file) {
         chunk->ReadObjectID();
 
         CKScene *levelScene = GetLevelScene();
-        if (!levelScene)
-            CreateLevelScene();
-        if (!levelScene)
-            return CKERR_INVALIDPARAMETER;
+        if (!levelScene) CreateLevelScene();
+        levelScene = GetLevelScene();
+        if (!levelScene) return CKERR_INVALIDPARAMETER;
 
         CKStateChunk *subChunk = chunk->ReadSubChunk();
         if (subChunk) {
@@ -507,39 +494,23 @@ int CKLevel::GetMemoryOccupation() {
 }
 
 int CKLevel::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
-    if (o->GetClassID() == CKCID_RENDERCONTEXT) {
-        for (int i = 0; i < m_RenderContextList.Size(); ++i) {
-            if (m_RenderContextList[i] == o)
-                return TRUE;
-        }
-    } else if (o->GetClassID() == CKCID_SCENE) {
-        for (int i = 0; i < m_SceneList.Size(); ++i) {
-            if (m_SceneList[i] == o)
-                return TRUE;
-        }
-    }
+    if (m_RenderContextList.IsHere(o)) return TRUE;
+    if (m_SceneList.IsHere(o)) return TRUE;
     return CKBeObject::IsObjectUsed(o, cid);
 }
 
 CKERROR CKLevel::PrepareDependencies(CKDependenciesContext &context) {
     CKERROR err = CKBeObject::PrepareDependencies(context);
-    if (err != CK_OK)
-        return err;
-
+    if (err != CK_OK) return err;
     if (!context.IsInMode(CK_DEPENDENCIES_BUILD)) {
         context.GetClassDependencies(m_ClassID);
         m_SceneList.Prepare(context);
-
         if (!context.IsInMode(CK_DEPENDENCIES_SAVE)) {
             m_RenderContextList.Prepare(context);
         }
-
         CKScene *defaultScene = GetLevelScene();
-        if (defaultScene) {
-            defaultScene->PrepareDependencies(context);
-        }
+        if (defaultScene) defaultScene->PrepareDependencies(context);
     }
-
     return context.FinishPrepareDependencies(this, m_ClassID);
 }
 
@@ -598,11 +569,10 @@ void CKLevel::ActivateAllScript() {
         }
     }
 
-    for (auto it = m_SceneList.Begin(); it != m_SceneList.End(); ++it) {
+    for (XObjectPointerArray::Iterator it = m_SceneList.Begin(); it != m_SceneList.End(); ++it) {
         CKScene *scene = (CKScene *)*it;
         if (scene) {
-            const int scriptCount = scene->GetScriptCount();
-            for (int i = 0; i < scriptCount; ++i) {
+            for (int i = 0; i < scene->GetScriptCount(); ++i) {
                 CKBehavior *script = scene->GetScript(i);
                 if (script && script->GetType() == CKBEHAVIORTYPE_SCRIPT) {
                     script->Activate(TRUE, TRUE);
