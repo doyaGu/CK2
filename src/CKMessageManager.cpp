@@ -13,20 +13,20 @@
 extern int g_MaxClassID;
 
 CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
-    if (!MsgName || MsgName[0] == '\0')
-        return -1;
+    if (!MsgName || MsgName[0] == '\0') return -1;
 
-    XString name = MsgName;
-    CKStringArray::Iterator it = m_RegisteredMessageTypes.Find(name);
-    if (it != m_RegisteredMessageTypes.End())
-        return it - m_RegisteredMessageTypes.Begin();
+    XString name(MsgName);
+    int i = m_RegisteredMessageTypes.GetPosition(name);
+    if (i >= 0) {
+        return i;
+    }
 
     int newIndex = m_RegisteredMessageTypes.Size();
     m_RegisteredMessageTypes.PushBack(name);
 
-    CKWaitingObjectArray **newList = new CKWaitingObjectArray *[newIndex + 1];
+    CKWaitingObjectArray **newList = new CKWaitingObjectArray *[m_RegisteredMessageTypes.Size()];
     if (m_MsgWaitingList) {
-        memcpy(newList, m_MsgWaitingList, newIndex * sizeof(CKWaitingObjectArray *));
+        memcpy(newList, m_MsgWaitingList, (m_RegisteredMessageTypes.Size() - 1) * sizeof(CKWaitingObjectArray *));
         delete[] m_MsgWaitingList;
     }
     newList[newIndex] = nullptr;
@@ -47,21 +47,18 @@ int CKMessageManager::GetMessageTypeCount() {
 
 void CKMessageManager::RenameMessageType(CKMessageType MsgType, CKSTRING NewName) {
     if (MsgType >= 0 && MsgType < m_RegisteredMessageTypes.Size())
-        m_RegisteredMessageTypes[MsgType] = NewName;
+        m_RegisteredMessageTypes[MsgType] = NewName ? NewName : "";
 }
 
 void CKMessageManager::RenameMessageType(CKSTRING OldName, CKSTRING NewName) {
-    if (!OldName || !NewName)
-        return;
-    RenameMessageType(AddMessageType(OldName), NewName);
+    if (OldName && NewName)
+        RenameMessageType(AddMessageType(OldName), NewName);
 }
 
 CKERROR CKMessageManager::SendMessage(CKMessage *msg) {
-    if (!msg || msg->m_MessageType < 0)
-        return CKERR_INVALIDPARAMETER;
+    if (!msg || msg->m_MessageType < 0) return CKERR_INVALIDPARAMETER;
 
     msg->AddRef();
-
     m_ReceivedMsgThisFrame.PushBack(msg);
 
     CKContext *ctx = m_Context;
@@ -112,22 +109,21 @@ CKMessage *CKMessageManager::SendMessageBroadcast(CKMessageType MsgType, CK_CLAS
 
 CKERROR CKMessageManager::RegisterWait(CKMessageType MsgType, CKBehavior *behav, int OutputToActivate,
                                        CKBeObject *obj) {
-    if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
-        return CKERR_INVALIDMESSAGE;
-    if (!behav)
-        return CKERR_INVALIDPARAMETER;
+    if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size()) return CKERR_INVALIDMESSAGE;
+    if (!behav) return CKERR_INVALIDPARAMETER;
+
     CKBehaviorIO *output = behav->GetOutput(OutputToActivate);
-    if (!output)
-        return CKERR_INVALIDPARAMETER;
+    if (!output) return CKERR_INVALIDPARAMETER;
 
     behav->ModifyFlags(CKBEHAVIOR_WAITSFORMESSAGE, 0);
 
     CKWaitingObjectArray *&waitList = m_MsgWaitingList[MsgType];
     if (!waitList) {
         waitList = new CKWaitingObjectArray;
+        if (!waitList) return CKERR_OUTOFMEMORY;
     }
 
-    for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End(); ++it) {
+    for (CKWaitingObjectArray::Iterator it = waitList->Begin(); it != waitList->End(); ++it) {
         if (it->m_Behavior == behav && it->m_Output == output)
             return CKERR_ALREADYPRESENT;
     }
@@ -146,20 +142,18 @@ CKERROR CKMessageManager::RegisterWait(CKSTRING MsgName, CKBehavior *behav, int 
 }
 
 CKERROR CKMessageManager::UnRegisterWait(CKMessageType MsgType, CKBehavior *behav, int OutputToActivate) {
-    if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size())
-        return CKERR_INVALIDMESSAGE;
-    if (!behav)
-        return CKERR_INVALIDPARAMETER;
+    if (MsgType < 0 || MsgType >= m_RegisteredMessageTypes.Size()) return CKERR_INVALIDMESSAGE;
+    if (!behav) return CKERR_INVALIDPARAMETER;
 
     CKWaitingObjectArray *waitList = m_MsgWaitingList[MsgType];
-    if (!waitList)
-        return CK_OK;
+    if (!waitList) return CK_OK;
 
-    CKBehaviorIO *output = behav->GetOutput(OutputToActivate);
+    CKBehaviorIO *output = (OutputToActivate == -1) ? nullptr : behav->GetOutput(OutputToActivate);
+    if (OutputToActivate != -1 && !output)
+        return CKERR_INVALIDPARAMETER;
 
-    // Remove matching entries
-    for (XArray<CKWaitingObject>::Iterator it = waitList->Begin(); it != waitList->End();) {
-        if (it->m_Behavior == behav && (!output || it->m_Output == output)) {
+    for (CKWaitingObjectArray::Iterator it = waitList->Begin(); it != waitList->End();) {
+        if (it->m_Behavior == behav && (output == nullptr || it->m_Output == output)) {
             it = waitList->Remove(it);
             if (behav)
                 behav->ModifyFlags(0, CKBEHAVIOR_WAITSFORMESSAGE);
@@ -167,6 +161,7 @@ CKERROR CKMessageManager::UnRegisterWait(CKMessageType MsgType, CKBehavior *beha
             ++it;
         }
     }
+
     return CK_OK;
 }
 
@@ -264,85 +259,138 @@ CKERROR CKMessageManager::PreClearAll() {
 }
 
 CKERROR CKMessageManager::PostProcess() {
-    for (auto it = m_LastFrameObjects.Begin(); it != m_LastFrameObjects.End(); ++it) {
-        CKBeObject *beObj = (CKBeObject *)*it;
-        if (beObj)
-            beObj->RemoveAllLastFrameMessage();
+    // Clear last frame messages from all objects that received messages
+    for (XObjectPointerArray::Iterator it = m_LastFrameObjects.Begin(); it != m_LastFrameObjects.End(); ++it) {
+        CKBeObject *beObject = static_cast<CKBeObject *>(*it);
+        if (beObject) {
+            beObject->RemoveAllLastFrameMessage();
+        }
     }
+
+    // Clear the list of objects that received messages last frame
     m_LastFrameObjects.Clear();
 
+    // Get current scene for message processing
     CKScene *currentScene = m_Context->GetCurrentScene();
+    CKObjectManager *objectManager = m_Context->m_ObjectManager;
 
-    for (int i = 0; i < m_ReceivedMsgThisFrame.Size(); ++i) {
-        CKMessage *msg = m_ReceivedMsgThisFrame[i];
-        if (!msg)
+    // Process all messages received this frame
+    for (int msgIndex = 0; msgIndex < m_ReceivedMsgThisFrame.Size(); ++msgIndex) {
+        CKMessage *message = m_ReceivedMsgThisFrame[msgIndex];
+        if (!message)
             continue;
 
-        CKMessageType msgType = msg->GetMsgType();
-        CK_MESSAGE_SENDINGTYPE sendType = msg->GetSendingType();
+        CKMessageType messageType = message->GetMsgType();
+        CK_MESSAGE_SENDINGTYPE sendingType = message->GetSendingType();
+        CKObject *recipient = NULL;
 
-        // Dispatch to general listeners
-        if (sendType == CK_MESSAGE_BROADCAST) {
-            CK_CLASSID broadcastCid = msg->m_BroadcastCid;
-            for (CK_CLASSID cid = 0; cid < g_MaxClassID; ++cid) {
-                if (!CKIsChildClassOf(cid, broadcastCid))
-                    continue;
+        // Handle different sending types
+        if (sendingType == CK_MESSAGE_BROADCAST) {
+            // Broadcast message to all objects of specified class hierarchy
+            CK_CLASSID broadcastClassId = message->m_BroadcastCid;
 
-                int count = m_Context->GetObjectsCountByClassID(cid);
-                CK_ID *ids = m_Context->GetObjectsListByClassID(cid);
-                for (int j = 0; j < count; ++j) {
-                    CKBeObject *obj = (CKBeObject *)m_Context->GetObject(ids[j]);
-                    AddMessageToObject(obj, msg, currentScene, FALSE);
+            // Iterate through all registered class IDs
+            for (CK_CLASSID classId = CKCID_OBJECT; classId < g_MaxClassID; ++classId) {
+                if (CKIsChildClassOf(classId, broadcastClassId)) {
+                    int objectCount = objectManager->GetObjectsCountByClassID(classId);
+                    if (objectCount > 0) {
+                        CK_ID *objectsList = objectManager->GetObjectsListByClassID(classId);
+                        if (objectsList) {
+                            for (int i = 0; i < objectCount; ++i) {
+                                CKObject *obj = m_Context->GetObject(objectsList[i]);
+                                if (obj) {
+                                    AddMessageToObject(obj, message, currentScene, FALSE);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } else {
-            CKObject *recipient = msg->GetRecipient();
-            AddMessageToObject(recipient, msg, currentScene, TRUE);
+            // Single or Group message
+            recipient = message->GetRecipient();
+            if (recipient) {
+                AddMessageToObject(recipient, message, currentScene, TRUE);
+            }
         }
 
-        if (msgType >= 0 && msgType < m_RegisteredMessageTypes.Size()) {
-            CKWaitingObjectArray *&waitingList = m_MsgWaitingList[msgType];
-            if (!waitingList) continue;
+        // Process waiting behaviors for this message type
+        if (messageType >= 0 && messageType < GetMessageTypeCount()) {
+            CKWaitingObjectArray *waitingList = m_MsgWaitingList[messageType];
+            if (waitingList) {
+                for (CKWaitingObjectArray::Iterator it = waitingList->Begin(); it != waitingList->End();) {
+                    CKBeObject *waitingBeObject = it->m_BeObject;
+                    CKBOOL shouldActivate = FALSE;
 
-            for (CKWaitingObjectArray::Iterator it = waitingList->Begin(); it != waitingList->End();) {
-                CKBeObject *waitTarget = it->m_BeObject;
-                bool received = false;
-
-                if (!waitTarget) {
-                    // Global listener, receives all messages of this type
-                    received = true;
-                } else {
-                    switch (sendType) {
-                    case CK_MESSAGE_SINGLE:
-                        received = (waitTarget == msg->GetRecipient());
-                        break;
-                    case CK_MESSAGE_GROUP:
-                        received = waitTarget->IsInGroup((CKGroup *) msg->GetRecipient());
-                        break;
-                    case CK_MESSAGE_BROADCAST:
-                        received = CKIsChildClassOf(waitTarget, msg->m_BroadcastCid);
-                        break;
+                    // Check if this waiting object should receive the message
+                    if (sendingType == CK_MESSAGE_BROADCAST) {
+                        // For broadcast, check if waiting object is of the right class
+                        if (CKIsChildClassOf(waitingBeObject, message->m_BroadcastCid)) {
+                            shouldActivate = TRUE;
+                        }
+                    } else if (sendingType == CK_MESSAGE_SINGLE) {
+                        // For single message, check if it's the same object
+                        if (waitingBeObject == recipient) {
+                            shouldActivate = TRUE;
+                        }
+                    } else if (sendingType == CK_MESSAGE_GROUP) {
+                        // For group message, check various conditions
+                        if (waitingBeObject == recipient) {
+                            shouldActivate = TRUE;
+                        } else if (CKIsChildClassOf(recipient, CKCID_GROUP)) {
+                            // If recipient is a group, check if waiting object is in that group
+                            CKGroup *group = static_cast<CKGroup *>(recipient);
+                            if (waitingBeObject->IsInGroup(group)) {
+                                shouldActivate = TRUE;
+                            }
+                        } else if (CKIsChildClassOf(recipient, CKCID_BODYPART)) {
+                            // If recipient is a body part, check if waiting object is the character
+                            CKBodyPart *bodyPart = static_cast<CKBodyPart *>(recipient);
+                            CKCharacter *character = bodyPart->GetCharacter();
+                            if (waitingBeObject == character) {
+                                shouldActivate = TRUE;
+                            }
+                        }
                     }
-                }
 
-                if (received) {
-                    if (it->m_Output && (it->m_Behavior->GetFlags() & CKBEHAVIOR_WAITSFORMESSAGE)) {
-                        it->m_Output->Activate();
+                    if (shouldActivate) {
+                        // Add message to the waiting object
+                        waitingBeObject->AddLastFrameMessage(message);
+                        m_LastFrameObjects.AddIfNotHere(waitingBeObject);
+
+                        // Activate the behavior output if specified
+                        if (it->m_Output) {
+                            if (it->m_Behavior->GetFlags() & CKBEHAVIOR_WAITSFORMESSAGE) {
+                                it->m_Output->Activate();
+                            }
+                        }
+
+                        // Mark behavior for processing
+                        if (it->m_Behavior) {
+                            it->m_Behavior->ModifyFlags(0, CKBEHAVIOR_WAITSFORMESSAGE);
+                        }
+
+                        // Remove from waiting list (behavior waits for one message only)
+                        it = waitingList->Remove(it);
+                    } else {
+                        ++it;
                     }
-                    it->m_Behavior->ModifyFlags(0, CKBEHAVIOR_WAITSFORMESSAGE);
-                    it = waitingList->Remove(it);
-                } else {
-                    ++it;
                 }
             }
         }
     }
 
+    // Release all processed messages
     for (int i = 0; i < m_ReceivedMsgThisFrame.Size(); ++i) {
-        CKMessage *msg = m_ReceivedMsgThisFrame[i];
-        if (msg) msg->Release();
+        CKMessage *message = m_ReceivedMsgThisFrame[i];
+        if (message) {
+            message->Release();
+        }
     }
+
+    // Clear the received messages array
     m_ReceivedMsgThisFrame.Clear();
+
     return CK_OK;
 }
 
@@ -406,9 +454,7 @@ CKMessageManager::~CKMessageManager() {
         }
     }
     m_ReceivedMsgThisFrame.Clear();
-
     m_LastFrameObjects.Clear();
-
     m_RegisteredMessageTypes.Clear();
 }
 
@@ -429,16 +475,17 @@ void CKMessageManager::AddMessageToObject(CKObject *obj, CKMessage *msg, CKScene
         }
 
         if (recurse) {
-            if (msg->GetSendingType() == CK_MESSAGE_GROUP && obj->GetClassID() == CKCID_GROUP) {
-                CKGroup *group = (CKGroup *) obj;
-                for (int i = 0; i < group->GetObjectCount(); ++i) {
-                    AddMessageToObject(group->GetObject(i), msg, currentscene, TRUE);
-                }
-            } else if (obj->GetClassID() == CKCID_BODYPART) {
+            if (obj->GetClassID() == CKCID_BODYPART) {
                 CKBodyPart *bodyPart = (CKBodyPart *) obj;
                 CKCharacter *character = bodyPart->GetCharacter();
                 if (character) {
                     AddMessageToObject(character, msg, currentscene, TRUE);
+                }
+            }
+            if (msg->GetSendingType() == CK_MESSAGE_GROUP && obj->GetClassID() == CKCID_GROUP) {
+                CKGroup *group = (CKGroup *) obj;
+                for (int i = 0; i < group->GetObjectCount(); ++i) {
+                    AddMessageToObject(group->GetObject(i), msg, currentscene, TRUE);
                 }
             }
         }
