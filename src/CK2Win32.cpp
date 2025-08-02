@@ -23,14 +23,3 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID lpReserved) {
     }
     return TRUE;
 }
-
-XString CKGetTempPath() {
-    char path[MAX_PATH];
-    GetTempPathA(512, path);
-    char dir[64];
-    sprintf(dir, "VTmp%d", rand());
-
-    char buf[MAX_PATH];
-    VxMakePath(buf, path, dir);
-    return XString(buf);
-}

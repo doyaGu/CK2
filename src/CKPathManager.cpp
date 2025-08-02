@@ -4,7 +4,15 @@
 #include "CKGlobals.h"
 #include "CKContext.h"
 
-extern XString CKGetTempPath();
+XString CKGetTempPath() {
+    char buf[260];
+    char dir[64];
+    sprintf(dir, "VTmp%d", rand());
+
+    XString path = VxGetTempPath();
+    VxMakePath(buf, path.Str(), dir);
+    return XString(buf);
+}
 
 CKPathManager::CKPathManager(CKContext *Context) : CKBaseManager(Context, PATH_MANAGER_GUID, "Path Manager") {
     XString bitmap = "Bitmap Paths";
