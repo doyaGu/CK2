@@ -26,59 +26,60 @@
 extern XClassInfoArray g_CKClassInfo;
 extern CKPluginManager g_ThePluginManager;
 
-CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATION_OPTIONS Options,
-                                  CK_CREATIONMODE *Res) {
+CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATION_OPTIONS Options, CK_CREATIONMODE *Res) {
     CKObject *obj = nullptr;
-    CK_CREATIONMODE mode = CKLOAD_OK;
+    CK_CREATIONMODE creationMode = CKLOAD_OK;
     char *buffer = GetStringBuffer(512);
-    unsigned int objectCreationOption = (Options & CK_OBJECTCREATION_FLAGSMASK);
+
+    CKDWORD creationOptions = (Options & CK_OBJECTCREATION_FLAGSMASK);
     CKClassDesc &classDesc = g_CKClassInfo[cid];
-    CKDWORD defaultOptions = classDesc.DefaultOptions;
-    if (defaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
-        objectCreationOption = CK_OBJECTCREATION_NONAMECHECK;
-    if (defaultOptions & CK_GENERALOPTIONS_AUTOMATICUSECURRENT)
-        objectCreationOption = CK_OBJECTCREATION_USECURRENT;
+    if (classDesc.DefaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
+        creationOptions = CK_OBJECTCREATION_NONAMECHECK;
+    if (classDesc.DefaultOptions & CK_GENERALOPTIONS_AUTOMATICUSECURRENT)
+        creationOptions = CK_OBJECTCREATION_USECURRENT;
 
-    switch (objectCreationOption) {
-    case CK_OBJECTCREATION_RENAME: {
-        obj = GetObjectByNameAndClass(Name, cid);
-        if (!obj)
+    if (Name) {
+        switch (creationOptions) {
+        case CK_OBJECTCREATION_RENAME:
+            obj = GetObjectByNameAndClass(Name, cid);
+            if (obj) {
+                GetSecureName(buffer, Name, cid);
+                creationMode = CKLOAD_RENAME;
+            }
             break;
-        GetSecureName(buffer, Name, cid);
-        mode = CKLOAD_RENAME;
-        break;
-    }
-    case CK_OBJECTCREATION_USECURRENT: {
-        obj = GetObjectByNameAndClass(Name, cid);
-        if (!obj)
+        case CK_OBJECTCREATION_USECURRENT:
+            obj = GetObjectByNameAndClass(Name, cid);
+            if (obj) {
+                creationMode = CKLOAD_USECURRENT;
+            }
             break;
-        mode = CKLOAD_USECURRENT;
-        break;
-    }
-    case CK_OBJECTCREATION_ASK: {
-        mode = LoadVerifyObjectUnicity(Name, cid, buffer, &obj);
-        break;
-    }
-    case CK_OBJECTCREATION_NONAMECHECK:
-    case CK_OBJECTCREATION_REPLACE:
-    default:
-        break;
+        case CK_OBJECTCREATION_ASK:
+            creationMode = LoadVerifyObjectUnicity(Name, cid, buffer, &obj);
+            break;
+        case CK_OBJECTCREATION_NONAMECHECK:
+        case CK_OBJECTCREATION_REPLACE:
+        default:
+            break;
+        }
     }
 
-    if (mode != CKLOAD_USECURRENT) {
+    if (creationMode != CKLOAD_USECURRENT) {
         if (classDesc.CreationFct) {
-            m_InDynamicCreationMode = !!(Options & CK_OBJECTCREATION_ASK);
+            m_InDynamicCreationMode = (Options & CK_OBJECTCREATION_DYNAMIC) != 0;
             obj = classDesc.CreationFct(this);
             m_InDynamicCreationMode = FALSE;
-            if (Options & CK_OBJECTCREATION_DYNAMIC)
-                obj->ModifyObjectFlags(CK_OBJECT_DYNAMIC, 0);
-            m_ObjectManager->FinishRegisterObject(obj);
+
+            if (obj) {
+                if (Options & CK_OBJECTCREATION_DYNAMIC)
+                    obj->ModifyObjectFlags(CK_OBJECT_DYNAMIC, 0);
+                m_ObjectManager->FinishRegisterObject(obj);
+            }
         }
     }
 
     if (obj) {
         if (Name != nullptr) {
-            if (mode & CKLOAD_RENAME)
+            if (creationMode == CKLOAD_RENAME)
                 obj->SetName(buffer);
             else
                 obj->SetName(Name);
@@ -86,48 +87,44 @@ CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATI
     }
 
     if (Res)
-        *Res = mode;
+        *Res = creationMode;
+
     return obj;
 }
 
-CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKSTRING AppendName,
-                                CK_OBJECTCREATION_OPTIONS Options) {
-    if (!src)
-        return nullptr;
+CKObject *CKContext::CopyObject(CKObject *src, CKDependencies *Dependencies, CKSTRING AppendName, CK_OBJECTCREATION_OPTIONS Options) {
+    if (!src) return nullptr;
 
     CKDependenciesContext depContext(this);
     depContext.SetCreationMode(Options);
     depContext.SetOperationMode(CK_DEPENDENCIES_COPY);
-    depContext.StartDependencies(Dependencies);
+    if (Dependencies) depContext.StartDependencies(Dependencies);
     depContext.AddObjects(&src->m_ID, 1);
     depContext.Copy(AppendName);
-    depContext.StopDependencies();
+    if (Dependencies) depContext.StopDependencies();
     return depContext.Remap(src);
 }
 
-const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies,
-                                           CK_OBJECTCREATION_OPTIONS Options, CKSTRING AppendName) {
+const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies, CK_OBJECTCREATION_OPTIONS Options, CKSTRING AppendName) {
     CKDependenciesContext depContext(this);
     depContext.SetCreationMode(Options);
     depContext.SetOperationMode(CK_DEPENDENCIES_COPY);
-    depContext.StartDependencies(Dependencies);
+    if (Dependencies) depContext.StartDependencies(Dependencies);
     depContext.AddObjects(SrcObjects.Begin(), SrcObjects.Size());
     depContext.Copy(AppendName);
+
     m_CopyObjects.Clear();
     const int count = depContext.GetObjectsCount();
     for (int i = 0; i < count; i++) {
         CKObject *obj = depContext.GetObjects(i);
-        CK_ID id = obj ? obj->GetID() : 0;
-        m_CopyObjects.PushBack(id);
+        m_CopyObjects.PushBack(obj ? obj->GetID() : 0);
     }
-    depContext.StopDependencies();
+    if (Dependencies) depContext.StopDependencies();
     return m_CopyObjects;
 }
 
 CKObject *CKContext::GetObject(CK_ID ObjID) {
-    if (ObjID > m_ObjectManager->GetObjectsCount())
-        return nullptr;
-    return m_ObjectManager->m_Objects[ObjID];
+    return m_ObjectManager->GetObject(ObjID);
 }
 
 int CKContext::GetObjectCount() {
@@ -135,28 +132,26 @@ int CKContext::GetObjectCount() {
 }
 
 int CKContext::GetObjectSize(CKObject *obj) {
-    if (obj)
-        return obj->GetMemoryOccupation();
-    return 0;
+    return obj ? obj->GetMemoryOccupation() : 0;
 }
 
 CKERROR CKContext::DestroyObject(CKObject *obj, CKDWORD Flags, CKDependencies *depoptions) {
-    if (!obj)
-        return CKERR_INVALIDPARAMETER;
+    if (!obj) return CKERR_INVALIDPARAMETER;
     return DestroyObjects(&obj->m_ID, 1, Flags, depoptions);
 }
 
 CKERROR CKContext::DestroyObject(CK_ID id, CKDWORD Flags, CKDependencies *depoptions) {
-    if (id == 0)
-        return CKERR_INVALIDPARAMETER;
+    if (id == 0) return CKERR_INVALIDPARAMETER;
     return DestroyObjects(&id, 1, Flags, depoptions);
 }
 
 CKERROR CKContext::DestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, CKDependencies *depoptions) {
     if (m_DeferDestroyObjects) {
         DeferredDestroyObjects(obj_ids, Count, depoptions, Flags);
-    } else if (!PrepareDestroyObjects(obj_ids, Count, Flags, depoptions)) {
-        FinishDestroyObjects(m_DestroyObjectFlag);
+    } else {
+        if (PrepareDestroyObjects(obj_ids, Count, Flags, depoptions) == CK_OK) {
+            FinishDestroyObjects(m_DestroyObjectFlag);
+        }
     }
     return CK_OK;
 }
@@ -180,24 +175,21 @@ const XObjectPointerArray &CKContext::CKFillObjectsUnused() {
     depContext.StartDependencies(&deps);
 
     CKRenderContext *dev = GetPlayerRenderContext();
-    dev->PrepareDependencies(depContext);
+    if (dev) dev->PrepareDependencies(depContext);
 
     XObjectPointerArray objects;
-
     objects += GetObjectListByType(CKCID_DATAARRAY, FALSE);
     objects += GetObjectListByType(CKCID_GROUP, FALSE);
     objects += GetObjectListByType(CKCID_BEHAVIOR, FALSE);
-
     objects.Prepare(depContext);
-    m_ObjectsUnused.Clear();
 
     CKScene *currentScene = GetCurrentScene();
 
+    m_ObjectsUnused.Clear();
     const int count = m_ObjectManager->GetObjectsCount();
     for (int i = 0; i < count; ++i) {
         CKObject *obj = m_ObjectManager->GetObject(i);
-        if (!obj)
-            continue;
+        if (!obj) continue;
 
         if (!depContext.IsDependenciesHere(obj->GetID())) {
             if (!CKIsChildClassOf(obj, CKCID_SCENEOBJECT) ||
@@ -277,34 +269,33 @@ CKERROR CKContext::Reset() {
     m_Reseted = TRUE;
 
     CKLevel *currentLevel = GetCurrentLevel();
-    if (!currentLevel)
-        return CKERR_NOCURRENTLEVEL;
+    if (!currentLevel) return CKERR_NOCURRENTLEVEL;
     m_BehaviorContext.CurrentLevel = currentLevel;
 
     WarnAllBehaviors(CKM_BEHAVIORRESET);
 
-    int characterCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_CHARACTER);
-    CK_ID *characterList = m_ObjectManager->GetObjectsListByClassID(CKCID_CHARACTER);
-    for (int i = 0; i < characterCount; ++i) {
-        CKCharacter *character = (CKCharacter *) m_ObjectManager->m_Objects[characterList[i]];
-        if (character)
-            character->FlushSecondaryAnimations();
+    // Characters
+    int count = m_ObjectManager->GetObjectsCountByClassID(CKCID_CHARACTER);
+    CK_ID *idList = m_ObjectManager->GetObjectsListByClassID(CKCID_CHARACTER);
+    for (int i = 0; i < count; ++i) {
+        CKCharacter *character = (CKCharacter *) GetObject(idList[i]);
+        if (character) character->FlushSecondaryAnimations();
     }
 
-    int synchroCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_SYNCHRO);
-    CK_ID *synchroList = m_ObjectManager->GetObjectsListByClassID(CKCID_SYNCHRO);
-    for (int i = 0; i < synchroCount; ++i) {
-        CKSynchroObject *synchro = (CKSynchroObject *) m_ObjectManager->m_Objects[synchroList[i]];
-        if (synchro)
-            synchro->Reset();
+    // Synchro Objects
+    count = m_ObjectManager->GetObjectsCountByClassID(CKCID_SYNCHRO);
+    idList = m_ObjectManager->GetObjectsListByClassID(CKCID_SYNCHRO);
+    for (int i = 0; i < count; ++i) {
+        CKSynchroObject *synchro = (CKSynchroObject *) GetObject(idList[i]);
+        if (synchro) synchro->Reset();
     }
 
-    int criticalSectionCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_CRITICALSECTION);
-    CK_ID *criticalSectionList = m_ObjectManager->GetObjectsListByClassID(CKCID_CRITICALSECTION);
-    for (int i = 0; i < criticalSectionCount; ++i) {
-        CKCriticalSectionObject *criticalSection = (CKCriticalSectionObject *) m_ObjectManager->m_Objects[criticalSectionList[i]];
-        if (criticalSection)
-            criticalSection->Reset();
+    // Critical Section Objects
+    count = m_ObjectManager->GetObjectsCountByClassID(CKCID_CRITICALSECTION);
+    idList = m_ObjectManager->GetObjectsListByClassID(CKCID_CRITICALSECTION);
+    for (int i = 0; i < count; ++i) {
+        CKCriticalSectionObject *cs = (CKCriticalSectionObject *) GetObject(idList[i]);
+        if (cs) cs->Reset();
     }
 
     int stateCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_STATE);
@@ -319,8 +310,7 @@ CKERROR CKContext::Reset() {
     currentLevel->Reset();
 
     CKScene *currentScene = currentLevel->GetCurrentScene();
-    if (currentScene)
-        currentScene->Launch();
+    if (currentScene) currentScene->Launch();
 
     ExecuteManagersOnCKPostReset();
     return CK_OK;
@@ -385,9 +375,7 @@ CKRenderContext *CKContext::GetPlayerRenderContext() {
 
 CKScene *CKContext::GetCurrentScene() {
     CKLevel *level = GetCurrentLevel();
-    if (!level)
-        return nullptr;
-    return level->GetCurrentScene();
+    return level ? level->GetCurrentScene() : nullptr;
 }
 
 void CKContext::SetCurrentLevel(CKLevel *level) {
@@ -457,8 +445,7 @@ CKParameterLocal *CKContext::CreateCKParameterLocal(CKSTRING Name, CKSTRING Type
     return CreateCKParameterLocal(Name, type, Dynamic);
 }
 
-CKParameterOperation *
-CKContext::CreateCKParameterOperation(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid) {
+CKParameterOperation *CKContext::CreateCKParameterOperation(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid) {
     CKParameterOperation *pOperation = (CKParameterOperation *) CreateObject(CKCID_PARAMETEROPERATION, Name);
     pOperation->Reconstruct(Name, opguid, ResGuid, p1Guid, p2Guid);
     return pOperation;
@@ -814,7 +801,6 @@ CKGUID CKContext::GetSecureGuid() {
             m_ParameterManager->ParameterGuidToType(guid) >= 0 ||
             GetManagerByGuid(guid) != nullptr));
 
-
     return guid;
 }
 
@@ -962,36 +948,34 @@ CKERROR CKContext::GetFileInfo(int BufferSize, void *MemoryBuffer, CKFileInfo *F
     return CK_OK;
 }
 
-CKERROR CKContext::Save(CKSTRING FileName, CKObjectArray *liste, CKDWORD SaveFlags, CKDependencies *dependencies,
-                        CKGUID *ReaderGuid) {
-    CKObjectArray *saveList = nullptr;
+CKERROR CKContext::Save(CKSTRING FileName, CKObjectArray *liste, CKDWORD SaveFlags, CKDependencies *dependencies, CKGUID *ReaderGuid) {
+    CKObjectArray *saveList = liste;
     CKObjectArray *tempObjectArray = nullptr;
 
     if (dependencies) {
+        tempObjectArray = CreateCKObjectArray();
+        if (!tempObjectArray) return CKERR_OUTOFMEMORY;
+
         CKDependenciesContext depContext(this);
         depContext.SetOperationMode(CK_DEPENDENCIES_SAVE);
+        depContext.StartDependencies(dependencies);
 
         liste->Reset();
         while (!liste->EndOfList()) {
-            CK_ID objectId = liste->GetDataId();
-            depContext.AddObjects(&objectId, 1);
+            CK_ID objId = liste->GetDataId();
+            depContext.AddObjects(&objId, 1);
             liste->Next();
         }
 
-        depContext.StartDependencies(dependencies);
+        depContext.FillDependencies();
 
-        depContext.m_Objects.Prepare(depContext);
-
-        tempObjectArray = CreateCKObjectArray();
-
-        // TODO: Need fix
-        for (auto it = depContext.m_MapID.Begin(); it != depContext.m_MapID.End(); ++it) {
+        const XHashID &depMap = depContext.GetDependenciesMap();
+        for (XHashID::ConstIterator it = depMap.Begin(); it != depMap.End(); ++it) {
             tempObjectArray->InsertRear(it.GetKey());
         }
 
+        depContext.StopDependencies();
         saveList = tempObjectArray;
-    } else {
-        saveList = liste;
     }
 
     CKERROR result = g_ThePluginManager.Save(this, FileName, saveList, SaveFlags, ReaderGuid);
@@ -1040,149 +1024,114 @@ void CKContext::SetUserLoadCallback(CK_USERLOADCALLBACK fct, void *Arg) {
     m_UserLoadCallBackArgs = Arg;
 }
 
-CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, const CKSTRING NewName,
-                                               CKObject **newobj) {
-    if (!OldName)
-        return CKLOAD_OK;
+CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, const CKSTRING NewName, CKObject **newobj) {
+    if (!OldName) return CKLOAD_OK;
 
-    CKClassDesc &classInfo = g_CKClassInfo[Cid];
-
-    if (classInfo.DefaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
+    CKClassDesc &classDesc = g_CKClassInfo[Cid];
+    if (classDesc.DefaultOptions & CK_GENERALOPTIONS_NODUPLICATENAMECHECK)
         return CKLOAD_OK;
 
     CKObject *existingObj = GetObjectByNameAndClass(OldName, Cid);
-    if (!existingObj)
-        return CKLOAD_OK;
+    if (!existingObj) return CKLOAD_OK;
 
-    if (newobj)
-        *newobj = existingObj;
+    if (newobj) *newobj = existingObj;
 
-    if (classInfo.DefaultOptions & CK_GENERALOPTIONS_AUTOMATICUSECURRENT)
+    if (classDesc.DefaultOptions & CK_GENERALOPTIONS_AUTOMATICUSECURRENT)
         return CKLOAD_USECURRENT;
 
     if (m_UserLoadCallBack)
         return m_UserLoadCallBack(Cid, OldName, NewName, newobj, m_UserLoadCallBackArgs);
 
-    if (!(classInfo.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT)) {
+    if (!(classDesc.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT)) {
+        CK_LOADMODE autoMode = CKLOAD_INVALID;
         if (CKIsChildClassOf(Cid, CKCID_3DENTITY)) {
-            if (m_3DObjectsLoadMode != CKLOAD_INVALID) {
-                if (m_3DObjectsLoadMode == CKLOAD_RENAME)
-                    GetSecureName(NewName, OldName, Cid);
-                return m_3DObjectsLoadMode;
-            }
+            autoMode = m_3DObjectsLoadMode;
         } else {
-            if (m_GeneralLoadMode != CKLOAD_INVALID) {
-                if (m_GeneralLoadMode == CKLOAD_RENAME)
-                    GetSecureName(NewName, OldName, Cid);
-                return m_GeneralLoadMode;
-            }
+            autoMode = m_GeneralLoadMode;
         }
 
-        if (m_GeneralRenameOption == CKLOAD_REPLACE)
-            return CKLOAD_OK;
-        if (m_GeneralRenameOption != CKLOAD_OK) {
-            if (m_GeneralRenameOption == CKLOAD_RENAME) {
+        if (autoMode != CKLOAD_INVALID) {
+            if (autoMode == CKLOAD_RENAME) GetSecureName(NewName, OldName, Cid);
+            return autoMode;
+        }
+
+        CK_OBJECTCREATION_OPTIONS globalOption = (CK_OBJECTCREATION_OPTIONS) m_GeneralRenameOption;
+        if (globalOption != CK_OBJECTCREATION_NONAMECHECK) {
+            if (globalOption == CKLOAD_RENAME) {
                 GetSecureName(NewName, OldName, Cid);
-                if (newobj)
-                    *newobj = nullptr;
+                if (newobj) *newobj = nullptr;
                 return CKLOAD_RENAME;
-            } else if (m_GeneralRenameOption == CKLOAD_USECURRENT) {
-                if (newobj)
-                    *newobj = existingObj;
-                return CKLOAD_USECURRENT;
-            } else {
-                return CKLOAD_OK;
             }
-        }
-
-        int rename = 0;
-
-        CKInterfaceManager *im = (CKInterfaceManager *) GetManagerByGuid(INTERFACE_MANAGER_GUID);
-        if (im) {
-            rename = (CK_LOADMODE) im->DoRenameDialog(OldName, Cid);
-        }
-
-        switch (rename) {
-        case 0:
-            return CKLOAD_OK;
-        case 1:
-            m_GeneralRenameOption = CKLOAD_REPLACE;
-            return CKLOAD_OK;
-        case 2:
-            GetSecureName(NewName, OldName, Cid);
-            if (newobj)
-                *newobj = nullptr;
-            return CKLOAD_RENAME;
-        case 3:
-            m_GeneralRenameOption = CKLOAD_RENAME;
-            GetSecureName(NewName, OldName, Cid);
-            if (newobj)
-                *newobj = nullptr;
-            return CKLOAD_RENAME;
-        case 4:
-            if (newobj)
-                *newobj = existingObj;
-            return CKLOAD_USECURRENT;
-        case 5:
-            m_GeneralRenameOption = CKLOAD_USECURRENT;
-            if (newobj)
-                *newobj = existingObj;
-            return CKLOAD_USECURRENT;
-        default:
-            break;
+            if (globalOption == CKLOAD_USECURRENT) {
+                if (newobj) *newobj = existingObj;
+                return CKLOAD_USECURRENT;
+            }
+            return (CK_LOADMODE) globalOption;
         }
     } else {
+        // It can use current object
+        CK_LOADMODE autoMode = CKLOAD_INVALID;
         if (CKIsChildClassOf(Cid, CKCID_MESH)) {
-            if (m_MeshLoadMode != CKLOAD_INVALID) {
-                if (m_MeshLoadMode == CKLOAD_RENAME)
-                    GetSecureName(NewName, OldName, Cid);
-                return m_MeshLoadMode;
-            }
-        } else if (m_MatTexturesLoadMode != CKLOAD_INVALID) {
-            if (m_MatTexturesLoadMode == CKLOAD_RENAME)
+            autoMode = m_MeshLoadMode;
+        } else if (CKIsChildClassOf(Cid, CKCID_MATERIAL) || CKIsChildClassOf(Cid, CKCID_TEXTURE)) {
+            autoMode = m_MatTexturesLoadMode;
+        }
+
+        if (autoMode != CKLOAD_INVALID) {
+            if (autoMode == CKLOAD_RENAME) GetSecureName(NewName, OldName, Cid);
+            return autoMode;
+        }
+
+        CK_OBJECTCREATION_OPTIONS globalOption = (CK_OBJECTCREATION_OPTIONS) m_MatTexturesRenameOption;
+        if (globalOption != CK_OBJECTCREATION_NONAMECHECK) {
+            if (globalOption == CKLOAD_RENAME) {
                 GetSecureName(NewName, OldName, Cid);
-            return m_MatTexturesLoadMode;
-        }
-
-        int rename = 0;
-
-        CKInterfaceManager *im = (CKInterfaceManager *) GetManagerByGuid(INTERFACE_MANAGER_GUID);
-        if (im) {
-            rename = (CK_LOADMODE) im->DoRenameDialog(OldName, Cid);
-        }
-
-        switch (rename) {
-        case 0:
-            return CKLOAD_OK;
-        case 1:
-            m_MatTexturesRenameOption = CKLOAD_REPLACE;
-            return CKLOAD_OK;
-        case 2:
-            GetSecureName(NewName, OldName, Cid);
-            if (newobj)
-                *newobj = nullptr;
-            return CKLOAD_RENAME;
-        case 3:
-            m_MatTexturesRenameOption = CKLOAD_RENAME;
-            GetSecureName(NewName, OldName, Cid);
-            if (newobj)
-                *newobj = nullptr;
-            return CKLOAD_RENAME;
-        case 4:
-            if (newobj)
-                *newobj = existingObj;
-            return CKLOAD_USECURRENT;
-        case 5:
-            m_MatTexturesRenameOption = CKLOAD_USECURRENT;
-            if (newobj)
-                *newobj = existingObj;
-            return CKLOAD_USECURRENT;
-        default:
-            break;
+                if (newobj) *newobj = nullptr;
+                return CKLOAD_RENAME;
+            }
+            if (globalOption == CKLOAD_USECURRENT) {
+                if (newobj) *newobj = existingObj;
+                return CKLOAD_USECURRENT;
+            }
+            return (CK_LOADMODE) globalOption;
         }
     }
 
-    return CKLOAD_OK;
+    // Fallback to UI Dialog if available
+    CKInterfaceManager *im = (CKInterfaceManager *) GetManagerByGuid(INTERFACE_MANAGER_GUID);
+    int choice = im ? im->DoRenameDialog(OldName, Cid) : 0; // 0 is "Replace" in the dialog
+
+    switch (choice) {
+    case 0: // Replace
+        return CKLOAD_OK;
+    case 1: // Replace All
+        if (classDesc.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT)
+            m_MatTexturesRenameOption = CKLOAD_REPLACE;
+        else m_GeneralRenameOption = CKLOAD_REPLACE;
+        return CKLOAD_OK;
+    case 2: // Rename
+        GetSecureName(NewName, OldName, Cid);
+        if (newobj) *newobj = nullptr;
+        return CKLOAD_RENAME;
+    case 3: // Rename All
+        if (classDesc.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT)
+            m_MatTexturesRenameOption = CKLOAD_RENAME;
+        else m_GeneralRenameOption = CKLOAD_RENAME;
+        GetSecureName(NewName, OldName, Cid);
+        if (newobj) *newobj = nullptr;
+        return CKLOAD_RENAME;
+    case 4: // Use Existing
+        if (newobj) *newobj = existingObj;
+        return CKLOAD_USECURRENT;
+    case 5: // Use Existing for All
+        if (classDesc.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT)
+            m_MatTexturesRenameOption = CKLOAD_USECURRENT;
+        else m_GeneralRenameOption = CKLOAD_USECURRENT;
+        if (newobj) *newobj = existingObj;
+        return CKLOAD_USECURRENT;
+    default:
+        return CKLOAD_OK;
+    }
 }
 
 CKBOOL CKContext::IsInLoad() {
@@ -1201,28 +1150,32 @@ void CKContext::ClearManagersData() {
     CKRenderManager *renderManager = GetRenderManager();
     if (renderManager) {
         int count = renderManager->GetRenderContextCount();
-        for (int i = 0; i < count; ++i) {
-            CKRenderContext *renderContext = renderManager->GetRenderContext(i);
-            renderManager->RemoveRenderContext(renderContext);
+        while (count > 0) {
+            CKRenderContext *context = renderManager->GetRenderContext(0);
+            renderManager->DestroyRenderContext(context);
+            count = renderManager->GetRenderContextCount();
         }
     }
+
     m_ObjectManager->DeleteAllObjects();
     ExecuteManagersOnCKEnd();
 
-    // TODO: Maybe need to clear m_ManagerTable and m_InactiveManagers
-    for (auto it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+    for (XManagerHashTableIt it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
         CKBaseManager *manager = *it;
-        delete manager;
+        if (manager) delete manager;
     }
-    for (auto it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
+    m_ManagerTable.Clear();
+
+    for (XManagerArray::Iterator it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
         CKBaseManager *manager = *it;
-        delete manager;
+        if (manager) delete manager;
     }
+    m_InactiveManagers.Clear();
 }
 
 void CKContext::ExecuteManagersOnCKInit() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnCKInit];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnCKInit];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnCKInit();
     }
@@ -1230,8 +1183,8 @@ void CKContext::ExecuteManagersOnCKInit() {
 }
 
 void CKContext::ExecuteManagersOnCKEnd() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnCKEnd];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnCKEnd];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnCKEnd();
     }
@@ -1239,8 +1192,8 @@ void CKContext::ExecuteManagersOnCKEnd() {
 }
 
 void CKContext::ExecuteManagersPreProcess() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PreProcess];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PreProcess];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PreProcess();
     }
@@ -1248,8 +1201,8 @@ void CKContext::ExecuteManagersPreProcess() {
 }
 
 void CKContext::ExecuteManagersPostProcess() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PostProcess];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PostProcess];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PostProcess();
     }
@@ -1257,8 +1210,8 @@ void CKContext::ExecuteManagersPostProcess() {
 }
 
 void CKContext::ExecuteManagersPreClearAll() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PreClearAll];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PreClearAll];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PreClearAll();
     }
@@ -1266,8 +1219,8 @@ void CKContext::ExecuteManagersPreClearAll() {
 }
 
 void CKContext::ExecuteManagersPostClearAll() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PostClearAll];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PostClearAll];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PostClearAll();
     }
@@ -1275,8 +1228,8 @@ void CKContext::ExecuteManagersPostClearAll() {
 }
 
 void CKContext::ExecuteManagersOnSequenceDeleted(CK_ID *objids, int count) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceDeleted];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceDeleted];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->SequenceDeleted(objids, count);
     }
@@ -1284,8 +1237,8 @@ void CKContext::ExecuteManagersOnSequenceDeleted(CK_ID *objids, int count) {
 }
 
 void CKContext::ExecuteManagersOnSequenceToBeDeleted(CK_ID *objids, int count) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceToBeDeleted];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceToBeDeleted];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->SequenceToBeDeleted(objids, count);
     }
@@ -1293,8 +1246,8 @@ void CKContext::ExecuteManagersOnSequenceToBeDeleted(CK_ID *objids, int count) {
 }
 
 void CKContext::ExecuteManagersOnCKReset() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnCKReset];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnCKReset];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnCKReset();
     }
@@ -1302,8 +1255,8 @@ void CKContext::ExecuteManagersOnCKReset() {
 }
 
 void CKContext::ExecuteManagersOnCKPostReset() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnCKPostReset];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnCKPostReset];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnCKPostReset();
     }
@@ -1311,8 +1264,8 @@ void CKContext::ExecuteManagersOnCKPostReset() {
 }
 
 void CKContext::ExecuteManagersOnCKPause() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnCKPause];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnCKPause];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnCKPause();
     }
@@ -1320,8 +1273,8 @@ void CKContext::ExecuteManagersOnCKPause() {
 }
 
 void CKContext::ExecuteManagersOnCKPlay() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnCKPlay];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnCKPlay];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnCKPlay();
     }
@@ -1329,8 +1282,8 @@ void CKContext::ExecuteManagersOnCKPlay() {
 }
 
 void CKContext::ExecuteManagersPreLaunchScene(CKScene *OldScene, CKScene *NewScene) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PreLaunchScene];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PreLaunchScene];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PreLaunchScene(OldScene, NewScene);
     }
@@ -1338,8 +1291,8 @@ void CKContext::ExecuteManagersPreLaunchScene(CKScene *OldScene, CKScene *NewSce
 }
 
 void CKContext::ExecuteManagersPostLaunchScene(CKScene *OldScene, CKScene *NewScene) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PostLaunchScene];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PostLaunchScene];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PostLaunchScene(OldScene, NewScene);
     }
@@ -1347,8 +1300,8 @@ void CKContext::ExecuteManagersPostLaunchScene(CKScene *OldScene, CKScene *NewSc
 }
 
 void CKContext::ExecuteManagersPreLoad() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PreLoad];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PreLoad];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PreLoad();
     }
@@ -1356,8 +1309,8 @@ void CKContext::ExecuteManagersPreLoad() {
 }
 
 void CKContext::ExecuteManagersPostLoad() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PostLoad];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PostLoad];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PostLoad();
     }
@@ -1365,8 +1318,8 @@ void CKContext::ExecuteManagersPostLoad() {
 }
 
 void CKContext::ExecuteManagersPreSave() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PreSave];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PreSave];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PreSave();
     }
@@ -1374,8 +1327,8 @@ void CKContext::ExecuteManagersPreSave() {
 }
 
 void CKContext::ExecuteManagersPostSave() {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_PostSave];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PostSave];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->PostSave();
     }
@@ -1383,8 +1336,8 @@ void CKContext::ExecuteManagersPostSave() {
 }
 
 void CKContext::ExecuteManagersOnSequenceAddedToScene(CKScene *scn, CK_ID *objids, int coun) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceAddedToScene];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceAddedToScene];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->SequenceAddedToScene(scn, objids, coun);
     }
@@ -1392,8 +1345,8 @@ void CKContext::ExecuteManagersOnSequenceAddedToScene(CKScene *scn, CK_ID *objid
 }
 
 void CKContext::ExecuteManagersOnSequenceRemovedFromScene(CKScene *scn, CK_ID *objids, int coun) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceRemovedFromScene];
-    for (auto it = managers.Begin(); it != managers.End(); ++
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceRemovedFromScene];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++
          it) {
         m_CurrentManager = *it;
         m_CurrentManager->SequenceRemovedFromScene(scn, objids, coun);
@@ -1402,8 +1355,8 @@ void CKContext::ExecuteManagersOnSequenceRemovedFromScene(CKScene *scn, CK_ID *o
 }
 
 void CKContext::ExecuteManagersOnPreCopy(CKDependenciesContext *context) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnPreCopy];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPreCopy];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnPreCopy(*context);
     }
@@ -1411,8 +1364,8 @@ void CKContext::ExecuteManagersOnPreCopy(CKDependenciesContext *context) {
 }
 
 void CKContext::ExecuteManagersOnPostCopy(CKDependenciesContext *context) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnPostCopy];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPostCopy];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnPostCopy(*context);
     }
@@ -1420,8 +1373,8 @@ void CKContext::ExecuteManagersOnPostCopy(CKDependenciesContext *context) {
 }
 
 void CKContext::ExecuteManagersOnPreRender(CKRenderContext *dev) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnPreRender];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPreRender];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnPreRender(dev);
     }
@@ -1429,8 +1382,8 @@ void CKContext::ExecuteManagersOnPreRender(CKRenderContext *dev) {
 }
 
 void CKContext::ExecuteManagersOnPostRender(CKRenderContext *dev) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnPostRender];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPostRender];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnPostRender(dev);
     }
@@ -1438,8 +1391,8 @@ void CKContext::ExecuteManagersOnPostRender(CKRenderContext *dev) {
 }
 
 void CKContext::ExecuteManagersOnPostSpriteRender(CKRenderContext *dev) {
-    XArray<CKBaseManager *> &managers = m_ManagerList[CKMANAGER_INDEX_OnPostSpriteRender];
-    for (auto it = managers.Begin(); it != managers.End(); ++it) {
+    XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPostSpriteRender];
+    for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
         m_CurrentManager->OnPostSpriteRender(dev);
     }
@@ -1523,33 +1476,27 @@ int CKContext::WarnAllBehaviors(CKDWORD Message) {
 }
 
 void CKContext::GetSecureName(CKSTRING secureName, const char *name, CK_CLASSID cid) {
+    int highestNumber = -1;
     XString baseName(name);
-    int highestNumber = 0;
 
-    int objCount = GetObjectsCountByClassID(cid);
     CK_ID *objList = GetObjectsListByClassID(cid);
+    const int objCount = GetObjectsCountByClassID(cid);
 
-    // Find the highest existing number suffix
     for (int i = 0; i < objCount; ++i) {
         CKObject *obj = GetObject(objList[i]);
-        if (!obj || !obj->GetName())
+        if (!obj)
             continue;
 
         const char *objName = obj->GetName();
-        size_t baseLen = baseName.Length();
+        if (!objName)
+            continue;
 
-        // Check if name starts with our base name
-        if (strncmp(objName, name, baseLen) == 0) {
-            // Check for numbered suffix
-            if (objName[baseLen] != '\0') {
-                const char *numStr = objName + baseLen;
-                int currentNum = atoi(numStr);
+        if (strncmp(objName, baseName.CStr(), baseName.Length()) == 0) {
+            if (objName[baseName.Length()] != '\0') {
+                int currentNum = atoi(&objName[baseName.Length()]);
                 if (currentNum > highestNumber) {
                     highestNumber = currentNum;
                 }
-            } else {
-                // Exact match with no number
-                highestNumber = XMax(highestNumber, 1);
             }
         }
     }
@@ -1558,48 +1505,47 @@ void CKContext::GetSecureName(CKSTRING secureName, const char *name, CK_CLASSID 
 }
 
 void CKContext::GetObjectSecureName(XString &secureName, CKSTRING name, CK_CLASSID cid) {
-    XString processedName(name);
+    XString baseName(name);
     int highestNumber = -1;
 
-    // Check if base name ends with 3 digits
-    if (processedName.Length() >= 3) {
-        const char *strEnd = processedName.Str() + processedName.Length() - 3;
-        if (isdigit(strEnd[0]) && isdigit(strEnd[1]) && isdigit(strEnd[2])) {
-            // Extract and remove the numeric suffix
-            highestNumber = atoi(strEnd);
-            processedName.Crop(0, processedName.Length() - 3);
+    XWORD len = baseName.Length();
+    if (len > 3) {
+        const char *str = baseName.CStr();
+        if (isdigit(str[len - 3]) && isdigit(str[len - 2]) && isdigit(str[len - 1])) {
+            highestNumber = atoi(str + (len - 3));
+            baseName.Crop(0, len - 3);
         }
     }
 
-    // Get all objects of specified class
-    int objCount = GetObjectsCountByClassID(cid);
     CK_ID *objList = GetObjectsListByClassID(cid);
+    const int objCount = GetObjectsCountByClassID(cid);
 
-    // Find the highest existing number suffix
     for (int i = 0; i < objCount; ++i) {
         CKObject *obj = GetObject(objList[i]);
-        if (!obj || !obj->GetName()) continue;
+        if (!obj || !obj->GetName())
+            continue;
 
         const char *objName = obj->GetName();
-        size_t baseLen = processedName.Length();
+        XWORD baseLen = baseName.Length();
 
-        // Check name prefix match
-        if (strncmp(objName, processedName.Str(), baseLen) == 0) {
-            const char *numPart = objName + baseLen;
+        if (strncmp(objName, baseName.CStr(), baseLen) == 0) {
+            const char *suffix = objName + baseLen;
 
-            if (*numPart != '\0') {
-                int currentNum = atoi(numPart);
+            if (*suffix != '\0') {
+                int currentNum = atoi(suffix);
                 if (currentNum > highestNumber) {
                     highestNumber = currentNum;
                 }
-            } else if (highestNumber < 0) {
-                highestNumber = 0;
+            } else {
+                if (highestNumber < 0) {
+                    highestNumber = 0;
+                }
             }
         }
     }
 
-    // Build final secure name
-    secureName = processedName;
+    // Step 4: Constructing the final secure name.
+    secureName = baseName;
     if (highestNumber != -1) {
         char numBuffer[4];
         sprintf(numBuffer, "%03d", highestNumber + 1);
@@ -1611,40 +1557,41 @@ int CKContext::PrepareDestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, C
     if (Count <= 0)
         return CKERR_INVALIDPARAMETER;
 
-    const int count = m_DependenciesContext.m_MapID.Size();
-    if (count != 0) {
-        m_DestroyObjectFlag &= Flags;
-    } else {
+    if (m_DependenciesContext.m_MapID.Size() == 0) {
         m_DestroyObjectFlag = Flags;
+    } else {
+        m_DestroyObjectFlag &= Flags;
     }
 
     m_DependenciesContext.SetOperationMode(CK_DEPENDENCIES_DELETE);
-
-    m_DependenciesContext.StartDependencies(Dependencies);
+    if (Dependencies) m_DependenciesContext.StartDependencies(Dependencies);
 
     for (int i = 0; i < Count; ++i) {
         CKObject *obj = GetObject(obj_ids[i]);
         if (obj) {
+            printf("Preparing to destroy object %s (ID: %d)\n", obj->GetName(), obj->GetID());
             obj->PrepareDependencies(m_DependenciesContext);
+            printf("Dependencies prepared for object %s (ID: %d)\n", obj->GetName(), obj->GetID());
         }
     }
 
-    m_DependenciesContext.StopDependencies();
+    if (Dependencies) m_DependenciesContext.StopDependencies();
 
     return CK_OK;
 }
 
 int CKContext::FinishDestroyObjects(CKDWORD Flags) {
     XHashID &depMap = m_DependenciesContext.m_MapID;
+    if (depMap.Size() == 0) return CK_OK;
+
     XObjectArray objectsToDelete;
     objectsToDelete.Resize(depMap.Size());
     int i = 0;
-    for (auto it = depMap.Begin(); it != depMap.End(); ++it) {
+    for (XHashID::Iterator it = depMap.Begin(); it != depMap.End(); ++it) {
         objectsToDelete[i++] = it.GetKey();
     }
 
     m_DependenciesContext.Clear();
-
     m_ObjectManager->DeleteObjects(objectsToDelete.Begin(), objectsToDelete.Size(), 0, Flags);
 
     return CK_OK;
