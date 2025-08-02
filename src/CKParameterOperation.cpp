@@ -127,12 +127,9 @@ CKParameterOperation::CKParameterOperation(CKContext *Context, CKSTRING name) : 
     m_HasOperationFunction = FALSE;
 }
 
-CKParameterOperation::CKParameterOperation(CKContext *Context, CKSTRING name, CKGUID OpGuid, CKGUID ResGuid,
-                                           CKGUID P1Guid, CKGUID P2Guid) {
-}
+CKParameterOperation::CKParameterOperation(CKContext *Context, CKSTRING name, CKGUID OpGuid, CKGUID ResGuid, CKGUID P1Guid, CKGUID P2Guid) {}
 
-CKParameterOperation::~CKParameterOperation() {
-}
+CKParameterOperation::~CKParameterOperation() {}
 
 CK_CLASSID CKParameterOperation::GetClassID() {
     return m_ClassID;
