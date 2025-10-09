@@ -190,46 +190,42 @@ CKDWORD CKGetVersion() {
 }
 
 void ComputeParentsTable(CK_CLASSID cid) {
-    if (cid == 0)
-        return;
+    if (cid <= 0 || cid >= g_CKClassInfo.Size()) return;
 
-    CKClassDesc &info = g_CKClassInfo[cid];
-    if (info.Done)
-        return;
+    CKClassDesc& info = g_CKClassInfo[cid];
+    if (info.Done) return;
 
-    if (info.Parent == 0 || info.Parent == cid) {
-        info.Parents.Clear();
+    info.Done = TRUE; // Mark as processed to prevent infinite recursion
+
+    // Root class
+    if (info.Parent == 0) {
         info.Parents.Set(cid);
         info.DerivationLevel = 0;
-        info.Done = TRUE;
         return;
     }
 
     ComputeParentsTable(info.Parent);
 
-    // TODO: Maybe need fix
     CKClassDesc &parentInfo = g_CKClassInfo[info.Parent];
     info.Parents = parentInfo.Parents;
     info.Parents.Set(cid);
     info.DerivationLevel = parentInfo.DerivationLevel + 1;
-    info.Done = TRUE;
 }
 
 void ComputeParentsNotifyTable(CK_CLASSID cid) {
-    if (cid == 0)
-        return;
+    if (cid <= 0 || cid >= g_CKClassInfo.Size()) return;
 
-    CKClassDesc &info = g_CKClassInfo[cid];
-    if (info.Done)
-        return;
+    CKClassDesc& info = g_CKClassInfo[cid];
+    if (info.Done) return;
 
-    ComputeParentsNotifyTable(info.Parent);
+    info.Done = TRUE; // Mark as processed
 
-    // TODO: Maybe need fix
-    CKClassDesc &parentInfo = g_CKClassInfo[info.Parent];
-    info.CommonToBeNotify = info.ToBeNotify;
-    info.CommonToBeNotify.Or(parentInfo.CommonToBeNotify);
-    info.Done = TRUE;
+    if (info.Parent != 0) {
+        ComputeParentsNotifyTable(info.Parent);
+        CKClassDesc &parentInfo = g_CKClassInfo[info.Parent];
+        info.CommonToBeNotify.Or(parentInfo.CommonToBeNotify);
+    }
+    info.CommonToBeNotify.Or(info.ToBeNotify);
 }
 
 void CKBuildClassHierarchyTable() {
@@ -501,9 +497,8 @@ CK_CLASSID CKGetParentClassID(CKObject *obj) {
     return 0;
 }
 
-// TODO: Maybe need fix
 CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2) {
-    if (cid1 == 0 || cid2 == 0) {
+    if (cid1 <= 0 || cid2 <= 0 || cid1 >= g_CKClassInfo.Size() || cid2 >= g_CKClassInfo.Size()) {
         return 0;
     }
 
@@ -515,33 +510,22 @@ CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2) {
         return cid1;
     }
 
-    // Keep going up the hierarchy until we find a common ancestor
-    CK_CLASSID originalCid2 = cid2;
-    while (cid1 != 0) {
-        cid2 = originalCid2; // Reset cid2 for each parent of cid1
+    // Use the precomputed parent bit arrays for an efficient intersection test
+    XBitArray commonParents = g_CKClassInfo[cid1].Parents;
+    commonParents.And(g_CKClassInfo[cid2].Parents);
 
-        while (cid2 != 0) {
-            if (cid1 == cid2) {
-                return cid1; // Found common ancestor
+    // Find the most derived common parent (highest derivation level)
+    int maxLevel = -1;
+    CK_CLASSID commonParent = 0;
+    for (int i = 0; i < g_CKClassInfo.Size(); ++i) {
+        if (commonParents.IsSet(i)) {
+            if (g_CKClassInfo[i].DerivationLevel > maxLevel) {
+                maxLevel = g_CKClassInfo[i].DerivationLevel;
+                commonParent = i;
             }
-
-            // Move to parent of cid2
-            if (cid2 < g_CKClassInfo.Size()) {
-                cid2 = g_CKClassInfo[cid2].Parent;
-            } else {
-                cid2 = 0;
-            }
-        }
-
-        // Move to parent of cid1
-        if (cid1 < g_CKClassInfo.Size()) {
-            cid1 = g_CKClassInfo[cid1].Parent;
-        } else {
-            cid1 = 0;
         }
     }
-
-    return 0; // No common ancestor found
+    return commonParent;
 }
 
 CKObjectArray *CreateCKObjectArray() {
