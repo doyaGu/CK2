@@ -407,7 +407,15 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
         }
 
         if (m_FileInfo.Hdr1PackSize != m_FileInfo.Hdr1UnPackSize) {
-            parser = parser->UnPack(m_FileInfo.Hdr1UnPackSize, m_FileInfo.Hdr1PackSize);
+            CKBufferParser *unpacked = parser->UnPack(m_FileInfo.Hdr1UnPackSize, m_FileInfo.Hdr1PackSize);
+            if (!unpacked) {
+                m_Context->OutputToConsole((CKSTRING) "Error unpacking header chunk.");
+                return CKERR_INVALIDFILE;
+            }
+            if (parser != *ParserPtr) {
+                delete parser;
+            }
+            parser = unpacked;
         }
     }
 
