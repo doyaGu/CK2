@@ -7,6 +7,7 @@
 #include "CKPluginManager.h"
 
 #include <miniz.h>
+#include <climits>
 
 XObjectPointerArray CKStateChunk::m_TempXOPA;
 XObjectArray CKStateChunk::m_TempXOA;
@@ -451,28 +452,32 @@ void CKStateChunk::WriteArray_LEndian(int elementCount, int elementSize, void *s
         }
 
         // Calculate total bytes and required dword count (rounding up)
-        const int totalBytes = elementSize * elementCount;
-        const int dwordCount = (totalBytes + 3) / 4; // Convert bytes to 4-byte dwords
-
-        // Check for overflow in CheckSize calculation
-        if ((8 + (dwordCount * 4)) < 8) {
-            // Handle overflow
+        const size_t totalBytes = static_cast<size_t>(elementSize) * static_cast<size_t>(elementCount);
+        if (totalBytes > static_cast<size_t>(INT_MAX)) {
             CheckSize(8);
             m_Data[m_ChunkParser->CurrentPos++] = 0;
             m_Data[m_ChunkParser->CurrentPos++] = 0;
             return;
         }
+        const size_t dwordCount = (totalBytes + sizeof(int) - 1) / sizeof(int); // Convert bytes to 4-byte dwords
 
         // Ensure buffer has space for: [totalBytes (int)] + [count (int)] + data
-        CheckSize(8 + (dwordCount * 4)); // 8 bytes header + data size
+        const size_t requiredBytes = sizeof(int) * 2 + dwordCount * sizeof(int);
+        if (requiredBytes > static_cast<size_t>(INT_MAX)) {
+            CheckSize(8);
+            m_Data[m_ChunkParser->CurrentPos++] = 0;
+            m_Data[m_ChunkParser->CurrentPos++] = 0;
+            return;
+        }
+        CheckSize(static_cast<int>(requiredBytes));
 
         // Write array header
-        m_Data[m_ChunkParser->CurrentPos++] = totalBytes;
+        m_Data[m_ChunkParser->CurrentPos++] = static_cast<int>(totalBytes);
         m_Data[m_ChunkParser->CurrentPos++] = elementCount;
 
         // Copy array data
         memcpy(&m_Data[m_ChunkParser->CurrentPos], srcData, totalBytes);
-        m_ChunkParser->CurrentPos += dwordCount;
+        m_ChunkParser->CurrentPos += static_cast<int>(dwordCount);
     } else {
         // Write empty array marker
         CheckSize(8); // Space for two zero ints
@@ -1719,7 +1724,7 @@ void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *
         // Path 1: Alpha is saved by reader OR there's no alpha mask in original
         if (alphaIsSavedByReader || !desc.AlphaMask) {
             WriteDword(1); // Type 1: Reader handles alpha or no alpha
-            WriteBufferNoSize(sizeof(CKFileExtension), &bp->m_Ext); // Write 4 bytes of extension
+            WriteBuffer(sizeof(CKFileExtension), bp->m_Ext.m_Data);
             WriteGuid(bp->m_ReaderGuid);
             WriteBuffer(savedMemorySize, memoryToSave);
         }
@@ -1728,7 +1733,7 @@ void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *
         else if (desc.BitsPerPixel == 32) {
             // Only try to save separate alpha if original was 32bpp
             WriteDword(2); // Type 2: Separate alpha palette/mask
-            WriteDword(*(CKDWORD *) &bp->m_Ext.m_Data); // Write extension as int
+            WriteBuffer(sizeof(CKFileExtension), bp->m_Ext.m_Data);
             WriteGuid(bp->m_ReaderGuid);
             WriteBuffer(savedMemorySize, memoryToSave);
 
@@ -1819,7 +1824,7 @@ void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *
             // This case wasn't explicitly handled by IDA's alpha palette logic (which assumed 32bpp source)
             // So, act like Type 1.
             WriteDword(1);
-            WriteBufferNoSize(sizeof(CKFileExtension), &bp->m_Ext);
+            WriteBuffer(sizeof(CKFileExtension), bp->m_Ext.m_Data);
             WriteGuid(bp->m_ReaderGuid);
             WriteBuffer(savedMemorySize, memoryToSave);
         }
@@ -1840,7 +1845,25 @@ CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
     CKGUID readerGuid;
     CKBitmapProperties *props = nullptr;
 
-    ReadAndFillBuffer(sizeof(CKFileExtension), &ext);
+    const int cursor = m_ChunkParser->CurrentPos;
+    if (cursor >= m_ChunkSize)
+        return FALSE;
+
+    int storedSize = m_Data[cursor];
+    if (storedSize >= 0 && storedSize <= (int) sizeof(CKFileExtension)) {
+        void *extBuffer = nullptr;
+        int bytes = ReadBuffer(&extBuffer);
+        if (bytes == (int) sizeof(CKFileExtension) && extBuffer) {
+            memcpy(ext.m_Data, extBuffer, sizeof(CKFileExtension));
+        } else {
+            memset(ext.m_Data, 0, sizeof(CKFileExtension));
+        }
+        delete[] (CKBYTE *) extBuffer;
+    } else {
+        if (cursor + ((int) sizeof(CKFileExtension) + 3) / 4 > m_ChunkSize)
+            return FALSE;
+        ReadAndFillBuffer(sizeof(CKFileExtension), ext.m_Data);
+    }
     readerGuid = ReadGuid();
 
     CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext, &readerGuid);
@@ -1891,6 +1914,13 @@ void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
         return;
     }
 
+    const int width = desc.Width;
+    const int height = desc.Height;
+    if (height > 0 && width > INT_MAX / height) {
+        WriteInt(0);
+        return;
+    }
+
     // Write image metadata
     WriteInt(desc.BitsPerPixel);
     WriteInt(desc.Width);
@@ -1913,7 +1943,15 @@ void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
         return;
     }
 
-    int planeSize = desc.Width * desc.Height; // Number of pixels, each channel plane will have this many bytes
+    const size_t planeSize = static_cast<size_t>(width) * static_cast<size_t>(height); // Number of pixels
+    if (planeSize == 0 || planeSize > static_cast<size_t>(INT_MAX)) {
+        WriteBuffer(0, nullptr);
+        WriteBuffer(0, nullptr);
+        WriteBuffer(0, nullptr);
+        WriteBuffer(0, nullptr);
+        return;
+    }
+
     CKBYTE *rPlane = new CKBYTE[planeSize];
     CKBYTE *gPlane = new CKBYTE[planeSize];
     CKBYTE *bPlane = new CKBYTE[planeSize];
@@ -1941,10 +1979,10 @@ void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
         // Scanline y from top is desc.Image + y * desc.BytesPerLine
         // Upside-down processing for channel separation:
         const CKBYTE *srcScanline = desc.Image + (desc.Height - 1 - y) * desc.BytesPerLine;
-        CKBYTE *rPlanePtr = rPlane + y * desc.Width;
-        CKBYTE *gPlanePtr = gPlane + y * desc.Width;
-        CKBYTE *bPlanePtr = bPlane + y * desc.Width;
-        CKBYTE *aPlanePtr = aPlane ? (aPlane + y * desc.Width) : nullptr;
+        CKBYTE *rPlanePtr = rPlane + static_cast<size_t>(y) * width;
+        CKBYTE *gPlanePtr = gPlane + static_cast<size_t>(y) * width;
+        CKBYTE *bPlanePtr = bPlane + static_cast<size_t>(y) * width;
+        CKBYTE *aPlanePtr = aPlane ? (aPlane + static_cast<size_t>(y) * width) : nullptr;
 
         for (int x = 0; x < desc.Width; ++x) {
             const CKBYTE *srcPixel = srcScanline + x * bytesPerPixel;
@@ -2002,11 +2040,11 @@ void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
     }
 
     // Write de-interleaved planes
-    WriteBuffer(planeSize, rPlane);
-    WriteBuffer(planeSize, gPlane);
-    WriteBuffer(planeSize, bPlane);
+    WriteBuffer(static_cast<int>(planeSize), rPlane);
+    WriteBuffer(static_cast<int>(planeSize), gPlane);
+    WriteBuffer(static_cast<int>(planeSize), bPlane);
     if (aPlane) {
-        WriteBuffer(planeSize, aPlane);
+        WriteBuffer(static_cast<int>(planeSize), aPlane);
     } else {
         WriteBuffer(0, nullptr); // Write empty buffer if no alpha
     }
@@ -2033,11 +2071,25 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
     desc.RedMask = ReadDword();
     desc.GreenMask = ReadDword();
     desc.BlueMask = ReadDword();
-    desc.BytesPerLine = desc.Width * 4;
-    desc.BitsPerPixel = 32;
 
     if (desc.Width <= 0 || desc.Height <= 0)
         return nullptr;
+
+    const int width = desc.Width;
+    const int height = desc.Height;
+    if (height > 0 && width > INT_MAX / height)
+        return nullptr;
+
+    const size_t planeSize = static_cast<size_t>(width) * static_cast<size_t>(height);
+    if (planeSize == 0 || planeSize > static_cast<size_t>(INT_MAX))
+        return nullptr;
+
+    const size_t bytesPerLine = static_cast<size_t>(width) * sizeof(CKDWORD);
+    if (bytesPerLine > static_cast<size_t>(INT_MAX))
+        return nullptr;
+
+    desc.BytesPerLine = static_cast<int>(bytesPerLine);
+    desc.BitsPerPixel = 32;
 
     CKDWORD compressionType = ReadDword() & 0xF; // 0 for raw, 1 for JPEG
     if (compressionType != 0) {
@@ -2049,17 +2101,18 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
         return nullptr;
     }
 
-    // Read the separate color planes
     CKBYTE *bPlane = nullptr;
     CKBYTE *gPlane = nullptr;
     CKBYTE *rPlane = nullptr;
     CKBYTE *aPlane = nullptr;
-    ReadBuffer((void**)&bPlane);
-    ReadBuffer((void**)&gPlane);
-    ReadBuffer((void**)&rPlane);
-    ReadBuffer((void**)&aPlane);
 
-    if (!bPlane || !gPlane || !rPlane) {
+    int bSize = ReadBuffer((void **) &bPlane);
+    int gSize = ReadBuffer((void **) &gPlane);
+    int rSize = ReadBuffer((void **) &rPlane);
+    int aSize = ReadBuffer((void **) &aPlane);
+
+    if (bSize != static_cast<int>(planeSize) || gSize != static_cast<int>(planeSize) ||
+        rSize != static_cast<int>(planeSize)) {
         delete[] bPlane;
         delete[] gPlane;
         delete[] rPlane;
@@ -2068,19 +2121,30 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
     }
 
     CKBYTE *outputBitmap = new CKBYTE[desc.BytesPerLine * desc.Height];
-    CKDWORD *outPtr = (CKDWORD *) outputBitmap;
-    for (int i = 0; i < desc.Width; ++i) {
-        CKBYTE r = rPlane[i];
-        CKBYTE g = gPlane[i];
-        CKBYTE b = bPlane[i];
-        CKBYTE a = aPlane ? aPlane[i] : 0xFF; // Default to opaque if no alpha plane
+    if (!outputBitmap) {
+        delete[] bPlane;
+        delete[] gPlane;
+        delete[] rPlane;
+        delete[] aPlane;
+        return nullptr;
+    }
 
-        *outPtr++ = a << A_SHIFT | r << R_SHIFT | g << G_SHIFT | b;
+    for (int y = 0; y < height; ++y) {
+        CKDWORD *rowPtr = reinterpret_cast<CKDWORD *>(outputBitmap + y * desc.BytesPerLine);
+        const size_t planeOffset = static_cast<size_t>(y) * width;
+        for (int x = 0; x < width; ++x) {
+            const size_t index = planeOffset + x;
+            CKBYTE r = rPlane[index];
+            CKBYTE g = gPlane[index];
+            CKBYTE b = bPlane[index];
+            CKBYTE a = (aPlane && aSize == static_cast<int>(planeSize)) ? aPlane[index] : 0xFF;
+
+            rowPtr[x] = (CKDWORD) a << A_SHIFT | (CKDWORD) r << R_SHIFT | (CKDWORD) g << G_SHIFT | b;
+        }
     }
 
     desc.AlphaMask = A_MASK;
 
-    // Cleanup planar buffers
     delete[] rPlane;
     delete[] gPlane;
     delete[] bPlane;
