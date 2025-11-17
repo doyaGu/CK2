@@ -49,7 +49,7 @@ int CKObjectManager::GetObjectsCount() {
 }
 
 CKObject *CKObjectManager::GetObject(CK_ID id) {
-    if (id > 0 && id < m_ObjectCount) {
+    if (id < static_cast<CK_ID>(m_ObjectCount)) {
         return m_Objects[id];
     }
     return nullptr;
@@ -61,7 +61,7 @@ CKERROR CKObjectManager::DeleteAllObjects() {
     }
 
     if (m_Objects) {
-        for (CK_ID id = 0; id < m_ObjectCount; ++id) {
+        for (int id = 0; id < m_ObjectCount; ++id) {
             CKObject *obj = m_Objects[id];
             if (obj)
                 delete obj;
@@ -84,7 +84,7 @@ CKERROR CKObjectManager::ClearAllObjects() {
     m_Context->m_InClearAll = TRUE;
 
     // Mark all objects for deletion
-    for (CK_ID id = 0; id < m_ObjectCount; ++id) {
+    for (int id = m_ObjectCount - 1; id > 0; --id) {
         CKObject *obj = m_Objects[id];
         if (obj)
             obj->ModifyObjectFlags(CK_OBJECT_TOBEDELETED, 0);
@@ -139,33 +139,45 @@ CKERROR CKObjectManager::ClearAllObjects() {
     m_DynamicObjects.Clear();
 
     // First pass: Delete non-protected behaviors
-    for (CK_ID id = m_ObjectCount; id > 0; --id) {
+    for (int id = m_ObjectCount - 1; id >= 0; --id) {
         if (objectsToKeep.IsSet(id))
             continue;
 
-        if (CKIsChildClassOf(m_Objects[id], CKCID_BEHAVIOR)) {
-            CKBehavior *beh = (CKBehavior *) m_Objects[id];
+        CKObject *object = m_Objects[id];
+        if (!object)
+            continue;
+
+        if (CKIsChildClassOf(object, CKCID_BEHAVIOR)) {
+            CKBehavior *beh = (CKBehavior *) object;
             beh->CallCallbackFunction(CKM_BEHAVIORDETACH);
             delete beh;
+            m_Objects[id] = nullptr;
         }
     }
 
     // Second pass: Delete remaining non-protected objects
-    for (CK_ID id = m_ObjectCount; id > 0; --id) {
+    for (int id = m_ObjectCount - 1; id >= 0; --id) {
         if (objectsToKeep.IsSet(id))
             continue;
 
         CKObject *obj = m_Objects[id];
-        if (obj) {
-            delete obj;
-        }
-        --m_ObjectCount;
+        if (!obj)
+            continue;
+
+        delete obj;
+        m_Objects[id] = nullptr;
     }
+
+    int newCount = m_ObjectCount;
+    while (newCount > 0 && m_Objects[newCount - 1] == nullptr) {
+        --newCount;
+    }
+    m_ObjectCount = newCount;
 
     m_Context->m_InClearAll = FALSE;
 
     // Finalize protected objects
-    for (CK_ID id = 0; id < m_ObjectCount; ++id) {
+    for (int id = 0; id < m_ObjectCount; ++id) {
         CKObject *obj = m_Objects[id];
         if (!obj)
             continue;
@@ -190,7 +202,7 @@ CKBOOL CKObjectManager::IsObjectSafe(CKObject *iObject) {
     if (!iObject)
         return FALSE;
 
-    for (CK_ID id = 0; id < m_ObjectCount; ++id) {
+    for (int id = 0; id < m_ObjectCount; ++id) {
         CKObject *obj = m_Objects[id];
         if (obj == iObject)
             return TRUE;
@@ -320,7 +332,7 @@ CK_ID CKObjectManager::RegisterObject(CKObject *iObject) {
         if (m_ObjectCount >= m_AllocatedObjectCount) {
             int newCount = m_AllocatedObjectCount + 100;
             CKObject **newObjs = new CKObject *[newCount];
-            memset(newObjs + m_AllocatedObjectCount, 0, 100 * sizeof(CKObject *));
+            memset(newObjs + m_AllocatedObjectCount, 0, (newCount - m_AllocatedObjectCount) * sizeof(CKObject *));
             if (m_Objects) {
                 memcpy(newObjs, m_Objects, m_AllocatedObjectCount * sizeof(CKObject *));
                 delete[] m_Objects;
@@ -341,12 +353,15 @@ void CKObjectManager::FinishRegisterObject(CKObject *iObject) {
 }
 
 void CKObjectManager::UnRegisterObject(CK_ID id) {
-    if (id > 0 && id < m_ObjectCount) {
+    if (id < static_cast<CK_ID>(m_ObjectCount)) {
         CKObject *obj = m_Objects[id];
         if (obj) {
-            if (obj->GetObjectFlags() & CK_OBJECT_FREEID && !m_Context->m_InClearAll) {
+            m_ClassLists[obj->GetClassID()].Remove(id);
+
+            if ((obj->GetObjectFlags() & CK_OBJECT_FREEID) && !m_Context->m_InClearAll) {
                 m_FreeObjectIDs.PushBack(id);
             }
+
             m_Objects[id] = nullptr;
         }
         m_ObjectAppData.Remove(id);
@@ -356,7 +371,7 @@ void CKObjectManager::UnRegisterObject(CK_ID id) {
 
 CKObject *CKObjectManager::GetObjectByName(CKSTRING name, CKObject *previous) {
     if (!name) return nullptr;
-    CK_ID startId = previous ? previous->GetID() + 1 : 1;
+    CK_ID startId = previous ? previous->GetID() + 1 : 0;
 
     for (CK_ID id = startId; id < m_ObjectCount; ++id) {
         CKObject *obj = m_Objects[id];
