@@ -28,7 +28,7 @@ CKERROR CKParameterIn::SetDirectSource(CKParameter *param) {
         }
     }
 
-    m_ObjectFlags &= ~CK_OBJECT_UPTODATE;
+    m_ObjectFlags &= ~CK_PARAMETERIN_SHARED;
     m_OutSource = param;
 
     return CK_OK;
@@ -55,7 +55,7 @@ CKERROR CKParameterIn::ShareSourceWith(CKParameterIn *param) {
         }
     }
 
-    m_ObjectFlags |= CK_OBJECT_UPTODATE;
+    m_ObjectFlags |= CK_PARAMETERIN_SHARED;
 
     m_InShared = param;
 
@@ -63,46 +63,47 @@ CKERROR CKParameterIn::ShareSourceWith(CKParameterIn *param) {
 }
 
 void CKParameterIn::SetType(CKParameterType type, CKBOOL UpdateSource, CKSTRING NewName) {
-    CKParameterManager *paramManager = m_Context->GetParameterManager();
-    m_ParamType = paramManager->GetParameterTypeDescription(type);
+    CKParameterIn *current = this;
+    while (true) {
+        CKParameterManager *paramManager = current->m_Context->GetParameterManager();
+        current->m_ParamType = paramManager->GetParameterTypeDescription(type);
 
-    // Update the parameter name if a new name is provided
-    if (NewName) {
-        SetName(NewName, FALSE);
-    }
-
-    // If UpdateSource is false, return immediately
-    if (!UpdateSource) {
-        return;
-    }
-
-    CKBehavior *ownerBehavior = reinterpret_cast<CKBehavior *>(m_Owner);
-    if (!CKIsChildClassOf(ownerBehavior, CKCID_BEHAVIOR)) {
-        return;
-    }
-
-    // Determine the correct source parameter
-    CKParameter *sourceParam = GetRealSource();
-
-    // If the source is a local parameter, update its type
-    if (CKIsChildClassOf(sourceParam, CKCID_PARAMETERLOCAL)) {
-        CKBehavior *parent = ownerBehavior->GetParent();
-        if (sourceParam->GetOwner() == parent) {
-            sourceParam->SetType(type);
-            if (NewName) {
-                sourceParam->SetName(NewName, 0);
-            }
+        // Update the parameter name if a new name is provided
+        if (NewName) {
+            current->SetName(NewName, FALSE);
         }
-        return;
-    }
 
-    if ((m_ObjectFlags & CK_PARAMETERIN_SHARED) != 0) {
-        CKParameterIn *sharedInput = m_InShared;
-        if (sharedInput) {
-            CKBehavior *sharedOwner = reinterpret_cast<CKBehavior *>(sharedInput->m_Owner);
-            if (sharedOwner == ownerBehavior->GetParent()) {
-                sharedInput->SetType(type, UpdateSource, NewName);
+        // If UpdateSource is false, return immediately
+        if (!UpdateSource) {
+            break;
+        }
+
+        CKBehavior *ownerBehavior = (CKBehavior *)current->GetOwner();
+        if (!CKIsChildClassOf(ownerBehavior, CKCID_BEHAVIOR)) {
+            break;
+        }
+
+        if (!(current->m_ObjectFlags & CK_PARAMETERIN_SHARED)) {
+            CKParameter *outSource = current->m_OutSource;
+            if (outSource && CKIsChildClassOf(outSource, CKCID_PARAMETERLOCAL)) {
+                CKBehavior *parent = ownerBehavior->GetParent();
+                if (outSource->GetOwner() == parent) {
+                    outSource->SetType(type);
+                    if (NewName) {
+                        outSource->SetName(NewName, 0);
+                    }
+                }
             }
+            return;
+        } else {
+            current = current->m_InShared;
+            if (current) {
+                CKBehavior *sharedOwner = (CKBehavior *)current->GetOwner();
+                if (sharedOwner == ownerBehavior->GetParent()) {
+                    continue;
+                }
+            }
+            return;
         }
     }
 }
@@ -114,10 +115,11 @@ void CKParameterIn::SetGUID(CKGUID guid, CKBOOL UpdateSource, CKSTRING NewName) 
 }
 
 CKParameterIn::CKParameterIn(CKContext *Context, CKSTRING name, int type) : CKObject(Context, name) {
+    CKParameterManager *pm = Context->GetParameterManager();
+    CKParameterTypeDesc *typeDesc = pm->GetParameterTypeDescription(type);
     m_Owner = nullptr;
     m_OutSource = nullptr;
-    CKParameterManager *pm = Context->GetParameterManager();
-    m_ParamType = pm->GetParameterTypeDescription(type);
+    m_ParamType = typeDesc;
 }
 
 CKParameterIn::~CKParameterIn() {
@@ -194,9 +196,7 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
                 chunk->ReadObjectID();
             }
 
-            CKObject *obj = chunk->ReadObject(m_Context);
-            assert(obj != nullptr);
-            m_InShared = (CKParameterIn *)obj;
+            m_InShared = (CKParameterIn *)chunk->ReadObject(m_Context);
             m_ObjectFlags |= CK_PARAMETERIN_SHARED;
         } else if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DATASOURCE)) {
             CKGUID guid = chunk->ReadGuid();
@@ -210,7 +210,7 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
                 chunk->ReadObjectID();
             }
 
-            m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
+            m_InShared = (CKParameterIn *)chunk->ReadObject(m_Context);
         } else if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DEFAULTDATA)) {
             CKGUID guid = chunk->ReadGuid();
             ConvertLegacyGuid(guid);
@@ -220,9 +220,9 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
 
             m_Owner = chunk->ReadObject(m_Context);
             m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
-            CKObject *param = chunk->ReadObject(m_Context);
+            CKParameterIn *param = (CKParameterIn *)chunk->ReadObject(m_Context);
             if (!m_OutSource) {
-                m_OutSource = (CKParameter *) param;
+                m_InShared = param;
             } else {
                 m_ObjectFlags |= CK_PARAMETERIN_SHARED;
             }
@@ -234,21 +234,30 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
     } else {
         // Handle legacy version (pre data version 1)
 
+        // First check for DEFAULTDATA (0x400) in legacy path
+        if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DEFAULTDATA)) {
+            CKGUID guid = chunk->ReadGuid();
+            ConvertLegacyGuid(guid);
+
+            CKParameterManager *pm = m_Context->GetParameterManager();
+            m_ParamType = pm->GetParameterTypeDescription(guid);
+        }
+
         if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_OWNER)) {
             m_Owner = chunk->ReadObject(m_Context);
         }
 
         if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_INSHARED)) {
-            CKObject *param = chunk->ReadObject(m_Context);
+            CKParameter *param = (CKParameter *)chunk->ReadObject(m_Context);
             if (param) {
-                m_InShared = (CKParameterIn *) param;
                 m_ObjectFlags |= CK_PARAMETERIN_SHARED;
+                m_OutSource = param;
             }
         }
 
         if (!(m_ObjectFlags & CK_PARAMETERIN_SHARED) &&
             chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_OUTSOURCE)) {
-            CKParameter *param = (CKParameter *) chunk->ReadObject(m_Context);
+            CKParameter *param = (CKParameter *)chunk->ReadObject(m_Context);
             if (param) {
                 m_OutSource = param;
             }
@@ -294,7 +303,8 @@ void CKParameterIn::CheckPreDeletion() {
 }
 
 int CKParameterIn::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + 12;
+    return CKObject::GetMemoryOccupation() +
+        static_cast<int>(sizeof(CKParameterIn) - sizeof(CKObject));
 }
 
 int CKParameterIn::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
@@ -358,7 +368,7 @@ CKSTRING CKParameterIn::GetDependencies(int i, int mode) {
 void CKParameterIn::Register() {
     CKCLASSNOTIFYFROM(CKParameterIn, CKParameterIn);
     CKCLASSNOTIFYFROM(CKParameterIn, CKParameter);
-    CKCLASSDEFAULTOPTIONS(CKParameterIn, 1);
+    CKCLASSDEFAULTOPTIONS(CKParameterIn, CK_DEPENDENCIES_COPY);
 }
 
 CKParameterIn *CKParameterIn::CreateInstance(CKContext *Context) {

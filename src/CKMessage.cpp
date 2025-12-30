@@ -39,9 +39,9 @@ int CKMessage::GetParameterCount() {
 }
 
 CKParameter *CKMessage::GetParameter(int pos) {
-    if (m_Parameters && pos >= 0 && pos < m_Parameters->Size())
-        return (CKParameter *)m_Context->GetObject((*m_Parameters)[pos]);
-    return nullptr;
+    if (!m_Parameters)
+        return nullptr;
+    return (CKParameter *) m_Context->GetObject((*m_Parameters)[pos]);
 }
 
 CKMessage::CKMessage(CKContext *context) {
@@ -59,7 +59,7 @@ CKMessage::~CKMessage() {
         for (XObjectArray::Iterator it = m_Parameters->Begin(); it != m_Parameters->End(); ++it) {
             CKObject *obj = m_Context->GetObject(*it);
             if (obj && (obj->GetObjectFlags() & CK_PARAMETEROUT_DELETEAFTERUSE)) {
-                m_Context->DestroyObject(obj->GetID(), CK_DESTROY_TEMPOBJECT);
+                CKDestroyObject(obj, CK_DESTROY_TEMPOBJECT);
             }
         }
         delete m_Parameters;

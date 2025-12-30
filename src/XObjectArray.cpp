@@ -11,23 +11,28 @@ CK_ID XObjectPointerArray::GetObjectID(unsigned int i) const {
 CKBOOL XObjectPointerArray::Check() {
     CKObject **it = m_Begin;
     const int size = Size();
+    int keptCount = 0;
     int i;
     for (i = 0; i < size; ++i) {
         CKObject *obj = *it++;
         if (obj->IsToBeDeleted())
             break;
+        ++keptCount;
     }
 
-    if (i + 1 < size) {
-        for (int j = size - 1; j > 0; --j) {
-            if (!(*it)->IsToBeDeleted())
-                m_Begin[i++] = *it;
-            ++it;
-        }
+    const int firstDeletedIndex = i + 1;
+    if (firstDeletedIndex < size) {
+        int remaining = size - firstDeletedIndex;
+        do {
+            CKObject *obj = *it++;
+            if (!obj->IsToBeDeleted())
+                m_Begin[keptCount++] = obj;
+            --remaining;
+        } while (remaining);
     }
 
-    m_End = &m_Begin[i];
-    return i != size;
+    m_End = &m_Begin[keptCount];
+    return keptCount != size;
 }
 
 void XObjectPointerArray::Load(CKContext *Context, CKStateChunk *chunk) {
@@ -59,7 +64,8 @@ void XObjectPointerArray::Remap(CKDependenciesContext &context) {
 void XSObjectArray::ConvertFromObjects(const XSArray<CKObject *> &array) {
     Clear();
     for (auto it = array.Begin(); it != array.End(); ++it) {
-        PushBack((*it)->GetID());
+        if (it && *it)
+            PushBack((*it)->GetID());
     }
 }
 
@@ -83,6 +89,9 @@ CKBOOL XSObjectArray::AddIfNotHere(CK_ID id) {
 }
 
 CKBOOL XSObjectArray::AddIfNotHere(CKObject *obj) {
+    if (!obj)
+        return FALSE;
+
     CK_ID id = obj->GetID();
     for (CK_ID *it = m_Begin; it != m_End; ++it) {
         if (*it == id)
@@ -171,10 +180,11 @@ void XSObjectArray::Remap(CKDependenciesContext &context) {
 }
 
 void XObjectArray::ConvertFromObjects(const XObjectPointerArray &array) {
-    Clear();
-    Reserve(array.Size());
+    Resize(array.Size());
+    Resize(0);
     for (auto it = array.Begin(); it != array.End(); ++it) {
-        PushBack((*it)->GetID());
+        if (it && *it)
+            PushBack((*it)->GetID());
     }
 }
 
@@ -184,6 +194,7 @@ CKBOOL XObjectArray::Check(CKContext *Context) {
 
     const int size = Size();
     const int newSize = Context->m_ObjectManager->CheckIDArray(Begin(), size);
+    m_End = &m_Begin[newSize];
     return size != newSize;
 }
 
@@ -197,6 +208,9 @@ CKBOOL XObjectArray::AddIfNotHere(CK_ID id) {
 }
 
 CKBOOL XObjectArray::AddIfNotHere(CKObject *obj) {
+    if (!obj)
+        return FALSE;
+
     CK_ID id = obj->GetID();
     for (CK_ID *it = m_Begin; it != m_End; ++it) {
         if (*it == id)
@@ -219,10 +233,9 @@ CKBOOL XObjectArray::RemoveObject(CKObject *obj) {
 }
 
 CKBOOL XObjectArray::FindObject(CKObject *obj) const {
-    if (!obj)
-        return FALSE;
+    CK_ID id = obj ? obj->GetID() : 0;
     for (CK_ID *it = m_Begin; it != m_End; ++it) {
-        if (*it == obj->GetID())
+        if (*it == id)
             return TRUE;
     }
     return FALSE;
@@ -264,23 +277,28 @@ void XObjectArray::Remap(CKDependenciesContext &context) {
 CKBOOL XSObjectPointerArray::Check() {
     CKObject **it = m_Begin;
     const int size = Size();
+    int keptCount = 0;
     int i;
     for (i = 0; i < size; ++i) {
         CKObject *obj = *it++;
         if (obj->IsToBeDeleted())
             break;
+        ++keptCount;
     }
 
-    if (i + 1 < size) {
-        for (int j = size - 1; j > 0; --j) {
+    const int firstDeletedIndex = i + 1;
+    if (firstDeletedIndex < size) {
+        int remaining = size - firstDeletedIndex;
+        do {
             if (!(*it)->IsToBeDeleted())
-                m_Begin[i++] = *it;
+                m_Begin[keptCount++] = *it;
             ++it;
-        }
+            --remaining;
+        } while (remaining);
     }
 
-    Resize(i);
-    return i != size;
+    Resize(keptCount);
+    return keptCount != size;
 }
 
 void XSObjectPointerArray::Load(CKContext *Context, CKStateChunk *chunk) {

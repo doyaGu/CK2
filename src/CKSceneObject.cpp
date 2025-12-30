@@ -61,7 +61,8 @@ CK_CLASSID CKSceneObject::GetClassID() {
 }
 
 int CKSceneObject::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + sizeof(XBitArray) + sizeof(CKDWORD) * (m_Scenes.Size() >> 5);
+    // Object itself + XBitArray header + owned bit-buffer.
+    return CKObject::GetMemoryOccupation() + static_cast<int>(sizeof(XBitArray)) + m_Scenes.GetMemoryOccupation();
 }
 
 CKSTRING CKSceneObject::GetClassName() {
@@ -88,26 +89,33 @@ CKSceneObject *CKSceneObject::CreateInstance(CKContext *Context) {
 }
 
 void CKSceneObject::AddToScene(CKScene *scene, CKBOOL dependencies) {
-    scene->AddObject(this);
+    if (scene)
+        scene->AddObject(this);
 }
 
 void CKSceneObject::RemoveFromScene(CKScene *scene, CKBOOL dependencies) {
-    scene->RemoveObject(this);
+    if (scene)
+        scene->RemoveObject(this);
 }
 
 void CKSceneObject::AddSceneIn(CKScene *scene) {
+    if (!scene)
+        return;
+
     if (m_Scenes.TestSet(scene->m_SceneGlobalIndex))
         m_Context->GetAttributeManager()->RefreshList(this, scene);
 }
 
 void CKSceneObject::RemoveSceneIn(CKScene *scene) {
-    m_Scenes.TestUnset(scene->m_SceneGlobalIndex);
+    if (scene)
+        m_Scenes.TestUnset(scene->m_SceneGlobalIndex);
 }
 
 void CKSceneObject::RemoveFromAllScenes() {
     int count = GetSceneInCount();
     for (int i = count - 1; i >= 0; --i) {
         CKScene *scene = GetSceneIn(i);
-        scene->RemoveObject(this);
+        if (scene)
+            scene->RemoveObject(this);
     }
 }

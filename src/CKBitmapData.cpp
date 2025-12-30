@@ -20,12 +20,42 @@ CKMovieInfo::~CKMovieInfo() {
         m_MovieReader->Release();
 }
 
+CKBitmapData::CKBitmapData(const CKBitmapData &rhs)
+    : m_MovieInfo(rhs.m_MovieInfo),
+      m_Slots(rhs.m_Slots),
+      m_Width(rhs.m_Width),
+      m_Height(rhs.m_Height),
+      m_CurrentSlot(rhs.m_CurrentSlot),
+      m_PickThreshold(rhs.m_PickThreshold),
+      m_BitmapFlags(rhs.m_BitmapFlags),
+      m_TransColor(rhs.m_TransColor),
+      m_SaveProperties(rhs.m_SaveProperties),
+      m_SaveOptions(rhs.m_SaveOptions) {
+}
+
+CKBitmapData &CKBitmapData::operator=(const CKBitmapData &rhs) {
+    if (this != &rhs) {
+        m_MovieInfo = rhs.m_MovieInfo;
+        m_Slots = rhs.m_Slots;
+        m_Width = rhs.m_Width;
+        m_Height = rhs.m_Height;
+        m_CurrentSlot = rhs.m_CurrentSlot;
+        m_PickThreshold = rhs.m_PickThreshold;
+        m_BitmapFlags = rhs.m_BitmapFlags;
+        m_TransColor = rhs.m_TransColor;
+        m_SaveProperties = rhs.m_SaveProperties;
+        m_SaveOptions = rhs.m_SaveOptions;
+    }
+    return *this;
+}
+
 CKBOOL CKBitmapData::CreateImage(int Width, int Height, int BPP, int Slot) {
-    if ((m_BitmapFlags & CKBITMAPDATA_INVALID) != 0 || (m_Slots.Size() == 1 && Slot == 0)) {
+    // Original condition: (flags & 1) || (slots.size <= 1 && Slot == 0)
+    if ((m_BitmapFlags & CKBITMAPDATA_INVALID) != 0 || (m_Slots.Size() <= 1 && Slot == 0)) {
         m_Width = Width;
         m_Height = Height;
-        m_BitmapFlags &= ~CKBITMAPDATA_INVALID;
-        m_BitmapFlags |= CKBITMAPDATA_FORCERESTORE;
+        // Original: LOBYTE(flags) = flags & ~5 | 4 (clears bits 0,2, sets bit 2)
+        m_BitmapFlags = (m_BitmapFlags & ~(CKBITMAPDATA_INVALID | CKBITMAPDATA_FORCERESTORE)) | CKBITMAPDATA_FORCERESTORE;
     } else if (m_Width != Width || m_Height != Height) {
         return FALSE;
     }
@@ -44,18 +74,16 @@ CKBOOL CKBitmapData::CreateImage(int Width, int Height, int BPP, int Slot) {
     }
 
     CKBitmapSlot *slot = m_Slots[Slot];
-    if (!slot) {
-        return FALSE;
-    }
     slot->m_FileName = "";
     VxDeleteAligned(slot->m_DataBuffer);
     slot->m_DataBuffer = (CKDWORD *)VxNewAligned(4 * m_Height * m_Width, 16);
-    if (!slot->m_DataBuffer) return FALSE;
 
     CKDWORD *buffer = slot->m_DataBuffer;
-    int dwordCount = m_Width * m_Height;
-    for (int i = 0; i < dwordCount; ++i) {
-        buffer[i] = A_MASK;
+    unsigned int dwordCount = m_Width * m_Height;
+    if (dwordCount) {
+        for (unsigned int i = 0; i < dwordCount; ++i) {
+            buffer[i] = A_MASK;
+        }
     }
 
     return TRUE;
@@ -124,50 +152,50 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
 
     CKPathSplitter pathSplitter(Name);
     char extension[_MAX_PATH] = ".bmp";
-    CKBitmapReader *reader = nullptr;
     CKBOOL result = FALSE;
 
     char *fileExt = pathSplitter.GetExtension();
-    if (fileExt && *fileExt) {
-        snprintf(extension, sizeof(extension), ".%s", fileExt);
+    if (fileExt && strlen(fileExt)) {
+        sprintf(extension, "%s", fileExt);
     }
 
     CKFileExtension desiredExt(extension + 1); // Skip leading dot
-    reader = CKGetPluginManager()->GetBitmapReader(desiredExt, nullptr);
+    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(desiredExt, nullptr);
     if (!reader)
         return FALSE;
 
     CKBitmapProperties *saveProps = nullptr;
     reader->GetBitmapDefaultProperties(&saveProps);
 
-    CKBYTE *surfaceData = LockSurfacePtr(Slot);
+    CKBYTE *surfaceData = (CKBYTE *)LockSurfacePtr(Slot);
     if (!surfaceData) {
         reader->Release();
         return FALSE;
     }
 
-    const int pixelCount = m_Width * m_Height;
-    CKDWORD *alphaBuffer = new CKDWORD[pixelCount];
+    CKPathMaker pathMaker(pathSplitter.GetDrive(), pathSplitter.GetDir(), pathSplitter.GetName(), extension);
+    GetImageDesc(saveProps->m_Format);
 
-    CKDWORD *src = (CKDWORD *)surfaceData;
-    for (int i = 0; i < pixelCount; ++i) {
-        CKDWORD alpha = (src[i] >> 24) & 0xFF; // Extract alpha
-        alphaBuffer[i] = 0xFF000000 |          // Full opacity
-            (alpha << 16) |                    // R channel
-            (alpha << 8) |                     // G channel
-            alpha;                             // B channel
+    const int pixelCount = m_Width * m_Height;
+    CKBYTE *alphaBuffer = new CKBYTE[4 * pixelCount];
+
+    // Original loop: copy alpha byte to R,G,B channels, set A to 0xFF
+    if (pixelCount > 0) {
+        CKBYTE *srcAlpha = surfaceData + 3;  // Point to alpha byte (offset 3 in ARGB)
+        CKBYTE *dst = alphaBuffer;
+        for (int i = 0; i < pixelCount; ++i) {
+            CKBYTE alpha = *srcAlpha;
+            dst[0] = alpha;      // R
+            dst[1] = alpha;      // G
+            dst[2] = alpha;      // B
+            dst[3] = 0xFF;       // A (opaque)
+            srcAlpha += 4;
+            dst += 4;
+        }
     }
 
-    VxImageDescEx imgDesc;
-    GetImageDesc(imgDesc);
-
-    saveProps->m_Format = imgDesc;
     saveProps->m_Data = alphaBuffer;
-
-    CKPathMaker pathMaker(pathSplitter.GetDrive(), pathSplitter.GetDir(), pathSplitter.GetName(), extension);
-    XString outputPath = pathMaker.GetFileName();
-
-    result = reader->SaveFile(outputPath.Str(), saveProps) != 0;
+    result = reader->SaveFile(pathMaker.GetFileName(), saveProps);
 
     delete[] alphaBuffer;
     saveProps->m_Data = nullptr;
@@ -183,7 +211,8 @@ CKSTRING CKBitmapData::GetMovieFileName() {
 }
 
 CKBYTE *CKBitmapData::LockSurfacePtr(int Slot) {
-    if (Slot < 0 || Slot >= m_Slots.Size())
+    // Original uses unsigned comparison: if slot >= size, use m_CurrentSlot
+    if ((unsigned int)Slot >= (unsigned int)m_Slots.Size())
         Slot = m_CurrentSlot;
 
     if (m_Slots.IsEmpty())
@@ -198,14 +227,19 @@ CKBOOL CKBitmapData::ReleaseSurfacePtr(int Slot) {
 }
 
 CKSTRING CKBitmapData::GetSlotFileName(int Slot) {
-    if (Slot < 0 || Slot >= m_Slots.Size())
-        return (CKSTRING)"";
+    // Original uses unsigned comparison
+    if ((unsigned int)Slot >= (unsigned int)m_Slots.Size())
+        return nullptr;
 
-    return m_Slots[Slot]->m_FileName.Str();
+    CKSTRING result = m_Slots[Slot]->m_FileName.Str();
+    if (!result)
+        return "";
+    return result;
 }
 
 CKBOOL CKBitmapData::SetSlotFileName(int Slot, CKSTRING Filename) {
-    if (Slot < 0 || Slot >= m_Slots.Size() || !Filename)
+    // Original uses unsigned comparison and doesn't check Filename for NULL
+    if ((unsigned int)Slot >= (unsigned int)m_Slots.Size())
         return FALSE;
 
     m_Slots[Slot]->m_FileName = Filename;
@@ -234,7 +268,7 @@ int CKBitmapData::GetSlotCount() {
 }
 
 CKBOOL CKBitmapData::SetSlotCount(int Count) {
-    if (m_MovieInfo || Count < 0) return FALSE;
+    if (m_MovieInfo) return FALSE;
 
     const int oldSlotCount = m_Slots.Size();
     if (Count < oldSlotCount) {
@@ -257,7 +291,9 @@ CKBOOL CKBitmapData::SetSlotCount(int Count) {
 
 CKBOOL CKBitmapData::SetCurrentSlot(int Slot) {
     if (!m_MovieInfo) {
-        if (Slot < 0 || Slot >= m_Slots.Size()) return FALSE;
+        // Original uses unsigned comparison
+        if ((unsigned int)Slot >= (unsigned int)m_Slots.Size())
+            return FALSE;
         if (Slot != m_CurrentSlot) {
             m_CurrentSlot = Slot;
             if (!(m_BitmapFlags & CKBITMAPDATA_CUBEMAP)) {
@@ -267,26 +303,30 @@ CKBOOL CKBitmapData::SetCurrentSlot(int Slot) {
         return TRUE;
     }
 
-    if (Slot == m_MovieInfo->m_MovieCurrentSlot) return TRUE;
+    // Movie mode: check if same slot requested
+    if (Slot == m_MovieInfo->m_MovieCurrentSlot)
+        return TRUE;
 
     CKMovieReader *reader = m_MovieInfo->m_MovieReader;
-    if (!reader) return FALSE;
+    if (!reader)
+        return FALSE;
 
-    CKBitmapSlot *targetSlot = m_Slots[0];
-    if (!targetSlot || !targetSlot->m_DataBuffer) return FALSE;
-
+    // Update movie slot first, then read frame
     m_MovieInfo->m_MovieCurrentSlot = Slot;
     CKMovieProperties *movieProps = nullptr;
-    if (reader->ReadFrame(Slot, &movieProps) != CK_OK || !movieProps) {
+    if (reader->ReadFrame(Slot, &movieProps) != CK_OK)
         return FALSE;
-    }
 
-    VxImageDescEx srcDesc = movieProps->m_Format;
+    // Get buffer from first slot
+    CKBYTE *buffer = (CKBYTE *)(*(CKDWORD **)m_Slots.Begin());
+    if (!buffer)
+        return FALSE;
+
     VxImageDescEx dstDesc;
     GetImageDesc(dstDesc);
-    srcDesc.Image = (CKBYTE *)movieProps->m_Data;
-    dstDesc.Image = (CKBYTE *)targetSlot->m_DataBuffer;
-    VxDoBlitUpsideDown(srcDesc, dstDesc);
+    dstDesc.Image = buffer;
+    movieProps->m_Format.Image = (CKBYTE *)movieProps->m_Data;
+    VxDoBlitUpsideDown(movieProps->m_Format, dstDesc);
     m_BitmapFlags |= CKBITMAPDATA_FORCERESTORE;
     return TRUE;
 }
@@ -296,7 +336,10 @@ int CKBitmapData::GetCurrentSlot() {
 }
 
 CKBOOL CKBitmapData::ReleaseSlot(int Slot) {
-    if (m_MovieInfo || Slot < 0 || Slot >= m_Slots.Size()) return FALSE;
+    if (m_MovieInfo)
+        return FALSE;
+    if ((unsigned int)Slot >= (unsigned int)m_Slots.Size())
+        return FALSE;
 
     CKBitmapSlot *slot = m_Slots[Slot];
     if (slot) {
@@ -305,45 +348,56 @@ CKBOOL CKBitmapData::ReleaseSlot(int Slot) {
     m_Slots.RemoveAt(Slot);
 
     if (m_CurrentSlot >= m_Slots.Size()) {
-        m_CurrentSlot = m_Slots.Size() - 1;
         m_BitmapFlags |= CKBITMAPDATA_FORCERESTORE;
+        m_CurrentSlot = m_Slots.Size() - 1;
     }
-    if (m_Slots.IsEmpty()) m_BitmapFlags |= CKBITMAPDATA_INVALID;
+    if (m_Slots.IsEmpty())
+        m_BitmapFlags |= CKBITMAPDATA_INVALID;
     return TRUE;
 }
 
 CKBOOL CKBitmapData::ReleaseAllSlots() {
-    if (m_MovieInfo) return FALSE;
+    if (m_MovieInfo)
+        return FALSE;
 
-    for (int i = 0; i < m_Slots.Size(); ++i) {
+    int size = m_Slots.Size();
+    for (int i = 0; i < size; ++i) {
         CKBitmapSlot *slot = m_Slots[i];
         if (slot) {
             delete slot;
         }
     }
 
+    // Clear() uses Free() internally which handles memory deallocation
     m_Slots.Clear();
+
     m_BitmapFlags |= CKBITMAPDATA_INVALID;
     return TRUE;
 }
 
 CKBOOL CKBitmapData::SetPixel(int x, int y, CKDWORD col, int slot) {
-    int targetSlot = (slot >= 0) ? slot : m_CurrentSlot;
-    if (targetSlot < 0 || targetSlot >= m_Slots.Size() || x < 0 || x >= m_Width || y < 0 || y >= m_Height) return FALSE;
+    unsigned int targetSlot = (slot < 0) ? m_CurrentSlot : slot;
+    if (targetSlot >= (unsigned int)m_Slots.Size())
+        return FALSE;
 
     CKDWORD *buffer = m_Slots[targetSlot]->m_DataBuffer;
-    if (!buffer) return FALSE;
+    if (!buffer)
+        return FALSE;
 
     buffer[x + y * m_Width] = col;
     return TRUE;
 }
 
 CKDWORD CKBitmapData::GetPixel(int x, int y, int slot) {
-    int targetSlot = (slot >= 0) ? slot : m_CurrentSlot;
-    if (targetSlot < 0 || targetSlot >= m_Slots.Size() || x < 0 || x >= m_Width || y < 0 || y >= m_Height) return 0;
+    unsigned int targetSlot = (slot < 0) ? m_CurrentSlot : slot;
+    if (targetSlot >= (unsigned int)m_Slots.Size())
+        return 0;
 
     CKDWORD *buffer = m_Slots[targetSlot]->m_DataBuffer;
-    return buffer ? buffer[x + y * m_Width] : 0;
+    if (!buffer)
+        return 0;
+
+    return buffer[x + y * m_Width];
 }
 
 void CKBitmapData::SetTransparentColor(CKDWORD Color) {
@@ -364,7 +418,7 @@ void CKBitmapData::SetTransparent(CKBOOL Transparency) {
 }
 
 void CKBitmapData::SetSaveFormat(CKBitmapProperties *format) {
-    CKDeletePointer(m_SaveProperties);
+    delete[] reinterpret_cast<CKBYTE *>(m_SaveProperties);
     m_SaveProperties = CKCopyBitmapProperties(format);
 }
 
@@ -380,9 +434,7 @@ CKBOOL CKBitmapData::ResizeImages(int Width, int Height) {
     if (m_Width == Width && m_Height == Height)
         return TRUE;
 
-    VxImageDescEx srcDesc, dstDesc;
-
-    srcDesc.Size = sizeof(VxImageDescEx);
+    VxImageDescEx srcDesc;
     srcDesc.Width = m_Width;
     srcDesc.Height = m_Height;
     srcDesc.BitsPerPixel = 32;
@@ -392,7 +444,7 @@ CKBOOL CKBitmapData::ResizeImages(int Width, int Height) {
     srcDesc.BlueMask = B_MASK;
     srcDesc.AlphaMask = A_MASK;
 
-    dstDesc.Size = sizeof(VxImageDescEx);
+    VxImageDescEx dstDesc;
     dstDesc.Width = Width;
     dstDesc.Height = Height;
     dstDesc.BitsPerPixel = 32;
@@ -415,26 +467,36 @@ CKBOOL CKBitmapData::ResizeImages(int Width, int Height) {
 }
 
 CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
-    CKPathSplitter splitter((CKSTRING)Name.CStr());
+    CKSTRING nameStr = Name.Str();
+
+    CKPathSplitter splitter(nameStr);
     CKSTRING extStr = splitter.GetExtension();
-    CKFileExtension extension(extStr + 1);
+    
+    CKFileExtension extension(extStr + 1);  // Skip the dot
     CKPluginManager *pm = CKGetPluginManager();
     CKBitmapReader *reader = pm->GetBitmapReader(extension);
     if (!reader)
         return FALSE;
 
+    nameStr = Name.Str();
+
     CKBitmapProperties *props = nullptr;
-    if (reader->ReadFile((CKSTRING)Name.CStr(), &props) != 0 || !props || !props->m_Data) {
+    if (reader->ReadFile(nameStr, &props) != 0 || !props || !props->m_Data) {
         reader->Release();
         return FALSE;
     }
 
     const int slotCount = GetSlotCount();
-    if (Slot > slotCount)
+    if (Slot >= slotCount)  // Original uses >= not >
         SetSlotCount(Slot + 1);
 
     if (!CreateImage(props->m_Format.Width, props->m_Format.Height, 32, Slot)) {
         SetSlotCount(slotCount);
+        reader->ReleaseMemory(props->m_Data);
+        props->m_Data = nullptr;
+        if (props->m_Format.ColorMap)
+            reader->ReleaseMemory(props->m_Format.ColorMap);
+        props->m_Format.ColorMap = nullptr;
         reader->Release();
         return FALSE;
     }
@@ -444,7 +506,8 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
         reader->ReleaseMemory(props->m_Data);
         props->m_Data = nullptr;
 
-        delete props->m_Format.ColorMap;
+        if (props->m_Format.ColorMap)
+            reader->ReleaseMemory(props->m_Format.ColorMap);
         props->m_Format.ColorMap = nullptr;
 
         reader->Release();
@@ -462,13 +525,15 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     if (props->m_Format.AlphaMask == 0)
         VxDoAlphaBlit(desc, 0xFF);
 
-    SetSlotFileName(Slot, (CKSTRING)Name.CStr());
+    nameStr = Name.Str();
+    SetSlotFileName(Slot, nameStr);
     SetSaveFormat(props);
 
     reader->ReleaseMemory(props->m_Data);
     props->m_Data = nullptr;
 
-    delete props->m_Format.ColorMap;
+    if (props->m_Format.ColorMap)
+        reader->ReleaseMemory(props->m_Format.ColorMap);
     props->m_Format.ColorMap = nullptr;
 
     reader->Release();
@@ -476,6 +541,7 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
 }
 
 CKBOOL CKBitmapData::LoadMovieFile(XString Name) {
+    // Original deletes existing movie info first
     if (m_MovieInfo) {
         delete m_MovieInfo;
         m_MovieInfo = nullptr;
@@ -489,11 +555,7 @@ CKBOOL CKBitmapData::LoadMovieFile(XString Name) {
     }
 
     // Create image slot with movie dimensions
-    if (!CreateImage(movieProps->m_Format.Width, movieProps->m_Format.Height, 32, 0)) {
-        delete m_MovieInfo;
-        m_MovieInfo = nullptr;
-        return FALSE;
-    }
+    CreateImage(movieProps->m_Format.Width, movieProps->m_Format.Height, 32, 0);
 
     // Set active slot for movie playback
     SetCurrentSlot(0);
@@ -511,20 +573,23 @@ CKMovieInfo *CKBitmapData::CreateMovieInfo(XString s, CKMovieProperties **mp) {
 
     CKPluginManager *pm = CKGetPluginManager();
     CKMovieReader *reader = pm->GetMovieReader(ext, nullptr);
+    
+    // Original sets m_MovieReader immediately
+    movieInfo->m_MovieReader = reader;
+    
     if (!reader) {
         delete movieInfo;
         return nullptr;
     }
 
     if (reader->OpenFile(s.Str()) != CK_OK ||
-        reader->ReadFrame(0, mp) != CK_OK) {
-        reader->Release();
+        movieInfo->m_MovieReader->ReadFrame(0, mp) != CK_OK) {
+        movieInfo->m_MovieReader->Release();
         movieInfo->m_MovieReader = nullptr;
         delete movieInfo;
         return nullptr;
     }
 
-    movieInfo->m_MovieReader = reader;
     return movieInfo;
 }
 
@@ -553,7 +618,7 @@ CKBitmapData::~CKBitmapData() {
     }
 
     ReleaseAllSlots();
-    CKDeletePointer(m_SaveProperties);
+    delete[] reinterpret_cast<CKBYTE *>(m_SaveProperties);
 }
 
 void CKBitmapData::SetAlphaForTransparentColor(const VxImageDescEx &desc) {
@@ -587,36 +652,36 @@ void CKBitmapData::SetAlphaForTransparentColor(const VxImageDescEx &desc) {
 void CKBitmapData::SetBorderColorForClamp(const VxImageDescEx &desc) {
     m_BitmapFlags |= CKBITMAPDATA_CLAMPUPTODATE;
 
-    if (!desc.Image || desc.Width < 2 || desc.Height < 2)
-        return;
+    CKBYTE *Image = desc.Image;
+    int Height = desc.Height;
+    int BytesPerLine = desc.BytesPerLine;
+    int Width = desc.Width;
 
-    const int bytesPerLine = desc.BytesPerLine;
-    const int width = desc.Width;
-    const int height = desc.Height;
+    // First loop: clear alpha on left (first pixel) and right (last pixel) of each row
+    CKBYTE *leftPtr = Image;
+    CKDWORD *rightPtr = (CKDWORD *)(Image + BytesPerLine - 4);
+    do {
+        CKDWORD rightVal = *rightPtr & 0x00FFFFFF;
+        *(CKDWORD *)leftPtr &= 0x00FFFFFF;
+        *rightPtr = rightVal;
+        leftPtr += BytesPerLine;
+        rightPtr = (CKDWORD *)((CKBYTE *)rightPtr + BytesPerLine);
+        --Height;
+    } while (Height);
 
-    // Process vertical borders (left/right columns)
-    for (int y = 0; y < height; ++y) {
-        CKDWORD *row = reinterpret_cast<CKDWORD *>(desc.Image + y * bytesPerLine);
-
-        // Left border: copy second column to first
-        row[0] = row[1] & 0x00FFFFFF; // Preserve RGB, clear alpha
-
-        // Right border: copy second-last column to last
-        row[width - 1] = row[width - 2] & 0x00FFFFFF;
-    }
-
-    // Process horizontal borders (top/bottom rows)
-    for (int x = 0; x < width; ++x) {
-        // Top border: copy second row to first
-        CKDWORD *topRow = reinterpret_cast<CKDWORD *>(desc.Image);
-        CKDWORD *secondRow = reinterpret_cast<CKDWORD *>(desc.Image + bytesPerLine);
-        topRow[x] = secondRow[x] & 0x00FFFFFF;
-
-        // Bottom border: copy second-last row to last
-        CKDWORD *bottomRow = reinterpret_cast<CKDWORD *>(desc.Image + (height - 1) * bytesPerLine);
-        CKDWORD *penultimateRow = reinterpret_cast<CKDWORD *>(desc.Image + (height - 2) * bytesPerLine);
-        bottomRow[x] = penultimateRow[x] & 0x00FFFFFF;
-    }
+    // Second loop: clear alpha on top row and bottom row
+    // After first loop, rightPtr points one row past the image
+    // v9 = rightPtr - BytesPerLine = last pixel of last row
+    CKBYTE *topPtr = Image;
+    CKDWORD *bottomPtr = (CKDWORD *)((CKBYTE *)rightPtr - BytesPerLine);
+    do {
+        CKDWORD bottomVal = *bottomPtr & 0x00FFFFFF;
+        *(CKDWORD *)topPtr &= 0x00FFFFFF;
+        *bottomPtr = bottomVal;
+        topPtr += 4;
+        --bottomPtr;
+        --Width;
+    } while (Width);
 }
 
 CKBOOL CKBitmapData::SetSlotImage(int Slot, void *buffer, VxImageDescEx &bdesc) {
@@ -638,8 +703,8 @@ CKBOOL CKBitmapData::SetSlotImage(int Slot, void *buffer, VxImageDescEx &bdesc) 
     VxDoBlit(bdesc, desc);
 
     m_BitmapFlags |= CKBITMAPDATA_FORCERESTORE;
-    delete (XBYTE *)buffer;
-    delete bdesc.ColorMap;
+    delete[] static_cast<CKBYTE *>(buffer);
+    delete[] bdesc.ColorMap;
     return TRUE;
 }
 
@@ -651,7 +716,7 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
     }
 
     const int slotCount = GetSlotCount();
-    VxImageDescEx imageDescForSaving; // Used for Width, Height, BPP, and as a template
+    VxImageDescEx imageDescForSaving;
     GetImageDesc(imageDescForSaving);
 
     // 2. Handle Movie files (Highest Priority)
@@ -669,18 +734,16 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
     // 3. Adjust save options based on context
     // If it was global, and not a movie, it might become RAWDATA if global options are not well-defined for images.
     // More importantly, if not saving to a file, force RAWDATA.
-    if (m_SaveOptions == CKTEXTURE_USEGLOBAL && effectiveSaveOptions == CKTEXTURE_USEGLOBAL) {
-        // Check if it's still USEGLOBAL after context check
+    if (effectiveSaveOptions == CKTEXTURE_USEGLOBAL) {
         effectiveSaveOptions = CKTEXTURE_RAWDATA;
-        // Fallback if global options didn't resolve to a concrete type for non-movies
     }
     if (!f) {
         // If f is NULL, we are not saving to a persistent CKFile, must be raw.
         effectiveSaveOptions = CKTEXTURE_RAWDATA;
     }
 
-
-    XBitArray externalOrIncludedSlots(slotCount > 0 ? slotCount : 1);
+    XBitArray externalOrIncludedSlots(1);
+    externalOrIncludedSlots.CheckSize(slotCount);
 
     // 4. Process CKTEXTURE_EXTERNAL: Mark slots that have explicit filenames
     if (effectiveSaveOptions == CKTEXTURE_EXTERNAL) {
@@ -709,8 +772,7 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
         for (int i = 0; i < slotCount; ++i) {
             CKSTRING slotFileName = GetSlotFileName(i);
             if (slotFileName && *slotFileName) {
-                if (f->IncludeFile(slotFileName, -1)) {
-                    // Assuming -1 for default/all paths search
+                if (f->IncludeFile(slotFileName, BITMAP_PATH_IDX)) {
                     externalOrIncludedSlots.Set(i); // Mark as "included"
                 } else {
                     // If couldn't include, fallback for all
@@ -771,8 +833,8 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
         }
     }
 
-    // Fallback or direct save as RAWDATA
-    if (!savedViaImageFormat && effectiveSaveOptions == CKTEXTURE_RAWDATA) {
+    // Fallback or direct save as RAWDATA (also used for EXTERNAL/INCLUDE)
+    if (!savedViaImageFormat) {
         chnk->WriteIdentifier(Identifiers[2]); // RAWDATA_CHUNK_ID
         chnk->WriteInt(slotCount);
 
@@ -799,7 +861,7 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
 }
 
 CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, CKDWORD Identifiers[5]) {
-    XBitArray slotsProcessed;
+    XBitArray slotsMissing(1);
     CKBOOL anyDataBlockProcessed = FALSE;
 
     // for (int s = 0; s < m_Slots.Size(); ++s) {
@@ -821,15 +883,16 @@ CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f
         const int bpp = chnk->ReadInt();
 
         SetSlotCount(slotCount);
-        slotsProcessed.CheckSize(slotCount);
+        slotsMissing.CheckSize(slotCount);
 
         for (int i = 0; i < slotCount; ++i) {
+            slotsMissing.Set(i);
             if (width > 0 && height > 0) {
                 if (CreateImage(width, height, bpp, i)) {
                     GetImageDesc(desc);
                     desc.Image = LockSurfacePtr(i);
                     if (chnk->ReadReaderBitmap(desc)) {
-                        slotsProcessed.Unset(i);
+                        slotsMissing.Unset(i);
                         ReleaseSurfacePtr(i);
                     }
                 }
@@ -841,27 +904,28 @@ CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f
         anyDataBlockProcessed = TRUE;
         const int slotCount = chnk->ReadInt();
         SetSlotCount(slotCount);
-        slotsProcessed.CheckSize(slotCount);
+        slotsMissing.CheckSize(slotCount);
 
         for (int i = 0; i < slotCount; ++i) {
             VxImageDescEx srcDesc;
+            VxImageDescEx destDesc;
+            
             CKBYTE *srcImageData = chnk->ReadRawBitmap(srcDesc);
             if (srcImageData) {
-                slotsProcessed.Unset(i);
-                if (CreateImage(srcDesc.Width, srcDesc.Height, srcDesc.BitsPerPixel, i)) {
-                    VxImageDescEx destDesc;
-                    GetImageDesc(destDesc);
-                    CKBYTE *destImageData = LockSurfacePtr(i);
-                    if (destImageData) {
-                        srcDesc.Image = srcImageData;
-                        destDesc.Image = destImageData;
-                        VxDoBlitUpsideDown(srcDesc, destDesc);
-                        ReleaseSurfacePtr(i);
-                    }
+                slotsMissing.Unset(i);
+
+                CreateImage(srcDesc.Width, srcDesc.Height, srcDesc.BitsPerPixel, i);
+                GetImageDesc(destDesc);
+                CKBYTE *destImageData = LockSurfacePtr(i);
+                if (destImageData) {
+                    srcDesc.Image = srcImageData;
+                    destDesc.Image = destImageData;
+                    VxDoBlitUpsideDown(srcDesc, destDesc);
+                    ReleaseSurfacePtr(i);
                 }
                 delete[] srcImageData;
             } else {
-                slotsProcessed.Set(i);
+                slotsMissing.Set(i);
             }
         }
     }
@@ -872,14 +936,15 @@ CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f
 
         const int slotCount = chnk->ReadInt();
         SetSlotCount(slotCount);
-        slotsProcessed.CheckSize(slotCount);
+        slotsMissing.CheckSize(slotCount);
 
         for (int i = 0; i < slotCount; ++i) {
             CKBYTE *imageData = chnk->ReadBitmap2(desc);
             if (imageData) {
+                slotsMissing.Unset(i);
                 SetSlotImage(i, imageData, desc);
             } else {
-                slotsProcessed.Set(i);
+                slotsMissing.Set(i);
             }
         }
     }
@@ -888,22 +953,18 @@ CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f
     if (chnk->SeekIdentifier(Identifiers[3])) {
         const int slotCount = chnk->ReadInt();
         SetSlotCount(slotCount);
-        slotsProcessed.CheckSize(slotCount);
 
         for (int i = 0; i < slotCount; ++i) {
             XString fileName;
             chnk->ReadString(fileName);
             if (fileName.Length() > 1) {
-                bool needsLoadingFromFile = !slotsProcessed.IsSet(i);
-                if (!anyDataBlockProcessed) {
-                    needsLoadingFromFile = true;
-                }
-
-                if (needsLoadingFromFile) {
-                    XString resolvedFileName = fileName;
-                    ctx->GetPathManager()->ResolveFileName(resolvedFileName, BITMAP_PATH_IDX);
-                    if (!LoadSlotImage(resolvedFileName.Str(), i)) {
-                        SetSlotFileName(i, resolvedFileName.Str());
+                const CKBOOL hasDataLoaded = !slotsMissing.IsSet(i);
+                if ((hasDataLoaded && anyDataBlockProcessed)) {
+                    SetSlotFileName(i, fileName.Str() ? fileName.Str() : "");
+                } else {
+                    ctx->GetPathManager()->ResolveFileName(fileName, BITMAP_PATH_IDX);
+                    if (!LoadSlotImage(fileName, i)) {
+                        SetSlotFileName(i, fileName.Str() ? fileName.Str() : "");
                     }
                 }
             }
@@ -915,17 +976,14 @@ CKBOOL CKBitmapData::ReadFromChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f
         XString movieFile;
         chnk->ReadString(movieFile);
         if (movieFile.Length() > 1) {
-            XString resolvedMovieFile = movieFile;
-            ctx->GetPathManager()->ResolveFileName(resolvedMovieFile, BITMAP_PATH_IDX);
-            LoadMovieFile(resolvedMovieFile.Str());
+            ctx->GetPathManager()->ResolveFileName(movieFile, BITMAP_PATH_IDX);
+            LoadMovieFile(movieFile);
         }
     }
 
     // 6. Update CKBITMAPDATA_INVALID flag based on final dimensions
     if (m_Width == 0 || m_Height == 0) {
         m_BitmapFlags |= CKBITMAPDATA_INVALID;
-    } else {
-        m_BitmapFlags &= ~CKBITMAPDATA_INVALID;
     }
 
     return TRUE;

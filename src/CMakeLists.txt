@@ -137,6 +137,7 @@ set(CK2_SOURCES
         CKRenderContext.cpp
         CKBitmapData.cpp
         CKMemoryPool.cpp
+        CKJpegDecoder.cpp
 
         # Parameters
         CKParameter.cpp
@@ -192,7 +193,11 @@ set(CK2_SOURCES
 add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
 target_compile_definitions(CK2 PRIVATE CK_API)
 
-target_include_directories(CK2 PUBLIC $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>)
+target_include_directories(CK2
+        PUBLIC $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
+        PRIVATE ${STB_INCLUDE_DIR}
+)
+
 target_link_libraries(CK2
         PUBLIC
         VxMath

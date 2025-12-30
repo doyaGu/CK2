@@ -89,7 +89,8 @@ void CKBehaviorIO::PreDelete() {
 }
 
 int CKBehaviorIO::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + 12;
+    return CKObject::GetMemoryOccupation() +
+        static_cast<int>(sizeof(CKBehaviorIO) - sizeof(CKObject));
 }
 
 CKERROR CKBehaviorIO::RemapDependencies(CKDependenciesContext &context) {
@@ -127,7 +128,7 @@ CKSTRING CKBehaviorIO::GetDependencies(int i, int mode) {
 }
 
 void CKBehaviorIO::Register() {
-    CKCLASSDEFAULTOPTIONS(CKBehaviorIO, 1);
+    CKCLASSDEFAULTOPTIONS(CKBehaviorIO, CK_DEPENDENCIES_COPY);
 }
 
 CKBehaviorIO *CKBehaviorIO::CreateInstance(CKContext *Context) {
@@ -145,5 +146,6 @@ CKDWORD CKBehaviorIO::GetOldFlags() {
     CKDWORD flags = 0;
     if (m_ObjectFlags & CK_BEHAVIORIO_IN) flags |= 0x01;
     if (m_ObjectFlags & CK_BEHAVIORIO_OUT) flags |= 0x02;
+    if (m_ObjectFlags & CK_BEHAVIORIO_ACTIVE) flags |= 0x100;
     return flags;
 }

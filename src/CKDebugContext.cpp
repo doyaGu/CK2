@@ -64,12 +64,13 @@ CKBOOL CKDebugContext::DebugStep() {
                 CK_ID id = ScriptsToExecute.RemoveFront();
                 CKBehavior *beh = (CKBehavior *) m_Context->GetObject(id);
                 CurrentScript = beh;
-                if (beh) {
-                    CK_BEHAVIOR_FLAGS flags = beh->GetFlags();
-                    if ((flags & (CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME)) != 0) {
-                        CurrentScript->Activate(flags & CKBEHAVIOR_ACTIVATENEXTFRAME, flags & CKBEHAVIOR_RESETNEXTFRAME);
-                        CurrentScript->ModifyFlags(0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME);
-                    }
+                if (!beh)
+                    continue;
+
+                CK_BEHAVIOR_FLAGS flags = beh->GetFlags();
+                if ((flags & (CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME)) != 0) {
+                    CurrentScript->Activate(flags & CKBEHAVIOR_ACTIVATENEXTFRAME, flags & CKBEHAVIOR_RESETNEXTFRAME);
+                    CurrentScript->ModifyFlags(0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME);
                 }
                 if (CurrentScript->IsActive())
                     break;
@@ -106,11 +107,11 @@ CKBOOL CKDebugContext::DebugStep() {
             for (XObjectPointerArray::Iterator it = array->Begin(); it != array->End(); ++it) {
                 CK_ID id = (*it) ? (*it)->m_ID : 0;
                 ScriptsToExecute.InsertRear(id);
+                array = CurrentObject->m_ScriptArray;
             }
         }
 
         VxTimeProfiler profiler;
-        profiler.Reset();
         if (CurrentObject->GetClassID() == CKCID_CHARACTER) {
             CKCharacter *character = (CKCharacter *)CurrentObject;
             if (character->IsAutomaticProcess()) {
@@ -120,8 +121,8 @@ CKBOOL CKDebugContext::DebugStep() {
 
         float d = profiler.Current();
         CurrentObject->m_LastExecutionTime += d;
-        m_Context->m_Stats.BehaviorCodeExecution = d;
-        m_Context->m_Stats.TotalBehaviorExecution = d;
+        m_Context->m_Stats.BehaviorCodeExecution += d;
+        m_Context->m_Stats.TotalBehaviorExecution += d;
     }
 
     return TRUE;

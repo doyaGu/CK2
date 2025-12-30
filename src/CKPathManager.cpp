@@ -90,6 +90,10 @@ CKERROR CKPathManager::RenameCategory(int catIdx, XString &newName) {
 }
 
 int CKPathManager::AddPath(int catIdx, XString &path) {
+    if (catIdx < 0 || catIdx >= m_Categories.Size()) {
+        return -1;
+    }
+
     if (GetPathIndex(catIdx, path) != -1) {
         return -1;
     }
@@ -167,8 +171,6 @@ CKERROR CKPathManager::RenamePath(int catIdx, int pathIdx, XString &path) {
     return CK_OK;
 }
 
-const char *g_StartPath = "";
-
 CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) {
     if (file.Length() <= 0) {
         return CKERR_INVALIDFILE;
@@ -197,7 +199,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         }
 
         // Check application start path
-        XString startPath = XString(g_StartPath) + file;
+        XString startPath = XString(CKGetStartPath()) + file;
         if (TryOpenAbsolutePath(startPath)) {
             file = startPath;
             return CK_OK;
@@ -240,6 +242,10 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     XString baseName = fileSplitter.GetName();
     baseName += fileSplitter.GetExtension();
 
+    if (catIdx < 0 || catIdx >= m_Categories.Size()) {
+        return CKERR_INVALIDPARAMETER;
+    }
+
     // Get category information
     CKPATHCATEGORY &category = m_Categories[catIdx];
     const int pathCount = category.m_Entries.Size();
@@ -279,11 +285,11 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
 }
 
 CKBOOL CKPathManager::PathIsAbsolute(XString &file) {
-    if (file.Length() < 2)
+    if (file.Length() < 3)
         return FALSE;
     if (file[1] == ':' && file[2] == '\\')
         return TRUE;
-    if (file[0] == ':' && file[1] == '/')
+    if (file[1] == ':' && file[2] == '/')
         return TRUE;
     return FALSE;
 }

@@ -52,6 +52,9 @@ CKBeObject *CKGroup::RemoveObject(int pos) {
 }
 
 void CKGroup::RemoveObject(CKBeObject *obj) {
+    if (!obj)
+        return;
+
     if (m_ObjectArray.Remove(obj)) {
         obj->RemoveFromGroup(this);
         m_ClassIdUpdated = FALSE;
@@ -59,13 +62,13 @@ void CKGroup::RemoveObject(CKBeObject *obj) {
 }
 
 void CKGroup::Clear() {
-    for (int i = 0; i < m_ObjectArray.Size(); ++i) {
+    for (int i = m_ObjectArray.Size() - 1; i >= 0; --i) {
         CKBeObject *o = (CKBeObject *)m_ObjectArray[i];
         if (o) {
             o->RemoveFromGroup(this);
         }
     }
-    m_ObjectArray.Clear();
+    m_ObjectArray.Resize(0);
     m_ClassIdUpdated = FALSE;
 }
 
@@ -227,6 +230,7 @@ void CKGroup::PostLoad() {
             it = m_ObjectArray.Remove(it);
         }
     }
+
     CKObject::PostLoad();
 }
 
@@ -247,7 +251,9 @@ void CKGroup::CheckPreDeletion() {
 }
 
 int CKGroup::GetMemoryOccupation() {
-    return CKBeObject::GetMemoryOccupation() + 24 + m_ObjectArray.GetMemoryOccupation();
+    int size = CKBeObject::GetMemoryOccupation() + (int) (sizeof(CKGroup) - sizeof(CKBeObject));
+    size += m_ObjectArray.GetMemoryOccupation(FALSE);
+    return size;
 }
 
 int CKGroup::IsObjectUsed(CKObject *o, CK_CLASSID cid) {

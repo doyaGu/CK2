@@ -20,8 +20,10 @@ CKERROR CKBehaviorManager::Execute(float delta) {
     // Process behavior activation first
     for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
         CKBeObject *beo = (CKBeObject *) *it;
-        const int scriptCount = beo->GetScriptCount();
-        for (int i = 0; i < scriptCount; ++i) {
+        if (!beo) continue;
+
+        // Re-query the count each time because Activate() may add/remove scripts mid-loop.
+        for (int i = 0; i < beo->GetScriptCount(); ++i) {
             CKBehavior *beh = beo->GetScript(i);
             const CKDWORD flags = beh->GetFlags();
             if (flags & (CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME)) {
@@ -36,6 +38,7 @@ CKERROR CKBehaviorManager::Execute(float delta) {
     // Main execution loop
     for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
         CKBeObject *obj = (CKBeObject *)*it;
+        if (!obj) continue;
 
         if (m_Context->m_ProfilingEnabled) {
             behaviorProfiler.Reset();
@@ -124,15 +127,17 @@ void CKBehaviorManager::SortObjects() {
     m_BeObjects.Sort(CKBeObject::BeObjectPrioritySort);
 }
 
-void CKBehaviorManager::RemoveAllObjects() {
+int CKBehaviorManager::RemoveAllObjects() {
     m_BeObjects.Clear();
     m_BeObjectNextFrame.Clear();
 
     for (auto it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
         CKBehavior *beh = (CKBehavior *) *it;
-        beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
+        if (beh)
+            beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
     }
     m_Behaviors.Clear();
+    return 0;
 }
 
 int CKBehaviorManager::GetBehaviorMaxIteration() {
@@ -203,9 +208,10 @@ CKERROR CKBehaviorManager::OnCKPause() {
 CKERROR CKBehaviorManager::PreProcess() {
     for (auto it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
         CKBehavior *beh = (CKBehavior *) *it;
-        beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
+        if (beh)
+            beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
     }
-    m_Behaviors.Clear();
+    m_Behaviors.Resize(0);
     return CK_OK;
 }
 

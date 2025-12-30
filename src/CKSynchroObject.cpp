@@ -104,7 +104,13 @@ void CKSynchroObject::CheckPostDeletion() {
 }
 
 int CKSynchroObject::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + 44 + m_Arrived.GetCount() + 12 * m_Passed.GetCount();
+    // Base object + in-object members + owned linked-list nodes.
+    const int nodeBytes = static_cast<int>(sizeof(CKObjectArray::Node));
+    const int nodes = m_Arrived.GetCount() + m_Passed.GetCount();
+
+    return CKObject::GetMemoryOccupation() +
+        static_cast<int>(sizeof(CKSynchroObject) - sizeof(CKObject)) +
+        nodeBytes * nodes;
 }
 
 CKBOOL CKSynchroObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
@@ -129,7 +135,7 @@ CKSTRING CKSynchroObject::GetDependencies(int i, int mode) {
 
 void CKSynchroObject::Register() {
     CKCLASSNOTIFYFROM(CKSynchroObject, CKBeObject);
-    CKCLASSDEFAULTOPTIONS(CKSynchroObject, 4);
+    CKCLASSDEFAULTOPTIONS(CKSynchroObject, CK_DEPENDENCIES_SAVE);
     CKPARAMETERFROMCLASS(CKSynchroObject, CKPGUID_SYNCHRO);
 }
 
@@ -190,7 +196,8 @@ CKERROR CKStateObject::Load(CKStateChunk *chunk, CKFile *file) {
 }
 
 int CKStateObject::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + 4;
+    return CKObject::GetMemoryOccupation() +
+        static_cast<int>(sizeof(CKStateObject) - sizeof(CKObject));
 }
 
 CKSTRING CKStateObject::GetClassName() {
@@ -206,7 +213,7 @@ CKSTRING CKStateObject::GetDependencies(int i, int mode) {
 }
 
 void CKStateObject::Register() {
-    CKCLASSDEFAULTOPTIONS(CKStateObject, 4);
+    CKCLASSDEFAULTOPTIONS(CKStateObject, CK_DEPENDENCIES_SAVE);
     CKPARAMETERFROMCLASS(CKStateObject, CKPGUID_STATE);
 }
 
@@ -275,11 +282,12 @@ void CKCriticalSectionObject::CheckPostDeletion() {
 }
 
 int CKCriticalSectionObject::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + 4;
+    return CKObject::GetMemoryOccupation() +
+        static_cast<int>(sizeof(CKCriticalSectionObject) - sizeof(CKObject));
 }
 
 CKBOOL CKCriticalSectionObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
-    if (m_ObjectInSection == obj->GetID())
+    if (obj && m_ObjectInSection == obj->GetID())
         return TRUE;
     return CKObject::IsObjectUsed(obj, cid);
 }
@@ -298,7 +306,7 @@ CKSTRING CKCriticalSectionObject::GetDependencies(int i, int mode) {
 
 void CKCriticalSectionObject::Register() {
     CKCLASSNOTIFYFROM(CKCriticalSectionObject, CKBeObject);
-    CKCLASSDEFAULTOPTIONS(CKCriticalSectionObject, 4);
+    CKCLASSDEFAULTOPTIONS(CKCriticalSectionObject, CK_DEPENDENCIES_SAVE);
     CKPARAMETERFROMCLASS(CKCriticalSectionObject, CKPGUID_CRITICALSECTION);
 }
 

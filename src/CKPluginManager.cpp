@@ -49,7 +49,6 @@ CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
     m_Active = ent.m_Active;
     m_NeededByFile = ent.m_NeededByFile;
     m_IndexInCategory = ent.m_IndexInCategory;
-    m_PluginDllIndex = ent.m_PluginDllIndex;
 
     return *this;
 }
@@ -218,6 +217,9 @@ CKPluginEntry *CKPluginManager::FindComponent(CKGUID Component, int catIdx) {
         return nullptr;
     }
 
+    if (catIdx >= m_PluginCategories.Size())
+        return nullptr;
+
     CKPluginCategory &cat = m_PluginCategories[catIdx];
     for (XArray<CKPluginEntry *>::Iterator eit = cat.m_Entries.Begin(); eit != cat.m_Entries.End(); ++eit) {
         if ((*eit)->m_PluginInfo.m_GUID == Component) {
@@ -272,6 +274,8 @@ int CKPluginManager::GetCategoryCount() {
 }
 
 CKSTRING CKPluginManager::GetCategoryName(int catIdx) {
+    if (catIdx < 0 || catIdx >= m_PluginCategories.Size())
+        return nullptr;
     return m_PluginCategories[catIdx].m_Name.Str();
 }
 
@@ -395,7 +399,9 @@ CKERROR CKPluginManager::ReLoadPluginDll(int PluginDllIdx) {
                 case CKPLUGIN_SOUND_READER:
                 case CKPLUGIN_MODEL_READER:
                 case CKPLUGIN_MOVIE_READER: {
-                    entry->m_ReadersInfo->m_GetReaderFct = (CKReaderGetReaderFunction) shl.GetFunctionPtr("CKGetReader");
+                    if (entry->m_ReadersInfo) {
+                        entry->m_ReadersInfo->m_GetReaderFct = (CKReaderGetReaderFunction) shl.GetFunctionPtr("CKGetReader");
+                    }
                     break;
                 }
                 case CKPLUGIN_BEHAVIOR_DLL: {
@@ -415,11 +421,18 @@ CKERROR CKPluginManager::ReLoadPluginDll(int PluginDllIdx) {
 }
 
 int CKPluginManager::GetPluginCount(int catIdx) {
+    if (catIdx < 0 || catIdx >= m_PluginCategories.Size())
+        return 0;
     return m_PluginCategories[catIdx].m_Entries.Size();
 }
 
 CKPluginEntry *CKPluginManager::GetPluginInfo(int catIdx, int PluginIdx) {
-    return m_PluginCategories[catIdx].m_Entries[PluginIdx];
+    if (catIdx < 0 || catIdx >= m_PluginCategories.Size())
+        return nullptr;
+    CKPluginCategory &cat = m_PluginCategories[catIdx];
+    if (PluginIdx < 0 || PluginIdx >= cat.m_Entries.Size())
+        return nullptr;
+    return cat.m_Entries[PluginIdx];
 }
 
 CKBOOL CKPluginManager::SetReaderOptionData(CKContext *context, void *memdata, CKParameterOut *Param, CKFileExtension ext, CKGUID *guid) {
@@ -469,6 +482,9 @@ CKParameterOut *CKPluginManager::GetReaderOptionData(CKContext *context, void *m
     if (!entry)
         return nullptr;
 
+    if (!entry->m_ReadersInfo)
+        return nullptr;
+
     CKGUID paramGuid = entry->m_ReadersInfo->m_SettingsParameterGuid;
     if (paramGuid == CKGUID())
         return nullptr;
@@ -488,8 +504,8 @@ CKParameterOut *CKPluginManager::GetReaderOptionData(CKContext *context, void *m
         auto *param = (CKParameter *)context->GetObject(ids[i]);
         if (param) {
             int size = param->GetDataSize();
-            void *data = param->GetReadDataPtr();
-            memcpy(mem, data, size);
+            void *dst = param->GetWriteDataPtr();
+            memcpy(dst, mem, size);
             mem += size;
         }
     }
@@ -918,7 +934,7 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
         optionNames[i] = CKStrdup(name);
         optionNamesLength += strlen(name) + 2;
 
-        CKDeletePointer(desc);
+        delete[] desc;
     }
 
     auto *data = new char[optionNamesLength];
@@ -939,7 +955,7 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
         paramTypeDesc->dwFlags |= CKPARAMETERTYPE_HIDDEN;
 
     for (int i = 0; i < optionCount; ++i) {
-        CKDeletePointer(optionNames[i]);
+        delete[] optionNames[i];
     }
     memset(optionNames, 0, sizeof(CKSTRING) * optionCount);
     delete[] optionNames;
@@ -1072,6 +1088,9 @@ CKDataReader *CKPluginManager::EXTFindReader(CKFileExtension &ext, int Category)
     }
 
     if (!entry)
+        return nullptr;
+
+    if (!entry->m_ReadersInfo)
         return nullptr;
 
     auto *fct = entry->m_ReadersInfo->m_GetReaderFct;

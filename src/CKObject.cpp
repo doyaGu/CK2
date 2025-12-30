@@ -48,14 +48,15 @@ int CKObject::CanBeHide() {
 }
 
 CKObject::CKObject(CKContext *Context, CKSTRING name) {
-    if (name)
-        SetName(name);
-    else
-        m_Name = nullptr;
-
+    m_Name = nullptr;
     m_ID = 0;
     m_ObjectFlags = CK_OBJECT_VISIBLE;
     m_Context = Context;
+
+    if (name) {
+        m_Name = CKStrdup(name);
+    }
+
     if (m_Context) {
         m_ID = m_Context->m_ObjectManager->RegisterObject(this);
     }
@@ -113,10 +114,13 @@ void CKObject::CheckPreDeletion() { /* Empty */ }
 void CKObject::CheckPostDeletion() { /* Empty */ }
 
 int CKObject::GetMemoryOccupation() {
-    if (m_Name && !(m_ObjectFlags & CK_OBJECT_NAMESHARED))
-        return 21 + strlen(m_Name);
-    else
-        return 20;
+    // Object itself + owned name string (if any).
+    const int base = static_cast<int>(sizeof(CKObject));
+    if (m_Name && !(m_ObjectFlags & CK_OBJECT_NAMESHARED)) {
+        return base + 1 + static_cast<int>(strlen(m_Name));
+    }
+
+    return base;
 }
 
 CKBOOL CKObject::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {

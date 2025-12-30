@@ -11,13 +11,7 @@ CKERROR CKBehaviorLink::SetInBehaviorIO(CKBehaviorIO *ckbioin) {
         return CKERR_INVALIDPARAMETER;
 
     if (m_InIO) {
-        XSObjectPointerArray &links = m_InIO->m_Links;
-        for (auto it = links.Begin(); it != links.End(); ++it) {
-            if (*it == this) {
-                links.Remove(*it);
-                break;
-            }
-        }
+        m_InIO->m_Links.RemoveObject(this);
     }
     m_InIO = ckbioin;
     m_InIO->m_Links.AddIfNotHere(this);
@@ -53,7 +47,7 @@ CKStateChunk *CKBehaviorLink::Save(CKFile *file, CKDWORD flags) {
         chunk->StartWrite();
         chunk->AddChunkAndDelete(baseChunk);
         chunk->WriteIdentifier(CK_STATESAVE_BEHAV_LINK_NEWDATA);
-        chunk->WriteDword(m_ActivationDelay | m_InitialActivationDelay << 16);
+        chunk->WriteDword((m_ActivationDelay & 0xFFFF) | (m_InitialActivationDelay << 16));
         chunk->WriteObject(m_InIO);
         chunk->WriteObject(m_OutIO);
 
@@ -75,19 +69,14 @@ CKERROR CKBehaviorLink::Load(CKStateChunk *chunk, CKFile *file) {
     CKObject::Load(chunk, file);
 
     if (m_InIO) {
-        for (auto it = m_InIO->m_Links.Begin(); it != m_InIO->m_Links.End(); ++it) {
-            if (*it == this) {
-                m_InIO->m_Links.Remove(*it);
-                break;
-            }
-        }
+        m_InIO->m_Links.RemoveObject(this);
     }
 
     if (chunk->SeekIdentifier(CK_STATESAVE_BEHAV_LINK_NEWDATA)) {
         // New format loading
         CKDWORD delays = chunk->ReadDword();
-        m_ActivationDelay = (short) delays & 0xFFFF;
-        m_InitialActivationDelay = (short) (delays >> 16) & 0xFFFF;
+        m_ActivationDelay = (short) (delays & 0xFFFF);
+        m_InitialActivationDelay = (short) ((delays >> 16) & 0xFFFF);
         m_InIO = (CKBehaviorIO *)chunk->ReadObject(m_Context);
         m_OutIO = (CKBehaviorIO *)chunk->ReadObject(m_Context);
     } else {
@@ -119,13 +108,7 @@ void CKBehaviorLink::PreDelete() {
 
     if (m_InIO) {
         if (!m_InIO->IsToBeDeleted()) {
-            XSObjectPointerArray &links = m_InIO->m_Links;
-            for (auto it = links.Begin(); it != links.End(); ++it) {
-                if (*it == this) {
-                    links.Remove(*it);
-                    break;
-                }
-            }
+            m_InIO->m_Links.RemoveObject(this);
         }
         CKBehavior *owner = m_InIO->GetOwner();
         if (owner && !owner->IsToBeDeleted()) {
@@ -137,7 +120,8 @@ void CKBehaviorLink::PreDelete() {
 }
 
 int CKBehaviorLink::GetMemoryOccupation() {
-    return CKObject::GetMemoryOccupation() + 16;
+    return CKObject::GetMemoryOccupation() +
+        static_cast<int>(sizeof(CKBehaviorLink) - sizeof(CKObject));
 }
 
 CKBOOL CKBehaviorLink::IsObjectUsed(CKObject *obj, CK_CLASSID cid) {
@@ -165,7 +149,7 @@ CKERROR CKBehaviorLink::Copy(CKObject &o, CKDependenciesContext &context) {
         return err;
 
     CKBehaviorLink *link = (CKBehaviorLink *)&o;
-    m_OldFlags = link->m_OldFlags & ~1;
+    m_OldFlags = link->m_OldFlags & ~CKBL_OLD_IN_DELAYED_LIST;
     m_ActivationDelay = link->m_ActivationDelay;
     m_InitialActivationDelay = link->m_InitialActivationDelay;
     m_InIO = link->m_InIO;
@@ -186,7 +170,7 @@ CKSTRING CKBehaviorLink::GetDependencies(int i, int mode) {
 }
 
 void CKBehaviorLink::Register() {
-    CKCLASSDEFAULTOPTIONS(CKBehaviorLink, 1);
+    CKCLASSDEFAULTOPTIONS(CKBehaviorLink, CK_DEPENDENCIES_COPY);
 }
 
 CKBehaviorLink *CKBehaviorLink::CreateInstance(CKContext *Context) {

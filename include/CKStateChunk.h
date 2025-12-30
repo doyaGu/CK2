@@ -105,7 +105,7 @@ public:
             delete[] Data;
             Data = data;
         }
-        if (Size > 0)
+        if (list->Size > 0)
         {
             memcpy(&Data[Size], list->Data, list->Size * sizeof(int));
             int *p;
@@ -168,8 +168,7 @@ public:
         PrevIdentifierPos = 0;
     }
 
-public:
-    virtual ~ChunkParser() {}
+    ~ChunkParser() {}
 };
 
 class CKFileChunk;

@@ -51,8 +51,20 @@ CKSTRING CKJustFile(CKSTRING path) {
         return nullptr;
 
     CKPathSplitter splitter(path);
-    strcpy(buffer, splitter.GetName());
-    strcat(buffer, splitter.GetExtension());
+
+    const char *name = splitter.GetName();
+    const char *ext = splitter.GetExtension();
+
+    if (name && ext) {
+        snprintf(buffer, sizeof(buffer), "%s%s", name, ext);
+    } else if (name) {
+        snprintf(buffer, sizeof(buffer), "%s", name);
+    } else if (ext) {
+        snprintf(buffer, sizeof(buffer), "%s", ext);
+    } else {
+        buffer[0] = '\0';
+    }
+
     return buffer;
 }
 
@@ -64,16 +76,22 @@ CKBufferParser::CKBufferParser(void *Buffer, int Size)
 
 CKBufferParser::~CKBufferParser() {
     if (m_Valid)
-        delete m_Buffer;
+        delete[] m_Buffer;
 }
 
 CKBOOL CKBufferParser::Write(void *x, int size) {
+    if (size < 0 || m_CursorPos + size > m_Size)
+        return FALSE;
+
     memcpy(&m_Buffer[m_CursorPos], x, size);
     m_CursorPos += size;
     return TRUE;
 }
 
 CKBOOL CKBufferParser::Read(void *x, int size) {
+    if (size < 0 || m_CursorPos + size > m_Size)
+        return FALSE;
+
     memcpy(x, &m_Buffer[m_CursorPos], size);
     m_CursorPos += size;
     return TRUE;
@@ -84,7 +102,13 @@ char *CKBufferParser::ReadString() {
     if (len == 0)
         return nullptr;
 
+    if (m_CursorPos + len > m_Size)
+        return nullptr;
+
     char *str = new char[len + 1];
+    if (!str)
+        return nullptr;
+
     memset(str, 0, len + 1);
     memcpy(str, &m_Buffer[m_CursorPos], len);
     m_CursorPos += len;
@@ -92,6 +116,9 @@ char *CKBufferParser::ReadString() {
 }
 
 int CKBufferParser::ReadInt() {
+    if (m_CursorPos + sizeof(int) > m_Size)
+        return 0;
+
     int val;
     memcpy(&val, &m_Buffer[m_CursorPos], sizeof(int));
     m_CursorPos += sizeof(int);
@@ -99,11 +126,22 @@ int CKBufferParser::ReadInt() {
 }
 
 void CKBufferParser::Seek(int Pos) {
-    m_CursorPos = Pos;
+    if (Pos < 0)
+        m_CursorPos = 0;
+    else if (Pos > m_Size)
+        m_CursorPos = m_Size;
+    else
+        m_CursorPos = Pos;
 }
 
 void CKBufferParser::Skip(int Offset) {
-    m_CursorPos += Offset;
+    int newPos = m_CursorPos + Offset;
+    if (newPos < 0)
+        m_CursorPos = 0;
+    else if (newPos > m_Size)
+        m_CursorPos = m_Size;
+    else
+        m_CursorPos = newPos;
 }
 
 CKBOOL CKBufferParser::IsValid() {
@@ -136,12 +174,23 @@ CKDWORD CKBufferParser::ComputeCRC(int Size, CKDWORD PrevCRC) {
 }
 
 CKBufferParser *CKBufferParser::Extract(int Size) {
-    auto *parser = new CKBufferParser(nullptr, Size);
+    if (Size < 0 || m_CursorPos + Size > m_Size)
+        return nullptr;
+
+    auto *buffer = new char[Size];
+    if (!buffer)
+        return nullptr;
+
+    auto *parser = new CKBufferParser(buffer, Size);
+    parser->m_Valid = TRUE;
     parser->Write(&m_Buffer[m_CursorPos], Size);
     return parser;
 }
 
 CKBOOL CKBufferParser::ExtractFile(char *Filename, int Size) {
+    if (Size < 0 || m_CursorPos + Size > m_Size)
+        return FALSE;
+
     FILE *fp = fopen(Filename, "wb");
     if (!fp)
         return FALSE;
@@ -300,9 +349,9 @@ void CKFile::ClearData() {
          it != m_FileObjects.End(); ++it) {
         if (it->Data) {
             it->Data->Clear();
-            CKDeletePointer(it->Data);
+            delete it->Data;
         }
-        CKDeletePointer(it->Name);
+        delete[] it->Name;
         it->Data = nullptr;
         it->Name = nullptr;
     }
@@ -311,7 +360,7 @@ void CKFile::ClearData() {
          it != m_ManagersData.End(); ++it) {
         if (it->data) {
             it->data->Clear();
-            CKDeletePointer(it->data);
+            delete it->data;
             it->data = nullptr;
         }
     }
@@ -323,7 +372,7 @@ void CKFile::ClearData() {
     m_ReferencedObjects.Clear();
     m_IndexByClassId.Clear();
 
-    CKDeletePointer(m_FileName);
+    delete[] m_FileName;
     m_FileName = nullptr;
 
     if (m_Parser) {
@@ -444,7 +493,9 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
             const int count = parser->ReadInt();
             pit->m_Guids.Resize(count);
 
-            parser->Read(&pit->m_Guids[0], sizeof(CKGUID) * count);
+            if (count > 0) {
+                parser->Read(&pit->m_Guids[0], sizeof(CKGUID) * count);
+            }
 
             if (m_Flags & CK_LOAD_CHECKDEPENDENCIES) {
                 for (int j = 0; j < count; ++j) {
@@ -721,10 +772,11 @@ CKERROR CKFile::StartSave(CKSTRING filename, CKDWORD Flags) {
     m_Context->m_Saving = TRUE;
 
     m_Flags = Flags;
-    m_SceneSaved = TRUE;
+    m_SceneSaved = FALSE;
     m_FileObjects.Clear();
     m_IndexByClassId.Resize(g_MaxClassID);
     delete[] m_FileName;
+    m_FileName = nullptr;
     if (!filename) {
         m_Context->m_Saving = FALSE;
         return CKERR_INVALIDFILE;
@@ -872,7 +924,9 @@ CKERROR CKFile::EndSave() {
         CKObject *obj = m_Context->GetObject(fileObject.Object);
         if (obj) {
             CKStateChunk *chunk = obj->Save(this, fileObject.SaveFlags);
-            chunk->CloseChunk();
+            if (chunk) {
+                chunk->CloseChunk();
+            }
             fileObject.Data = chunk;
 
             if (CKIsChildClassOf(fileObject.ObjectCid, CKCID_BEHAVIOR)) {
@@ -1048,6 +1102,8 @@ CKERROR CKFile::EndSave() {
 
         m_Context->m_Saving = FALSE;
         m_Context->ExecuteManagersPostSave();
+
+        return CKERR_OUTOFMEMORY;
     }
 
     if (savedManagerCount > 0) {
@@ -1118,6 +1174,8 @@ CKERROR CKFile::EndSave() {
 
         m_Context->m_Saving = FALSE;
         m_Context->ExecuteManagersPostSave();
+
+        return CKERR_CANTWRITETOFILE;
     }
 
     CKERROR err = CK_OK;
@@ -1183,7 +1241,7 @@ CKBOOL CKFile::IsObjectToBeSaved(CK_ID iID) {
         return FALSE;
 
     for (XArray<CKFileObject>::Iterator it = m_FileObjects.Begin(); it != m_FileObjects.End(); ++it)
-        if ((*it).ObjectCid == iID)
+        if ((*it).Object == iID)
             return TRUE;
 
     return FALSE;
@@ -1277,7 +1335,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
             objectManager->RegisterLoadObject(obj, it->Object);
             it->ObjPtr = obj;
-            it->CreatedObject = obj->GetID();
+            it->CreatedObject = obj ? obj->GetID() : 0;
         }
     }
 
@@ -1366,7 +1424,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
                 CKUICallbackStruct cbs;
                 cbs.Reason = CKUIM_LOADSAVEPROGRESS;
                 cbs.Param1 = count;
-                cbs.Param1 = m_FileObjects.Size();
+                cbs.Param2 = m_FileObjects.Size();
                 m_Context->m_UICallBackFct(cbs, m_Context->m_InterfaceModeData);
             }
 
@@ -1390,7 +1448,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
                     CKUICallbackStruct cbs;
                     cbs.Reason = CKUIM_LOADSAVEPROGRESS;
                     cbs.Param1 = count;
-                    cbs.Param1 = m_FileObjects.Size();
+                    cbs.Param2 = m_FileObjects.Size();
                     m_Context->m_UICallBackFct(cbs, m_Context->m_InterfaceModeData);
                 }
 
@@ -1419,7 +1477,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
                     CKUICallbackStruct cbs;
                     cbs.Reason = CKUIM_LOADSAVEPROGRESS;
                     cbs.Param1 = count;
-                    cbs.Param1 = m_FileObjects.Size();
+                    cbs.Param2 = m_FileObjects.Size();
                     m_Context->m_UICallBackFct(cbs, m_Context->m_InterfaceModeData);
                 }
 
@@ -1449,7 +1507,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
                     CKUICallbackStruct cbs;
                     cbs.Reason = CKUIM_LOADSAVEPROGRESS;
                     cbs.Param1 = count;
-                    cbs.Param1 = m_FileObjects.Size();
+                    cbs.Param2 = m_FileObjects.Size();
                     m_Context->m_UICallBackFct(cbs, m_Context->m_InterfaceModeData);
                 }
 
@@ -1480,7 +1538,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
                 CKUICallbackStruct cbs;
                 cbs.Reason = CKUIM_LOADSAVEPROGRESS;
                 cbs.Param1 = count;
-                cbs.Param1 = m_FileObjects.Size();
+                cbs.Param2 = m_FileObjects.Size();
                 m_Context->m_UICallBackFct(cbs, m_Context->m_InterfaceModeData);
             }
 

@@ -30,6 +30,8 @@ CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATI
     CKObject *obj = nullptr;
     CK_CREATIONMODE creationMode = CKLOAD_OK;
     char *buffer = GetStringBuffer(512);
+    if (!buffer)
+        return nullptr;
 
     CKDWORD creationOptions = (Options & CK_OBJECTCREATION_FLAGSMASK);
     CKClassDesc &classDesc = g_CKClassInfo[cid];
@@ -113,7 +115,7 @@ const XObjectArray &CKContext::CopyObjects(const XObjectArray &SrcObjects, CKDep
     depContext.AddObjects(SrcObjects.Begin(), SrcObjects.Size());
     depContext.Copy(AppendName);
 
-    m_CopyObjects.Clear();
+    m_CopyObjects.Resize(0);
     const int count = depContext.GetObjectsCount();
     for (int i = 0; i < count; i++) {
         CKObject *obj = depContext.GetObjects(i);
@@ -185,7 +187,7 @@ const XObjectPointerArray &CKContext::CKFillObjectsUnused() {
 
     CKScene *currentScene = GetCurrentScene();
 
-    m_ObjectsUnused.Clear();
+    m_ObjectsUnused.Resize(0);
     const int count = m_ObjectManager->GetObjectsCount();
     for (int i = 0; i < count; ++i) {
         CKObject *obj = m_ObjectManager->GetObject(i);
@@ -216,7 +218,7 @@ CKObject *CKContext::GetObjectByNameAndParentClass(CKSTRING name, CK_CLASSID pci
 }
 
 const XObjectPointerArray &CKContext::GetObjectListByType(CK_CLASSID cid, CKBOOL derived) {
-    m_ObjectsUnused.Clear();
+    m_ObjectsUnused.Resize(0);
     m_ObjectManager->GetObjectListByType(cid, m_ObjectsUnused, derived);
     return m_ObjectsUnused;
 }
@@ -233,22 +235,19 @@ CKERROR CKContext::Play() {
     if (m_Playing)
         return CK_OK;
 
-    CKLevel *currentLevel = nullptr;
+    CKLevel *currentLevel = GetCurrentLevel();
+    if (!currentLevel) {
+        return CKERR_NOCURRENTLEVEL;
+    }
+
     if (m_Reseted) {
-        currentLevel = GetCurrentLevel();
-        if (currentLevel) {
-            if (!currentLevel->m_IsReseted)
-                Reset();
-            currentLevel->ActivateAllScript();
-        }
+        if (!currentLevel->m_IsReseted)
+            Reset();
+        currentLevel->ActivateAllScript();
     }
 
     m_Playing = TRUE;
-
     ExecuteManagersOnCKPlay();
-
-    if (!currentLevel)
-        return CKERR_NOCURRENTLEVEL;
 
     m_Reseted = FALSE;
     return CK_OK;
@@ -384,12 +383,15 @@ void CKContext::SetCurrentLevel(CKLevel *level) {
 }
 
 CKParameterIn *CKContext::CreateCKParameterIn(CKSTRING Name, CKParameterType type, CKBOOL Dynamic) {
-    CKParameterIn *pIn = nullptr;
-    if (m_ParameterManager->CheckParamTypeValidity(type)) {
-        pIn = (CKParameterIn *) CreateObject(
+    if (!m_ParameterManager->CheckParamTypeValidity(type))
+        return nullptr;
+
+    CKParameterIn *pIn = (CKParameterIn *) CreateObject(
             CKCID_PARAMETERIN, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
+
+    if (pIn)
         pIn->SetType(type);
-    }
+
     return pIn;
 }
 
@@ -411,7 +413,10 @@ CKParameterOut *CKContext::CreateCKParameterOut(CKSTRING Name, CKParameterType t
 
     CKParameterOut *pOut = (CKParameterOut *) CreateObject(
         CKCID_PARAMETEROUT, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
-    pOut->SetType(type);
+
+    if (pOut)
+        pOut->SetType(type);
+
     return pOut;
 }
 
@@ -729,6 +734,8 @@ int CKContext::GetInactiveManagerCount() {
 }
 
 CKBaseManager *CKContext::GetInactiveManager(int index) {
+    if (index < 0 || index >= m_InactiveManagers.Size())
+        return nullptr;
     return m_InactiveManagers[index];
 }
 
@@ -796,10 +803,10 @@ CKGUID CKContext::GetSecureGuid() {
     do {
         guid.d1 = (rand() & 0xFFFF) | ((rand() & 0xFFFF) << 16);
         guid.d2 = (rand() & 0xFFFF) | ((rand() & 0xFFFF) << 16);
-    } while (!CKGetObjectDeclarationFromGuid(guid) &&
-        (m_ParameterManager->OperationGuidToCode(guid) >= 0 ||
-            m_ParameterManager->ParameterGuidToType(guid) >= 0 ||
-            GetManagerByGuid(guid) != nullptr));
+    } while (CKGetObjectDeclarationFromGuid(guid) ||
+        m_ParameterManager->OperationGuidToCode(guid) >= 0 ||
+        m_ParameterManager->ParameterGuidToType(guid) >= 0 ||
+        GetManagerByGuid(guid) != nullptr);
 
     return guid;
 }
@@ -848,7 +855,7 @@ CKBitmapProperties *CKContext::GetGlobalImagesSaveFormat() {
 
 void CKContext::SetGlobalImagesSaveFormat(CKBitmapProperties *Format) {
     if (Format && Format->m_Size != 0) {
-        CKDeletePointer(m_GlobalImagesSaveFormat);
+        delete[] reinterpret_cast<CKBYTE *>(m_GlobalImagesSaveFormat);
         m_GlobalImagesSaveFormat = CKCopyBitmapProperties(Format);
     }
 }
@@ -1192,10 +1199,19 @@ void CKContext::ExecuteManagersOnCKEnd() {
 }
 
 void CKContext::ExecuteManagersPreProcess() {
+    // Reset processing time for all managers before the frame starts
+    for (XManagerHashTableIt it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+        CKBaseManager *manager = *it;
+        manager->m_ProcessingTime = 0.0f;
+    }
+
     XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PreProcess];
     for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
+        VxTimeProfiler profiler;
         m_CurrentManager->PreProcess();
+        CKBaseManager *manager = *it;
+        manager->m_ProcessingTime += profiler.Current();
     }
     m_CurrentManager = nullptr;
 }
@@ -1204,7 +1220,10 @@ void CKContext::ExecuteManagersPostProcess() {
     XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_PostProcess];
     for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
+        VxTimeProfiler profiler;
         m_CurrentManager->PostProcess();
+        CKBaseManager *manager = *it;
+        manager->m_ProcessingTime += profiler.Current();
     }
     m_CurrentManager = nullptr;
 }
@@ -1376,7 +1395,10 @@ void CKContext::ExecuteManagersOnPreRender(CKRenderContext *dev) {
     XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPreRender];
     for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
+        VxTimeProfiler profiler;
         m_CurrentManager->OnPreRender(dev);
+        CKBaseManager *manager = *it;
+        manager->m_ProcessingTime += profiler.Current();
     }
     m_CurrentManager = nullptr;
 }
@@ -1385,7 +1407,10 @@ void CKContext::ExecuteManagersOnPostRender(CKRenderContext *dev) {
     XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPostRender];
     for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
+        VxTimeProfiler profiler;
         m_CurrentManager->OnPostRender(dev);
+        CKBaseManager *manager = *it;
+        manager->m_ProcessingTime += profiler.Current();
     }
     m_CurrentManager = nullptr;
 }
@@ -1394,7 +1419,10 @@ void CKContext::ExecuteManagersOnPostSpriteRender(CKRenderContext *dev) {
     XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnPostSpriteRender];
     for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
+        VxTimeProfiler profiler;
         m_CurrentManager->OnPostSpriteRender(dev);
+        CKBaseManager *manager = *it;
+        manager->m_ProcessingTime += profiler.Current();
     }
     m_CurrentManager = nullptr;
 }
@@ -1557,7 +1585,8 @@ int CKContext::PrepareDestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, C
     if (Count <= 0)
         return CKERR_INVALIDPARAMETER;
 
-    if (m_DependenciesContext.m_MapID.Size() == 0) {
+    const bool hasPendingDependencies = m_DependenciesContext.m_MapID.Size() != 0;
+    if (!hasPendingDependencies) {
         m_DestroyObjectFlag = Flags;
     } else {
         m_DestroyObjectFlag &= Flags;
@@ -1569,15 +1598,13 @@ int CKContext::PrepareDestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, C
     for (int i = 0; i < Count; ++i) {
         CKObject *obj = GetObject(obj_ids[i]);
         if (obj) {
-            printf("Preparing to destroy object %s (ID: %d)\n", obj->GetName(), obj->GetID());
             obj->PrepareDependencies(m_DependenciesContext);
-            printf("Dependencies prepared for object %s (ID: %d)\n", obj->GetName(), obj->GetID());
         }
     }
 
     if (Dependencies) m_DependenciesContext.StopDependencies();
 
-    return CK_OK;
+    return hasPendingDependencies ? CKERR_INVALIDPARAMETER : CK_OK;
 }
 
 int CKContext::FinishDestroyObjects(CKDWORD Flags) {
@@ -1588,7 +1615,8 @@ int CKContext::FinishDestroyObjects(CKDWORD Flags) {
     objectsToDelete.Resize(depMap.Size());
     int i = 0;
     for (XHashID::Iterator it = depMap.Begin(); it != depMap.End(); ++it) {
-        objectsToDelete[i++] = it.GetKey();
+        CK_ID objId = it.GetKey();
+        objectsToDelete[i++] = objId;
     }
 
     m_DependenciesContext.Clear();
@@ -1602,9 +1630,9 @@ void CKContext::BuildSortedLists() {
         m_ManagerList[i].Clear();
     }
 
-    for (int i = 0; i < 32; ++i) {
-        for (auto it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
-            CKBaseManager *manager = *it;
+    for (auto it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+        CKBaseManager *manager = *it;
+        for (int i = 0; i < 32; ++i) {
             if (manager->GetValidFunctionsMask() & (1 << i)) {
                 m_ManagerList[i].PushBack(manager);
             }
@@ -1628,14 +1656,14 @@ void CKContext::DeferredDestroyObjects(CK_ID *obj_ids, int Count, CKDependencies
 
     if (Dependencies) {
         CKDependencies *dep = new CKDependencies();
+        *dep = *Dependencies;
         deferred->m_DependenciesPtr = dep;
-        deferred->m_Dependencies = *Dependencies;
     }
 }
 
 void *CKContext::AllocateMemoryPool(int count, int &index) {
     int newIndex = m_MemoryPoolMask.GetUnsetBitPosition(0);
-    while (m_MemoryPools.Size() < newIndex) {
+    while (m_MemoryPools.Size() <= newIndex) {
         m_MemoryPools.PushBack(new VxMemoryPool);
     }
 
@@ -1731,7 +1759,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
 
 CKContext::~CKContext() {
     m_Init = TRUE;
-    CKDeletePointer(m_GlobalImagesSaveFormat);
+    delete[] reinterpret_cast<CKBYTE *>(m_GlobalImagesSaveFormat);
 
     delete[] field_3C8;
     field_3C8 = nullptr;

@@ -104,7 +104,7 @@ CKERROR CKParameterManager::UnRegisterParameterType(CKGUID guid) {
     CK_ID *paramList = m_Context->GetObjectsListByClassID(CKCID_PARAMETER);
     for (int i = 0; i < paramCount; ++i) {
         CKParameter *param = (CKParameter *) m_Context->GetObject(paramList[i]);
-        if (param->m_ParamType == foundDesc) {
+        if (param && param->m_ParamType == foundDesc) {
             param->m_ParamType = nullptr;
             parametersAffected = TRUE;
         }
@@ -114,7 +114,7 @@ CKERROR CKParameterManager::UnRegisterParameterType(CKGUID guid) {
     CK_ID *paramOutList = m_Context->GetObjectsListByClassID(CKCID_PARAMETEROUT);
     for (int i = 0; i < paramOutCount; ++i) {
         CKParameterOut *param = (CKParameterOut *) m_Context->GetObject(paramOutList[i]);
-        if (param->m_ParamType == foundDesc) {
+        if (param && param->m_ParamType == foundDesc) {
             param->m_ParamType = nullptr;
             parametersAffected = TRUE;
         }
@@ -124,7 +124,7 @@ CKERROR CKParameterManager::UnRegisterParameterType(CKGUID guid) {
     CK_ID *localParamList = m_Context->GetObjectsListByClassID(CKCID_PARAMETERLOCAL);
     for (int i = 0; i < localParamCount; ++i) {
         CKParameterLocal *param = (CKParameterLocal *) m_Context->GetObject(localParamList[i]);
-        if (param->m_ParamType == foundDesc) {
+        if (param && param->m_ParamType == foundDesc) {
             param->m_ParamType = nullptr;
             parametersAffected = TRUE;
         }
@@ -493,7 +493,7 @@ CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING Enum
         return CKERR_INVALIDPARAMETER;
 
     CKParameterType type = ParameterGuidToType(EnumGuid);
-    if (type <= 0)
+    if (type < 0)
         return CKERR_INVALIDGUID;
 
     CKParameterTypeDesc *typeDesc = GetParameterTypeDescription(type);
@@ -565,7 +565,7 @@ CKERROR CKParameterManager::ChangeFlagsDeclaration(CKGUID FlagsGuid, CKSTRING Fl
         return CKERR_INVALIDPARAMETER;
 
     CKParameterType type = ParameterGuidToType(FlagsGuid);
-    if (type <= 0)
+    if (type < 0)
         return CKERR_INVALIDGUID;
 
     CKParameterTypeDesc *typeDesc = GetParameterTypeDescription(type);
@@ -810,7 +810,7 @@ CKOperationType CKParameterManager::RegisterOperationType(CKGUID OpCode, CKSTRIN
     if (existingCode >= 0)
         return existingCode;
 
-    CKOperationType opType = 0;
+    CKOperationType opType = -1;
     const int currentCount = m_NbOperations;
 
     for (int i = 0; i < currentCount; ++i) {
@@ -826,7 +826,7 @@ CKOperationType CKParameterManager::RegisterOperationType(CKGUID OpCode, CKSTRIN
         // The original code had a bug here where it would not find a free slot and then not expand.
     }
 
-    if (opType == 0) {
+    if (opType == -1) {
         opType = m_NbOperations;
     }
 
@@ -1329,10 +1329,15 @@ void CKParameterManager::RecurseDelete(TreeCell *cell) {
 CKBOOL CKParameterManager::IsDerivedFromIntern(int childIdx, int parentIdx) {
     if (childIdx == parentIdx) return TRUE;
 
+    CKGUID parentGuid = ParameterTypeToGuid(parentIdx);
     CKParameterTypeDesc *childDesc = GetParameterTypeDescription(childIdx);
-    if (!childDesc || !childDesc->DerivedFrom.IsValid()) return FALSE;
+    if (!childDesc || !GetParameterTypeDescription(parentIdx)) return FALSE;
 
-    if (childDesc->DerivedFrom == ParameterTypeToGuid(parentIdx)) return TRUE;
+    if (childDesc->DerivedFrom == parentGuid) return TRUE;
+
+    // Termination conditions: null GUID or CKPGUID_NONE
+    if (!childDesc->DerivedFrom.IsValid() || childDesc->DerivedFrom == CKPGUID_NONE)
+        return FALSE;
 
     return IsDerivedFromIntern(ParameterGuidToType(childDesc->DerivedFrom), parentIdx);
 }

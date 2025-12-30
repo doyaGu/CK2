@@ -55,6 +55,15 @@ See also: CreateCKObjectArray, DeleteCKObjectArray
 class DLL_EXPORT CKObjectArray
 {
 public:
+    struct Node
+    {
+        Node *m_Prev;
+        Node *m_Next;
+        CK_ID m_Data;
+    };
+
+    CKObjectArray(CKObjectArray *src = nullptr);
+
     //----------------------------------------------------
     // Return Elements count
     int GetCount();
@@ -140,13 +149,6 @@ public:
     void InsertSorted(CK_ID id, OBJECTARRAYCMPFCT CmpFct, CKContext *context);
 
 private:
-    struct Node
-    {
-        Node *m_Prev;
-        Node *m_Next;
-        CK_ID m_Data;
-    };
-
     Node *m_Current;
     Node *m_Next;
     Node *m_Previous;
