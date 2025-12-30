@@ -914,7 +914,7 @@ CKERROR CKFile::EndSave() {
     if (m_Context->m_UICallBackFct) {
         CKUICallbackStruct cbs;
         cbs.Reason = CKUIM_CREATEINTERFACECHUNK;
-        cbs.Param1 = (CKDWORD) &scripts;
+        cbs.Objects = &scripts;
         m_Context->m_UICallBackFct(cbs, m_Context->m_InterfaceModeData);
     }
 
@@ -976,7 +976,7 @@ CKERROR CKFile::EndSave() {
         CKFileObject &fileObject = m_FileObjects[i];
         objectInfoSize += 4 * (int) sizeof(CKDWORD);
         if (fileObject.Name)
-            objectInfoSize += strlen(fileObject.Name);
+            objectInfoSize += (int) strlen(fileObject.Name);
 
         int packSize;
         if (fileObject.Data) {
