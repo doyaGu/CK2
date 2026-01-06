@@ -162,7 +162,7 @@ void CK2dCurve::Update() {
         CK2dCurvePoint &current = m_ControlPoints[i];
         CK2dCurvePoint &next = m_ControlPoints[i + 1];
 
-        if (current.m_Flags & LINEAR_FLAG) {
+        if (current.IsLinear()) {
             // Straight line segment calculation
             Vx2DVector delta(next.m_Position - current.m_Position);
             m_Length += delta.Magnitude();
