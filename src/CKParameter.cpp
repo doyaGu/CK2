@@ -391,7 +391,7 @@ CKERROR CKParameter::Load(CKStateChunk *chunk, CKFile *file) {
             objID = chunk->ReadObjectID();
         } else {
             chunk->ReadInt();
-            objID = chunk->ReadInt();
+            objID = chunk->ReadDword();
         }
         SetValue(&objID, sizeof(CK_ID));
         return CK_OK;
