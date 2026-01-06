@@ -18,7 +18,7 @@ CKERROR CKBehaviorManager::Execute(float delta) {
     ManageObjectsActivity();
 
     // Process behavior activation first
-    for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
+    for (XObjectPointerArray::Iterator it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
         CKBeObject *beo = (CKBeObject *) *it;
         if (!beo) continue;
 
@@ -36,7 +36,7 @@ CKERROR CKBehaviorManager::Execute(float delta) {
     }
 
     // Main execution loop
-    for (auto it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
+    for (XObjectPointerArray::Iterator it = m_BeObjects.Begin(); it != m_BeObjects.End(); ++it) {
         CKBeObject *obj = (CKBeObject *)*it;
         if (!obj) continue;
 
@@ -82,7 +82,7 @@ void CKBehaviorManager::ManageObjectsActivity() {
         return;
 
     CKBOOL changed = FALSE;
-    for (auto it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End(); ++it) {
+    for (BeObjectTableIt it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End(); ++it) {
         CKBeObject *beo = (CKBeObject *) m_Context->GetObject(it.GetKey());
 
         if (!beo) {
@@ -131,7 +131,7 @@ int CKBehaviorManager::RemoveAllObjects() {
     m_BeObjects.Clear();
     m_BeObjectNextFrame.Clear();
 
-    for (auto it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
+    for (XObjectPointerArray::Iterator it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
         CKBehavior *beh = (CKBehavior *) *it;
         if (beh)
             beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
@@ -206,7 +206,7 @@ CKERROR CKBehaviorManager::OnCKPause() {
 }
 
 CKERROR CKBehaviorManager::PreProcess() {
-    for (auto it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
+    for (XObjectPointerArray::Iterator it = m_Behaviors.Begin(); it != m_Behaviors.End(); ++it) {
         CKBehavior *beh = (CKBehavior *) *it;
         if (beh)
             beh->m_Flags &= ~CKBEHAVIOR_EXECUTEDLASTFRAME;
@@ -221,7 +221,7 @@ CKERROR CKBehaviorManager::PreClearAll() {
 }
 
 CKERROR CKBehaviorManager::SequenceDeleted(CK_ID *objids, int count) {
-    for (auto it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End();) {
+    for (BeObjectTableIt it = m_BeObjectNextFrame.Begin(); it != m_BeObjectNextFrame.End();) {
         CKBeObject *beo = (CKBeObject *) m_Context->GetObject(it.GetKey());
         if (beo) {
             ++it;

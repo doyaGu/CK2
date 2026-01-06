@@ -335,7 +335,7 @@ CKERROR CKPluginManager::UnLoadPluginDll(int PluginDllIdx) {
         for (XArray<CKPluginEntry *>::Iterator eit = cit->m_Entries.Begin(); eit != cit->m_Entries.End(); ++eit) {
             CKPluginEntry *entry = *eit;
             if (entry->m_PluginDllIndex == PluginDllIdx) {
-                auto &pluginInfo = entry->m_PluginInfo;
+                CKPluginInfo &pluginInfo = entry->m_PluginInfo;
                 if (pluginInfo.m_Type == CKPLUGIN_BEHAVIOR_DLL) {
                     RemoveBehaviors(index);
                 }
@@ -634,7 +634,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
         }
     }
 
-    for (auto it = file->m_IncludedFiles.Begin(); it != file->m_IncludedFiles.End(); ++it) {
+    for (XClassArray<XString>::Iterator it = file->m_IncludedFiles.Begin(); it != file->m_IncludedFiles.End(); ++it) {
         XString &includedFile = *it;
         CKPathSplitter ps(includedFile.Str());
         CKFileExtension ext(ps.GetExtension());
@@ -656,7 +656,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
 
     CKBOOL useGlobal = FALSE;
     XIntArray &textures = file->m_IndexByClassId[CKCID_TEXTURE];
-    for (auto it = textures.Begin(); it != textures.End(); ++it) {
+    for (XIntArray::Iterator it = textures.Begin(); it != textures.End(); ++it) {
         CKTexture *texture = (CKTexture *) file->m_FileObjects[*it].ObjPtr;
         if (texture) {
             CKMovieInfo *movieInfo = texture->m_MovieInfo;
@@ -682,7 +682,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
     }
 
     XIntArray &sprites = file->m_IndexByClassId[CKCID_SPRITE];
-    for (auto it = sprites.Begin(); it != sprites.End(); ++it) {
+    for (XIntArray::Iterator it = sprites.Begin(); it != sprites.End(); ++it) {
         CKSprite *sprite = (CKSprite *) file->m_FileObjects[*it].ObjPtr;
         if (sprite) {
             CKMovieReader *movieReader = sprite->GetMovieReader();
@@ -712,7 +712,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
     }
 
     XIntArray &sounds = file->m_IndexByClassId[CKCID_WAVESOUND];
-    for (auto it = sounds.Begin(); it != sounds.End(); ++it) {
+    for (XIntArray::Iterator it = sounds.Begin(); it != sounds.End(); ++it) {
         CKWaveSound *sound = (CKWaveSound *) file->m_FileObjects[*it].ObjPtr;
         if (sound) {
             CKSoundReader *soundReader = sound->GetReader();
@@ -726,7 +726,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
     }
 
     XIntArray &paramLocal = file->m_IndexByClassId[CKCID_PARAMETERLOCAL];
-    for (auto it = paramLocal.Begin(); it != paramLocal.End(); ++it) {
+    for (XIntArray::Iterator it = paramLocal.Begin(); it != paramLocal.End(); ++it) {
         CKParameterLocal *param = (CKParameterLocal *) file->m_FileObjects[*it].ObjPtr;
         if (param) {
             CKParameterTypeDesc *desc = param->GetParameterType();
@@ -737,7 +737,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
     }
 
     XIntArray &paramOut = file->m_IndexByClassId[CKCID_PARAMETEROUT];
-    for (auto it = paramOut.Begin(); it != paramOut.End(); ++it) {
+    for (XIntArray::Iterator it = paramOut.Begin(); it != paramOut.End(); ++it) {
         CKParameterOut *param = (CKParameterOut *) file->m_FileObjects[*it].ObjPtr;
         if (param) {
             CKParameterTypeDesc *desc = param->GetParameterType();
@@ -748,7 +748,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
     }
 
     XIntArray &param = file->m_IndexByClassId[CKCID_PARAMETER];
-    for (auto it = param.Begin(); it != param.End(); ++it) {
+    for (XIntArray::Iterator it = param.Begin(); it != param.End(); ++it) {
         CKParameter *param = (CKParameter *) file->m_FileObjects[*it].ObjPtr;
         if (param) {
             CKParameterTypeDesc *desc = param->GetParameterType();
@@ -770,7 +770,7 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
 
     XHashTable<CKObjectDeclaration *, CKGUID> decls;
     XIntArray &behaviors = file->m_IndexByClassId[CKCID_BEHAVIOR];
-    for (auto it = behaviors.Begin(); it != behaviors.End(); ++it) {
+    for (XIntArray::Iterator it = behaviors.Begin(); it != behaviors.End(); ++it) {
         CKBehavior *beh = (CKBehavior *) file->m_FileObjects[*it].ObjPtr;
         if (beh && beh->GetFlags() & CKBEHAVIOR_BUILDINGBLOCK) {
             CKGUID guid = beh->GetPrototypeGuid();

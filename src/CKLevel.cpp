@@ -506,6 +506,7 @@ CKERROR CKLevel::Load(CKStateChunk *chunk, CKFile *file) {
             }
         }
     }
+    
     return CK_OK;
 }
 

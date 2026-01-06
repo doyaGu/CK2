@@ -660,8 +660,8 @@ CKBaseManager *CKContext::GetManagerByName(CKSTRING ManagerName) {
         if (!strcmp(manager->GetName(), ManagerName))
             return manager;
     }
-    for (int i = 0; i < m_InactiveManagers.Size(); ++i) {
-        CKBaseManager *manager = m_InactiveManagers[i];
+    for (XManagerArray::Iterator it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
+        CKBaseManager *manager = *it;
         if (!strcmp(manager->GetName(), ManagerName))
             return manager;
     }

@@ -233,7 +233,7 @@ CKBehavior *CKBeObject::RemoveScript(int pos) {
     // Remove from array using XRemove pattern
     m_ScriptArray->RemoveAt(pos);
 
-    CKBehavior *script = (CKBehavior *)m_Context->GetObject(scriptId);
+    CKBehavior *script = (CKBehavior *) m_Context->GetObject(scriptId);
     if (script) {
         script->SetOwner(nullptr, TRUE);
 

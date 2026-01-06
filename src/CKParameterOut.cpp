@@ -181,7 +181,7 @@ void CKParameterOut::PreDelete() {
                 beh = (CKBehavior *) parent;
                 if (!beh->IsToBeDeleted()) {
                     XSObjectPointerArray &outParams = beh->m_OutParameter;
-                    for (auto it = outParams.Begin(); it != outParams.End(); ++it) {
+                    for (CKObject **it = outParams.Begin(); it != outParams.End(); ++it) {
                         if (*it == this) {
                             outParams.Remove(*it);
                             break;
@@ -219,7 +219,7 @@ int CKParameterOut::GetMemoryOccupation() {
 int CKParameterOut::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     if (CKIsChildClassOf(cid, CKCID_PARAMETER)) {
         XSObjectPointerArray &destinations = m_Destinations;
-        for (auto it = destinations.Begin(); it != destinations.End(); ++it) {
+        for (CKObject **it = destinations.Begin(); it != destinations.End(); ++it) {
             if (*it == o) {
                 return 1;
             }
@@ -254,7 +254,7 @@ CKERROR CKParameterOut::Copy(CKObject &o, CKDependenciesContext &context) {
     }
 
     CKParameterOut *pOut = (CKParameterOut *) &o;
-    for (auto it = pOut->m_Destinations.Begin(); it != pOut->m_Destinations.End(); ++it) {
+    for (CKObject **it = pOut->m_Destinations.Begin(); it != pOut->m_Destinations.End(); ++it) {
         CKParameter *param = (CKParameter *) *it;
         AddDestination(param, TRUE);
     }

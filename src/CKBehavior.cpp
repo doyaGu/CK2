@@ -2617,7 +2617,7 @@ int CKBehavior::ExecuteFunction() {
     }
 #endif
 
-    if ((result & CKBR_ACTIVATENEXTFRAME) == 0) {
+    if (!(result & CKBR_ACTIVATENEXTFRAME)) {
         m_Flags &= ~CKBEHAVIOR_ACTIVE;
     }
 
@@ -2720,7 +2720,7 @@ void CKBehavior::HierarchyPostLoad() {
 
     // Process input parameters
     int paramIndex = 0;
-    for (auto it = m_InParameter.Begin(); it != m_InParameter.End(); ++it, ++paramIndex) {
+    for (CKObject **it = m_InParameter.Begin(); it != m_InParameter.End(); ++it, ++paramIndex) {
         CKParameterIn *param = (CKParameterIn *) *it;
         if (!param) continue;
 
@@ -2746,7 +2746,7 @@ void CKBehavior::HierarchyPostLoad() {
 
     // Process output parameters
     paramIndex = 0;
-    for (auto it = m_OutParameter.Begin(); it != m_OutParameter.End(); ++it, ++paramIndex) {
+    for (CKObject **it = m_OutParameter.Begin(); it != m_OutParameter.End(); ++it, ++paramIndex) {
         CKParameterOut *param = (CKParameterOut *) *it;
         if (!param) continue;
 
@@ -2764,7 +2764,7 @@ void CKBehavior::HierarchyPostLoad() {
 
     // Process local parameters
     paramIndex = 0;
-    for (auto it = m_LocalParameter.Begin(); it != m_LocalParameter.End(); ++it, ++paramIndex) {
+    for (CKObject **it = m_LocalParameter.Begin(); it != m_LocalParameter.End(); ++it, ++paramIndex) {
         CKParameterLocal *param = (CKParameterLocal *) *it;
         if (!param) continue;
 
@@ -2780,7 +2780,7 @@ void CKBehavior::HierarchyPostLoad() {
 
     // Process input IOs
     int ioIndex = 0;
-    for (auto it = m_InputArray.Begin(); it != m_InputArray.End(); ++it, ++ioIndex) {
+    for (CKObject **it = m_InputArray.Begin(); it != m_InputArray.End(); ++it, ++ioIndex) {
         CKBehaviorIO *io = (CKBehaviorIO *) *it;
         if (!io) continue;
 
@@ -2796,7 +2796,7 @@ void CKBehavior::HierarchyPostLoad() {
 
     // Process output IOs
     ioIndex = 0;
-    for (auto it = m_OutputArray.Begin(); it != m_OutputArray.End(); ++it, ++ioIndex) {
+    for (CKObject **it = m_OutputArray.Begin(); it != m_OutputArray.End(); ++it, ++ioIndex) {
         CKBehaviorIO *io = (CKBehaviorIO *) *it;
         if (!io) continue;
 
