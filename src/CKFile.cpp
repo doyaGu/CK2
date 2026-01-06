@@ -1128,7 +1128,7 @@ CKERROR CKFile::EndSave() {
 
     parser->Seek(0);
     if ((header.Part0.FileWriteMode & (CKFILE_WHOLECOMPRESSED | CKFILE_CHUNKCOMPRESSED_OLD)) != 0) {
-        parser = parser->Pack((int) header.Part1.Hdr1UnPackSize, m_Context->GetCompressionLevel());
+        parser = parser->Pack((int) header.Part1.DataUnPackSize, m_Context->GetCompressionLevel());
         if (parser && (CKDWORD) parser->Size() < header.Part1.DataUnPackSize) {
             header.Part1.DataPackSize = parser->Size();
             delete dataBufferParser;
