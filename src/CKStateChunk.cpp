@@ -162,13 +162,14 @@ void CKStateChunk::CheckSize(int size) {
     if (sz + m_ChunkParser->CurrentPos > m_ChunkParser->DataSize) {
         if (sz < 500)
             sz = 500;
-        int *data = new int[m_ChunkParser->DataSize + sz];
+        int newSize = m_ChunkParser->DataSize + sz;
+        int *data = new int[newSize];
         if (m_Data) {
             memcpy(data, m_Data, m_ChunkParser->CurrentPos * sizeof(int));
             delete[] m_Data;
         }
         m_Data = data;
-        m_ChunkParser->DataSize = m_ChunkParser->DataSize + sz;
+        m_ChunkParser->DataSize = newSize;
     }
 }
 
@@ -1079,7 +1080,7 @@ CKGUID CKStateChunk::ReadGuid() {
 }
 
 void CKStateChunk::WriteFloat(float data) {
-    WriteInt(*(int *) &data);
+    WriteDword(*(CKDWORD *) &data);
 }
 
 float CKStateChunk::ReadFloat() {
