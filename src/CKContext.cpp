@@ -690,11 +690,7 @@ CKBOOL CKContext::IsManagerActive(CKBaseManager *manager) {
 CKBOOL CKContext::HasManagerDuplicates(CKBaseManager *manager) {
     if (m_InactiveManagers.Size() == 0)
         return FALSE;
-    for (auto it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
-        if (*it == manager)
-            return TRUE;
-    }
-    return FALSE;
+    return m_InactiveManagers.IsHere(manager);
 }
 
 void CKContext::ActivateManager(CKBaseManager *manager, CKBOOL activate) {
