@@ -1060,12 +1060,12 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
 
         CK_OBJECTCREATION_OPTIONS globalOption = (CK_OBJECTCREATION_OPTIONS) m_GeneralRenameOption;
         if (globalOption != CK_OBJECTCREATION_NONAMECHECK) {
-            if (globalOption == CKLOAD_RENAME) {
+            if (globalOption == CK_OBJECTCREATION_RENAME) {
                 GetSecureName(NewName, OldName, Cid);
                 if (newobj) *newobj = nullptr;
                 return CKLOAD_RENAME;
             }
-            if (globalOption == CKLOAD_USECURRENT) {
+            if (globalOption == CK_OBJECTCREATION_USECURRENT) {
                 if (newobj) *newobj = existingObj;
                 return CKLOAD_USECURRENT;
             }
@@ -1087,12 +1087,12 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
 
         CK_OBJECTCREATION_OPTIONS globalOption = (CK_OBJECTCREATION_OPTIONS) m_MatTexturesRenameOption;
         if (globalOption != CK_OBJECTCREATION_NONAMECHECK) {
-            if (globalOption == CKLOAD_RENAME) {
+            if (globalOption == CK_OBJECTCREATION_RENAME) {
                 GetSecureName(NewName, OldName, Cid);
                 if (newobj) *newobj = nullptr;
                 return CKLOAD_RENAME;
             }
-            if (globalOption == CKLOAD_USECURRENT) {
+            if (globalOption == CK_OBJECTCREATION_USECURRENT) {
                 if (newobj) *newobj = existingObj;
                 return CKLOAD_USECURRENT;
             }
