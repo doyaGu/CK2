@@ -228,8 +228,8 @@ public:
     void ExecuteManagersPostLoad();
     void ExecuteManagersPreSave();
     void ExecuteManagersPostSave();
-    void ExecuteManagersOnSequenceAddedToScene(CKScene *scn, CK_ID *objids, int coun);
-    void ExecuteManagersOnSequenceRemovedFromScene(CKScene *scn, CK_ID *objids, int coun);
+    void ExecuteManagersOnSequenceAddedToScene(CKScene *scn, CK_ID *objids, int count);
+    void ExecuteManagersOnSequenceRemovedFromScene(CKScene *scn, CK_ID *objids, int count);
     void ExecuteManagersOnPreCopy(CKDependenciesContext *context);
     void ExecuteManagersOnPostCopy(CKDependenciesContext *context);
 

@@ -1350,21 +1350,21 @@ void CKContext::ExecuteManagersPostSave() {
     m_CurrentManager = nullptr;
 }
 
-void CKContext::ExecuteManagersOnSequenceAddedToScene(CKScene *scn, CK_ID *objids, int coun) {
+void CKContext::ExecuteManagersOnSequenceAddedToScene(CKScene *scn, CK_ID *objids, int count) {
     XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceAddedToScene];
     for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++it) {
         m_CurrentManager = *it;
-        m_CurrentManager->SequenceAddedToScene(scn, objids, coun);
+        m_CurrentManager->SequenceAddedToScene(scn, objids, count);
     }
     m_CurrentManager = nullptr;
 }
 
-void CKContext::ExecuteManagersOnSequenceRemovedFromScene(CKScene *scn, CK_ID *objids, int coun) {
+void CKContext::ExecuteManagersOnSequenceRemovedFromScene(CKScene *scn, CK_ID *objids, int count) {
     XManagerArray &managers = m_ManagerList[CKMANAGER_INDEX_OnSequenceRemovedFromScene];
     for (XManagerArray::Iterator it = managers.Begin(); it != managers.End(); ++
          it) {
         m_CurrentManager = *it;
-        m_CurrentManager->SequenceRemovedFromScene(scn, objids, coun);
+        m_CurrentManager->SequenceRemovedFromScene(scn, objids, count);
     }
     m_CurrentManager = nullptr;
 }
