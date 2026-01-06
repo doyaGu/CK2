@@ -26,12 +26,7 @@ int CKObjectDeclaration::GetType() {
 }
 
 void CKObjectDeclaration::NeedManager(CKGUID Manager) {
-    CKGUID *it;
-    for (it = m_ManagersGuid.Begin(); it != m_ManagersGuid.End(); ++it) {
-        if (*it == Manager)
-            break;
-    }
-    if (it == m_ManagersGuid.End())
+    if (!m_ManagersGuid.IsHere(Manager))
         m_ManagersGuid.PushBack(Manager);
 }
 
