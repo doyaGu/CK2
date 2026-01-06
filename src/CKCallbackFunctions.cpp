@@ -38,7 +38,7 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
     copyDependenciesTypeDesc.Guid = CKPGUID_COPYDEPENDENCIES;
     copyDependenciesTypeDesc.TypeName = "Copy Dependencies";
     copyDependenciesTypeDesc.Valid = TRUE;
-    copyDependenciesTypeDesc.DefaultSize = sizeof(CKDWORD);
+    copyDependenciesTypeDesc.DefaultSize = sizeof(CKDependencies *);
     copyDependenciesTypeDesc.CreateDefaultFunction = CKDependenciesCreator;
     copyDependenciesTypeDesc.DeleteFunction = CKDependenciesDestructor;
     copyDependenciesTypeDesc.SaveLoadFunction = CKDependenciesSaver;
@@ -217,7 +217,7 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
     collectionTypeDesc.Guid = CKPGUID_OBJECTARRAY;
     collectionTypeDesc.TypeName = "Collection";
     collectionTypeDesc.Valid = TRUE;
-    collectionTypeDesc.DefaultSize = sizeof(CKDWORD);
+    collectionTypeDesc.DefaultSize = sizeof(XObjectArray *);
     collectionTypeDesc.CreateDefaultFunction = CKCollectionCreator;
     collectionTypeDesc.DeleteFunction = CKCollectionDestructor;
     collectionTypeDesc.SaveLoadFunction = CKCollectionSaver;
@@ -250,7 +250,7 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
     curve2DTypeDesc.Guid = CKPGUID_2DCURVE;
     curve2DTypeDesc.TypeName = "2D Curve";
     curve2DTypeDesc.Valid = TRUE;
-    curve2DTypeDesc.DefaultSize = sizeof(CKDWORD);
+    curve2DTypeDesc.DefaultSize = sizeof(CK2dCurve *);
     curve2DTypeDesc.CreateDefaultFunction = CK2dCurveCreator;
     curve2DTypeDesc.DeleteFunction = CK2dCurveDestructor;
     curve2DTypeDesc.SaveLoadFunction = CK2dCurveSaver;
@@ -617,14 +617,14 @@ void CKCollectionCheck(CKParameter *param) {
     param->GetValue(&objectArray, FALSE);
     int i = 0;
     CK_ID *begin = objectArray->Begin();
-    if (objectArray->End() - objectArray->Begin() >= 0 && objectArray->Size() != 0) {
+    if (objectArray->Size() != 0) {
         do {
             if (!param->m_Context->GetObject(begin[i])) {
                 objectArray->Begin()[i] = 0;
             }
             ++i;
             begin = objectArray->Begin();
-        } while (i < objectArray->End() - objectArray->Begin());
+        } while (i < objectArray->Size());
     }
 }
 
