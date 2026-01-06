@@ -695,8 +695,7 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     return CK_OK;
 }
 
-CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData,
-                                                 XArray<CKGUID> &ListGuid) {
+CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData, XArray<CKGUID> &ListGuid) {
     if (!StructData || !StructName[0])
         return CKERR_INVALIDPARAMETER;
 
@@ -888,8 +887,7 @@ CKERROR CKParameterManager::UnRegisterOperationType(CKOperationType opcode) {
     return CK_OK;
 }
 
-CKERROR CKParameterManager::RegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1,
-                                                      CKGUID &type_param2, CK_PARAMETEROPERATION op) {
+CKERROR CKParameterManager::RegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1, CKGUID &type_param2, CK_PARAMETEROPERATION op) {
     if (!m_OperationTree)
         return CKERR_INVALIDOPERATION;
 
@@ -910,8 +908,7 @@ CKERROR CKParameterManager::RegisterOperationFunction(CKGUID &operation, CKGUID 
     return CK_OK;
 }
 
-CK_PARAMETEROPERATION CKParameterManager::GetOperationFunction(CKGUID &operation, CKGUID &type_paramres,
-                                                               CKGUID &type_param1, CKGUID &type_param2) {
+CK_PARAMETEROPERATION CKParameterManager::GetOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1, CKGUID &type_param2) {
     CKOperationType type = OperationGuidToCode(operation);
     if (type < 0 || type >= m_NbOperations || !m_OperationTree)
         return nullptr;
@@ -985,8 +982,7 @@ CK_PARAMETEROPERATION CKParameterManager::GetOperationFunction(CKGUID &operation
     return nullptr;
 }
 
-CKERROR CKParameterManager::UnRegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1,
-                                                        CKGUID &type_param2) {
+CKERROR CKParameterManager::UnRegisterOperationFunction(CKGUID &operation, CKGUID &type_paramres, CKGUID &type_param1, CKGUID &type_param2) {
     if (!m_OperationTree)
         return CKERR_INVALIDOPERATION;
 
@@ -1060,8 +1056,7 @@ CKOperationType CKParameterManager::OperationNameToCode(CKSTRING name) {
     return -1;
 }
 
-int CKParameterManager::GetAvailableOperationsDesc(const CKGUID &opGuid, CKParameterOut *res, CKParameterIn *p1,
-                                                   CKParameterIn *p2, CKOperationDesc *list) {
+int CKParameterManager::GetAvailableOperationsDesc(const CKGUID &opGuid, CKParameterOut *res, CKParameterIn *p1, CKParameterIn *p2, CKOperationDesc *list) {
     if (!m_DerivationMasksUpToDate) {
         UpdateDerivationTables();
     }
