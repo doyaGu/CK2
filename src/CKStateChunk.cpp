@@ -685,8 +685,10 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
         count = m_Data[m_ChunkParser->CurrentPos++];
     }
 
-    if (!array)
+    if (!array) {
         m_ChunkParser->CurrentPos += count;
+        return;
+    }
 
     array->Clear();
     if (count + m_ChunkParser->CurrentPos <= m_ChunkSize) {
