@@ -194,15 +194,40 @@ add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADER
 target_compile_definitions(CK2 PRIVATE CK_API)
 
 target_include_directories(CK2
-        PUBLIC $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
+        PUBLIC 
+        $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE ${STB_INCLUDE_DIR}
 )
 
 target_link_libraries(CK2
         PUBLIC
-        VxMath
+        VxMath::VxMath
         PRIVATE
         miniz
 )
 
-install(TARGETS CK2 RUNTIME DESTINATION Bin)
+# Set library properties
+set_target_properties(CK2 PROPERTIES
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
+        OUTPUT_NAME "CK2"
+        DEBUG_POSTFIX "d"
+)
+
+# Installation rules (only if CK2_INSTALL is enabled)
+if(CK2_INSTALL)
+    # Install library
+    install(TARGETS CK2
+            EXPORT CK2Targets
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
+
+    # Install public headers
+    install(DIRECTORY ${CK2_INCLUDE_DIR}/
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING PATTERN "*.h"
+    )
+endif()

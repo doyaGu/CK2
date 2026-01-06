@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+# CK2 CMake Configuration File
+# Provides the CK2::CK2 target for use in other CMake projects
+
+# Find dependencies
+include(CMakeFindDependencyMacro)
+find_dependency(VxMath REQUIRED)
+
+# Include the exported targets
+include("${CMAKE_CURRENT_LIST_DIR}/CK2Targets.cmake")
+
+# Provide backwards compatibility variables
+set(CK2_LIBRARIES CK2::CK2)
+get_target_property(CK2_INCLUDE_DIRS CK2::CK2 INTERFACE_INCLUDE_DIRECTORIES)
+
+check_required_components(CK2)
