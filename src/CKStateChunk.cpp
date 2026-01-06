@@ -1256,7 +1256,7 @@ void CKStateChunk::ReadString(XString &str) {
 
     CKDWORD dwordCount = (length + 3) >> 2; // (length+3)/4
 
-    if ((m_ChunkParser->CurrentPos + dwordCount) > m_ChunkSize) {
+    if ((m_ChunkParser->CurrentPos + (int) dwordCount) > m_ChunkSize) {
         str = "";
         return;
     }

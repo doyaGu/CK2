@@ -116,7 +116,7 @@ char *CKBufferParser::ReadString() {
 }
 
 int CKBufferParser::ReadInt() {
-    if (m_CursorPos + sizeof(int) > m_Size)
+    if (m_CursorPos + (int) sizeof(int) > m_Size)
         return 0;
 
     int val;

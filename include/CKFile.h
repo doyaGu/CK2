@@ -273,7 +273,7 @@ protected:
     CKObject *ResolveReference(CKFileObject *Data);
 
 public:
-    int m_SaveIDMax;                                    // Maximum CK_ID found when saving or loading objects  {secret}
+    CK_ID m_SaveIDMax;                                    // Maximum CK_ID found when saving or loading objects  {secret}
     XArray<CKFileObject> m_FileObjects;                 // List of objects being saved / loaded   {secret}
     XArray<CKFileManagerData> m_ManagersData;           // Manager Data loaded  {secret}
     XClassArray<CKFilePluginDependencies> m_PluginsDep; // Plugins dependencies for this file  {secret}

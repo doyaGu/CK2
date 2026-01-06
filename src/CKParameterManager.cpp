@@ -779,7 +779,7 @@ int CKParameterManager::GetNbStructDefined() {
 
 CKFlagsStruct *CKParameterManager::GetFlagsDescByType(CKParameterType pType) {
     CKParameterTypeDesc *desc = GetParameterTypeDescription(pType);
-    if (desc && desc->dwFlags & CKPARAMETERTYPE_FLAGS && desc->dwParam < m_NbFlagsDefined) {
+    if (desc && desc->dwFlags & CKPARAMETERTYPE_FLAGS && (int) desc->dwParam < m_NbFlagsDefined) {
         return &m_Flags[desc->dwParam];
     }
     return nullptr;
@@ -787,7 +787,7 @@ CKFlagsStruct *CKParameterManager::GetFlagsDescByType(CKParameterType pType) {
 
 CKEnumStruct *CKParameterManager::GetEnumDescByType(CKParameterType pType) {
     CKParameterTypeDesc *desc = GetParameterTypeDescription(pType);
-    if (desc && desc->dwFlags & CKPARAMETERTYPE_ENUMS && desc->dwParam < m_NbEnumsDefined) {
+    if (desc && desc->dwFlags & CKPARAMETERTYPE_ENUMS && (int) desc->dwParam < m_NbEnumsDefined) {
         return &m_Enums[desc->dwParam];
     }
     return nullptr;
@@ -795,7 +795,7 @@ CKEnumStruct *CKParameterManager::GetEnumDescByType(CKParameterType pType) {
 
 CKStructStruct *CKParameterManager::GetStructDescByType(CKParameterType pType) {
     CKParameterTypeDesc *desc = GetParameterTypeDescription(pType);
-    if (desc && desc->dwFlags & CKPARAMETERTYPE_STRUCT && desc->dwParam < m_NbStructDefined) {
+    if (desc && desc->dwFlags & CKPARAMETERTYPE_STRUCT && (int) desc->dwParam < m_NbStructDefined) {
         return &m_Structs[desc->dwParam];
     }
     return nullptr;
