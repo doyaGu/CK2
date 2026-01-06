@@ -307,7 +307,7 @@ int CKParameterIn::GetMemoryOccupation() {
         static_cast<int>(sizeof(CKParameterIn) - sizeof(CKObject));
 }
 
-int CKParameterIn::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
+CKBOOL CKParameterIn::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     if (m_OutSource == o) {
         return TRUE;
     }

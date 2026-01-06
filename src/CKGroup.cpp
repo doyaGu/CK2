@@ -256,7 +256,7 @@ int CKGroup::GetMemoryOccupation() {
     return size;
 }
 
-int CKGroup::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
+CKBOOL CKGroup::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     if (!CKIsChildClassOf(o, CKCID_BEOBJECT))
         return CKBeObject::IsObjectUsed(o, cid);
     if (m_ObjectArray.FindObject(o))
@@ -318,7 +318,7 @@ int CKGroup::GetDependenciesCount(int mode) {
 }
 
 CKSTRING CKGroup::GetDependencies(int i, int mode) {
-    return (i == 0) ? "Objects" : nullptr;
+    return (i == 0) ? (CKSTRING) "Objects" : nullptr;
 }
 
 void CKGroup::Register() {

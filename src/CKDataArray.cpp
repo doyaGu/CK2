@@ -2065,7 +2065,7 @@ int CKDataArray::GetMemoryOccupation() {
     return size;
 }
 
-int CKDataArray::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
+CKBOOL CKDataArray::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     CKParameterManager *pm = m_Context->GetParameterManager();
     CK_ID targetId = o ? o->GetID() : 0;
 
@@ -2091,7 +2091,7 @@ int CKDataArray::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
             if (param) {
                 CK_ID *idPtr = (CK_ID *) param->GetReadDataPtr();
                 if (idPtr && *idPtr == targetId) {
-                    return 1;
+                    return TRUE;
                 }
             }
         }

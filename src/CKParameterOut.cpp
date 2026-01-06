@@ -216,7 +216,7 @@ int CKParameterOut::GetMemoryOccupation() {
         m_Destinations.GetMemoryOccupation(FALSE);
 }
 
-int CKParameterOut::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
+CKBOOL CKParameterOut::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     if (CKIsChildClassOf(cid, CKCID_PARAMETER)) {
         XSObjectPointerArray &destinations = m_Destinations;
         for (CKObject **it = destinations.Begin(); it != destinations.End(); ++it) {

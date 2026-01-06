@@ -445,7 +445,7 @@ int CKParameter::GetMemoryOccupation() {
         m_Size;
 }
 
-int CKParameter::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
+CKBOOL CKParameter::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
     return CKObject::IsObjectUsed(o, cid);
 }
 
