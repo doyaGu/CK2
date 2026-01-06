@@ -1626,7 +1626,7 @@ void CKContext::BuildSortedLists() {
         m_ManagerList[i].Clear();
     }
 
-    for (auto it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
+    for (XManagerHashTableIt it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
         CKBaseManager *manager = *it;
         for (int i = 0; i < 32; ++i) {
             if (manager->GetValidFunctionsMask() & (1 << i)) {
@@ -1690,7 +1690,7 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_RunTime = FALSE;
     m_StartOptions = Flags;
     m_InterfaceMode = 0;
-    m_VirtoolsBuild = 0x2010001;
+    m_VirtoolsBuild = DEVVERSION;
     m_VirtoolsVersion = 0;
     m_UICallBackFct = nullptr;
     m_InterfaceModeData = nullptr;
