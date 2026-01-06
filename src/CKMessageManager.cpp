@@ -10,7 +10,7 @@
 #include "CKDebugContext.h"
 #include "CKParameterManager.h"
 
-extern int g_MaxClassID;
+extern CK_CLASSID g_MaxClassID;
 
 CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
     if (!MsgName || MsgName[0] == '\0') return -1;

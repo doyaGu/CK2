@@ -37,12 +37,12 @@ XString g_PluginPath;
 XString g_StartPath;
 XArray<CKContext *> g_Contextes;
 XClassInfoArray g_CKClassInfo;
+CK_CLASSID g_MaxClassID = CKCID_MAXCLASSID;
 CKDependencies g_DefaultCopyDependencies;
 CKDependencies g_DefaultReplaceDependencies;
 CKDependencies g_DefaultDeleteDependencies;
 CKDependencies g_DefaultSaveDependencies;
 CKStats g_MainStats;
-int g_MaxClassID = CKCID_MAXCLASSID;
 ProcessorsType g_TheProcessor;
 CKPluginManager g_ThePluginManager;
 VxImageDescEx Default32Desc;
@@ -424,7 +424,7 @@ CKClassDesc *CKGetClassDesc(CK_CLASSID cid) {
 }
 
 CKSTRING CKClassIDToString(CK_CLASSID cid) {
-    if (cid >= 0 && cid < g_CKClassInfo.Size()) {
+    if (cid < g_CKClassInfo.Size()) {
         CKSTRING name = g_CKClassInfo[cid].NameFct();
         if (name)
             return name;
@@ -498,7 +498,7 @@ CK_CLASSID CKGetParentClassID(CKObject *obj) {
 }
 
 CK_CLASSID CKGetCommonParent(CK_CLASSID cid1, CK_CLASSID cid2) {
-    if (cid1 <= 0 || cid2 <= 0 || cid1 >= g_CKClassInfo.Size() || cid2 >= g_CKClassInfo.Size()) {
+    if (cid1 >= g_CKClassInfo.Size() || cid2 >= g_CKClassInfo.Size()) {
         return 0;
     }
 
@@ -853,7 +853,7 @@ void CKClassRegisterDefaultOptions(CK_CLASSID Cid, CKDWORD options_Mask) {
 }
 
 CK_CLASSID CKClassGetNewIdentifier() {
-    CK_CLASSID cid = g_CKClassInfo.Size();
+    CK_CLASSID cid = static_cast<CK_CLASSID>(g_CKClassInfo.Size());
     if (cid < CKCID_MAXCLASSID)
         cid = CKCID_MAXCLASSID;
     if (cid >= g_MaxClassID)
