@@ -221,7 +221,6 @@ set_target_properties(CK2 PROPERTIES
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
         OUTPUT_NAME "CK2"
-        DEBUG_POSTFIX "d"
 )
 
 # Installation rules (only if CK2_INSTALL is enabled)
