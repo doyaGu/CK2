@@ -124,7 +124,39 @@ set(CK2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include" CACHE INTERNAL "")
 set(CK2_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src" CACHE INTERNAL "")
 
 # Find dependencies
-find_package(VxMath REQUIRED)
+# Prefer an already-installed VxMath package (Config or Module mode), but fall back to fetching it.
+if(NOT TARGET VxMath::VxMath)
+    find_package(VxMath QUIET)
+endif()
+
+if(NOT TARGET VxMath::VxMath)
+    include(FetchContent)
+    FetchContent_Declare(
+            VxMath
+            GIT_REPOSITORY https://github.com/doyaGu/VxMath
+            GIT_TAG main
+    )
+
+    if(COMMAND FetchContent_MakeAvailable)
+        FetchContent_MakeAvailable(VxMath)
+    else()
+        FetchContent_GetProperties(VxMath)
+        if(NOT vxmath_POPULATED)
+            FetchContent_Populate(VxMath)
+            add_subdirectory("${vxmath_SOURCE_DIR}" "${vxmath_BINARY_DIR}" EXCLUDE_FROM_ALL)
+        endif()
+    endif()
+
+    if(NOT TARGET VxMath::VxMath)
+        if(TARGET VxMath)
+            add_library(VxMath::VxMath ALIAS VxMath)
+        endif()
+    endif()
+endif()
+
+if(NOT TARGET VxMath::VxMath)
+    message(FATAL_ERROR "VxMath was not found and could not be fetched. Set VxMath_DIR / CMAKE_PREFIX_PATH, or provide an installed VxMath package.")
+endif()
 
 # Add subdirectories
 add_subdirectory(deps)

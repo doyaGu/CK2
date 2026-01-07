@@ -211,7 +211,7 @@ target_include_directories(CK2
 
 target_link_libraries(CK2
         PUBLIC
-        VxMath
+        VxMath::VxMath
         PRIVATE
         miniz
 )
