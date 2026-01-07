@@ -944,7 +944,7 @@ CKERROR CKContext::GetFileInfo(int BufferSize, void *MemoryBuffer, CKFileInfo *F
     FileInfo->ObjectCount = header2[3];
     FileInfo->MaxIDSaved = header2[4];
     FileInfo->Hdr1PackSize = header1[7];
-    FileInfo->Hdr1UnPackSize = header2[1];
+    FileInfo->Hdr1UnPackSize = header2[7];
     FileInfo->DataUnPackSize = header2[1];
     FileInfo->DataPackSize = header2[0];
     FileInfo->Crc = header1[2];
