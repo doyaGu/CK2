@@ -6,21 +6,21 @@ project(CK2
 )
 
 # Determine if CK2 is being used as a subproject
-if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.21")
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.21")
     # Use the built-in variable for CMake 3.21+
-    if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         set(CK2_IS_TOP_LEVEL ON)
-    else()
+    else ()
         set(CK2_IS_TOP_LEVEL OFF)
-    endif()
-else()
+    endif ()
+else ()
     # Fallback for older CMake versions
-    if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
         set(CK2_IS_TOP_LEVEL ON)
-    else()
+    else ()
         set(CK2_IS_TOP_LEVEL OFF)
-    endif()
-endif()
+    endif ()
+endif ()
 
 # Only enforce out-of-source builds when CK2 is the top-level project
 if (CK2_IS_TOP_LEVEL AND CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -28,19 +28,27 @@ if (CK2_IS_TOP_LEVEL AND CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 endif ()
 
 # Set C++ standard only if not already set by parent project
-if(NOT CMAKE_CXX_STANDARD)
+if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 11)
-endif()
-if(NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
+endif ()
+if (NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
     set(CMAKE_CXX_STANDARD_REQUIRED NO)
-endif()
-if(NOT DEFINED CMAKE_CXX_EXTENSIONS)
+endif ()
+if (NOT DEFINED CMAKE_CXX_EXTENSIONS)
     set(CMAKE_CXX_EXTENSIONS YES)
-endif()
+endif ()
 
 # Project options - defaults depend on whether this is a top-level project
 option(CK2_BUILD_TESTS "Build the test suite" ${CK2_IS_TOP_LEVEL})
 option(CK2_INSTALL "Generate install target" ${CK2_IS_TOP_LEVEL})
+
+# Library type
+# - Historically CK2 built as a shared library.
+# - Use the standard BUILD_SHARED_LIBS switch so consumers can control it.
+# - Only set a default when CK2 is the top-level project.
+if (CK2_IS_TOP_LEVEL AND NOT DEFINED BUILD_SHARED_LIBS)
+    option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+endif ()
 
 # Add path for custom modules (if needed in the future)
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -50,10 +58,10 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # Use folders to organize targets in an IDE (only when top-level)
-if(CK2_IS_TOP_LEVEL)
+if (CK2_IS_TOP_LEVEL)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
     set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMakeTargets")
-endif()
+endif ()
 
 # Platform checks
 if (NOT WIN32)
@@ -67,14 +75,14 @@ if (CK2_IS_TOP_LEVEL AND WIN32)
 endif ()
 
 # Build type handling (only when top-level)
-if(CK2_IS_TOP_LEVEL)
+if (CK2_IS_TOP_LEVEL)
     get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
     if (NOT IS_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
         message(STATUS "Setting build type to 'Release' as no build type was specified")
         set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the build type (Debug/Release)" FORCE)
         set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
     endif ()
-endif()
+endif ()
 
 # Install prefix (only when top-level)
 if (CK2_IS_TOP_LEVEL AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -83,9 +91,9 @@ if (CK2_IS_TOP_LEVEL AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif ()
 
 # Generate compile commands for IDEs/tools (only when top-level)
-if(CK2_IS_TOP_LEVEL)
+if (CK2_IS_TOP_LEVEL)
     set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
-endif()
+endif ()
 
 # Configure compiler-specific settings
 # MSVC specific settings
@@ -129,7 +137,7 @@ endif ()
 # Export and packaging
 if (CK2_INSTALL)
     # Export targets for build tree
-    export(TARGETS CK2
+    export(TARGETS CK2 miniz
             FILE "${CMAKE_CURRENT_BINARY_DIR}/CK2Targets.cmake"
             NAMESPACE CK2::
     )
@@ -142,20 +150,20 @@ if (CK2_INSTALL)
     )
 
     # Configure package config file (if config file template exists)
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CK2Config.cmake.in")
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CK2Config.cmake.in")
         configure_package_config_file(
                 "${CMAKE_CURRENT_SOURCE_DIR}/cmake/CK2Config.cmake.in"
                 "${CMAKE_CURRENT_BINARY_DIR}/CK2Config.cmake"
                 INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CK2
         )
-    else()
+    else ()
         # Create a simple config file if template doesn't exist
         file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/CK2Config.cmake"
                 "include(CMakeFindDependencyMacro)\n"
                 "find_dependency(VxMath REQUIRED)\n"
                 "include(\"\${CMAKE_CURRENT_LIST_DIR}/CK2Targets.cmake\")\n"
         )
-    endif()
+    endif ()
 
     # Configure package version file
     write_basic_package_version_file(
@@ -172,7 +180,7 @@ if (CK2_INSTALL)
     )
 
     # Add package to CMake package registry (only when top-level)
-    if(CK2_IS_TOP_LEVEL)
+    if (CK2_IS_TOP_LEVEL)
         export(PACKAGE CK2)
-    endif()
+    endif ()
 endif ()

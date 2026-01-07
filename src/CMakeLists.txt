@@ -190,11 +190,20 @@ set(CK2_SOURCES
         CKObjectArray.cpp
 )
 
-add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
-target_compile_definitions(CK2 PRIVATE CK_API)
+add_library(CK2 ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+
+# Header ABI macros (see include/CKDefines.h)
+# - Shared build: CK2 itself defines CK_API to export symbols; consumers get dllimport by default.
+# - Static build: consumers must define CK_LIB to disable dllimport/dllexport.
+target_compile_definitions(CK2
+        PRIVATE
+        $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:CK_API>
+        PUBLIC
+        $<$<NOT:$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>>:CK_LIB>
+)
 
 target_include_directories(CK2
-        PUBLIC 
+        PUBLIC
         $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE ${STB_INCLUDE_DIR}
@@ -202,7 +211,7 @@ target_include_directories(CK2
 
 target_link_libraries(CK2
         PUBLIC
-        VxMath::VxMath
+        VxMath
         PRIVATE
         miniz
 )
@@ -216,9 +225,9 @@ set_target_properties(CK2 PROPERTIES
 )
 
 # Installation rules (only if CK2_INSTALL is enabled)
-if(CK2_INSTALL)
+if (CK2_INSTALL)
     # Install library
-    install(TARGETS CK2
+    install(TARGETS CK2 miniz
             EXPORT CK2Targets
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -230,4 +239,4 @@ if(CK2_INSTALL)
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.h"
     )
-endif()
+endif ()
