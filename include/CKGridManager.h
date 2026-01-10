@@ -39,7 +39,7 @@ the corresponding grid. The Grid Manager, also manages the Layer Types (eg: fire
 
 See also: CKGrid
 *************************************************/
-class CKGridManager : public CKBaseManager
+class DLL_EXPORT CKGridManager : public CKBaseManager
 {
 public:
     //____________________________________________________
