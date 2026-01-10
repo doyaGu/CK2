@@ -280,7 +280,7 @@ CKERROR CKFile::OpenMemory(void *MemoryBuffer, int BufferSize, CK_LOAD_FLAGS Fla
         return CKERR_INVALIDPARAMETER;
     }
 
-    if (BufferSize < 32 || memcmp(MemoryBuffer, "Nemo", 4) != 0) {
+    if (BufferSize < sizeof(CKFileHeaderPart0) || memcmp(MemoryBuffer, "Nemo", 4) != 0) {
         return CKERR_INVALIDFILE;
     }
 
@@ -412,7 +412,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
     CKBufferParser *parser = *ParserPtr;
     m_IncludedFiles.Clear();
 
-    if (parser->Size() < 32) {
+    if (parser->Size() < sizeof(CKFileHeaderPart0)) {
         return CKERR_INVALIDFILE;
     }
 
@@ -432,7 +432,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
 
     if (header.Part0.FileVersion < 5) {
         memset(&header.Part1, 0, sizeof(CKFileHeaderPart1));
-    } else if (parser->Size() >= 64) {
+    } else if (parser->Size() >= sizeof(CKFileHeader)) {
         parser->Read(&header.Part1, sizeof(CKFileHeaderPart1));
     } else {
         return CKERR_INVALIDFILE;
@@ -534,7 +534,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
         if (includedFileSize > 0) {
             int includedFileCount = parser->ReadInt();
             m_IncludedFiles.Resize(includedFileCount);
-            includedFileSize -= 4;
+            includedFileSize -= sizeof(int);
         }
         parser->Skip(includedFileSize);
     }
@@ -1281,7 +1281,7 @@ void CKFile::LoadAndSave(CKSTRING filename, CKSTRING filename_new) {
         am->m_Saving = 1;
         m_Context->SetFileWriteMode((CK_FILE_WRITEMODE) CurrentFileWriteMode);
         if (!StartSave(filename_new, 0)) {
-            SaveObjects(&array, 0xFFFFFFFF);
+            SaveObjects(&array, CK_STATESAVE_ALL);
             EndSave();
         }
         am->m_Saving = 0;
