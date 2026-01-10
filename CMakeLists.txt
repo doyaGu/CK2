@@ -54,7 +54,7 @@ endif ()
 # =============================================================================
 # Project options
 # =============================================================================
-option(CK2_BUILD_TESTS "Build the test suite" ${CK2_IS_TOP_LEVEL})
+option(CK2_BUILD_TESTS "Build the test suite" OFF)
 option(CK2_BUILD_SHARED "Build CK2 as a shared library" ON)
 option(CK2_BUILD_STATIC "Build CK2 as a static library" OFF)
 option(CK2_INSTALL "Generate install target" ${CK2_IS_TOP_LEVEL})

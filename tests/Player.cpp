@@ -281,7 +281,7 @@ bool Player::Init(HINSTANCE hInstance) {
     else
         m_hInstance = hInstance;
 
-    if (!InitWindow(hInstance)) {
+    if (!InitWindow(m_hInstance)) {
         Logger::Get().Error("Failed to initialize window!");
         ShutdownWindow();
         return false;
@@ -1308,7 +1308,8 @@ LRESULT Player::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
         return 0;
 
     case WM_ACTIVATEAPP:
-        OnActivateApp(wParam == WA_ACTIVE);
+        // WM_ACTIVATEAPP: wParam is a BOOL (non-zero means activated)
+        OnActivateApp(wParam != FALSE);
         break;
 
     case WM_SETCURSOR:
@@ -1347,12 +1348,13 @@ bool Player::RegisterMainWindowClass(HINSTANCE hInstance) {
     mainWndClass.cbClsExtra = 0;
     mainWndClass.cbWndExtra = 0;
     mainWndClass.hInstance = hInstance;
-    mainWndClass.hIcon = ::LoadIcon(nullptr, MAKEINTRESOURCE(IDI_APPLICATION));
+    // IDI_APPLICATION is already a resource identifier; don't wrap with MAKEINTRESOURCE again.
+    mainWndClass.hIcon = ::LoadIcon(nullptr, IDI_APPLICATION);
     mainWndClass.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
     mainWndClass.hbrBackground = (HBRUSH) ::GetStockObject(BLACK_BRUSH);
     mainWndClass.lpszMenuName = nullptr;
     mainWndClass.lpszClassName = TEXT("Player");
-    mainWndClass.hIconSm = ::LoadIcon(nullptr, MAKEINTRESOURCE(IDI_APPLICATION));
+    mainWndClass.hIconSm = ::LoadIcon(nullptr, IDI_APPLICATION);
 
     return ::RegisterClassEx(&mainWndClass) != 0;
 }
