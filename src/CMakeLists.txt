@@ -190,7 +190,11 @@ set(CK2_SOURCES
         CKObjectArray.cpp
 )
 
-add_library(CK2 ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+if (CK2_BUILD_SHARED)
+        add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+else ()
+        add_library(CK2 STATIC ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+endif ()
 
 # Header ABI macros (see include/CKDefines.h)
 # - Shared build: CK2 itself defines CK_API to export symbols; consumers get dllimport by default.

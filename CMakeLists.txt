@@ -43,12 +43,7 @@ option(CK2_BUILD_TESTS "Build the test suite" ${CK2_IS_TOP_LEVEL})
 option(CK2_INSTALL "Generate install target" ${CK2_IS_TOP_LEVEL})
 
 # Library type
-# - Historically CK2 built as a shared library.
-# - Use the standard BUILD_SHARED_LIBS switch so consumers can control it.
-# - Only set a default when CK2 is the top-level project.
-if (CK2_IS_TOP_LEVEL AND NOT DEFINED BUILD_SHARED_LIBS)
-    option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-endif ()
+option(CK2_BUILD_SHARED "Build CK2 as a shared library" ON)
 
 # Add path for custom modules (if needed in the future)
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
