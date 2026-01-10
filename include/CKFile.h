@@ -261,7 +261,7 @@ protected:
     //---------------------------------------------
     CK_ID LoadFindObject(int index)
     {
-        return (index >= 0) ? m_FileObjects[index].CreatedObject : 0;
+        return (index >= 0 && index < m_FileObjects.Size()) ? m_FileObjects[index].CreatedObject : 0;
     }
 
     //-----------------------------------------------
