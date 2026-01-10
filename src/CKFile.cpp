@@ -259,6 +259,10 @@ CKERROR CKFile::OpenFile(CKSTRING filename, CK_LOAD_FLAGS Flags) {
     m_FileName = CKStrdup(filename);
     m_MappedFile = new VxMemoryMappedFile(m_FileName);
     if (m_MappedFile->GetErrorType() != CK_OK) {
+        delete m_MappedFile;
+        m_MappedFile = nullptr;
+        delete[] m_FileName;
+        m_FileName = nullptr;
         return CKERR_INVALIDFILE;
     }
 
@@ -267,6 +271,11 @@ CKERROR CKFile::OpenFile(CKSTRING filename, CK_LOAD_FLAGS Flags) {
 }
 
 CKERROR CKFile::OpenMemory(void *MemoryBuffer, int BufferSize, CK_LOAD_FLAGS Flags) {
+    // If the file wasn't opened via OpenFile (mapped file), make sure we start from a clean state.
+    if (!m_MappedFile) {
+        ClearData();
+    }
+
     if (!MemoryBuffer) {
         return CKERR_INVALIDPARAMETER;
     }
@@ -288,6 +297,7 @@ CKERROR CKFile::OpenMemory(void *MemoryBuffer, int BufferSize, CK_LOAD_FLAGS Fla
 
     WarningForOlderVersion = FALSE;
     m_Flags = Flags;
+    m_ReadFileDataDone = FALSE;
     m_IndexByClassId.Resize(g_MaxClassID);
 
     return ReadFileHeaders(&m_Parser);
@@ -348,8 +358,10 @@ void CKFile::ClearData() {
     for (XArray<CKFileObject>::Iterator it = m_FileObjects.Begin();
          it != m_FileObjects.End(); ++it) {
         if (it->Data) {
+#ifndef USECHUNKTABLE
             it->Data->Clear();
-            delete it->Data;
+#endif
+            it->CleanData();
         }
         delete[] it->Name;
         it->Data = nullptr;
@@ -359,8 +371,10 @@ void CKFile::ClearData() {
     for (XArray<CKFileManagerData>::Iterator it = m_ManagersData.Begin();
          it != m_ManagersData.End(); ++it) {
         if (it->data) {
+#ifndef USECHUNKTABLE
             it->data->Clear();
             delete it->data;
+#endif
             it->data = nullptr;
         }
     }
@@ -371,6 +385,9 @@ void CKFile::ClearData() {
     m_AlreadyReferencedMask.Clear();
     m_ReferencedObjects.Clear();
     m_IndexByClassId.Clear();
+    m_IncludedFiles.Clear();
+    m_PluginsDep.Clear();
+    m_ObjectsHashTable.Clear();
 
     delete[] m_FileName;
     m_FileName = nullptr;
@@ -387,6 +404,8 @@ void CKFile::ClearData() {
 
     m_Flags = 0;
     m_SaveIDMax = 0;
+    m_SceneSaved = FALSE;
+    m_ReadFileDataDone = FALSE;
 }
 
 CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
@@ -1075,6 +1094,14 @@ CKERROR CKFile::EndSave() {
             parser->Write(pluginDep.m_Guids.Begin(), guidCount * (int) sizeof(CKGUID));
         }
     }
+
+    // Included-files header:
+    // - 1st int: size in bytes of the following included-files header payload
+    // - 2nd int: included file count
+    int includedFileSize = (int) sizeof(int);
+    int includedFileCount = m_IncludedFiles.Size();
+    parser->Write(&includedFileSize, sizeof(int));
+    parser->Write(&includedFileCount, sizeof(int));
 
     parser->Seek(0);
     if ((header.Part0.FileWriteMode & (CKFILE_WHOLECOMPRESSED | CKFILE_CHUNKCOMPRESSED_OLD)) != 0) {
