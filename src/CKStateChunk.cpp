@@ -648,7 +648,7 @@ void CKStateChunk::WriteObjectArray(CKObjectArray *array, CKContext *context) {
             CK_ID id = 0;
             if (context) {
                 CKObject *object = array->GetData(context);
-                if (object && (m_ChunkClassID == -1 || m_Dynamic || object->IsDynamic()))
+                if (object && (m_ChunkClassID == -1 || m_Dynamic || !object->IsDynamic()))
                     id = object->GetID();
             } else {
                 id = array->GetDataId();
@@ -1179,7 +1179,6 @@ void CKStateChunk::ReadAndFillBuffer_LEndian(void *buffer) {
         if (buffer)
             memcpy(buffer, &m_Data[m_ChunkParser->CurrentPos], size);
     }
-    // IDA: Always advance CurrentPos even if size <= 0
     m_ChunkParser->CurrentPos += sz;
 }
 
@@ -2296,7 +2295,7 @@ BITMAP_HANDLE CKStateChunk::ReadBitmap() {
         fileExtension = "JPG";
     } else if (!stricmp(signature, "CKDIB") || !stricmp(signature, "CKBMP")) {
         fileExtension = "BMP";
-    } else if (!stricmp(signature, "CKDIB")) {
+    } else if (!stricmp(signature, "CKTIF")) {
         fileExtension = "TIF";
     } else if (!stricmp(signature, "CKGIF")) {
         fileExtension = "GIF";
@@ -2374,7 +2373,7 @@ CKBYTE *CKStateChunk::ReadBitmap2(VxImageDescEx &desc) {
         fileExtension = "JPG";
     } else if (!stricmp(signature, "CKDIB") || !stricmp(signature, "CKBMP")) {
         fileExtension = "BMP";
-    } else if (!stricmp(signature, "CKDIB")) {
+    } else if (!stricmp(signature, "CKTIF")) {
         fileExtension = "TIF";
     } else if (!stricmp(signature, "CKGIF")) {
         fileExtension = "GIF";
@@ -2421,17 +2420,20 @@ CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler) {
 }
 
 void CKStateChunk::Pack(int CompressionLevel) {
+    if (!m_Data || m_ChunkSize <= 0)
+        return;
+
     uLongf srcSize = m_ChunkSize * sizeof(int);
     uLongf destSize = srcSize;
     Bytef *buf = new Bytef[destSize];
     if (!buf) return;
 
     if (compress2(buf, &destSize, (const Bytef *) m_Data, srcSize, CompressionLevel) == Z_OK) {
-        delete[] m_Data;
         // Allocate exact size for compressed data
         Bytef *data = new Bytef[destSize];
         if (data) {
             memcpy(data, buf, destSize);
+            delete[] m_Data;
             m_Data = (int *) data;
             // IDA stores raw byte size, not DWORD count
             m_ChunkSize = destSize;
@@ -2441,7 +2443,10 @@ void CKStateChunk::Pack(int CompressionLevel) {
 }
 
 CKBOOL CKStateChunk::UnPack(int DestSize) {
-    if (DestSize <= 0) return FALSE;
+    if (!m_Data || m_ChunkSize <= 0)
+        return FALSE;
+    if (DestSize <= 0 || (DestSize & 3) != 0)
+        return FALSE;
 
     uLongf size = DestSize;
     Bytef *buf = new Bytef[DestSize];
@@ -2449,18 +2454,26 @@ CKBOOL CKStateChunk::UnPack(int DestSize) {
 
     // Pass raw m_ChunkSize as compressed byte count (from Pack)
     int err = uncompress(buf, &size, (const Bytef *) m_Data, m_ChunkSize);
-    if (err == Z_OK) {
-        delete[] m_Data;
-        // Store as DWORD count after decompression
-        m_ChunkSize = DestSize >> 2;
-        int *data = new int[m_ChunkSize];
-        if (data) {
-            memcpy(data, buf, DestSize);
-            m_Data = data;
-        }
+    if (err != Z_OK || size != (uLongf) DestSize) {
+        delete[] buf;
+        return FALSE;
     }
+
+    // Store as DWORD count after decompression
+    const int newChunkSize = DestSize >> 2;
+    int *data = new int[newChunkSize];
+    if (!data) {
+        delete[] buf;
+        return FALSE;
+    }
+
+    memcpy(data, buf, DestSize);
+    delete[] m_Data;
+    m_Data = data;
+    m_ChunkSize = newChunkSize;
+
     delete[] buf;
-    return err == Z_OK;
+    return TRUE;
 }
 
 void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int NbEntries) {
