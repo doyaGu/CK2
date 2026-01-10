@@ -199,7 +199,6 @@ public:
         return CKIsChildClassOf(iO, CKCID_WAVESOUND) ? (CKWaveSound *)iO : NULL;
     }
 
-protected:
     CKSoundManager *m_SoundManager;
     void *m_Source;
     CKDWORD m_State;
