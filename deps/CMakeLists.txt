@@ -1,4 +1,7 @@
-# miniz
+# miniz - configure as static library
+set(AMALGAMATE_SOURCES ON CACHE BOOL "" FORCE)
+set(BUILD_HEADER_ONLY OFF CACHE BOOL "" FORCE)
+set(INSTALL_PROJECT OFF CACHE BOOL "" FORCE)
 add_subdirectory(miniz EXCLUDE_FROM_ALL)
 
 # STB

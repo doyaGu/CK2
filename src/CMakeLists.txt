@@ -190,56 +190,124 @@ set(CK2_SOURCES
         CKObjectArray.cpp
 )
 
+# Function to configure common target settings
+function(ck2_configure_target TARGET_NAME)
+    target_include_directories(${TARGET_NAME}
+            PUBLIC
+            $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+            PRIVATE ${STB_INCLUDE_DIR}
+    )
+
+    target_link_libraries(${TARGET_NAME}
+            PUBLIC
+            VxMath
+            PRIVATE
+            miniz
+    )
+
+    # Set library properties
+    set_target_properties(${TARGET_NAME} PROPERTIES
+            VERSION ${PROJECT_VERSION}
+            SOVERSION ${PROJECT_VERSION_MAJOR}
+    )
+endfunction()
+
+# Track created targets for export
+set(CK2_TARGETS)
+
 if (CK2_BUILD_SHARED)
-        add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
-else ()
-        add_library(CK2 STATIC ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+    add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+    ck2_configure_target(CK2)
+
+    # Shared library specific settings
+    set_target_properties(CK2 PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+            ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    )
+
+    # Header ABI macros (see include/CKDefines.h)
+    # CK2 itself defines CK_API to export symbols; consumers get dllimport by default.
+    target_compile_definitions(CK2 PRIVATE CK_API)
+    target_compile_options(CK2 PRIVATE
+            $<$<CXX_COMPILER_ID:MSVC>:/UCK_LIB>
+            $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UCK_LIB>
+    )
+
+    list(APPEND CK2_TARGETS CK2)
 endif ()
 
-# Header ABI macros (see include/CKDefines.h)
-# - Shared build: CK2 itself defines CK_API to export symbols; consumers get dllimport by default.
-# - Static build: consumers must define CK_LIB to disable dllimport/dllexport.
-target_compile_definitions(CK2
-        PRIVATE
-        $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:CK_API>
-        PUBLIC
-        $<$<NOT:$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>>:CK_LIB>
-)
+if (CK2_BUILD_STATIC)
+    set(CK2_STATIC_SOURCES ${CK2_SOURCES})
+    list(FILTER CK2_STATIC_SOURCES EXCLUDE REGEX "\\.rc$")
 
-target_include_directories(CK2
-        PUBLIC
-        $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-        PRIVATE ${STB_INCLUDE_DIR}
-)
+    add_library(CK2Static STATIC ${CK2_STATIC_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+    ck2_configure_target(CK2Static)
 
-target_link_libraries(CK2
-        PUBLIC
-        VxMath::VxMath
-        PRIVATE
-        miniz
-)
+    # Static library specific settings
+    set_target_properties(CK2Static PROPERTIES
+            ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+            POSITION_INDEPENDENT_CODE ON
+    )
 
-# Set library properties
-set_target_properties(CK2 PROPERTIES
-        VERSION ${PROJECT_VERSION}
-        SOVERSION ${PROJECT_VERSION_MAJOR}
-        OUTPUT_NAME "CK2"
-)
+    # Static build: consumers must define CK_LIB to disable dllimport/dllexport.
+    target_compile_definitions(CK2Static PUBLIC CK_LIB)
+
+    list(APPEND CK2_TARGETS CK2Static)
+endif ()
 
 # Installation rules (only if CK2_INSTALL is enabled)
 if (CK2_INSTALL)
-    # Install library
-    install(TARGETS CK2 miniz
+    # Install library to Bin directory (shared) or lib directory (static)
+    if (TARGET CK2)
+        install(TARGETS CK2
+                EXPORT CK2Targets
+                RUNTIME DESTINATION Bin
+                LIBRARY DESTINATION Bin
+                ARCHIVE DESTINATION lib
+        )
+    endif ()
+
+    if (TARGET CK2Static)
+        install(TARGETS CK2Static
+                EXPORT CK2Targets
+                ARCHIVE DESTINATION lib
+        )
+    endif ()
+
+    install(TARGETS miniz
             EXPORT CK2Targets
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION lib
     )
 
-    # Install public headers
+    # If VxMath is built in-tree (FetchContent), export/install it alongside CK2.
+    # If it is an imported target from an installed package, do not re-install it.
+    if (TARGET VxMath)
+        get_target_property(_vxmath_imported VxMath IMPORTED)
+        if (NOT _vxmath_imported)
+            install(TARGETS VxMath
+                    EXPORT CK2Targets
+                    RUNTIME DESTINATION Bin
+                    LIBRARY DESTINATION Bin
+                    ARCHIVE DESTINATION lib
+            )
+        endif ()
+    endif ()
+
+    if (TARGET VxMathStatic)
+        get_target_property(_vxmathstatic_imported VxMathStatic IMPORTED)
+        if (NOT _vxmathstatic_imported)
+            install(TARGETS VxMathStatic
+                    EXPORT CK2Targets
+                    ARCHIVE DESTINATION lib
+            )
+        endif ()
+    endif ()
+
+    # Install public headers to include root
     install(DIRECTORY ${CK2_INCLUDE_DIR}/
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            DESTINATION include
             FILES_MATCHING PATTERN "*.h"
     )
 endif ()
