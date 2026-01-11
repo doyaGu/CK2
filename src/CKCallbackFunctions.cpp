@@ -527,6 +527,8 @@ void CKDependenciesCopier(CKParameter *dest, CKParameter *src) {
     CKDependencies *destDeps = nullptr;
     src->GetValue(&srcDeps, TRUE);
     dest->GetValue(&destDeps, TRUE);
+    if (!srcDeps || !destDeps)
+        return;
     *destDeps = *srcDeps;
     destDeps->m_Flags = srcDeps->m_Flags;
 }
@@ -908,7 +910,7 @@ int CKMatrixStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
     if (ValueString)
         strcpy(ValueString, source);
 
-    return strlen(source) + 1;
+    return (int) strlen(source) + 1;
 }
 
 int CKQuaternionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
@@ -938,7 +940,7 @@ int CKQuaternionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
     if (ValueString)
         strcpy(ValueString, source);
 
-    return strlen(source) + 1;
+    return (int) strlen(source) + 1;
 }
 
 int CKObjectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
@@ -973,7 +975,7 @@ int CKObjectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
     if (ValueString)
         strcpy(ValueString, object->GetName());
     
-    return strlen(object->GetName()) + 1;
+    return (int) strlen(object->GetName()) + 1;
 }
 
 int CKStringStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
@@ -981,7 +983,7 @@ int CKStringStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
         return 0;
     if (ReadFromString) {
         if (ValueString) {
-            const size_t valueLength = strlen(ValueString);
+            const int valueLength = (int) strlen(ValueString);
             param->SetValue(ValueString, valueLength + 1);
         }
         return 0;
@@ -1017,7 +1019,7 @@ int CKAttributeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFrom
     if (ValueString)
         strcpy(ValueString, AttributeNameByType);
     
-    return strlen(AttributeNameByType) + 1;
+    return (int) strlen(AttributeNameByType) + 1;
 }
 
 int CKMessageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
@@ -1046,7 +1048,7 @@ int CKMessageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromSt
     if (ValueString)
         strcpy(ValueString, MessageTypeName);
     
-    return strlen(MessageTypeName) + 1;
+    return (int) strlen(MessageTypeName) + 1;
 }
 
 int CKCollectionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
@@ -1223,7 +1225,7 @@ int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         if (ValueString)
             strcpy(ValueString, enumText);
         
-        return strlen(enumText) + 1;
+        return (int) strlen(enumText) + 1;
     }
 }
 
@@ -1333,7 +1335,7 @@ int CKIntStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
             strcpy(ValueString, Source);
         }
 
-        return strlen(Source) + 1;
+        return (int) strlen(Source) + 1;
     }
 }
 
@@ -1365,7 +1367,7 @@ int CKAngleStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
             strcpy(ValueString, source);
         }
 
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1410,7 +1412,7 @@ int CKEulerStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         if (ValueString)
             strcpy(ValueString, source);
         
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1435,7 +1437,7 @@ int CK2DVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromS
         if (ValueString)
             strcpy(ValueString, source);
 
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1459,7 +1461,7 @@ int CKVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
         if (ValueString)
             strcpy(ValueString, source);
 
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1483,7 +1485,7 @@ int CKRectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         if (ValueString)
             strcpy(ValueString, source);
 
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1512,7 +1514,7 @@ int CKBoxStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
         if (ValueString)
             strcpy(ValueString, source);
 
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1548,7 +1550,7 @@ int CKColorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         if (ValueString)
             strcpy(ValueString, source);
         
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1578,7 +1580,7 @@ int CKBoolStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         if (ValueString)
             strcpy(ValueString, text);
         
-        return strlen(text) + 1;
+        return (int) strlen(text) + 1;
     }
 }
 
@@ -1602,7 +1604,7 @@ int CKFloatStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         if (ValueString)
             strcpy(ValueString, source);
         
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1628,7 +1630,7 @@ int CKPercentageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
         if (ValueString)
             strcpy(ValueString, source);
         
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
@@ -1658,7 +1660,7 @@ int CKTimeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         if (ValueString)
             strcpy(ValueString, source);
         
-        return strlen(source) + 1;
+        return (int) strlen(source) + 1;
     }
 }
 
