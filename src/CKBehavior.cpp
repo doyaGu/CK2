@@ -2108,9 +2108,12 @@ CKERROR CKBehavior::Copy(CKObject &o, CKDependenciesContext &context) {
     m_LocalParameter = src->m_LocalParameter;
 
     // Handle interface chunk
-    if (src->m_InterfaceChunk) {
-        m_InterfaceChunk = new CKStateChunk(*src->m_InterfaceChunk);
+    if (m_InterfaceChunk) {
+        delete m_InterfaceChunk;
+        m_InterfaceChunk = nullptr;
     }
+    if (src->m_InterfaceChunk)
+        m_InterfaceChunk = new CKStateChunk(*src->m_InterfaceChunk);
 
     return CK_OK;
 }
