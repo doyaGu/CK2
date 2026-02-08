@@ -497,19 +497,28 @@ CKERROR CKBehavior::InitFromPrototype(CKBehaviorPrototype *proto) {
 }
 
 CKERROR CKBehavior::InitFromGuid(CKGUID Guid) {
+    if (!Guid.IsValid())
+        return CKERR_INVALIDGUID;
+
     CKBehaviorPrototype *proto = CKGetPrototypeFromGuid(Guid);
     if (!proto)
-        return CK_OK;
+        return CKERR_INVALIDGUID;
 
     int err = InitFromPrototype(proto);
-    m_Flags |= CKBEHAVIOR_BUILDINGBLOCK;
+    if (err == CK_OK)
+        m_Flags |= CKBEHAVIOR_BUILDINGBLOCK;
     return err;
 }
 
 CKERROR CKBehavior::InitFctPtrFromGuid(CKGUID Guid) {
-    CKBehaviorPrototype *proto = GetPrototype();
+    if (!Guid.IsValid())
+        return CKERR_INVALIDGUID;
+
+    CKBehaviorPrototype *proto = CKGetPrototypeFromGuid(Guid);
     if (!proto)
-        return CKERR_INVALIDPARAMETER;
+        return CKERR_INVALIDGUID;
+    if (m_BlockData)
+        m_BlockData->m_Guid = Guid;
     return InitFctPtrFromPrototype(proto);
 }
 
