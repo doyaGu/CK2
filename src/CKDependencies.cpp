@@ -125,7 +125,7 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
 
         if (CKIsChildClassOf(original, CKCID_BEHAVIOR)) {
             CKBehavior *beh = (CKBehavior *) original;
-            if (beh->GetType() & CKBEHAVIOR_SCRIPT) {
+            if (beh->GetType() == CKBEHAVIORTYPE_SCRIPT) {
                 m_Scripts.PushBack(beh->GetID());
             }
         }
