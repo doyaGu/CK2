@@ -47,18 +47,23 @@ BehaviorGraphData::~BehaviorGraphData()
 }
 
 CK_BEHAVIOR_TYPE CKBehavior::GetType() {
-    if ((m_Flags & CKBEHAVIOR_BUILDINGBLOCK) != 0)
-        return CKBEHAVIORTYPE_BASE;
     if ((m_Flags & CKBEHAVIOR_SCRIPT) != 0)
         return CKBEHAVIORTYPE_SCRIPT;
+    if ((m_Flags & CKBEHAVIOR_BUILDINGBLOCK) != 0)
+        return CKBEHAVIORTYPE_BASE;
     else
         return CKBEHAVIORTYPE_BEHAVIOR;
 }
 
 void CKBehavior::SetType(CK_BEHAVIOR_TYPE type) {
-    // Only sets the SCRIPT flag when type is SCRIPT, does not clear otherwise
     if (type == CKBEHAVIORTYPE_SCRIPT) {
         m_Flags |= CKBEHAVIOR_SCRIPT;
+    } else if (type == CKBEHAVIORTYPE_BASE) {
+        m_Flags &= ~CKBEHAVIOR_SCRIPT;
+        m_Flags |= CKBEHAVIOR_BUILDINGBLOCK;
+    } else {
+        m_Flags &= ~CKBEHAVIOR_SCRIPT;
+        m_Flags &= ~CKBEHAVIOR_BUILDINGBLOCK;
     }
 }
 
