@@ -25,6 +25,8 @@ CKERROR CKBehaviorManager::Execute(float delta) {
         // Re-query the count each time because Activate() may add/remove scripts mid-loop.
         for (int i = 0; i < beo->GetScriptCount(); ++i) {
             CKBehavior *beh = beo->GetScript(i);
+            if (!beh)
+                continue;
             const CKDWORD flags = beh->GetFlags();
             if (flags & (CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME)) {
                 CKBOOL active = (flags & CKBEHAVIOR_ACTIVATENEXTFRAME) != 0;
@@ -53,14 +55,17 @@ CKERROR CKBehaviorManager::Execute(float delta) {
         }
 
         // Execute object behaviors
-        float time = 0.0f;
+        float start = 0.0f;
         if (m_Context->m_ProfilingEnabled)
-            time = behaviorProfiler.Current();
+            start = behaviorProfiler.Current();
 
         obj->ExecuteBehaviors(delta);
 
-        obj->m_LastExecutionTime += time;
-        m_Context->m_Stats.BehaviorCodeExecution += time;
+        if (m_Context->m_ProfilingEnabled) {
+            float elapsed = behaviorProfiler.Current() - start;
+            obj->m_LastExecutionTime += elapsed;
+            m_Context->m_Stats.BehaviorCodeExecution += elapsed;
+        }
     }
 
     m_Context->m_Stats.TotalBehaviorExecution = totalProfiler.Current();
@@ -92,7 +97,7 @@ void CKBehaviorManager::ManageObjectsActivity() {
         if (*it < 0) {
             beo->ResetExecutionTime();
             m_BeObjects.Remove(beo);
-        } else if (m_BeObjects.AddIfNotHere(beo)) {
+        } else if (*it > 0 && m_BeObjects.AddIfNotHere(beo)) {
             changed = TRUE;
         }
     }
