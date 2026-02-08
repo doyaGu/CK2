@@ -337,7 +337,7 @@ CKObjectDeclaration *CKGetObjectDeclarationFromGuid(CKGUID guid) {
 
 CKBehaviorPrototype *CKGetPrototypeFromGuid(CKGUID guid) {
     XObjDeclHashTableIt it = g_PrototypeDeclarationList.Find(guid);
-    if (!it)
+    if (it == g_PrototypeDeclarationList.End())
         return nullptr;
 
     CKBehaviorPrototype *proto = (*it)->m_Proto;
@@ -734,9 +734,17 @@ CKERROR CKMoveAllScripts(CKBeObject *Src, CKBeObject *Dest) {
         return CKERR_INVALIDPARAMETER;
 
     const int count = Src->GetScriptCount();
+    XObjectPointerArray scriptsToMove;
+    scriptsToMove.Reserve(count);
     for (int i = 0; i < count; ++i) {
         CKBehavior *beh = Src->GetScript(i);
-        if (beh) {
+        if (beh)
+            scriptsToMove.PushBack(beh);
+    }
+
+    for (XObjectPointerArray::Iterator it = scriptsToMove.Begin(); it != scriptsToMove.End(); ++it) {
+        CKBehavior *beh = (CKBehavior *) *it;
+        if (beh && beh->GetOwner() == Src) {
             CKMoveScript(Src, Dest, beh);
         }
     }
