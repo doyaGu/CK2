@@ -1907,7 +1907,7 @@ void CKBehavior::PostLoad() {
 void CKBehavior::PreDelete() {
     if (m_Flags & CKBEHAVIOR_SCRIPT) {
         CKBeObject *owner = GetOwner();
-        if (owner && !owner->IsToBeDeleted()) {
+        if (owner && !owner->IsToBeDeleted() && owner->m_ScriptArray) {
             owner->m_ScriptArray->Remove(this);
         }
     } else {
