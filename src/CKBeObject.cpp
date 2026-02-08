@@ -226,42 +226,31 @@ CKBehavior *CKBeObject::RemoveScript(int pos) {
     if (!m_ScriptArray)
         return nullptr;
 
-    CK_ID scriptId = m_ScriptArray->GetObjectID(pos);
-    if (!scriptId)
+    CKBehavior *script = (CKBehavior *)m_ScriptArray->GetObject(pos);
+    if (!script)
         return nullptr;
 
-    // Remove from array using XRemove pattern
+    // Keep ownership/list relationship coherent: only unlink from the owner's list if detaching succeeds.
+    if (script->SetOwner(nullptr, TRUE) != CK_OK)
+        return nullptr;
+
+    if (script->GetFlags() & CKBEHAVIOR_SCRIPT)
+        RemoveFromSelfScenes(script);
+
     m_ScriptArray->RemoveAt(pos);
-
-    CKBehavior *script = (CKBehavior *) m_Context->GetObject(scriptId);
-    if (script) {
-        script->SetOwner(nullptr, TRUE);
-
-        if (m_ScriptArray->IsEmpty()) {
-            delete m_ScriptArray;
-            m_ScriptArray = nullptr;
-        }
-
-        if (script->GetFlags() & CKBEHAVIOR_SCRIPT)
-            RemoveFromSelfScenes(script);
+    if (m_ScriptArray->IsEmpty()) {
+        delete m_ScriptArray;
+        m_ScriptArray = nullptr;
     }
 
     return script;
 }
 
 CKERROR CKBeObject::RemoveAllScripts() {
-    if (!m_ScriptArray) return CK_OK;
-
-    // Remove scripts with CKBEHAVIOR_SCRIPT flag from all scenes this object is in
-    for (XObjectPointerArray::Iterator it = m_ScriptArray->Begin(); it != m_ScriptArray->End(); ++it) {
-        CKBehavior *script = (CKBehavior *) *it;
-        if (script && (script->GetFlags() & CKBEHAVIOR_SCRIPT))
-            RemoveFromSelfScenes(script);
+    while (m_ScriptArray && !m_ScriptArray->IsEmpty()) {
+        if (!RemoveScript(0))
+            return CKERR_INVALIDOPERATION;
     }
-
-    // Delete the array
-    delete m_ScriptArray;
-    m_ScriptArray = nullptr;
     return CK_OK;
 }
 
@@ -773,16 +762,20 @@ CKERROR CKBeObject::Copy(CKObject &o, CKDependenciesContext &context) {
 
     // Copy scripts if requested
     if (classDeps & 1) {
-        RemoveAllScripts();
+        CKERROR removeErr = RemoveAllScripts();
+        if (removeErr != CK_OK)
+            return removeErr;
 
         // Copy scripts from source
         if (beo->m_ScriptArray && beo->m_ScriptArray->Size() > 0) {
             m_ScriptArray = new XObjectPointerArray();
+            if (!m_ScriptArray)
+                return CKERR_OUTOFMEMORY;
 
             // Clone valid scripts
             for (XObjectPointerArray::Iterator it = beo->m_ScriptArray->Begin(); it != beo->m_ScriptArray->End(); ++it) {
                 CKBehavior *srcScript = (CKBehavior *) *it;
-                if (!(srcScript->GetFlags() & CKBEHAVIOR_LOCKED)) {
+                if (srcScript && !(srcScript->GetFlags() & CKBEHAVIOR_LOCKED)) {
                     m_ScriptArray->PushBack(srcScript);
                 }
             }
