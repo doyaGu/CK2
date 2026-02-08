@@ -24,6 +24,30 @@ static CKBehaviorIO **g_IosToDeactivate = nullptr;
 static CKBehaviorIO **g_IosToActivate = nullptr;
 static int g_IosBufferCapacity = 0;
 
+static void AppendErrorText(char *buffer, size_t bufferSize, size_t *used, const char *fmt, ...) {
+    if (!buffer || !used || !fmt || *used >= bufferSize - 1)
+        return;
+
+    va_list args;
+    va_start(args, fmt);
+    int written = vsnprintf(buffer + *used, bufferSize - *used, fmt, args);
+    va_end(args);
+
+    if (written < 0) {
+        *used = bufferSize - 1;
+        buffer[*used] = '\0';
+        return;
+    }
+
+    size_t advance = (size_t)written;
+    if (advance >= bufferSize - *used) {
+        *used = bufferSize - 1;
+        buffer[*used] = '\0';
+    } else {
+        *used += advance;
+    }
+}
+
 static void EnsureIoBuffers(int neededCount) {
     if (neededCount <= g_IosBufferCapacity)
         return;
@@ -2227,47 +2251,38 @@ void CKBehavior::ErrorMessage(CKSTRING Error, CKSTRING Context, CKBOOL ShowOwner
         }
     }
 
-    char buffer[1024]; // Assume reasonable buffer size
-    const char *behaviorName = m_Name ? m_Name : "Unnamed Behavior";
+    char buffer[1024];
+    buffer[0] = '\0';
+    size_t used = 0;
 
-    strcpy(buffer, behaviorName);
-    strcat(buffer, "=>");
-    strcat(buffer, Error);
+    const char *behaviorName = m_Name ? m_Name : "Unnamed Behavior";
+    const char *errorText = Error ? Error : "Error";
+    AppendErrorText(buffer, sizeof(buffer), &used, "%s=>%s", behaviorName, errorText);
 
     if (Context) {
-        strcat(buffer, "(");
-        strcat(buffer, Context);
-        strcat(buffer, ")");
+        AppendErrorText(buffer, sizeof(buffer), &used, "(%s)", Context);
     }
 
     if (ShowScript) {
-        strcat(buffer, "\n");
-        if (topBehavior) {
-            if (topBehavior->m_Name) {
-                strcat(buffer, "Script:");
-                strcat(buffer, topBehavior->m_Name);
-            } else {
-                strcat(buffer, "Unnamed Script");
-            }
+        if (topBehavior && topBehavior->m_Name) {
+            AppendErrorText(buffer, sizeof(buffer), &used, "\nScript:%s", topBehavior->m_Name);
+        } else if (topBehavior) {
+            AppendErrorText(buffer, sizeof(buffer), &used, "\nUnnamed Script");
         } else {
-            strcat(buffer, "Not within a script");
+            AppendErrorText(buffer, sizeof(buffer), &used, "\nNot within a script");
         }
     }
 
     if (ShowOwner) {
-        strcat(buffer, "\n");
         CKBehavior *targetBehavior = topBehavior ? topBehavior : this;
         CKBeObject *owner = targetBehavior->GetOwner();
 
-        if (owner) {
-            if (owner->m_Name) {
-                strcat(buffer, "Owner:");
-                strcat(buffer, owner->m_Name);
-            } else {
-                strcat(buffer, "Unnamed Owner");
-            }
+        if (owner && owner->m_Name) {
+            AppendErrorText(buffer, sizeof(buffer), &used, "\nOwner:%s", owner->m_Name);
+        } else if (owner) {
+            AppendErrorText(buffer, sizeof(buffer), &used, "\nUnnamed Owner");
         } else {
-            strcat(buffer, "Not applied to any object");
+            AppendErrorText(buffer, sizeof(buffer), &used, "\nNot applied to any object");
         }
     }
 
