@@ -584,11 +584,18 @@ CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC) {
 }
 
 char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel) {
-    char *buffer = new char[size];
+    NewSize = 0;
+    if (!Data || size <= 0)
+        return nullptr;
+
+    uLongf packedCapacity = compressBound((uLong)size);
+    char *buffer = new char[packedCapacity];
     if (!buffer)
         return nullptr;
 
-    if (compress2((Bytef *) buffer, (uLongf *) &NewSize, (const Bytef *) Data, size, compressionLevel) == Z_OK) {
+    uLongf packedSize = packedCapacity;
+    if (compress2((Bytef *)buffer, &packedSize, (const Bytef *)Data, (uLong)size, compressionLevel) == Z_OK) {
+        NewSize = static_cast<int>(packedSize);
         char *buffer2 = new char[NewSize];
         if (buffer2) {
             memcpy(buffer2, buffer, NewSize);
