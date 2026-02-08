@@ -542,6 +542,7 @@ CKERROR CKScene::Merge(CKScene *mergedScene, CKLevel *fromLevel) {
 
     if (m_AddObjectCount == 0 && !m_AddObjectList.IsEmpty()) {
         m_Context->ExecuteManagersOnSequenceAddedToScene(this, m_AddObjectList.Begin(), m_AddObjectList.Size());
+        m_AddObjectList.Resize(0);
     }
 
     m_Context->DestroyObject(mergedScene);
