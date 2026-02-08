@@ -440,6 +440,8 @@ CKERROR CKBehavior::InitFromPrototype(CKBehaviorPrototype *proto) {
     // --- Create Input IOs.
     for (int i = 0; i < inIOCount; i++) {
         CKBehaviorIO *inputIO = CreateInput(nullptr);
+        if (!inputIO)
+            return CKERR_OUTOFMEMORY;
         inputIO->SetName(inIOList[i]->Name, TRUE);
         inputIO->m_ObjectFlags = inIOList[i]->Flags | (inputIO->m_ObjectFlags & ~CK_OBJECT_IOTYPEMASK);
     }
@@ -447,6 +449,8 @@ CKERROR CKBehavior::InitFromPrototype(CKBehaviorPrototype *proto) {
     // --- Create Output IOs.
     for (int i = 0; i < outIOCount; i++) {
         CKBehaviorIO *outputIO = CreateOutput(nullptr);
+        if (!outputIO)
+            return CKERR_OUTOFMEMORY;
         outputIO->SetName(outIOList[i]->Name, TRUE);
         outputIO->m_ObjectFlags = outIOList[i]->Flags | (outputIO->m_ObjectFlags & ~CK_OBJECT_IOTYPEMASK);
     }
@@ -454,15 +458,17 @@ CKERROR CKBehavior::InitFromPrototype(CKBehaviorPrototype *proto) {
     // --- Create Input Parameters.
     for (int i = 0; i < inParamCount; i++) {
         CKParameterIn *inputParam = CreateInputParameter(nullptr, inParamList[i]->Guid);
-        if (inputParam)
-            inputParam->SetName(inParamList[i]->Name, TRUE);
+        if (!inputParam)
+            return CKERR_OUTOFMEMORY;
+        inputParam->SetName(inParamList[i]->Name, TRUE);
     }
 
     // --- Create Output Parameters.
     for (int i = 0; i < outParamCount; i++) {
         CKParameterOut *outputParam = CreateOutputParameter(nullptr, outParamList[i]->Guid);
-        if (outputParam)
-            outputParam->SetName(outParamList[i]->Name, TRUE);
+        if (!outputParam)
+            return CKERR_OUTOFMEMORY;
+        outputParam->SetName(outParamList[i]->Name, TRUE);
 
         // Set the default value if one is provided.
         CKPARAMETER_DESC *desc = outParamList[i];
@@ -476,14 +482,15 @@ CKERROR CKBehavior::InitFromPrototype(CKBehaviorPrototype *proto) {
     // --- Create Local Parameters.
     for (int i = 0; i < localParamCount; i++) {
         CKParameterLocal *localParam = CreateLocalParameter(nullptr, localParamList[i]->Guid);
-        if (localParam) {
-            localParam->SetName(localParamList[i]->Name, true);
-            CKPARAMETER_DESC *desc = localParamList[i];
-            if (desc->DefaultValueString) {
-                localParam->SetStringValue(desc->DefaultValueString);
-            } else if (desc->DefaultValue && desc->DefaultValueSize) {
-                localParam->SetValue(desc->DefaultValue, desc->DefaultValueSize);
-            }
+        if (!localParam)
+            return CKERR_OUTOFMEMORY;
+
+        localParam->SetName(localParamList[i]->Name, true);
+        CKPARAMETER_DESC *desc = localParamList[i];
+        if (desc->DefaultValueString) {
+            localParam->SetStringValue(desc->DefaultValueString);
+        } else if (desc->DefaultValue && desc->DefaultValueSize) {
+            localParam->SetValue(desc->DefaultValue, desc->DefaultValueSize);
         }
     }
     return CK_OK;
