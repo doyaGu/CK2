@@ -1316,11 +1316,13 @@ CKParameterOperation *CKBehavior::RemoveParameterOperation(int pos) {
         return nullptr;
 
     XObjectPointerArray &operations = m_GraphData->m_Operations;
-    CKObject **op = operations.RemoveAt(pos);
+    CKParameterOperation *op = (CKParameterOperation *)operations.GetObject(pos);
     if (!op)
         return nullptr;
 
-    return (CKParameterOperation *)*op;
+    operations.RemoveAt(pos);
+    op->SetOwner(nullptr);
+    return op;
 }
 
 CKParameterOperation *CKBehavior::RemoveParameterOperation(CKParameterOperation *op) {
