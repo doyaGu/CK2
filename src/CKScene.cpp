@@ -925,8 +925,9 @@ CKERROR CKScene::Load(CKStateChunk *chunk, CKFile *file) {
 
     // Add scripts to the scene object list if they are not already present
     for (int i = 0; i < GetScriptCount(); ++i) {
-        if (!GetSceneObjectDesc(GetScript(i)))
-            AddObjectDesc(GetScript(i));
+        CKBehavior *script = GetScript(i);
+        if (script && !GetSceneObjectDesc(script))
+            AddObjectDesc(script);
     }
 
     return CK_OK;
