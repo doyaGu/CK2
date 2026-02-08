@@ -250,7 +250,7 @@ int CKBehavior::CallCallbackFunction(CKDWORD Message) {
         CKCB_BEHAVIORDETACH,
         CKCB_BEHAVIORPAUSE,
         CKCB_BEHAVIORRESUME,
-        CKM_BEHAVIORCREATE,
+        CKCB_BEHAVIORCREATE,
         0x00000000,                 // 8 - unused
         CKCB_BEHAVIORRESET,
         CKCB_BEHAVIORPOSTSAVE,
