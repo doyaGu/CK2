@@ -1215,15 +1215,13 @@ CKBehavior *CKBehavior::RemoveSubBehavior(int pos) {
 
     CKBehavior *removed = (CKBehavior *) subBehaviors[pos];
     subBehaviors.RemoveAt(pos);
+    removed->m_Flags |= CKBEHAVIOR_TOPMOST;
+    removed->SetParent(nullptr);
 
     // CK2.dll: If array becomes empty, just set m_CompatibleClassID = CKCID_BEOBJECT
     if (subBehaviors.Size() == 0) {
         m_CompatibleClassID = CKCID_BEOBJECT;
     } else {
-        // Only set TOPMOST and clear parent when array still has elements
-        removed->m_Flags |= CKBEHAVIOR_TOPMOST;
-        removed->SetParent(nullptr);
-
         // Update compatible class ID if the removed behavior had same CompatibleClassID
         if (removed->GetCompatibleClassID() == m_CompatibleClassID) {
             CK_CLASSID newCid = CKCID_BEOBJECT;
