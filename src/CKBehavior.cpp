@@ -1396,8 +1396,7 @@ float CKBehavior::GetLastExecutionTime() {
 CKERROR CKBehavior::SetOwner(CKBeObject *owner, CKBOOL callback) {
     CKBeObject *currentOwner = GetOwner();
     if (currentOwner == owner) {
-        SetSubBehaviorOwner(currentOwner, callback);
-        return CK_OK;
+        return SetSubBehaviorOwner(currentOwner, callback);
     }
 
     CK_ID previousOwnerID = m_Owner;
@@ -1418,8 +1417,8 @@ CKERROR CKBehavior::SetOwner(CKBeObject *owner, CKBOOL callback) {
             err = CallCallbackFunction(CKM_BEHAVIORATTACH);
             if (err != CK_OK) {
                 // Rollback owner change on failure (CK2.dll restores previous owner and re-attaches).
+                m_Owner = previousOwnerID;
                 if (previousOwnerID) {
-                    m_Owner = previousOwnerID;
                     CallCallbackFunction(CKM_BEHAVIORATTACH);
                 }
                 if (err == CKBR_LOCKED)
@@ -1442,9 +1441,18 @@ CKERROR CKBehavior::SetOwner(CKBeObject *owner, CKBOOL callback) {
     CKBeObject *actualOwner = GetOwner();
     err = SetSubBehaviorOwner(actualOwner, callback);
     if (err != CK_OK) {
-        // Rollback to previous owner for graph sub-behaviors.
-        m_Owner = previousOwnerID;
         CKBeObject *previousOwner = (CKBeObject *)m_Context->GetObject(previousOwnerID);
+
+        // Roll back top-level callbacks so attach/detach side effects stay coherent.
+        if (callback && actualOwner) {
+            CallCallbackFunction(CKM_BEHAVIORDETACH);
+        }
+
+        m_Owner = previousOwnerID;
+        if (callback && previousOwner) {
+            CallCallbackFunction(CKM_BEHAVIORATTACH);
+        }
+
         SetSubBehaviorOwner(previousOwner, callback);
     }
 
