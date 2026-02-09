@@ -939,13 +939,21 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
         delete[] desc;
     }
 
-    auto *data = new char[optionNamesLength];
-    strcpy(data, "");
+    XString optionsCsv;
     for (int i = 0; i < optionCount; ++i) {
-        strcat(data, optionNames[i]);
-        strcat(data, ",");
+        if (!optionNames[i])
+            continue;
+        if (optionsCsv.Length() != 0)
+            optionsCsv << ",";
+        optionsCsv << optionNames[i];
     }
-    data[strlen(data) - 1] = '\0';
+
+    const XWORD dataLen = optionsCsv.Length();
+    auto *data = new char[dataLen + 1];
+    if (dataLen) {
+        memcpy(data, optionsCsv.CStr(), dataLen);
+    }
+    data[dataLen] = '\0';
 
     XString name = pluginInfo.m_Description;
     name << " Options Parameter";
