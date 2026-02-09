@@ -341,7 +341,7 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
             man->RegisterParameterType(&objectParamTemplate);
         }
 
-        className << "=" << (int)classId;
+        className << "=" << (int) classId;
         classNames.PushBack(className);
     }
 
@@ -512,7 +512,7 @@ void CKDependenciesSaver(CKParameter *param, CKStateChunk **chunk, CKBOOL load) 
             const int customDataSizeBytes = loadChunk->SeekIdentifierAndReturnSize(0x12248768);
             if (customDataSizeBytes > 0) {
                 dependencies->m_Flags = CK_DEPENDENCIES_CUSTOM;
-                const int entryCount = customDataSizeBytes / 8;  // Each entry is 2 DWORDs (8 bytes)
+                const int entryCount = customDataSizeBytes / 8; // Each entry is 2 DWORDs (8 bytes)
                 for (int i = 0; i < entryCount; ++i) {
                     const int dependencyIndex = loadChunk->ReadInt();
                     (*dependencies)[dependencyIndex] = loadChunk->ReadInt();
@@ -899,13 +899,13 @@ int CKMatrixStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
     float m31 = fabs(matrix[3][1]) >= EPSILON ? matrix[3][1] : 0.0f;
     float m32 = fabs(matrix[3][2]) >= EPSILON ? matrix[3][2] : 0.0f;
     float m33 = fabs(matrix[3][3]) >= EPSILON ? matrix[3][3] : 0.0f;
-    
+
     char source[256];
     snprintf(source, sizeof(source), "[%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g]",
-            m00, m01, m02, m03,
-            m10, m11, m12, m13,
-            m20, m21, m22, m23,
-            m30, m31, m32, m33);
+             m00, m01, m02, m03,
+             m10, m11, m12, m13,
+             m20, m21, m22, m23,
+             m30, m31, m32, m33);
 
     if (ValueString)
         strcpy(ValueString, source);
@@ -933,7 +933,7 @@ int CKQuaternionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
     }
 
     param->GetValue(&quat, FALSE);
-    
+
     char source[256];
     snprintf(source, sizeof(source), "%g,%g,%g,%g", quat.x, quat.y, quat.z, quat.w);
 
@@ -954,7 +954,7 @@ int CKObjectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
             const CKParameterType parameterType = param->GetType();
             CKParameterManager *parameterManager = context->GetParameterManager();
             const CKDWORD classId = parameterManager->TypeToClassID(parameterType);
-            
+
             CKObject *object = context->GetObjectByNameAndParentClass(ValueString, classId, NULL);
             const CK_ID objectId = object ? object->GetID() : 0;
             param->SetValue(&objectId, 0);
@@ -964,7 +964,7 @@ int CKObjectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
 
     CK_ID objID = 0;
     param->GetValue(&objID, FALSE);
-    
+
     CKObject *object = context->GetObject(objID);
     if (!object || !object->GetName()) {
         if (ValueString)
@@ -974,7 +974,7 @@ int CKObjectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
 
     if (ValueString)
         strcpy(ValueString, object->GetName());
-    
+
     return (int) strlen(object->GetName()) + 1;
 }
 
@@ -998,7 +998,7 @@ int CKAttributeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFrom
         return 0;
 
     CKContext *m_Context = param->m_Context;
-    
+
     if (ReadFromString) {
         if (ValueString) {
             CKAttributeManager *AttributeManager = m_Context->GetAttributeManager();
@@ -1007,18 +1007,18 @@ int CKAttributeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFrom
         }
         return 0;
     }
-    
+
     CKAttributeType attrType = -1;
     param->GetValue(&attrType, FALSE);
-    
+
     CKAttributeManager *AttributeManager = m_Context->GetAttributeManager();
     const char *AttributeNameByType = AttributeManager->GetAttributeNameByType(attrType);
     if (!AttributeNameByType)
         return 0;
-    
+
     if (ValueString)
         strcpy(ValueString, AttributeNameByType);
-    
+
     return (int) strlen(AttributeNameByType) + 1;
 }
 
@@ -1027,7 +1027,7 @@ int CKMessageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromSt
         return 0;
 
     CKContext *m_Context = param->m_Context;
-    
+
     if (ReadFromString) {
         if (ValueString) {
             CKMessageManager *MessageManager = m_Context->GetMessageManager();
@@ -1036,18 +1036,18 @@ int CKMessageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromSt
         }
         return 0;
     }
-    
+
     CKMessageType msgType = -1;
     param->GetValue(&msgType, FALSE);
-    
+
     CKMessageManager *MessageManager = m_Context->GetMessageManager();
     const char *MessageTypeName = MessageManager->GetMessageTypeName(msgType);
     if (!MessageTypeName)
         return 0;
-    
+
     if (ValueString)
         strcpy(ValueString, MessageTypeName);
-    
+
     return (int) strlen(MessageTypeName) + 1;
 }
 
@@ -1056,16 +1056,16 @@ int CKCollectionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
         return 0;
 
     CKContext *context = param->m_Context;
-    
+
     if (ReadFromString)
         return 0;
-    
+
     XObjectArray *objectArray = NULL;
     param->GetValue(&objectArray, FALSE);
-    
+
     if (!objectArray)
         return 0;
-    
+
     int formattedLength;
     if (ValueString) {
         formattedLength = sprintf(ValueString, "%d Elements", objectArray->Size());
@@ -1073,7 +1073,7 @@ int CKCollectionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
         char *stringBuffer = context->GetStringBuffer(40);
         formattedLength = sprintf(stringBuffer, "%d Elements", objectArray->Size());
     }
-    
+
     return formattedLength + 1;
 }
 
@@ -1097,6 +1097,8 @@ int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
     if (!memberIDs)
         return -1;
 
+    const char delimiterStr[2] = {DELIMITER, '\0'};
+
     if (readFromStr) {
         if (!valueStr)
             return 0;
@@ -1108,7 +1110,7 @@ int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
                 continue;
 
             // Find next delimiter
-            size_t len = strcspn(current, &DELIMITER);
+            size_t len = strcspn(current, delimiterStr);
             if (len > 0) {
                 char buffer[MAX_MEMBER_LENGTH] = {0};
                 strncpy(buffer, current, XMin(len, sizeof(buffer) - 1));
@@ -1123,32 +1125,38 @@ int CKStructStringFunc(CKParameter *param, char *valueStr, CKBOOL readFromStr) {
     } else {
         // Convert structure members to string
         char output[MAX_STRUCT_LENGTH] = {0};
-        int totalLength = 0;
+        size_t totalLength = 0;
 
         for (int i = 0; i < desc->NbData; ++i) {
             CKParameterOut *member = (CKParameterOut *) context->GetObject(memberIDs[i]);
 
             char memberStr[MAX_MEMBER_LENGTH] = {0};
-            if (member && member->GetStringValue(memberStr, sizeof(memberStr))) {
-                // Check buffer space: existing length + member + delimiter + null
-                if (totalLength + strlen(memberStr) + 1 >= sizeof(output))
-                    break;
-
-                strcat(output, memberStr);
-                totalLength += strlen(memberStr);
-            } else {
-                strcat(output, "NULL");
-                totalLength += 4;
+            if (member) {
+                member->GetStringValue(memberStr, TRUE);
+                memberStr[sizeof(memberStr) - 1] = '\0';
             }
 
-            // Add delimiter (will remove last one later)
-            strcat(output, &DELIMITER);
-            totalLength++;
+            const char *textToAppend = (member && memberStr[0] != '\0') ? memberStr : "NULL";
+
+            // Append text
+            const size_t textLen = strlen(textToAppend);
+            if (textLen >= sizeof(output) - totalLength)
+                break;
+            memcpy(output + totalLength, textToAppend, textLen);
+            totalLength += textLen;
+            output[totalLength] = '\0';
+
+            // Append delimiter (will remove last one later)
+            if (1 >= sizeof(output) - totalLength)
+                break;
+            output[totalLength] = DELIMITER;
+            totalLength += 1;
+            output[totalLength] = '\0';
         }
 
         // Save original length before removing trailing delimiter
-        int originalLength = totalLength;
-        
+        int originalLength = (int) totalLength;
+
         // Remove trailing delimiter if any data was added
         if (totalLength > 0) {
             output[totalLength - 1] = '\0';
@@ -1180,7 +1188,7 @@ int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
     }
 
     int enumValue = 0;
-    
+
     if (ReadFromString) {
         // Parse string to enum value
         if (ValueString) {
@@ -1204,10 +1212,10 @@ int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         char enumText[256];
         memcpy(enumText, "Invalid Enum Value", 19);
         memset(&enumText[19], 0, sizeof(enumText) - 19);
-        
+
         int i = 0;
         param->GetValue(&enumValue, FALSE);
-        
+
         if (enumDesc->NbData > 0) {
             while (enumDesc->Vals[i] != enumValue) {
                 ++i;
@@ -1218,14 +1226,14 @@ int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
                 strncpy(enumText, enumDesc->Desc[i], sizeof(enumText) - 1);
             enumText[sizeof(enumText) - 1] = '\0';
         }
-        
+
     CHECK_FALLBACK:
         if (i == enumDesc->NbData)
             return CKIntStringFunc(param, ValueString, FALSE);
-        
+
         if (ValueString)
             strcpy(ValueString, enumText);
-        
+
         return (int) strlen(enumText) + 1;
     }
 }
@@ -1245,25 +1253,25 @@ int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromS
     }
 
     int flagsValue = 0;
-    
+
     if (ReadFromString) {
         while (ValueString) {
             if (!*ValueString)
                 break;
-            
+
             char *commaPos = strchr(ValueString, ',');
-            int tokenLen = commaPos ? (int)(commaPos - ValueString) : (int)strlen(ValueString);
-            
+            int tokenLen = commaPos ? (int) (commaPos - ValueString) : (int) strlen(ValueString);
+
             if (tokenLen <= 0) {
                 ValueString = nullptr;
                 continue;
             }
-            
+
             char token[256];
-            const int clampedTokenLen = XMin(tokenLen, (int)sizeof(token) - 1);
+            const int clampedTokenLen = XMin(tokenLen, (int) sizeof(token) - 1);
             strncpy(token, ValueString, clampedTokenLen);
             token[clampedTokenLen] = '\0';
-            
+
             int i = 0;
             if (flagsDesc->NbData > 0) {
                 while (!flagsDesc->Desc[i] || _stricmp(token, flagsDesc->Desc[i]) != 0) {
@@ -1272,7 +1280,7 @@ int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromS
                 }
                 flagsValue |= flagsDesc->Vals[i];
             }
-            
+
         NEXT_TOKEN:
             if (commaPos)
                 ValueString += tokenLen + 1;
@@ -1283,31 +1291,45 @@ int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromS
         param->SetValue(&flagsValue, 0);
         return 0;
     } else {
-        char text[1024];
-        text[0] = '\0';
-        memset(&text[1], 0, 1020);
-        
+        char text[1024] = {0};
+
+        size_t totalLen = 0;
+
         int i = 0;
         param->GetValue(&flagsValue, FALSE);
-        
+
         if (flagsDesc->NbData > 0) {
             do {
                 if ((flagsValue & flagsDesc->Vals[i]) != 0 && flagsDesc->Desc[i]) {
-                    strcat(text, flagsDesc->Desc[i]);
-                    strcat(text, ",");
+                    const char *descText = flagsDesc->Desc[i];
+                    const size_t descLen = strlen(descText);
+
+                    // Append description
+                    if (descLen >= sizeof(text) - totalLen)
+                        break;
+                    memcpy(text + totalLen, descText, descLen);
+                    totalLen += descLen;
+                    text[totalLen] = '\0';
+
+                    // Append comma
+                    if (1 >= sizeof(text) - totalLen)
+                        break;
+                    text[totalLen] = ',';
+                    totalLen += 1;
+                    text[totalLen] = '\0';
                 }
                 ++i;
             } while (i < flagsDesc->NbData);
         }
 
         // Save original length before removing trailing comma
-        int originalLen = (int)strlen(text);
+        int originalLen = (int) strlen(text);
         int resultLen = originalLen;
-        
+
         if (originalLen > 0) {
             text[originalLen - 1] = '\0';
         }
-        
+
         if (ValueString) {
             strcpy(ValueString, text);
         }
@@ -1329,10 +1351,10 @@ int CKIntStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
         return 0;
     } else {
         param->GetValue(&value, FALSE);
-        
+
         char Source[64];
         snprintf(Source, sizeof(Source), "%d", value);
-        
+
         if (ValueString) {
             strcpy(ValueString, Source);
         }
@@ -1345,26 +1367,26 @@ int CKAngleStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
     if (!param) return 0;
 
     float angleRadians = 0.0f;
-    
+
     if (ReadFromString) {
         int cycles = 0;
         float degreesRemainder = 0.0f;
-        
+
         if (ValueString) {
             sscanf(ValueString, "%d:%f", &cycles, &degreesRemainder);
-            angleRadians = ((float)cycles + degreesRemainder) * 0.017453292f;  // deg2rad constant from CK2.dll
+            angleRadians = ((float) cycles + degreesRemainder) * 0.017453292f; // deg2rad constant from CK2.dll
             param->SetValue(&angleRadians, 0);
         }
         return 0;
     } else {
         param->GetValue(&angleRadians, FALSE);
-        
-        double degrees = angleRadians * 57.295776;  // rad2deg constant from CK2.dll
-        int cycles = (int)(0.0027777778 * degrees);  // 1/360 constant from CK2.dll
-        
+
+        double degrees = angleRadians * 57.295776;   // rad2deg constant from CK2.dll
+        int cycles = (int) (0.0027777778 * degrees); // 1/360 constant from CK2.dll
+
         char source[64];
-        snprintf(source, sizeof(source), "%d:%g", cycles, degrees - (double)cycles * 360.0);
-        
+        snprintf(source, sizeof(source), "%d:%g", cycles, degrees - (double) cycles * 360.0);
+
         if (ValueString) {
             strcpy(ValueString, source);
         }
@@ -1376,44 +1398,52 @@ int CKAngleStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
 int CKEulerStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
     if (!param) return 0;
 
-    float anglesRadians[3] = {0.0f, 0.0f, 0.0f};  // radians array
-    
+    float anglesRadians[3] = {0.0f, 0.0f, 0.0f}; // radians array
+
     if (ReadFromString) {
-        int cycleX = 0, cycleY = 0, cycleZ = 0;  // cycles
-        float remainderX = 0.0f, remainderY = 0.0f, remainderZ = 0.0f;  // remainders
-        
+        int cycleX = 0, cycleY = 0, cycleZ = 0;                        // cycles
+        float remainderX = 0.0f, remainderY = 0.0f, remainderZ = 0.0f; // remainders
+
         if (ValueString) {
             sscanf(ValueString, "%d:%f,%d:%f,%d:%f", &cycleX, &remainderX, &cycleY, &remainderY, &cycleZ, &remainderZ);
-            
+
             // Convert to radians (using CK2.dll constants)
-            anglesRadians[0] = ((float)cycleX + remainderX) * 0.017453292f;
-            anglesRadians[1] = ((float)cycleY + remainderY) * 0.017453292f;
-            anglesRadians[2] = ((float)cycleZ + remainderZ) * 0.017453292f;
-            
+            anglesRadians[0] = ((float) cycleX + remainderX) * 0.017453292f;
+            anglesRadians[1] = ((float) cycleY + remainderY) * 0.017453292f;
+            anglesRadians[2] = ((float) cycleZ + remainderZ) * 0.017453292f;
+
             param->SetValue(anglesRadians, 0);
         }
         return 0;
     } else {
         param->GetValue(anglesRadians, FALSE);
-        
+
         int cycleX = 0, cycleY = 0, cycleZ = 0;
         float remainderX = 0.0f, remainderY = 0.0f, remainderZ = 0.0f;
-        
+
         for (int i = 0; i < 3; ++i) {
-            double degrees = anglesRadians[i] * 57.295776;  // rad2deg
-            int cycles = (int)(0.0027777778 * degrees);  // 1/360
-            
-            if (i == 0) { cycleX = cycles; remainderX = (float)(degrees - (double)cycles * 360.0); }
-            else if (i == 1) { cycleY = cycles; remainderY = (float)(degrees - (double)cycles * 360.0); }
-            else { cycleZ = cycles; remainderZ = (float)(degrees - (double)cycles * 360.0); }
+            double degrees = anglesRadians[i] * 57.295776; // rad2deg
+            int cycles = (int) (0.0027777778 * degrees);   // 1/360
+
+            if (i == 0) {
+                cycleX = cycles;
+                remainderX = (float) (degrees - (double) cycles * 360.0);
+            } else if (i == 1) {
+                cycleY = cycles;
+                remainderY = (float) (degrees - (double) cycles * 360.0);
+            } else {
+                cycleZ = cycles;
+                remainderZ = (float) (degrees - (double) cycles * 360.0);
+            }
         }
-        
+
         char source[64];
-        snprintf(source, sizeof(source), "%d:%g,%d:%g,%d:%g", cycleX, remainderX, cycleY, remainderY, cycleZ, remainderZ);
-        
+        snprintf(source, sizeof(source), "%d:%g,%d:%g,%d:%g", cycleX, remainderX, cycleY, remainderY, cycleZ,
+                 remainderZ);
+
         if (ValueString)
             strcpy(ValueString, source);
-        
+
         return (int) strlen(source) + 1;
     }
 }
@@ -1432,10 +1462,10 @@ int CK2DVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromS
         return 0;
     } else {
         param->GetValue(&x, FALSE);
-        
+
         char source[64];
         snprintf(source, sizeof(source), "%g,%g", x, y);
-        
+
         if (ValueString)
             strcpy(ValueString, source);
 
@@ -1456,10 +1486,10 @@ int CKVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
         return 0;
     } else {
         param->GetValue(&x, FALSE);
-        
+
         char source[64];
         snprintf(source, sizeof(source), "%g,%g,%g", x, y, z);
-        
+
         if (ValueString)
             strcpy(ValueString, source);
 
@@ -1480,10 +1510,10 @@ int CKRectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         return 0;
     } else {
         param->GetValue(&rect, FALSE);
-        
+
         char source[64];
         snprintf(source, sizeof(source), "(%g,%g),(%g,%g)", rect.left, rect.top, rect.right, rect.bottom);
-        
+
         if (ValueString)
             strcpy(ValueString, source);
 
@@ -1499,20 +1529,20 @@ int CKBoxStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
 
     if (ReadFromString) {
         if (ValueString) {
-            sscanf(ValueString, "(%f,%f,%f),(%f,%f,%f)", 
-                   &bbox.Min.x, &bbox.Min.y, &bbox.Min.z, 
+            sscanf(ValueString, "(%f,%f,%f),(%f,%f,%f)",
+                   &bbox.Min.x, &bbox.Min.y, &bbox.Min.z,
                    &bbox.Max.x, &bbox.Max.y, &bbox.Max.z);
             param->SetValue(&bbox, 0);
         }
         return 0;
     } else {
         param->GetValue(&bbox, FALSE);
-        
+
         char source[64];
-        snprintf(source, sizeof(source), "(%g,%g,%g),(%g,%g,%g)", 
-                bbox.Min.x, bbox.Min.y, bbox.Min.z, 
-                bbox.Max.x, bbox.Max.y, bbox.Max.z);
-        
+        snprintf(source, sizeof(source), "(%g,%g,%g),(%g,%g,%g)",
+                 bbox.Min.x, bbox.Min.y, bbox.Min.z,
+                 bbox.Max.x, bbox.Max.y, bbox.Max.z);
+
         if (ValueString)
             strcpy(ValueString, source);
 
@@ -1529,29 +1559,29 @@ int CKColorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         if (ValueString) {
             int r255, g255, b255, a255;
             sscanf(ValueString, "%d,%d,%d,%d", &r255, &g255, &b255, &a255);
-            
+
             // Use CK2.dll constant 0.0039215689 = 1/255
-            r = (float)r255 * 0.0039215689f;
-            g = (float)g255 * 0.0039215689f;
-            b = (float)b255 * 0.0039215689f;
-            a = (float)a255 * 0.0039215689f;
-            
+            r = (float) r255 * 0.0039215689f;
+            g = (float) g255 * 0.0039215689f;
+            b = (float) b255 * 0.0039215689f;
+            a = (float) a255 * 0.0039215689f;
+
             param->SetValue(&r, 0);
         }
         return 0;
     } else {
         param->GetValue(&r, FALSE);
-        
+
         char source[64];
         snprintf(source, sizeof(source), "%d,%d,%d,%d",
-                (unsigned int)(int)(r * 255.0f),
-                (unsigned int)(int)(g * 255.0f),
-                (unsigned int)(int)(b * 255.0f),
-                (unsigned int)(int)(a * 255.0f));
-        
+                 (unsigned int) (int) (r * 255.0f),
+                 (unsigned int) (int) (g * 255.0f),
+                 (unsigned int) (int) (b * 255.0f),
+                 (unsigned int) (int) (a * 255.0f));
+
         if (ValueString)
             strcpy(ValueString, source);
-        
+
         return (int) strlen(source) + 1;
     }
 }
@@ -1572,16 +1602,16 @@ int CKBoolStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         return 0;
     } else {
         param->GetValue(&value, FALSE);
-        
+
         char text[64];
         if (value)
             strcpy(text, "TRUE");
         else
             strcpy(text, "FALSE");
-        
+
         if (ValueString)
             strcpy(ValueString, text);
-        
+
         return (int) strlen(text) + 1;
     }
 }
@@ -1599,13 +1629,13 @@ int CKFloatStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         return 0;
     } else {
         param->GetValue(&value, FALSE);
-        
+
         char source[64];
         snprintf(source, sizeof(source), "%g", value);
-        
+
         if (ValueString)
             strcpy(ValueString, source);
-        
+
         return (int) strlen(source) + 1;
     }
 }
@@ -1618,20 +1648,20 @@ int CKPercentageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
     if (ReadFromString) {
         if (ValueString) {
             sscanf(ValueString, "%f%%", &value);
-            float normalized = value * 0.01f;  // CK2.dll uses 0.0099999998
+            float normalized = value * 0.01f; // CK2.dll uses 0.0099999998
             param->SetValue(&normalized, 0);
         }
         return 0;
     } else {
         param->GetValue(&value, FALSE);
         double percentage = value * 100.0;
-        
+
         char source[64];
         snprintf(source, sizeof(source), "%g%%", percentage);
-        
+
         if (ValueString)
             strcpy(ValueString, source);
-        
+
         return (int) strlen(source) + 1;
     }
 }
@@ -1651,17 +1681,17 @@ int CKTimeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         return 0;
     } else {
         param->GetValue(&timeMs, FALSE);
-        
-        div_t minuteSplit = div((int)timeMs, 60000);
+
+        div_t minuteSplit = div((int) timeMs, 60000);
         int minutes = minuteSplit.quot;
         div_t secondSplit = div(minuteSplit.rem, 1000);
-        
+
         char source[64];
         snprintf(source, sizeof(source), "%.2dm %.2ds %.3dms", minutes, secondSplit.quot, secondSplit.rem);
-        
+
         if (ValueString)
             strcpy(ValueString, source);
-        
+
         return (int) strlen(source) + 1;
     }
 }
