@@ -1202,8 +1202,8 @@ int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
     } else {
         // Convert enum value to string
         char enumText[256];
-        strcpy(enumText, "Invalid Enum Value");
-        memset(&enumText[19], 0, 237);
+        memcpy(enumText, "Invalid Enum Value", 19);
+        memset(&enumText[19], 0, sizeof(enumText) - 19);
         
         int i = 0;
         param->GetValue(&enumValue, FALSE);
@@ -1215,7 +1215,8 @@ int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
                     goto CHECK_FALLBACK;
             }
             if (enumDesc->Desc[i])
-                strcpy(enumText, enumDesc->Desc[i]);
+                strncpy(enumText, enumDesc->Desc[i], sizeof(enumText) - 1);
+            enumText[sizeof(enumText) - 1] = '\0';
         }
         
     CHECK_FALLBACK:
@@ -1259,8 +1260,9 @@ int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromS
             }
             
             char token[256];
-            strncpy(token, ValueString, tokenLen);
-            token[tokenLen] = '\0';
+            const int clampedTokenLen = XMin(tokenLen, (int)sizeof(token) - 1);
+            strncpy(token, ValueString, clampedTokenLen);
+            token[clampedTokenLen] = '\0';
             
             int i = 0;
             if (flagsDesc->NbData > 0) {
