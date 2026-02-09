@@ -46,7 +46,8 @@ CKAttributeType CKAttributeManager::RegisterNewAttributeType(CKSTRING Name, CKGU
     CKAttributeDesc *desc = new CKAttributeDesc();
     memset(desc, 0, sizeof(CKAttributeDesc));
 
-    strcpy(desc->Name, secureName);
+    strncpy(desc->Name, secureName, sizeof(desc->Name) - 1);
+    desc->Name[sizeof(desc->Name) - 1] = '\0';
     desc->ParameterType = ParameterType;
     desc->CompatibleCid = CompatibleCid;
     desc->AttributeCategory = -1;
@@ -139,7 +140,8 @@ void CKAttributeManager::SetAttributeNameByType(CKAttributeType AttribType, CKST
     if (!desc)
         return;
 
-    strcpy(desc->Name, name);
+    strncpy(desc->Name, name, sizeof(desc->Name) - 1);
+    desc->Name[sizeof(desc->Name) - 1] = '\0';
 }
 
 int CKAttributeManager::GetAttributeCount() {
