@@ -1,7 +1,5 @@
 #include "CKFile.h"
 
-#include <stdio.h>
-
 #include "CKPluginManager.h"
 #include "CKPathManager.h"
 #include "CKParameterManager.h"
@@ -1038,7 +1036,7 @@ CKERROR CKFile::EndSave() {
     }
 
     CKFileHeader header = {};
-    strcpy(header.Part0.Signature, "Nemo Fi");
+    memcpy(header.Part0.Signature, "Nemo Fi", sizeof(header.Part0.Signature));
     header.Part0.Crc = 0;
     header.Part0.FileVersion2 = 0;
     header.Part0.CKVersion = CKVERSION;
