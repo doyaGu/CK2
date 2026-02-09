@@ -2214,8 +2214,15 @@ void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
 
     // Prepare the "CKxxx" signature (5 bytes + null terminator)
     char signature[6];
-    strcpy(signature, "CK");
-    strncat(signature, fileExt.m_Data, 3);
+    signature[0] = 'C';
+    signature[1] = 'K';
+    int sigLen = 2;
+    if (fileExt.m_Data) {
+        for (int i = 0; i < 3 && fileExt.m_Data[i] && sigLen < 5; ++i) {
+            signature[sigLen++] = fileExt.m_Data[i];
+        }
+    }
+    signature[sigLen] = '\0';
     for (int i = 0; signature[i] && i < 5; ++i) {
         signature[i] = (char) toupper(signature[i]);
     }
