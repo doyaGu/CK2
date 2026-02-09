@@ -1572,7 +1572,7 @@ void CKContext::GetObjectSecureName(XString &secureName, CKSTRING name, CK_CLASS
     secureName = baseName;
     if (highestNumber != -1) {
         char numBuffer[4];
-        sprintf(numBuffer, "%03d", highestNumber + 1);
+        snprintf(numBuffer, sizeof(numBuffer), "%03d", highestNumber + 1);
         secureName << numBuffer;
     }
 }

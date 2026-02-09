@@ -300,7 +300,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
                 break;
             case CKARRAYTYPE_STRING: {
                 char buf[32];
-                sprintf(buf, "%d", intValue);
+                snprintf(buf, sizeof(buf), "%d", intValue);
                 element = reinterpret_cast<CKDWORD>(CKStrdup(buf));
                 break;
             }
@@ -332,7 +332,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
                 break;
             case CKARRAYTYPE_STRING: {
                 char buf[32];
-                sprintf(buf, "%.4f", floatValue);
+                snprintf(buf, sizeof(buf), "%.4f", floatValue);
                 element = reinterpret_cast<CKDWORD>(CKStrdup(buf));
                 break;
             }
@@ -740,12 +740,12 @@ int CKDataArray::GetStringValue(CKDWORD key, int c, char *svalue) {
 
     switch (format->m_Type) {
     case CKARRAYTYPE_INT:
-        sprintf(buffer, "%d", (int) key);
+        snprintf(buffer, sizeof(buffer), "%d", (int) key);
         result = buffer;
         break;
 
     case CKARRAYTYPE_FLOAT:
-        sprintf(buffer, "%.4f", (float) key);
+        snprintf(buffer, sizeof(buffer), "%.4f", (float) key);
         result = buffer;
         break;
 

@@ -156,7 +156,7 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
 
     char *fileExt = pathSplitter.GetExtension();
     if (fileExt && strlen(fileExt)) {
-        sprintf(extension, "%s", fileExt);
+        snprintf(extension, sizeof(extension), "%s", fileExt);
     }
 
     CKFileExtension desiredExt(extension + 1); // Skip leading dot

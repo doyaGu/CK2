@@ -901,7 +901,7 @@ int CKMatrixStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
     float m33 = fabs(matrix[3][3]) >= EPSILON ? matrix[3][3] : 0.0f;
     
     char source[256];
-    sprintf(source, "[%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g]",
+    snprintf(source, sizeof(source), "[%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g][%g,%g,%g,%g]",
             m00, m01, m02, m03,
             m10, m11, m12, m13,
             m20, m21, m22, m23,
@@ -935,7 +935,7 @@ int CKQuaternionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
     param->GetValue(&quat, FALSE);
     
     char source[256];
-    sprintf(source, "%g,%g,%g,%g", quat.x, quat.y, quat.z, quat.w);
+    snprintf(source, sizeof(source), "%g,%g,%g,%g", quat.x, quat.y, quat.z, quat.w);
 
     if (ValueString)
         strcpy(ValueString, source);
@@ -1329,7 +1329,7 @@ int CKIntStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
         param->GetValue(&value, FALSE);
         
         char Source[64];
-        sprintf(Source, "%d", value);
+        snprintf(Source, sizeof(Source), "%d", value);
         
         if (ValueString) {
             strcpy(ValueString, Source);
@@ -1361,7 +1361,7 @@ int CKAngleStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         int cycles = (int)(0.0027777778 * degrees);  // 1/360 constant from CK2.dll
         
         char source[64];
-        sprintf(source, "%d:%g", cycles, degrees - (double)cycles * 360.0);
+        snprintf(source, sizeof(source), "%d:%g", cycles, degrees - (double)cycles * 360.0);
         
         if (ValueString) {
             strcpy(ValueString, source);
@@ -1407,7 +1407,7 @@ int CKEulerStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         }
         
         char source[64];
-        sprintf(source, "%d:%g,%d:%g,%d:%g", cycleX, remainderX, cycleY, remainderY, cycleZ, remainderZ);
+        snprintf(source, sizeof(source), "%d:%g,%d:%g,%d:%g", cycleX, remainderX, cycleY, remainderY, cycleZ, remainderZ);
         
         if (ValueString)
             strcpy(ValueString, source);
@@ -1432,7 +1432,7 @@ int CK2DVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromS
         param->GetValue(&x, FALSE);
         
         char source[64];
-        sprintf(source, "%g,%g", x, y);
+        snprintf(source, sizeof(source), "%g,%g", x, y);
         
         if (ValueString)
             strcpy(ValueString, source);
@@ -1456,7 +1456,7 @@ int CKVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStr
         param->GetValue(&x, FALSE);
         
         char source[64];
-        sprintf(source, "%g,%g,%g", x, y, z);
+        snprintf(source, sizeof(source), "%g,%g,%g", x, y, z);
         
         if (ValueString)
             strcpy(ValueString, source);
@@ -1480,7 +1480,7 @@ int CKRectStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         param->GetValue(&rect, FALSE);
         
         char source[64];
-        sprintf(source, "(%g,%g),(%g,%g)", rect.left, rect.top, rect.right, rect.bottom);
+        snprintf(source, sizeof(source), "(%g,%g),(%g,%g)", rect.left, rect.top, rect.right, rect.bottom);
         
         if (ValueString)
             strcpy(ValueString, source);
@@ -1507,7 +1507,7 @@ int CKBoxStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
         param->GetValue(&bbox, FALSE);
         
         char source[64];
-        sprintf(source, "(%g,%g,%g),(%g,%g,%g)", 
+        snprintf(source, sizeof(source), "(%g,%g,%g),(%g,%g,%g)", 
                 bbox.Min.x, bbox.Min.y, bbox.Min.z, 
                 bbox.Max.x, bbox.Max.y, bbox.Max.z);
         
@@ -1541,7 +1541,7 @@ int CKColorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         param->GetValue(&r, FALSE);
         
         char source[64];
-        sprintf(source, "%d,%d,%d,%d",
+        snprintf(source, sizeof(source), "%d,%d,%d,%d",
                 (unsigned int)(int)(r * 255.0f),
                 (unsigned int)(int)(g * 255.0f),
                 (unsigned int)(int)(b * 255.0f),
@@ -1599,7 +1599,7 @@ int CKFloatStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
         param->GetValue(&value, FALSE);
         
         char source[64];
-        sprintf(source, "%g", value);
+        snprintf(source, sizeof(source), "%g", value);
         
         if (ValueString)
             strcpy(ValueString, source);
@@ -1625,7 +1625,7 @@ int CKPercentageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
         double percentage = value * 100.0;
         
         char source[64];
-        sprintf(source, "%g%%", percentage);
+        snprintf(source, sizeof(source), "%g%%", percentage);
         
         if (ValueString)
             strcpy(ValueString, source);
@@ -1655,7 +1655,7 @@ int CKTimeStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
         div_t secondSplit = div(minuteSplit.rem, 1000);
         
         char source[64];
-        sprintf(source, "%.2dm %.2ds %.3dms", minutes, secondSplit.quot, secondSplit.rem);
+        snprintf(source, sizeof(source), "%.2dm %.2ds %.3dms", minutes, secondSplit.quot, secondSplit.rem);
         
         if (ValueString)
             strcpy(ValueString, source);
