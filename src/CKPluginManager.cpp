@@ -902,8 +902,10 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
     for (int i = 0; i < optionCount; ++i) {
         CKSTRING desc = CKStrdup(reader->GetOptionDescription(i));
         char *name = strchr(desc, ':');
-        if (!name)
+        if (!name) {
+            delete[] desc;
             continue;
+        }
 
         *name = '\0';
         ++name;
