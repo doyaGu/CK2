@@ -7,7 +7,7 @@
 XString CKGetTempPath() {
     char buf[260];
     char dir[64];
-    sprintf(dir, "VTmp%d", rand());
+    snprintf(dir, sizeof(dir), "VTmp%d", rand());
 
     XString path = VxGetTempPath();
     VxMakePath(buf, path.Str(), dir);
@@ -254,7 +254,8 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     for (int i = startIdx; i < pathCount; ++i) {
         XString &pathEntry = category.m_Entries[i];
         char path[4096];
-        VxMakePath(path, pathEntry.Str(), baseName.Str());
+        if (!VxMakePath(path, pathEntry.Str(), baseName.Str()))
+            continue;
 
         // Handle different path types
         if (PathIsAbsolute(pathEntry) || PathIsUNC(pathEntry)) {
