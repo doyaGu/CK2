@@ -53,13 +53,13 @@ XObjDeclHashTable g_PrototypeDeclarationList;
 
 void CKInitStartPath() {
     char buffer[260];
-    if (VxGetModuleFileName(g_CKModule, buffer, 260)) {
+    if (VxGetModuleFileName(g_CKModule, buffer, MAX_PATH) != 0) {
         CKPathSplitter ps(buffer);
         g_StartPath = ps.GetDrive();
         g_StartPath << ps.GetDir();
         VxAddLibrarySearchPath(g_StartPath.Str());
 
-        char pluginsPath[260];
+        char pluginsPath[MAX_PATH];
         VxMakePath(pluginsPath, g_StartPath.Str(), "Plugins");
         g_PluginPath = pluginsPath;
     }
