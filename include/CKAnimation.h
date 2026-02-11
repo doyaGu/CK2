@@ -407,7 +407,7 @@ public:
 
     See Also: CK_ANIMATION_TRANSITION_MODE
     *************************************************/
-    virtual float CreateTransition(CKAnimation *in, CKAnimation *out, CKDWORD OutTransitionMode, float length = 6.0f, float FrameTo = 0) { return NULL; }
+    virtual float CreateTransition(CKAnimation *in, CKAnimation *out, CKDWORD OutTransitionMode, float length = 6.0f, float FrameTo = 0) { return 0.0f; }
 
     CKAnimation(CKContext *Context = NULL, CKSTRING name = NULL) : CKSceneObject(Context, name) {}
 
