@@ -147,10 +147,10 @@ public:
     DLL_EXPORT int GetLocalParamIndex(CKSTRING name);
 
     DLL_EXPORT CKSTRING GetInIOName(int);
-    DLL_EXPORT CKSTRING GetOutIOIndex(int);
-    DLL_EXPORT CKSTRING GetInParamIndex(int);
-    DLL_EXPORT CKSTRING GetOutParamIndex(int);
-    DLL_EXPORT CKSTRING GetLocalParamIndex(int);
+    DLL_EXPORT CKSTRING GetOutIOName(int);
+    DLL_EXPORT CKSTRING GetInParamName(int);
+    DLL_EXPORT CKSTRING GetOutParamName(int);
+    DLL_EXPORT CKSTRING GetLocalParamName(int);
 
     void SetSourceObjectDeclaration(CKObjectDeclaration *decl) { m_SourceObjectDeclaration = decl; }
 

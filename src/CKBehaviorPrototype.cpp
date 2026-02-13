@@ -422,28 +422,28 @@ CKSTRING CKBehaviorPrototype::GetInIOName(int idx) {
     return nullptr;
 }
 
-CKSTRING CKBehaviorPrototype::GetOutIOIndex(int idx) {
+CKSTRING CKBehaviorPrototype::GetOutIOName(int idx) {
     if (idx < m_OutIOCount) {
         return m_OutIOList[idx]->Name;
     }
     return nullptr;
 }
 
-CKSTRING CKBehaviorPrototype::GetInParamIndex(int idx) {
+CKSTRING CKBehaviorPrototype::GetInParamName(int idx) {
     if (idx < m_InParameterCount) {
         return m_InParameterList[idx]->Name;
     }
     return nullptr;
 }
 
-CKSTRING CKBehaviorPrototype::GetOutParamIndex(int idx) {
+CKSTRING CKBehaviorPrototype::GetOutParamName(int idx) {
     if (idx < m_OutParameterCount) {
         return m_OutParameterList[idx]->Name;
     }
     return nullptr;
 }
 
-CKSTRING CKBehaviorPrototype::GetLocalParamIndex(int idx) {
+CKSTRING CKBehaviorPrototype::GetLocalParamName(int idx) {
     if (idx < m_LocalParameterCount) {
         return m_LocalParameterList[idx]->Name;
     }
