@@ -6,11 +6,13 @@
 void CKTimeManager::ChangeLimitOptions(CK_FRAMERATE_LIMITS FpsOptions, CK_FRAMERATE_LIMITS BehOptions) {
     if (FpsOptions != CK_RATE_NOP)
     {
+        m_LimitOptions &= ~CK_FRAMERATE_MASK;
         m_LimitOptions |= FpsOptions & CK_FRAMERATE_MASK;
     }
 
     if (BehOptions != CK_RATE_NOP)
     {
+        m_LimitOptions &= ~CK_BEHRATE_MASK;
         m_LimitOptions |= BehOptions & CK_BEHRATE_MASK;
     }
 }
