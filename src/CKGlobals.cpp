@@ -52,14 +52,14 @@ typedef XHashTable<CKObjectDeclaration *, CKGUID> XObjDeclHashTable;
 XObjDeclHashTable g_PrototypeDeclarationList;
 
 void CKInitStartPath() {
-    char buffer[MAX_PATH];
-    if (VxGetModuleFileName(g_CKModule, buffer, MAX_PATH) != 0) {
+    char buffer[_MAX_PATH];
+    if (VxGetModuleFileName(g_CKModule, buffer, _MAX_PATH) != 0) {
         CKPathSplitter ps(buffer);
         g_StartPath = ps.GetDrive();
         g_StartPath << ps.GetDir();
         VxAddLibrarySearchPath(g_StartPath.Str());
 
-        char pluginsPath[MAX_PATH];
+        char pluginsPath[_MAX_PATH];
         VxMakePath(pluginsPath, g_StartPath.Str(), "Plugins");
         g_PluginPath = pluginsPath;
     }

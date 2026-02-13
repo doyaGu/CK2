@@ -1715,8 +1715,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_UserLoadCallBack = nullptr;
     m_UserLoadCallBackArgs = nullptr;
 
-    field_3C8 = new char[MAX_PATH];
-    field_3CC = new char[MAX_PATH];
+    field_3C8 = new char[_MAX_PATH];
+    field_3CC = new char[_MAX_PATH];
     m_GeneralRenameOption = 0;
     m_MatTexturesRenameOption = 0;
 

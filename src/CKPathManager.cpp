@@ -5,7 +5,7 @@
 #include "CKContext.h"
 
 XString CKGetTempPath() {
-    char buf[MAX_PATH];
+    char buf[_MAX_PATH];
     char dir[64];
     snprintf(dir, sizeof(dir), "VTmp%d", rand());
 
