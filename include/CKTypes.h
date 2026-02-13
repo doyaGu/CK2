@@ -353,7 +353,7 @@ public:
 
     friend CKBOOL operator<=(const CKGUID &v1, const CKGUID &v2)
     {
-        return (v1.d[0] <= v2.d[0]);
+        return !(v2 < v1);
     }
 
     friend CKBOOL operator>(const CKGUID &v1, const CKGUID &v2)
@@ -373,7 +373,7 @@ public:
 
     friend CKBOOL operator>=(const CKGUID &v1, const CKGUID &v2)
     {
-        return (v1.d[0] >= v2.d[0]);
+        return !(v1 < v2);
     }
 
     CKBOOL IsValid() const { return d[0] || d[1]; }
