@@ -52,7 +52,7 @@ typedef XHashTable<CKObjectDeclaration *, CKGUID> XObjDeclHashTable;
 XObjDeclHashTable g_PrototypeDeclarationList;
 
 void CKInitStartPath() {
-    char buffer[260];
+    char buffer[MAX_PATH];
     if (VxGetModuleFileName(g_CKModule, buffer, MAX_PATH) != 0) {
         CKPathSplitter ps(buffer);
         g_StartPath = ps.GetDrive();
