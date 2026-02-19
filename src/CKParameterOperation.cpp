@@ -21,6 +21,14 @@ CKERROR CKParameterOperation::DoOperation() {
         return CKERR_NOTINITIALIZED;
     }
 
+    if (m_In1 && m_In1->GetGUID() != CKPGUID_NONE && !m_In1->GetRealSource()) {
+        return CKERR_NOTINITIALIZED;
+    }
+
+    if (m_In2 && m_In2->GetGUID() != CKPGUID_NONE && !m_In2->GetRealSource()) {
+        return CKERR_NOTINITIALIZED;
+    }
+
     VxTimeProfiler profiler;
 
     if (m_HasOperationFunction) {
