@@ -112,7 +112,7 @@ See also: CKFloorManager, CKAttributeManager
 class CKCollisionManager : public CKBaseManager
 {
 public:
-    CKCollisionManager(CKContext *Context, char *name) : CKBaseManager(Context, COLLISION_MANAGER_GUID, name) {}
+    CKCollisionManager(CKContext *Context, CKSTRING name) : CKBaseManager(Context, COLLISION_MANAGER_GUID, name) {}
 
     virtual ~CKCollisionManager() {}
 

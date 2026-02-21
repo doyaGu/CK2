@@ -318,7 +318,7 @@ int CKGroup::GetDependenciesCount(int mode) {
 }
 
 CKSTRING CKGroup::GetDependencies(int i, int mode) {
-    return (i == 0) ? (CKSTRING) "Objects" : nullptr;
+    return (i == 0) ? "Objects" : nullptr;
 }
 
 void CKGroup::Register() {

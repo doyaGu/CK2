@@ -76,7 +76,7 @@ See also: CKCollisionManager, CKAttributeManager
 class CKFloorManager : public CKBaseManager
 {
 public:
-    CKFloorManager(CKContext *Context, char *name) : CKBaseManager(Context, FLOOR_MANAGER_GUID, name) {}
+    CKFloorManager(CKContext *Context, CKSTRING name) : CKBaseManager(Context, FLOOR_MANAGER_GUID, name) {}
 
     virtual ~CKFloorManager() {}
 

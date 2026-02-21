@@ -240,7 +240,7 @@ public:
 
 public:
     CK_ID m_ID;
-    CKSTRING m_Name;
+    char *m_Name;
     CKDWORD m_ObjectFlags;
     CKContext *m_Context;
 

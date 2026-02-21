@@ -12,7 +12,7 @@ void CKObject::SetName(CKSTRING Name, CKBOOL shared) {
     if (Name) {
         if (shared) {
             m_ObjectFlags |= CK_OBJECT_NAMESHARED;
-            m_Name = Name;
+            m_Name = const_cast<char *>(Name);
         } else {
             m_ObjectFlags &= ~CK_OBJECT_NAMESHARED;
             m_Name = CKStrdup(Name);

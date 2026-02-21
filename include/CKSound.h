@@ -47,7 +47,7 @@ public:
     }
 
 protected:
-    CKSTRING m_FileName;
+    char *m_FileName;
     CK_SOUND_SAVEOPTIONS m_SaveOptions;
 };
 

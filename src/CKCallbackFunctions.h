@@ -55,7 +55,7 @@ int CKMessageStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromSt
 int CKCollectionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString);
 int CKStructStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString);
 int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString);
-int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromString);
+int CKFlagsStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString);
 int CKIntStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString);
 int CKAngleStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString);
 int CKEulerStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString);

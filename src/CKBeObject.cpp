@@ -601,9 +601,9 @@ CKERROR CKBeObject::Load(CKStateChunk *chunk, CKFile *file) {
                 if (!oldVersion)
                     compatibleCid = chunk->ReadInt();
 
-                CKSTRING name = nullptr;
+                char *name = nullptr;
                 if (CKIsChildClassOf(compatibleCid, CKCID_OBJECT) && (chunk->ReadString(&name), name)) {
-                    CKSTRING category = nullptr;
+                    char *category = nullptr;
                     chunk->ReadString(&category);
                     CKGUID paramGuid = chunk->ReadGuid();
 

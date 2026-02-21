@@ -98,10 +98,10 @@ CKPluginManager::~CKPluginManager() {
 }
 
 int CKPluginManager::ParsePlugins(CKSTRING Directory) {
-    CKDirectoryParser parser(Directory, (CKSTRING) "*.dll", TRUE);
+    CKDirectoryParser parser(Directory, "*.dll", TRUE);
     VxAddLibrarySearchPath(Directory);
     int count = 0;
-    for (char *plugin = parser.GetNextFile(); plugin != nullptr; plugin = parser.GetNextFile()) {
+    for (const char *plugin = parser.GetNextFile(); plugin != nullptr; plugin = parser.GetNextFile()) {
         if (RegisterPlugin(plugin) == CK_OK)
             ++count;
     }
@@ -896,11 +896,11 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
     XArray<CKGUID> optionGuids(optionCount);
 
     size_t optionNamesLength = 0;
-    auto *optionNames = new CKSTRING[optionCount];
-    memset(optionNames, 0, sizeof(CKSTRING) * optionCount);
+    auto *optionNames = new char*[optionCount];
+    memset(optionNames, 0, sizeof(char*) * optionCount);
 
     for (int i = 0; i < optionCount; ++i) {
-        CKSTRING desc = CKStrdup(reader->GetOptionDescription(i));
+        char *desc = CKStrdup(reader->GetOptionDescription(i));
         char *name = strchr(desc, ':');
         if (!name) {
             delete[] desc;
@@ -967,7 +967,7 @@ void CKPluginManager::InitInstancePluginEntry(CKPluginEntry *entry, CKContext *c
     for (int i = 0; i < optionCount; ++i) {
         delete[] optionNames[i];
     }
-    memset(optionNames, 0, sizeof(CKSTRING) * optionCount);
+    memset(optionNames, 0, sizeof(char*) * optionCount);
     delete[] optionNames;
     delete[] data;
 

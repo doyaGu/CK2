@@ -579,11 +579,11 @@ CKWORD CKConvertEndian16(CKWORD w) {
     return w;
 }
 
-CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC) {
+CKDWORD CKComputeDataCRC(const char *data, int size, CKDWORD PreviousCRC) {
     return adler32(PreviousCRC, (const Bytef *) data, size);
 }
 
-char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel) {
+char *CKPackData(const char *Data, int size, int &NewSize, int compressionLevel) {
     NewSize = 0;
     if (!Data || size <= 0)
         return nullptr;
@@ -608,7 +608,7 @@ char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel) {
     return nullptr;
 }
 
-char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize) {
+char *CKUnPackData(int DestSize, const char *SrcBuffer, int SrcSize) {
     char *buffer = new char[DestSize];
     if (!buffer)
         return nullptr;
@@ -621,17 +621,17 @@ char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize) {
     return nullptr;
 }
 
-CKSTRING CKStrdup(CKSTRING string) {
+char *CKStrdup(CKSTRING string) {
     if (!string)
         return nullptr;
 
     size_t len = strlen(string);
-    CKSTRING str = new char[len + 1];
+    char *str = new char[len + 1];
     strcpy(str, string);
     return str;
 }
 
-CKSTRING CKStrupr(CKSTRING string) {
+char *CKStrupr(char *string) {
     if (!string)
         return nullptr;
 
@@ -643,7 +643,7 @@ CKSTRING CKStrupr(CKSTRING string) {
     return string;
 }
 
-CKSTRING CKStrlwr(CKSTRING string) {
+char *CKStrlwr(char *string) {
     if (!string)
         return nullptr;
 

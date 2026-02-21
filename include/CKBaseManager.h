@@ -613,7 +613,7 @@ public:
 
 public:
     CKGUID m_ManagerGuid;   // Manager GUID
-    CKSTRING m_ManagerName; // Manager Name
+    char *m_ManagerName; // Manager Name
     CKContext *m_Context;   // A pointer to the CKContext on which this manager is valid.
     float m_ProcessingTime; // Time elapsed during profiling. (Reset each frame before behavioral processing starts)
     VxTimeProfiler m_Timer;

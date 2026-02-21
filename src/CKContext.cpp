@@ -786,7 +786,7 @@ float CKContext::GetLastUserProfileTime(CKDWORD UserSlot) {
     return 0.0f;
 }
 
-CKSTRING CKContext::GetStringBuffer(int size) {
+char *CKContext::GetStringBuffer(int size) {
     if (m_StringBuffer.Length() < size) {
         m_StringBuffer.Resize(size);
     }
@@ -886,11 +886,11 @@ CKERROR CKContext::Load(int BufferSize, void *MemoryBuffer, CKObjectArray *ckarr
 }
 
 CKSTRING CKContext::GetLastFileLoaded() {
-    return (CKSTRING) m_LastFileLoaded.CStr();
+    return m_LastFileLoaded.CStr();
 }
 
 CKSTRING CKContext::GetLastCmoLoaded() {
-    return (CKSTRING) m_LastCmoLoaded.CStr();
+    return m_LastCmoLoaded.CStr();
 }
 
 void CKContext::SetLastCmoLoaded(CKSTRING str) {
@@ -1027,7 +1027,7 @@ void CKContext::SetUserLoadCallback(CK_USERLOADCALLBACK fct, void *Arg) {
     m_UserLoadCallBackArgs = Arg;
 }
 
-CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, const CKSTRING NewName, CKObject **newobj) {
+CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, char *NewName, CKObject **newobj) {
     if (!OldName) return CKLOAD_OK;
 
     CKClassDesc &classDesc = g_CKClassInfo[Cid];
@@ -1499,7 +1499,7 @@ int CKContext::WarnAllBehaviors(CKDWORD Message) {
     return result;
 }
 
-void CKContext::GetSecureName(CKSTRING secureName, const char *name, CK_CLASSID cid) {
+void CKContext::GetSecureName(char *secureName, CKSTRING name, CK_CLASSID cid) {
     int highestNumber = -1;
     XString baseName(name);
 

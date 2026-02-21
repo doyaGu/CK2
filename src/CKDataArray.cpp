@@ -100,7 +100,7 @@ CKDWORD CKDataArray::g_Value = 0;
 CKDWORD CKDataArray::g_ValueSize = 0;
 ArraySortFunction CKDataArray::g_SortFunction = nullptr;
 
-void CKDataArray::InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramGuid) {
+void CKDataArray::InsertColumn(int cdest, CK_ARRAYTYPE type, CKSTRING name, CKGUID paramGuid) {
     if (!name) return;
 
     ColumnFormat *fmt = new ColumnFormat();
@@ -237,7 +237,7 @@ void CKDataArray::RemoveColumn(int c) {
     }
 }
 
-void CKDataArray::SetColumnName(int c, char *name) {
+void CKDataArray::SetColumnName(int c, CKSTRING name) {
     if (c < 0 || c >= m_FormatArray.Size() || !name) return;
     ColumnFormat *fmt = m_FormatArray[c];
     if (!fmt) return;
@@ -245,7 +245,7 @@ void CKDataArray::SetColumnName(int c, char *name) {
     fmt->m_Name = CKStrdup(name);
 }
 
-char *CKDataArray::GetColumnName(int c) {
+CKSTRING CKDataArray::GetColumnName(int c) {
     if (c < 0 || c >= m_FormatArray.Size()) return nullptr;
     ColumnFormat *fmt = m_FormatArray[c];
     return fmt ? fmt->m_Name : nullptr;
@@ -653,7 +653,7 @@ CKParameterOut *CKDataArray::RemoveShortcut(int i, int c) {
     return originalParam;
 }
 
-CKBOOL CKDataArray::SetElementStringValue(int i, int c, char *svalue) {
+CKBOOL CKDataArray::SetElementStringValue(int i, int c, CKSTRING svalue) {
     if (!svalue || i < 0 || i >= m_DataMatrix.Size() || c < 0 || c >= m_FormatArray.Size())
         return FALSE;
 

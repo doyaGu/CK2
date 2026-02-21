@@ -107,11 +107,11 @@ public:
         + Once the file is opened, images can be read with ReadFrame method
     See Also:ReadFrame,GetMovieFrameCount
     ************************************************/
-    virtual CKERROR OpenFile(char *name) = 0;
+    virtual CKERROR OpenFile(CKSTRING name) = 0;
 
-    virtual CKERROR OpenMemory(char *name) = 0;
+    virtual CKERROR OpenMemory(CKSTRING name) = 0;
 
-    virtual CKERROR OpenAsynchronousFile(char *name) = 0;
+    virtual CKERROR OpenAsynchronousFile(CKSTRING name) = 0;
 
     ///----------------------------------------------
     // Decoding Functions

@@ -789,7 +789,7 @@ CKERROR CKAttributeManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
     // Load attribute conversions
     for (int i = 0; i < m_ConversionTableCount; ++i) {
         if (chunk->ReadInt()) {
-            CKSTRING name = nullptr;
+            char *name = nullptr;
             chunk->ReadString(&name);
             CKGUID paramType = chunk->ReadGuid();
             int oldCategoryIdx = chunk->ReadInt();

@@ -16,15 +16,14 @@
 
 struct CKPARAMETER_DESC
 {
-    CKSTRING Name; // Parameter Name
+    char *Name; // Parameter Name
     CKGUID Guid;   // Guid identifying the type
     int Type;      // In, Out or local
-    CKSTRING DefaultValueString;
+    char *DefaultValueString;
     CKBYTE *DefaultValue;
     int DefaultValueSize;
     int Owner;
 
-public:
     DLL_EXPORT CKPARAMETER_DESC();
     DLL_EXPORT CKPARAMETER_DESC(const CKPARAMETER_DESC &d);
     DLL_EXPORT ~CKPARAMETER_DESC();
@@ -33,10 +32,9 @@ public:
 
 struct CKBEHAVIORIO_DESC
 {
-    CKSTRING Name; // Name of this IO
+    char *Name; // Name of this IO
     CKDWORD Flags; // Flags	In/Out/active etc
 
-public:
     // Ctor
     DLL_EXPORT CKBEHAVIORIO_DESC();
     // Dtor

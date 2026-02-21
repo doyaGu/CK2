@@ -75,12 +75,12 @@ void *CKParameter::GetWriteDataPtr() {
 
 CKERROR CKParameter::SetStringValue(CKSTRING Value) {
     if (m_ParamType && m_ParamType->Valid && m_ParamType->StringFunction) {
-        return m_ParamType->StringFunction(this, Value, TRUE);
+        return m_ParamType->StringFunction(this, const_cast<char *>(Value), TRUE);
     }
     return CKERR_INVALIDOPERATION;
 }
 
-int CKParameter::GetStringValue(CKSTRING Value, CKBOOL update) {
+int CKParameter::GetStringValue(char *Value, CKBOOL update) {
     if (m_ParamType && m_ParamType->Valid && m_ParamType->StringFunction) {
         return m_ParamType->StringFunction(this, Value, FALSE);
     }

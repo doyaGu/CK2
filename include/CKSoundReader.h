@@ -26,7 +26,7 @@ public:
 
     virtual CK_DATAREADER_FLAGS GetFlags() { return m_Flags; }
 
-    virtual CKERROR OpenFile(char *file) = 0;
+    virtual CKERROR OpenFile(CKSTRING file) = 0;
     virtual CKERROR Decode() = 0;
 
     virtual CKERROR GetDataBuffer(CKBYTE **buf, int *size) = 0;

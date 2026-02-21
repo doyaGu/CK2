@@ -65,15 +65,15 @@ class CKDataArray : public CKBeObject
 public:
     // Column/Format Functions
     // Insert Column before column cdest (-1 means move at the end)
-    DLL_EXPORT void InsertColumn(int cdest, CK_ARRAYTYPE type, char *name, CKGUID paramGuid = CKGUID(0, 0));
+    DLL_EXPORT void InsertColumn(int cdest, CK_ARRAYTYPE type, CKSTRING name, CKGUID paramGuid = CKGUID(0, 0));
     // Move Column csrc before column cdest (-1 means move at the end)
     DLL_EXPORT void MoveColumn(int csrc, int cdest);
     // Remove Column
     DLL_EXPORT void RemoveColumn(int c);
     // Set Column Name
-    DLL_EXPORT void SetColumnName(int c, char *name);
+    DLL_EXPORT void SetColumnName(int c, CKSTRING name);
     // Get Column Name
-    DLL_EXPORT char *GetColumnName(int c);
+    DLL_EXPORT CKSTRING GetColumnName(int c);
     // Get Column Format
     DLL_EXPORT void SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid = CKGUID(0, 0));
     // Get Column Format
@@ -113,7 +113,7 @@ public:
     // String Value
 
     // Set the value of an existing element
-    DLL_EXPORT CKBOOL SetElementStringValue(int i, int c, char *svalue);
+    DLL_EXPORT CKBOOL SetElementStringValue(int i, int c, CKSTRING svalue);
     // Set the value of an existing element
     DLL_EXPORT int GetStringValue(CKDWORD key, int c, char *svalue);
     // Set the value of an existing element

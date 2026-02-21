@@ -328,7 +328,7 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
     CKFlagsStruct flagStruct;
     flagStruct.NbData = flagCount;
     flagStruct.Vals = new int[flagCount];
-    flagStruct.Desc = new CKSTRING[flagCount];
+    flagStruct.Desc = new char *[flagCount];
     for (int i = 0; i < flagCount; ++i) flagStruct.Desc[i] = nullptr;
 
     // Parse the flags data
@@ -410,7 +410,7 @@ CKERROR CKParameterManager::RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, 
     CKEnumStruct enumStruct;
     enumStruct.NbData = entryCount;
     enumStruct.Vals = new int[entryCount];
-    enumStruct.Desc = new CKSTRING[entryCount];
+    enumStruct.Desc = new char *[entryCount];
 
     if (!enumStruct.Vals || !enumStruct.Desc) {
         delete[] enumStruct.Vals;
@@ -518,7 +518,7 @@ CKERROR CKParameterManager::ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING Enum
 
     enumStruct.NbData = entryCount;
     enumStruct.Vals = new int[entryCount];
-    enumStruct.Desc = new CKSTRING[entryCount];
+    enumStruct.Desc = new char *[entryCount];
     for (int i = 0; i < entryCount; ++i) enumStruct.Desc[i] = nullptr;
 
     int currentValueForNextDefault = 0;
@@ -590,7 +590,7 @@ CKERROR CKParameterManager::ChangeFlagsDeclaration(CKGUID FlagsGuid, CKSTRING Fl
 
     flagsStruct.NbData = entryCount;
     flagsStruct.Vals = new int[entryCount];
-    flagsStruct.Desc = new CKSTRING[entryCount];
+    flagsStruct.Desc = new char *[entryCount];
     for (int i = 0; i < entryCount; ++i) flagsStruct.Desc[i] = nullptr;
 
     int currentValue = 1;
@@ -641,7 +641,7 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     CKStructStruct structStruct;
     structStruct.NbData = memberCount;
     structStruct.Guids = new CKGUID[memberCount];
-    structStruct.Desc = new CKSTRING[memberCount];
+    structStruct.Desc = new char*[memberCount];
     for (int i = 0; i < memberCount; ++i) structStruct.Desc[i] = nullptr;
 
     const char *currentPos = StructData;
@@ -716,7 +716,7 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     CKStructStruct structStruct;
     structStruct.NbData = memberCount;
     structStruct.Guids = new CKGUID[memberCount];
-    structStruct.Desc = new CKSTRING[memberCount];
+    structStruct.Desc = new char*[memberCount];
     for (int i = 0; i < memberCount; ++i) structStruct.Desc[i] = nullptr;
 
     const char *currentPos = StructData;

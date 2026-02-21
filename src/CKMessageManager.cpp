@@ -37,7 +37,7 @@ CKMessageType CKMessageManager::AddMessageType(CKSTRING MsgName) {
 
 CKSTRING CKMessageManager::GetMessageTypeName(CKMessageType MsgType) {
     if (MsgType >= 0 && MsgType < m_RegisteredMessageTypes.Size())
-        return m_RegisteredMessageTypes[MsgType].Str() ? m_RegisteredMessageTypes[MsgType].Str() : (CKSTRING)"";
+        return m_RegisteredMessageTypes[MsgType].Str() ? m_RegisteredMessageTypes[MsgType].Str() : "";
     return nullptr;
 }
 
@@ -202,7 +202,7 @@ CKStateChunk *CKMessageManager::SaveData(CKFile *SavedFile) {
         chunk->WriteIdentifier(0x53);
         chunk->WriteInt(m_RegisteredMessageTypes.Size());
         for (int i = 0; i < m_RegisteredMessageTypes.Size(); ++i) {
-            chunk->WriteString(usedMessageTypes.IsSet(i) ? m_RegisteredMessageTypes[i].Str() : (CKSTRING) "");
+            chunk->WriteString(usedMessageTypes.IsSet(i) ? m_RegisteredMessageTypes[i].Str() : "");
         }
         chunk->CloseChunk();
         return chunk;
@@ -220,7 +220,7 @@ CKERROR CKMessageManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
 
     XArray<CKMessageType> typeIDs(typeCount);
     for (int i = 0; i < typeCount; ++i) {
-        CKSTRING name = nullptr;
+        char *name = nullptr;
         chunk->ReadString(&name);
         typeIDs.PushBack(AddMessageType(name));
         delete[] name;
@@ -471,7 +471,7 @@ CKMessageManager::~CKMessageManager() {
 }
 
 CKMessageManager::CKMessageManager(CKContext *Context)
-    : CKBaseManager(Context, MESSAGE_MANAGER_GUID, (CKSTRING)"Message Manager"),
+    : CKBaseManager(Context, MESSAGE_MANAGER_GUID, "Message Manager"),
       m_ReceivedMsgThisFrame(100) {
     m_MsgWaitingList = nullptr;
     RegisterDefaultMessages();

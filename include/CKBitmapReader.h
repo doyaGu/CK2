@@ -112,7 +112,7 @@ public:
         + The name argument is the full path of the file, and can be an URL.
     See Also:ReadMemory
     ************************************************/
-    virtual int ReadFile(char *name, CKBitmapProperties **ppBitmapProperties) = 0;
+    virtual int ReadFile(CKSTRING name, CKBitmapProperties **ppBitmapProperties) = 0;
     // Synchronous Reading from memory
     /************************************************
     Summary: Loads a bitmap file stored in memory.
@@ -126,7 +126,7 @@ public:
     /************************************************
     Summary: Not Yet Supported.
     ************************************************/
-    virtual int ReadASynchronousFile(char *name, CKBitmapProperties **) = 0;
+    virtual int ReadASynchronousFile(CKSTRING name, CKBitmapProperties **) = 0;
 
     //--------------------------------------------------
     // Saving Functions
@@ -142,7 +142,7 @@ public:
         of the memory to a file.
     See Also:SaveFile
     ************************************************/
-    virtual int SaveFile(char *name, CKBitmapProperties *pBitmapProperties) = 0;
+    virtual int SaveFile(CKSTRING name, CKBitmapProperties *pBitmapProperties) = 0;
 
     /************************************************
     Summary: Saves an image into a memory block.

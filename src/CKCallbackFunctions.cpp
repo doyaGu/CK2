@@ -1238,7 +1238,7 @@ int CKEnumStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStrin
     }
 }
 
-int CKFlagsStringFunc(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromString) {
+int CKFlagsStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
     if (!param)
         return 0;
 

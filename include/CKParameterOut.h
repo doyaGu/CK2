@@ -53,7 +53,7 @@ public:
     virtual CKERROR SetValue(const void *buf, int size = 0);
     virtual CKERROR CopyValue(CKParameter *param, CKBOOL UpdateParam = TRUE);
     virtual void *GetReadDataPtr(CKBOOL update = TRUE);
-    virtual int GetStringValue(CKSTRING Value, CKBOOL update = TRUE);
+    virtual int GetStringValue(char *Value, CKBOOL update = TRUE);
 
     //--------------------------------------------
     // Destinations

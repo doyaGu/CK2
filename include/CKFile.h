@@ -113,7 +113,7 @@ public:
     ~CKBufferParser();
 
     //----- Read Write method
-    CKBOOL Write(void *x, int size);
+    CKBOOL Write(const void *x, int size);
     CKBOOL Read(void *x, int size);
     char *ReadString();
     int ReadInt();
@@ -141,7 +141,7 @@ public:
     // if Size is <=0
     CKBufferParser *Extract(int Size);
     // Saves the next Size bytes to a file
-    CKBOOL ExtractFile(char *Filename, int Size);
+    CKBOOL ExtractFile(CKSTRING Filename, int Size);
     // Same version but with decoding
     CKBufferParser *ExtractDecoded(int Size, CKDWORD Key[4]);
     // Returns a new BufferParser containing the next PackSize bytes
@@ -283,7 +283,7 @@ public:
     CKBOOL m_SceneSaved;
     XBitArray m_AlreadySavedMask; // BitArray of IDs already saved  {secret}
     CKDWORD m_Flags;              // Flags used to save file {secret}
-    CKSTRING m_FileName;          // Current file name  {secret}
+    char *m_FileName;          // Current file name  {secret}
     CKContext *m_Context;         // CKContext on which file is loaded/Saved  {secret}
     CKBufferParser *m_Parser;
     VxMemoryMappedFile *m_MappedFile;

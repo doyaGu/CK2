@@ -162,7 +162,7 @@ public:
 
     //-------------------------------------------------------
     // Utils
-    CKSTRING GetStringBuffer(int size);
+    char *GetStringBuffer(int size);
     CKGUID GetSecureGuid();
     CKDWORD GetStartOptions();
     WIN_HANDLE GetMainWindow();
@@ -202,7 +202,7 @@ public:
 
     void SetAutomaticLoadMode(CK_LOADMODE GeneralMode, CK_LOADMODE _3DObjectsMode, CK_LOADMODE MeshMode, CK_LOADMODE MatTexturesMode);
     void SetUserLoadCallback(CK_USERLOADCALLBACK fct, void *Arg);
-    CK_LOADMODE LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, const CKSTRING NewName, CKObject **newobj);
+    CK_LOADMODE LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, char *NewName, CKObject **newobj);
 
     CKBOOL IsInLoad();
     CKBOOL IsInSave();
@@ -255,7 +255,7 @@ public:
 
     int WarnAllBehaviors(CKDWORD Message);
 
-    void GetSecureName(CKSTRING secureName, const char *name, CK_CLASSID cid);
+    void GetSecureName(char *secureName, CKSTRING name, CK_CLASSID cid);
     void GetObjectSecureName(XString &secureName, CKSTRING name, CK_CLASSID cid);
 
     int PrepareDestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, CKDependencies *Dependencies);

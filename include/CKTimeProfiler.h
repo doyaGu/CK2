@@ -20,7 +20,7 @@ public:
     Name: VxMultiTimeProfiler
     Summary: Starts profiling
     *************************************************/
-    CKTimeProfiler(const char *iTitle, CKContext *iContext, int iStartingCount = 4) : m_Title(iTitle), m_Context(iContext), m_Marks(iStartingCount) {}
+    CKTimeProfiler(CKSTRING iTitle, CKContext *iContext, int iStartingCount = 4) : m_Title(iTitle), m_Context(iContext), m_Marks(iStartingCount) {}
 
     ~CKTimeProfiler()
     {
@@ -44,7 +44,7 @@ public:
     /*************************************************
     Summary: add a split time with a name
     *************************************************/
-    void operator()(const char *iString)
+    void operator()(CKSTRING iString)
     {
         Mark m;
         m.name = iString;
@@ -56,7 +56,7 @@ public:
     /*************************************************
     Summary: Restarts the timer
     *************************************************/
-    void Dump(char *oBuffer, char *iSeparator = " | ")
+    void Dump(char *oBuffer, CKSTRING iSeparator = " | ")
     {
         char buffer[64];
         *oBuffer = '\0';
@@ -86,12 +86,12 @@ protected:
     // types
     struct Mark
     {
-        const char *name;
+        CKSTRING name;
         float time;
     };
 
     VxTimeProfiler m_Profiler;
-    const char *m_Title;
+    CKSTRING m_Title;
     CKContext *m_Context;
     XArray<Mark> m_Marks;
 };

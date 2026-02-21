@@ -112,16 +112,16 @@ DLL_EXPORT CKWORD CKConvertEndian16(CKWORD w);
 //------------------------------------------------
 // Compression utilities
 
-DLL_EXPORT CKDWORD CKComputeDataCRC(char *data, int size, CKDWORD PreviousCRC = 0);
-DLL_EXPORT char *CKPackData(char *Data, int size, int &NewSize, int compressionLevel);
-DLL_EXPORT char *CKUnPackData(int DestSize, char *SrcBuffer, int SrcSize);
+DLL_EXPORT CKDWORD CKComputeDataCRC(const char *data, int size, CKDWORD PreviousCRC = 0);
+DLL_EXPORT char *CKPackData(const char *Data, int size, int &NewSize, int compressionLevel);
+DLL_EXPORT char *CKUnPackData(int DestSize, const char *SrcBuffer, int SrcSize);
 
 //-------------------------------------------------
 // String Utilities
 
-DLL_EXPORT CKSTRING CKStrdup(CKSTRING string);
-DLL_EXPORT CKSTRING CKStrupr(CKSTRING string);
-DLL_EXPORT CKSTRING CKStrlwr(CKSTRING string);
+DLL_EXPORT char *CKStrdup(CKSTRING string);
+DLL_EXPORT char *CKStrupr(char *string);
+DLL_EXPORT char *CKStrlwr(char *string);
 
 //-------------------------------------------------
 // CKBitmapProperties Utilities

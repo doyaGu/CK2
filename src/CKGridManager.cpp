@@ -1,3 +1,3 @@
 #include "CKGridManager.h"
 
-CKGridManager::CKGridManager(CKContext *Context, CKGUID guid, char *name) : CKBaseManager(Context, guid, name) {}
+CKGridManager::CKGridManager(CKContext *Context, CKGUID guid, CKSTRING name) : CKBaseManager(Context, guid, name) {}

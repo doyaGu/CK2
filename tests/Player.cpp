@@ -701,8 +701,8 @@ bool Player::FinishLoad(const char *filename) {
     level->LaunchScene(nullptr);
 
     // ReRegister OnClick Message in case it changed
-    m_MsgClick = m_MessageManager->AddMessageType((CKSTRING) "OnClick");
-    m_MsgDoubleClick = m_MessageManager->AddMessageType((CKSTRING) "OnDblClick");
+    m_MsgClick = m_MessageManager->AddMessageType("OnClick");
+    m_MsgDoubleClick = m_MessageManager->AddMessageType("OnDblClick");
 
     // Render the first frame
     m_RenderContext->Render();

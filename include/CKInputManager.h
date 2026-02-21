@@ -107,7 +107,7 @@ public:
 
     See Also: GetKeyFromName
     ************************************************/
-    virtual int GetKeyName(CKDWORD iKey, CKSTRING oKeyName) = 0;
+    virtual int GetKeyName(CKDWORD iKey, char *oKeyName) = 0;
 
     /************************************************
     Summary: Gets a key code from a key name.

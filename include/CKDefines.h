@@ -500,7 +500,7 @@ struct CKPluginInfo
         m_ExitInstanceFct = NULL;
     }
 
-    CKPluginInfo(CKGUID guid, CKFileExtension ext, const char *iDesc, const char *iAuthor, const char *iSummary, CKDWORD version, CK_INITINSTANCEFCT Initfct, CK_EXITINSTANCEFCT Exitfct, CK_PLUGIN_TYPE type)
+    CKPluginInfo(CKGUID guid, CKFileExtension ext, CKSTRING iDesc, CKSTRING iAuthor, CKSTRING iSummary, CKDWORD version, CK_INITINSTANCEFCT Initfct, CK_EXITINSTANCEFCT Exitfct, CK_PLUGIN_TYPE type)
         : m_GUID(guid), m_Extension(ext), m_Description(iDesc), m_Author(iAuthor), m_Summary(iSummary), m_Version(version), m_InitInstanceFct(Initfct), m_ExitInstanceFct(Exitfct), m_Type(type)
     {
     }
@@ -523,7 +523,6 @@ See also : CKParameterManager::RegisterNewEnum,CKParameterManager::GetEnumDescBy
 
 typedef struct CKEnumStruct
 {
-public:
     // Summary:Returns the number of enumeration values
     int GetNumEnums() { return NbData; }
     // Summary:Returns the value of the index th enumeration element
@@ -531,10 +530,9 @@ public:
     // Summary:Returns the description string of the index th enumeration element.
     CKSTRING GetEnumDescription(int index) { return Desc[index]; }
 
-public:
     int NbData;
     int *Vals;
-    CKSTRING *Desc;
+    char **Desc;
 } CKEnumStruct;
 
 /********************************************************
@@ -550,7 +548,6 @@ See also : CKParameterManager::RegisterNewFlags,CKParameterManager::GetFlagsDesc
 
 typedef struct CKFlagsStruct
 {
-public:
     // Summary:Returns the number of flag values
     int GetNumFlags() { return NbData; }
     // Summary:Returns the value of the index th flag (usually 1,2,4,etc..)
@@ -558,10 +555,9 @@ public:
     // Summary:Returns the description string of the index th flag
     CKSTRING GetFlagDescription(int index) { return Desc[index]; }
 
-public:
     int NbData;
     int *Vals;
-    CKSTRING *Desc;
+    char **Desc;
 } CKFlagsStruct;
 
 /********************************************************
@@ -577,7 +573,6 @@ See also : CKParameterManager::RegisterNewStructure,CKParameterManager::GetStruc
 
 typedef struct CKStructStruct
 {
-public:
     // Summary:Returns the number of sub parameters in the structure
     int GetNumSubParam() { return NbData; }
     // Summary:Returns the CKGUID of the index th sub parameter in the structure
@@ -585,10 +580,9 @@ public:
     // Summary:Returns the description string of the index th sub parameter in the structure
     CKSTRING GetSubParamDescription(int index) { return Desc[index]; }
 
-public:
     int NbData;
     CKGUID *Guids;
-    CKSTRING *Desc;
+    char **Desc;
 } CKStructStruct;
 
 //----------------------------------------------------------//
@@ -603,7 +597,7 @@ typedef void (*CK_PARAMETERCHECKFUNCTION)(CKParameter *param);
 typedef void (*CK_PARAMETERREMAPFUNCTION)(CKParameter *param, CKDependenciesContext &context);
 typedef void (*CK_PARAMETERCOPYFUNCTION)(CKParameter *dest, CKParameter *src);
 typedef void (*CK_PARAMETERSAVELOADFUNCTION)(CKParameter *param, CKStateChunk **chunk, CKBOOL load);
-typedef int (*CK_PARAMETERSTRINGFUNCTION)(CKParameter *param, CKSTRING ValueString, CKBOOL ReadFromString);
+typedef int (*CK_PARAMETERSTRINGFUNCTION)(CKParameter *param, char *ValueString, CKBOOL ReadFromString);
 typedef WIN_HANDLE (*CK_PARAMETERUICREATORFUNCTION)(CKParameter *param, WIN_HANDLE ParentWindow, CKRECT *rect);
 
 /*************************************************
@@ -626,7 +620,7 @@ Callback function prototypes:
         typedef void	(*CK_PARAMETERREMAPFUNCTION)(CKParameter*,CKDependenciesContext&);
         typedef void	(*CK_PARAMETERCOPYFUNCTION)(CKParameter*,CKParameter*);
         typedef void	(*CK_PARAMETERSAVELOADFUNCTION)(CKParameter* param,CKStateChunk **chunk,CKBOOL load);
-        typedef int		(*CK_PARAMETERSTRINGFUNCTION)(CKParameter* param,CKSTRING ValueString,CKBOOL ReadFromString);
+        typedef int		(*CK_PARAMETERSTRINGFUNCTION)(CKParameter* param,char* ValueString,CKBOOL ReadFromString);
         typedef WIN_HANDLE	(*CK_PARAMETERUICREATORFUNCTION)(CKParameter* param,WIN_HANDLE ParentWindow,CKRECT *rect);
 
         struct CKParameterTypeDesc {

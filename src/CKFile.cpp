@@ -77,7 +77,7 @@ CKBufferParser::~CKBufferParser() {
         delete[] m_Buffer;
 }
 
-CKBOOL CKBufferParser::Write(void *x, int size) {
+CKBOOL CKBufferParser::Write(const void *x, int size) {
     if (size < 0 || m_CursorPos + size > m_Size)
         return FALSE;
 
@@ -185,7 +185,7 @@ CKBufferParser *CKBufferParser::Extract(int Size) {
     return parser;
 }
 
-CKBOOL CKBufferParser::ExtractFile(char *Filename, int Size) {
+CKBOOL CKBufferParser::ExtractFile(CKSTRING Filename, int Size) {
     if (Size < 0 || m_CursorPos + Size > m_Size)
         return FALSE;
 
@@ -313,7 +313,7 @@ CKERROR CKFile::LoadFileData(CKObjectArray *liste) {
     if (m_ReadFileDataDone) {
         FinishLoading(liste, m_Flags);
         if (WarningForOlderVersion)
-            m_Context->OutputToConsole((CKSTRING) "Obsolete File Format,Please Re-Save...");
+            m_Context->OutputToConsole("Obsolete File Format,Please Re-Save...");
     } else {
         err = ReadFileData(&m_Parser);
         if (err == CK_OK) {
@@ -329,7 +329,7 @@ CKERROR CKFile::LoadFileData(CKObjectArray *liste) {
 
             FinishLoading(liste, m_Flags);
             if (WarningForOlderVersion)
-                m_Context->OutputToConsole((CKSTRING) "Obsolete File Format,Please Re-Save...");
+                m_Context->OutputToConsole("Obsolete File Format,Please Re-Save...");
         }
     }
 
@@ -424,7 +424,7 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
     }
 
     if (header.Part0.FileVersion >= 10) {
-        m_Context->OutputToConsole((CKSTRING) "This version is too old to load this file");
+        m_Context->OutputToConsole("This version is too old to load this file");
         return CKERR_OBSOLETEVIRTOOLS;
     }
 
@@ -468,14 +468,14 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
         crc = parser->ComputeCRC(m_FileInfo.DataPackSize, crc);
         parser->Seek(prev);
         if (crc != m_FileInfo.Crc) {
-            m_Context->OutputToConsole((CKSTRING) "Crc Error in m_File");
+            m_Context->OutputToConsole("Crc Error in m_File");
             return CKERR_FILECRCERROR;
         }
 
         if (m_FileInfo.Hdr1PackSize != m_FileInfo.Hdr1UnPackSize) {
             CKBufferParser *unpacked = parser->UnPack(m_FileInfo.Hdr1UnPackSize, m_FileInfo.Hdr1PackSize);
             if (!unpacked) {
-                m_Context->OutputToConsole((CKSTRING) "Error unpacking header chunk.");
+                m_Context->OutputToConsole("Error unpacking header chunk.");
                 return CKERR_INVALIDFILE;
             }
             if (parser != *ParserPtr) {
@@ -613,7 +613,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
     if ((m_FileInfo.FileWriteMode & (CKFILE_CHUNKCOMPRESSED_OLD | CKFILE_WHOLECOMPRESSED)) != 0) {
         CKBufferParser *unpacked = parser->UnPack(m_FileInfo.DataUnPackSize, m_FileInfo.DataPackSize);
         if (!unpacked) {
-            m_Context->OutputToConsole((CKSTRING) "Error unpacking data chunk.");
+            m_Context->OutputToConsole("Error unpacking data chunk.");
             return CKERR_INVALIDFILE;
         }
         parser = unpacked;
@@ -626,7 +626,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                 if (parser != *ParserPtr)
                     delete parser;
 
-                m_Context->OutputToConsole((CKSTRING) "Crc Error in m_File");
+                m_Context->OutputToConsole("Crc Error in m_File");
                 return CKERR_FILECRCERROR;
             }
         } else {
@@ -728,7 +728,9 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
             oit->Name = nullptr;
             if (oit->Data) {
                 if (oit->Data->SeekIdentifier(1)) {
-                    oit->Data->ReadString(&oit->Name);
+                    char *tmpName = nullptr;
+                    oit->Data->ReadString(&tmpName);
+                    oit->Name = tmpName;
                 }
                 oit->ObjectCid = oit->Data->GetChunkClassID();
             }
@@ -749,7 +751,7 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
             if (fileSize > 0) {
                 XString temp = m_Context->GetPathManager()->GetVirtoolsTemporaryFolder();
                 CKPathMaker pm(nullptr, temp.Str(), fileName, nullptr);
-                char *filePath = pm.GetFileName();
+                const char *filePath = pm.GetFileName();
                 parser->ExtractFile(filePath, fileSize);
             }
         }

@@ -105,7 +105,7 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
             saveProps = nullptr; // Fallback to default handling
         }
     } else {
-        char *ext = splitter.GetExtension();
+        const char *ext = splitter.GetExtension();
         if (ext && *ext != '\0') {
             snprintf(extension, sizeof(extension), "%s", ext);
         }
@@ -154,7 +154,7 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
     char extension[_MAX_PATH] = ".bmp";
     CKBOOL result = FALSE;
 
-    char *fileExt = pathSplitter.GetExtension();
+    const char *fileExt = pathSplitter.GetExtension();
     if (fileExt && strlen(fileExt)) {
         snprintf(extension, sizeof(extension), "%s", fileExt);
     }
@@ -470,7 +470,7 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     CKSTRING nameStr = Name.Str();
 
     CKPathSplitter splitter(nameStr);
-    CKSTRING extStr = splitter.GetExtension();
+    const char *extStr = splitter.GetExtension();
     
     CKFileExtension extension(extStr + 1);  // Skip the dot
     CKPluginManager *pm = CKGetPluginManager();

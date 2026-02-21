@@ -1200,7 +1200,7 @@ void CKStateChunk::ReadAndFillBuffer_LEndian16(int size, void *buffer) {
     ReadAndFillBuffer_LEndian(size, buffer);
 }
 
-void CKStateChunk::WriteString(char *str) {
+void CKStateChunk::WriteString(CKSTRING str) {
     if (!str) {
         CheckSize(sizeof(int));
         m_Data[m_ChunkParser->CurrentPos++] = 0;
@@ -1217,14 +1217,14 @@ void CKStateChunk::WriteString(char *str) {
     }
 }
 
-int CKStateChunk::ReadString(CKSTRING *str) {
+int CKStateChunk::ReadString(char **str) {
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
             m_File->m_Context->OutputToConsole("Chunk Read error");
         return 0;
     }
 
-    CKSTRING s = nullptr;
+    char *s = nullptr;
     int size = m_Data[m_ChunkParser->CurrentPos];
     int sz = (size + 3) / sizeof(int);
     ++m_ChunkParser->CurrentPos;

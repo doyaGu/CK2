@@ -2346,7 +2346,7 @@ void CKBehavior::ErrorMessage(CKSTRING Error, CKDWORD Context, CKBOOL ShowOwner,
         contextStr = "Execution";
         break;
     }
-    return ErrorMessage(Error, (CKSTRING) contextStr, ShowOwner, ShowScript);
+    return ErrorMessage(Error, contextStr, ShowOwner, ShowScript);
 }
 
 void CKBehavior::SetPrototypeGuid(CKGUID ckguid) {

@@ -301,7 +301,7 @@ public:
     //--------------------------------------------------------
     ////               Private Part
 
-    CKGridManager(CKContext *Context, CKGUID guid, char *name);
+    CKGridManager(CKContext *Context, CKGUID guid, CKSTRING name);
 
     virtual ~CKGridManager() {}
 

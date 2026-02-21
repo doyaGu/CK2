@@ -11,7 +11,7 @@ public:
     virtual int CallBehaviorEditionFunction(CKBehavior *beh, void *arg);
     virtual int CallBehaviorSettingsEditionFunction(CKBehavior *beh, void *arg);
     virtual int CallEditionFunction(CK_CLASSID id, void *arg);
-    virtual int DoRenameDialog(char *Name, CK_CLASSID cid);
+    virtual int DoRenameDialog(CKSTRING Name, CK_CLASSID cid);
     virtual ~CKInterfaceManager();
     CKInterfaceManager(CKContext *Context);
 

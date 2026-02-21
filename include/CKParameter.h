@@ -45,7 +45,7 @@ public:
     //--------------------------------------------
     // Conversion from / to string
     virtual CKERROR SetStringValue(CKSTRING Value);
-    virtual int GetStringValue(CKSTRING Value, CKBOOL update = TRUE);
+    virtual int GetStringValue(char *Value, CKBOOL update = TRUE);
 
     //--------------------------------------------
     // Type

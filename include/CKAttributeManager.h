@@ -26,7 +26,7 @@ struct CKAttributeDesc
     CK_CLASSID CompatibleCid;
     CKATTRIBUTECALLBACK CallbackFct;
     void *CallbackArg;
-    CKSTRING DefaultValue;
+    char *DefaultValue;
     CKDWORD Flags;
     CKPluginEntry *CreatorDll;
 };

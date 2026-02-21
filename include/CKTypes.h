@@ -19,7 +19,7 @@ Remarks:
     objects, etc..
 See also: CKObject::GetClassID,CKIsChildClassOf,Class Identifiers
 *************************************************/
-typedef long CK_CLASSID;
+typedef int32_t CK_CLASSID;
 
 /*************************************************
 Summary: Unique Identifier for all Objects instantiated in a given CKContext
@@ -36,20 +36,20 @@ Remarks:
     is no guaranty that this ID will be the same when a level is saved and loaded back again.
 See also: CKObject::GetID, CKContext::GetObject
 *************************************************/
-typedef unsigned long CK_ID;
+typedef uint32_t CK_ID;
 
 //----------------------------------------------------------////
 //		Type Definition										////
 //----------------------------------------------------------////
 
-typedef char *CKSTRING;
+typedef const char *CKSTRING;
 typedef char CKCHAR;
 typedef int CKBOOL;
 typedef unsigned char CKBYTE;
-typedef unsigned int CKUINT;
-typedef unsigned long CKDWORD;
-typedef unsigned short CKWORD;
-typedef long CKERROR;
+typedef uint32_t CKUINT;
+typedef uint32_t CKDWORD;
+typedef uint16_t CKWORD;
+typedef int32_t CKERROR;
 typedef int CKParameterType;
 typedef int CKOperationType;
 typedef int CKMessageType;

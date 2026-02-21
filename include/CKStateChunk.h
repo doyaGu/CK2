@@ -249,7 +249,7 @@ public:
     void WriteDwordAsWords(CKDWORD data);
     void WriteInt(int data);
     void WriteFloat(float data);
-    void WriteString(char *str);
+    void WriteString(CKSTRING str);
     void WriteObjectID(CK_ID obj);
     void WriteObject(CKObject *obj);
     void WriteGuid(CKGUID data);
@@ -332,7 +332,7 @@ public:
 
     CKStateChunk *ReadSubChunk();
     int ReadBuffer(void **buffer); // returns the size in bytes of the allocated buffer (// Use CKDeletePointer to delete allocated pointer)
-    int ReadString(CKSTRING *str); // returns the length of the string including the terminating null character (// Use CKDeletePointer to delete allocated string)
+    int ReadString(char **str); // returns the length of the string including the terminating null character (// Use CKDeletePointer to delete allocated string)
     void ReadString(XString &str);
 
     //----------------------------------------------------------

@@ -39,7 +39,7 @@ void *CKParameterOut::GetReadDataPtr(CKBOOL update) {
     return CKParameter::GetReadDataPtr(TRUE);
 }
 
-int CKParameterOut::GetStringValue(CKSTRING Value, CKBOOL update) {
+int CKParameterOut::GetStringValue(char *Value, CKBOOL update) {
     if (update && (m_ObjectFlags & CK_PARAMETEROUT_PARAMOP) != 0) {
         Update();
     }
