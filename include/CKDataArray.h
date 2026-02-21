@@ -3,7 +3,7 @@
 
 #include "CKBeObject.h"
 
-typedef XSArray<CKDWORD> CKDataRow;
+typedef XSArray<CKUINTPTR> CKDataRow;
 
 typedef int (*ArraySortFunction)(CKDataRow *, CKDataRow *);
 
@@ -90,7 +90,7 @@ public:
     // Elements Functions
 
     // Get the element pointer of the specified case
-    DLL_EXPORT CKDWORD *GetElement(int i, int c);
+    DLL_EXPORT CKUINTPTR *GetElement(size_t i, size_t c);
     // Use to get an int, a float, a string or an object ID
     DLL_EXPORT CKBOOL GetElementValue(int i, int c, void *value);
     // Use to get an CKObject
@@ -138,7 +138,7 @@ public:
     // Test a row on a column
     DLL_EXPORT CKBOOL TestRow(int row, int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
     // Find a line with the current key : search in the column c and return the line index (-1) if none
-    DLL_EXPORT int FindRowIndex(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
+    DLL_EXPORT ptrdiff_t FindRowIndex(size_t c, CK_COMPOPERATOR op, CKUINTPTR key, size_t size = 0, size_t startIndex = 0);
     // Find a line with the current key : search in the column c and return the line itself (NULL if none)
     DLL_EXPORT CKDataRow *FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
     // Remove the nth line
@@ -236,8 +236,8 @@ public:
     static int g_ColumnIndex;
     static CKBOOL g_Order;
     static CK_COMPOPERATOR g_Operator;
-    static CKDWORD g_Value;
-    static CKDWORD g_ValueSize;
+    static CKUINTPTR g_Value;
+    static CKUINTPTR g_ValueSize;
     static ArraySortFunction g_SortFunction;
 };
 

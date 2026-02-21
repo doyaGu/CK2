@@ -50,6 +50,7 @@ typedef uint32_t CKUINT;
 typedef uint32_t CKDWORD;
 typedef uint16_t CKWORD;
 typedef int32_t CKERROR;
+typedef uintptr_t CKUINTPTR;
 typedef int CKParameterType;
 typedef int CKOperationType;
 typedef int CKMessageType;
@@ -538,7 +539,7 @@ typedef struct CKUICallbackStruct
     CKDWORD Reason;
     union
     {
-        CKDWORD Param1;
+        CKUINTPTR Param1;
         int NbObjectsLoaded;
         CKBOOL DoBeep;
         CKMessage *DebugMessageSent;
@@ -548,7 +549,7 @@ typedef struct CKUICallbackStruct
     };
     union
     {
-        CKDWORD Param2;
+        CKUINTPTR Param2;
         int NbObjectsToLoad;
         CKSTRING ConsoleString;
         int ClearSelection;
