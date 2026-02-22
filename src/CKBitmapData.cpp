@@ -318,9 +318,12 @@ CKBOOL CKBitmapData::SetCurrentSlot(int Slot) {
         return FALSE;
 
     // Get buffer from first slot
-    CKBYTE *buffer = (CKBYTE *)(*(CKDWORD **)m_Slots.Begin());
-    if (!buffer)
+    if (m_Slots.IsEmpty())
         return FALSE;
+    CKBitmapSlot *slot0 = m_Slots[0];
+    if (!slot0 || !slot0->m_DataBuffer)
+        return FALSE;
+    CKBYTE *buffer = (CKBYTE *)slot0->m_DataBuffer;
 
     VxImageDescEx dstDesc;
     GetImageDesc(dstDesc);
