@@ -99,16 +99,6 @@ if (MSVC)
             _CRT_SECURE_NO_WARNINGS
             _CRT_NONSTDC_NO_WARNINGS
     )
-    add_compile_options(
-            $<$<COMPILE_LANGUAGE:CXX>:/Zc:strictStrings->
-    )
-endif ()
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(
-            $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
-            $<$<COMPILE_LANGUAGE:CXX>:-Wno-write-strings>
-    )
 endif ()
 
 # =============================================================================
