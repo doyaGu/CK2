@@ -115,7 +115,7 @@ public:
     // Set the value of an existing element
     DLL_EXPORT CKBOOL SetElementStringValue(int i, int c, CKSTRING svalue);
     // Set the value of an existing element
-    DLL_EXPORT int GetStringValue(CKDWORD key, int c, char *svalue);
+    DLL_EXPORT int GetStringValue(CKUINTPTR key, int c, char *svalue);
     // Set the value of an existing element
     DLL_EXPORT int GetElementStringValue(int i, int c, char *svalue);
 
@@ -136,11 +136,11 @@ public:
     // Insert a Row before another, -1 means after everything
     DLL_EXPORT CKDataRow *InsertRow(int n = -1);
     // Test a row on a column
-    DLL_EXPORT CKBOOL TestRow(int row, int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
+    DLL_EXPORT CKBOOL TestRow(int row, int c, CK_COMPOPERATOR op, CKUINTPTR key, int size = 0);
     // Find a line with the current key : search in the column c and return the line index (-1) if none
     DLL_EXPORT ptrdiff_t FindRowIndex(size_t c, CK_COMPOPERATOR op, CKUINTPTR key, size_t size = 0, size_t startIndex = 0);
     // Find a line with the current key : search in the column c and return the line itself (NULL if none)
-    DLL_EXPORT CKDataRow *FindRow(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0, int startIndex = 0);
+    DLL_EXPORT CKDataRow *FindRow(int c, CK_COMPOPERATOR op, CKUINTPTR key, int size = 0, int startIndex = 0);
     // Remove the nth line
     DLL_EXPORT void RemoveRow(int n);
     // Move a row
@@ -182,9 +182,9 @@ public:
     DLL_EXPORT CKDWORD Product(int c);
 
     // Get the count of elements verifying a condition (operator)
-    DLL_EXPORT int GetCount(int c, CK_COMPOPERATOR op, CKDWORD key, int size = 0);
+    DLL_EXPORT int GetCount(int c, CK_COMPOPERATOR op, CKUINTPTR key, int size = 0);
     // Create a group from elements matching a value
-    DLL_EXPORT void CreateGroup(int mc, CK_COMPOPERATOR op, CKDWORD key, int size, CKGroup *group, int ec = 0);
+    DLL_EXPORT void CreateGroup(int mc, CK_COMPOPERATOR op, CKUINTPTR key, int size, CKGroup *group, int ec = 0);
 
     //-------------------------------------------------------------------------
     // Internal functions

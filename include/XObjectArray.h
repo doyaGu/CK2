@@ -272,7 +272,7 @@ public:
 
     See Also: FindObject, AddIfNotHere
     *******************************************************/
-    int RemoveObject(CKObject *obj) { return (int)Remove(obj); }
+    int RemoveObject(CKObject *obj) { CKObject **p = Remove(obj); return p ? (int)(p - m_Begin) : -1; }
 
     /*******************************************************
     Summary: Checks if given object is in object array.

@@ -320,7 +320,7 @@ CKPluginDll *CKPluginManager::GetPluginDllInfo(CKSTRING PluginName, int *idx) {
     }
 
     if (idx) {
-        *idx = i - m_PluginDlls.Begin();
+        *idx = (int)(i - m_PluginDlls.Begin());
     }
     return i;
 }

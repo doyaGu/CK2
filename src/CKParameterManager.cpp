@@ -647,7 +647,7 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     const char *currentPos = StructData;
     for (int i = 0; i < memberCount; ++i) {
         const char *end = strchr(currentPos, ',');
-        int len = end ? (end - currentPos) : (int) strlen(currentPos);
+        int len = end ? (int)(end - currentPos) : (int) strlen(currentPos);
         structStruct.Desc[i] = new char[len + 1];
         strncpy(structStruct.Desc[i], currentPos, len);
         structStruct.Desc[i][len] = '\0';
@@ -722,7 +722,7 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
     const char *currentPos = StructData;
     for (int i = 0; i < memberCount; ++i) {
         const char *end = strchr(currentPos, ',');
-        int len = end ? (end - currentPos) : (int) strlen(currentPos);
+        int len = end ? (int)(end - currentPos) : (int) strlen(currentPos);
         structStruct.Desc[i] = new char[len + 1];
         strncpy(structStruct.Desc[i], currentPos, len);
         structStruct.Desc[i][len] = '\0';

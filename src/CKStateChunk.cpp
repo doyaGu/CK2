@@ -1205,7 +1205,7 @@ void CKStateChunk::WriteString(CKSTRING str) {
         CheckSize(sizeof(int));
         m_Data[m_ChunkParser->CurrentPos++] = 0;
     } else {
-        int len = strlen(str);
+        int len = (int)strlen(str);
         int size = len + 1;
         int dwords = (size + sizeof(int) - 1) / sizeof(int);
         CheckSize((dwords + 1) * sizeof(int));

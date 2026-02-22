@@ -544,7 +544,7 @@ CKERROR CKContext::RefreshBuildingBlocks(const XArray<CKGUID> &iGuids) {
 
     CKUICallbackStruct cbs;
     cbs.Reason = CKUIM_REFRESHBUILDINGBLOCKS;
-    cbs.Param1 = (CKDWORD) iGuids.Begin();
+    cbs.Param1 = reinterpret_cast<CKUINTPTR>(iGuids.Begin());
     cbs.Param2 = iGuids.Size();
     return m_UICallBackFct(cbs, m_InterfaceModeData);
 }
@@ -565,7 +565,7 @@ CK_ID CKContext::ChooseObject(void *dialogParentWnd) {
 
     CKUICallbackStruct cbs;
     cbs.Reason = CKUIM_CHOOSEOBJECT;
-    cbs.Param1 = (CKDWORD) dialogParentWnd;
+    cbs.Param1 = reinterpret_cast<CKUINTPTR>(dialogParentWnd);
     m_UICallBackFct(cbs, m_InterfaceModeData);
     return cbs.ObjectID;
 }
@@ -910,7 +910,7 @@ CKERROR CKContext::GetFileInfo(CKSTRING FileName, CKFileInfo *FileInfo) {
     if (!file.IsValid())
         return CKERR_INVALIDFILE;
 
-    return GetFileInfo(file.GetFileSize(), file.GetBase(), FileInfo);
+    return GetFileInfo((int)file.GetFileSize(), file.GetBase(), FileInfo);
 }
 
 CKERROR CKContext::GetFileInfo(int BufferSize, void *MemoryBuffer, CKFileInfo *FileInfo) {

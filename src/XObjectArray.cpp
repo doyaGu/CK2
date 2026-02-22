@@ -3,7 +3,7 @@
 #include "CKStateChunk.h"
 
 CK_ID XObjectPointerArray::GetObjectID(unsigned int i) const {
-    if (i >= Size())
+    if (i >= (unsigned int)Size())
         return 0;
     return m_Begin[i]->m_ID;
 }
@@ -102,7 +102,7 @@ CKBOOL XSObjectArray::AddIfNotHere(CKObject *obj) {
 }
 
 CKObject *XSObjectArray::GetObject(CKContext *Context, unsigned int i) const {
-    if (!Context || i >= Size())
+    if (!Context || i >= (unsigned int)Size())
         return nullptr;
     return Context->GetObject(m_Begin[i]);
 }
@@ -112,7 +112,7 @@ CKBOOL XSObjectArray::RemoveObject(CKObject *obj) {
         return FALSE;
     for (CK_ID *it = m_Begin; it != m_End; ++it) {
         if (*it == obj->GetID()) {
-            RemoveAt(it - m_Begin);
+            RemoveAt((int)(it - m_Begin));
             return TRUE;
         }
     }
@@ -221,7 +221,7 @@ CKBOOL XObjectArray::AddIfNotHere(CKObject *obj) {
 }
 
 CKObject *XObjectArray::GetObject(CKContext *Context, unsigned int i) const {
-    if (!Context || i >= Size())
+    if (!Context || i >= (unsigned int)Size())
         return nullptr;
     return Context->GetObject(m_Begin[i]);
 }

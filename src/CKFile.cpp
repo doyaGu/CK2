@@ -265,7 +265,7 @@ CKERROR CKFile::OpenFile(CKSTRING filename, CK_LOAD_FLAGS Flags) {
     }
 
     m_Context->SetLastCmoLoaded(filename);
-    return OpenMemory(m_MappedFile->GetBase(), m_MappedFile->GetFileSize(), Flags);
+    return OpenMemory(m_MappedFile->GetBase(), (int)m_MappedFile->GetFileSize(), Flags);
 }
 
 CKERROR CKFile::OpenMemory(void *MemoryBuffer, int BufferSize, CK_LOAD_FLAGS Flags) {
@@ -1226,7 +1226,7 @@ CKERROR CKFile::EndSave() {
             }
 
             if (mmf.GetErrorType() == VxMMF_NoError) {
-                CKDWORD size = mmf.GetFileSize();
+                CKDWORD size = (CKDWORD)mmf.GetFileSize();
                 fwrite(&size, sizeof(CKDWORD), 1, fp);
                 fwrite(mmf.GetBase(), size, 1, fp);
             } else {
