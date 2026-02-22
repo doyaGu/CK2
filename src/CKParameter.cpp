@@ -75,7 +75,14 @@ void *CKParameter::GetWriteDataPtr() {
 
 CKERROR CKParameter::SetStringValue(CKSTRING Value) {
     if (m_ParamType && m_ParamType->Valid && m_ParamType->StringFunction) {
-        return m_ParamType->StringFunction(this, const_cast<char *>(Value), TRUE);
+        if (!Value) {
+            return m_ParamType->StringFunction(this, nullptr, TRUE);
+        }
+
+        char *mutableValue = CKStrdup(Value);
+        CKERROR result = m_ParamType->StringFunction(this, mutableValue, TRUE);
+        delete[] mutableValue;
+        return result;
     }
     return CKERR_INVALIDOPERATION;
 }

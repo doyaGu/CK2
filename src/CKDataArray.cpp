@@ -617,7 +617,9 @@ CKBOOL CKDataArray::SetElementValueFromParameter(int i, int c, CKParameter *pout
     default: {
         const void *srcData = pout->GetReadDataPtr();
         if (srcData) {
-            memcpy(&element, srcData, sizeof(CKDWORD));
+            CKDWORD d = 0;
+            memcpy(&d, srcData, sizeof(CKDWORD));
+            element = static_cast<CKUINTPTR>(d);
         }
         break;
     }
@@ -2134,8 +2136,9 @@ CKBOOL CKDataArray::IsObjectUsed(CKObject *o, CK_CLASSID cid) {
         for (int ocol = 0; ocol < objectColumns.Size(); ++ocol) {
             int col = objectColumns[ocol];
             CKUINTPTR element = (*dataRow)[col];
-            if (element == targetId) {
-                return 1;
+            CK_ID elementId = (CK_ID) element;
+            if (elementId == targetId) {
+                return TRUE;
             }
         }
     }
