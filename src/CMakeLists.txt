@@ -196,7 +196,6 @@ function(ck2_configure_target TARGET_NAME)
             PUBLIC
             $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-            PRIVATE ${STB_INCLUDE_DIR}
     )
 
     target_link_libraries(${TARGET_NAME}
@@ -204,6 +203,7 @@ function(ck2_configure_target TARGET_NAME)
             VxMath
             PRIVATE
             miniz
+            stb
     )
 
     # Set library properties
