@@ -4,6 +4,7 @@
 #include "CKBeObject.h"
 #include "VxDefines.h"
 #include "VxVector.h"
+#include "VxBbox.h"
 
 #define CKCHANNELMASK(Channel) (1 << Channel)
 

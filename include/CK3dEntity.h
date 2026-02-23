@@ -13,6 +13,7 @@
 
 #include "CKRenderObject.h"
 #include "CKSkin.h"
+#include "VxBbox.h"
 #include "VxQuaternion.h"
 #include "VxRect.h"
 
