@@ -281,30 +281,6 @@ if (CK2_INSTALL)
             ARCHIVE DESTINATION lib
     )
 
-    # If VxMath is built in-tree (FetchContent), export/install it alongside CK2.
-    # If it is an imported target from an installed package, do not re-install it.
-    if (TARGET VxMath)
-        get_target_property(_vxmath_imported VxMath IMPORTED)
-        if (NOT _vxmath_imported)
-            install(TARGETS VxMath
-                    EXPORT CK2Targets
-                    RUNTIME DESTINATION Bin
-                    LIBRARY DESTINATION Bin
-                    ARCHIVE DESTINATION lib
-            )
-        endif ()
-    endif ()
-
-    if (TARGET VxMathStatic)
-        get_target_property(_vxmathstatic_imported VxMathStatic IMPORTED)
-        if (NOT _vxmathstatic_imported)
-            install(TARGETS VxMathStatic
-                    EXPORT CK2Targets
-                    ARCHIVE DESTINATION lib
-            )
-        endif ()
-    endif ()
-
     # Install public headers to include root
     install(DIRECTORY ${CK2_INCLUDE_DIR}/
             DESTINATION include
