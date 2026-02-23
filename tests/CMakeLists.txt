@@ -49,22 +49,22 @@ function(add_ck2_test test_name)
             )
 endfunction()
 
-add_executable(Player Player.cpp)
+add_executable(CK2TestPlayer Player.cpp)
 
-set_target_properties(Player PROPERTIES
+set_target_properties(CK2TestPlayer PROPERTIES
         WIN32_EXECUTABLE TRUE
 )
 
-target_compile_definitions(Player PRIVATE
+target_compile_definitions(CK2TestPlayer PRIVATE
         PLAYER_STANDALONE
 )
 
-target_include_directories(Player PRIVATE
+target_include_directories(CK2TestPlayer PRIVATE
         ${CK2_INCLUDE_DIR}
         ${CK2_SOURCE_DIR}
 )
 
-target_link_libraries(Player PRIVATE
+target_link_libraries(CK2TestPlayer PRIVATE
         CK2
         VxMath
 )
@@ -143,6 +143,13 @@ add_ck2_test(CKBehaviorExecutionLinkMatrixTest
 add_ck2_test(CKBehaviorSchedulerEdgeRegressionTest
         SOURCES
         CKBehaviorSchedulerEdgeRegressionTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
+add_ck2_test(CKDataArrayRegressionTest
+        SOURCES
+        CKDataArrayRegressionTest.cpp
         DEPENDENCIES
         CK2 VxMath
 )
