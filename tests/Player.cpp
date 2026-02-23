@@ -22,6 +22,20 @@ constexpr const char *const DefaultPaths[] = {
     "3D Entities" PATH_SEPARATOR,
 };
 
+static bool IsDefaultRenderEngineDll(const char *dllPath) {
+    if (!dllPath || !*dllPath)
+        return false;
+
+    char filename[_MAX_FNAME] = {0};
+    _splitpath(dllPath, nullptr, nullptr, filename, nullptr);
+
+    const char *name = filename;
+    if (!_strnicmp(name, "lib", 3))
+        name += 3;
+
+    return _stricmp(name, "CK2_3D") == 0;
+}
+
 class Logger {
 public:
     enum Level {
@@ -865,9 +879,7 @@ int Player::FindRenderEngine(CKPluginManager *pluginManager) {
         if (!dll)
             break;
 
-        char filename[MAX_PATH];
-        _splitpath(dll->m_DllFileName.Str(), nullptr, nullptr, filename, nullptr);
-        if (!_strnicmp("CK2_3D", filename, strlen(filename)))
+        if (IsDefaultRenderEngineDll(dll->m_DllFileName.Str()))
             return i;
     }
 
