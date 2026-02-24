@@ -304,6 +304,8 @@ int CKPluginManager::GetPluginDllCount() {
 }
 
 CKPluginDll *CKPluginManager::GetPluginDllInfo(int PluginDllIdx) {
+    if (PluginDllIdx < 0 || PluginDllIdx >= m_PluginDlls.Size())
+        return nullptr;
     return &m_PluginDlls[PluginDllIdx];
 }
 
@@ -825,6 +827,8 @@ void CKPluginManager::ComputeDependenciesList(CKFile *file) {
 
 void CKPluginManager::MarkComponentAsNeeded(CKGUID Component, int catIdx) {
     if (catIdx >= 0) {
+        if (catIdx >= m_PluginCategories.Size())
+            return;
         auto &category = m_PluginCategories[catIdx];
         for (XArray<CKPluginEntry *>::Iterator it = category.m_Entries.Begin(); it != category.m_Entries.End(); ++it) {
             if ((*it)->m_PluginInfo.m_GUID == Component)
