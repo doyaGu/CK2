@@ -760,29 +760,21 @@ CKERROR CKAttributeManager::LoadData(CKStateChunk *chunk, CKFile *LoadedFile) {
     delete[] m_ConversionTable; // Clean up any existing table
     m_ConversionTable = new int[m_ConversionTableCount];
 
-    XArray<CKAttributeCategoryDesc> categories;
-    categories.Resize(categoryCount);
     XArray<CKAttributeCategory> categoryConversions;
     categoryConversions.Resize(categoryCount);
 
     for (int i = 0; i < categoryCount; ++i) {
         if (chunk->ReadInt()) {
-            CKAttributeCategoryDesc &desc = categories[i];
-            desc.Name = nullptr;
-            chunk->ReadString(&desc.Name);
+            char *categoryName = nullptr;
+            chunk->ReadString(&categoryName);
             CKDWORD flags = chunk->ReadDword();
-            if (GetCategoryByName(desc.Name) < 0) {
+            if (GetCategoryByName(categoryName) < 0) {
                 flags = (flags & ~0x20) | 0x13;
             }
-            desc.Flags = flags;
-
-            int newCatIdx = AddCategory(desc.Name, flags);
-            categoryConversions.PushBack(newCatIdx);
-
-            delete[] desc.Name;
-            desc.Name = nullptr;
+            categoryConversions[i] = AddCategory(categoryName, flags);
+            delete[] categoryName;
         } else {
-            categoryConversions.PushBack(-1);
+            categoryConversions[i] = -1;
         }
     }
 
