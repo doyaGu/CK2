@@ -133,7 +133,10 @@ CKParameterOperation::CKParameterOperation(CKContext *Context, CKSTRING name) : 
     m_HasOperationFunction = FALSE;
 }
 
-CKParameterOperation::CKParameterOperation(CKContext *Context, CKSTRING name, CKGUID OpGuid, CKGUID ResGuid, CKGUID P1Guid, CKGUID P2Guid) {}
+CKParameterOperation::CKParameterOperation(CKContext *Context, CKSTRING name, CKGUID OpGuid, CKGUID ResGuid, CKGUID P1Guid, CKGUID P2Guid)
+    : CKParameterOperation(Context, name) {
+    Reconstruct(name, OpGuid, ResGuid, P1Guid, P2Guid);
+}
 
 CKParameterOperation::~CKParameterOperation() {}
 
