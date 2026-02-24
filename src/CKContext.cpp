@@ -1438,6 +1438,9 @@ void CKContext::AddProfileTime(CK_PROFILE_CATEGORY cat, float time) {
 }
 
 CKERROR CKContext::ProcessDebugStart(float delta_time) {
+    if (!m_Playing)
+        return CKERR_PAUSED;
+
     ExecuteManagersPreProcess();
     CKLevel *level = GetCurrentLevel();
     if (level)
