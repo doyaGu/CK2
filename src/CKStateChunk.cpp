@@ -696,7 +696,9 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
         if (m_File) {
             for (int i = 0; i < count; ++i) {
                 int index = m_Data[m_ChunkParser->CurrentPos++];
-                CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
+                CK_ID id = 0;
+                if (index >= 0 && index < m_File->m_FileObjects.Size())
+                    id = m_File->m_FileObjects[index].CreatedObject;
                 array->InsertRear(id);
             }
         } else {
@@ -731,7 +733,9 @@ const XObjectArray &CKStateChunk::ReadXObjectArray() {
                 if (m_File) {
                     for (int i = 0; i < count; ++i) {
                         int index = m_Data[m_ChunkParser->CurrentPos++];
-                        CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
+                        CK_ID id = 0;
+                        if (index >= 0 && index < m_File->m_FileObjects.Size())
+                            id = m_File->m_FileObjects[index].CreatedObject;
                         m_TempXOA[i] = id;
                     }
                 } else {
@@ -771,7 +775,9 @@ const XObjectPointerArray &CKStateChunk::ReadXObjectArray(CKContext *context) {
                 if (m_File) {
                     for (int i = 0; i < count; ++i) {
                         int index = m_Data[m_ChunkParser->CurrentPos++];
-                        CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
+                        CK_ID id = 0;
+                        if (index >= 0 && index < m_File->m_FileObjects.Size())
+                            id = m_File->m_FileObjects[index].CreatedObject;
                         CKObject *obj = context->GetObject(id);
                         if (obj)
                             m_TempXOPA.PushBack(obj);
@@ -820,7 +826,9 @@ CKObjectArray *CKStateChunk::ReadObjectArray() {
         if (m_File) {
             for (int i = 0; i < count; ++i) {
                 int index = m_Data[m_ChunkParser->CurrentPos++];
-                CK_ID id = (index >= 0) ? m_File->m_FileObjects[index].CreatedObject : 0;
+                CK_ID id = 0;
+                if (index >= 0 && index < m_File->m_FileObjects.Size())
+                    id = m_File->m_FileObjects[index].CreatedObject;
                 array->InsertRear(id);
             }
         } else {
@@ -1191,9 +1199,30 @@ void CKStateChunk::ReadAndFillBuffer(int size, void *buffer) {
 }
 
 void CKStateChunk::ReadAndFillBuffer_LEndian(int size, void *buffer) {
-    if (buffer)
+    if (!m_ChunkParser || size < 0) {
+        if (m_File)
+            m_File->m_Context->OutputToConsole("Chunk Read error");
+        return;
+    }
+
+    const size_t dwordCount = (static_cast<size_t>(size) + sizeof(int) - 1) / sizeof(int);
+    if (dwordCount > static_cast<size_t>(INT_MAX)) {
+        if (m_File)
+            m_File->m_Context->OutputToConsole("Chunk Read error");
+        return;
+    }
+
+    const int dwords = static_cast<int>(dwordCount);
+    if (m_ChunkParser->CurrentPos < 0 || m_ChunkParser->CurrentPos + dwords > m_ChunkSize) {
+        if (m_File)
+            m_File->m_Context->OutputToConsole("Chunk Read error");
+        m_ChunkParser->CurrentPos = m_ChunkSize;
+        return;
+    }
+
+    if (buffer && size > 0)
         memcpy(buffer, &m_Data[m_ChunkParser->CurrentPos], size);
-    m_ChunkParser->CurrentPos += (size + 3) / sizeof(int);
+    m_ChunkParser->CurrentPos += dwords;
 }
 
 void CKStateChunk::ReadAndFillBuffer_LEndian16(int size, void *buffer) {
