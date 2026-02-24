@@ -143,7 +143,7 @@ TEST(CKStateChunkRoundTripTest, StringMatrixRoundTrip) {
 
     chunk->StartRead();
     for (int i = 0; i < static_cast<int>(sizeof(values) / sizeof(values[0])); ++i) {
-        CKSTRING loaded = nullptr;
+        char *loaded = nullptr;
         const int size = chunk->ReadString(&loaded);
         ASSERT_GT(size, 0);
         ASSERT_NE(nullptr, loaded);
