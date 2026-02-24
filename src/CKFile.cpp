@@ -1068,7 +1068,8 @@ CKERROR CKFile::EndSave() {
             CK_ID objId = fileObject.Object;
             if (fileObject.ObjPtr &&
                 (fileObject.ObjPtr->m_ObjectFlags & CK_OBJECT_ONLYFORFILEREFERENCE) != 0) {
-                objId |= 0x800000;
+                // Mark reference entries with the sign bit so loading can detect id < 0.
+                objId |= 0x80000000u;
                 fileObject.ObjPtr->m_ObjectFlags &= ~CK_OBJECT_ONLYFORFILEREFERENCE;
             }
 
