@@ -4,6 +4,84 @@
 #include "CKGlobals.h"
 #include "CKContext.h"
 
+#include <ctype.h>
+#ifndef _MSC_VER
+#include <strings.h>
+#endif
+
+static const int g_FileSchemeLength = (int)(sizeof("file:") - 1);
+static const int g_LocalHostLength = (int)(sizeof("localhost") - 1);
+
+static bool HasDrivePrefix(const char *path) {
+    return path && isalpha((unsigned char)path[0]) && path[1] == ':';
+}
+
+static bool IsLocalHostPrefix(const char *path) {
+    if (!path) {
+        return false;
+    }
+
+#ifdef _MSC_VER
+    if (_strnicmp(path, "localhost", g_LocalHostLength) != 0) {
+#else
+    if (strncasecmp(path, "localhost", g_LocalHostLength) != 0) {
+#endif
+        return false;
+    }
+
+    return path[g_LocalHostLength] == '\0' || path[g_LocalHostLength] == '/' || path[g_LocalHostLength] == '\\';
+}
+
+static bool TryDecodeFileUri(const XString &uri, XString &decodedPath) {
+    if (strncmp(uri.CStr(), "file:", g_FileSchemeLength) != 0) {
+        return false;
+    }
+
+    const char *cursor = uri.CStr() + g_FileSchemeLength;
+    if (!cursor || cursor[0] == '\0') {
+        return false;
+    }
+
+    XString result;
+
+    if (cursor[0] == '/' && cursor[1] == '/') {
+        cursor += 2;
+
+        if (IsLocalHostPrefix(cursor)) {
+            cursor += 9;
+            while (*cursor == '/' || *cursor == '\\') {
+                ++cursor;
+            }
+        }
+
+        if (cursor[0] == '/' && HasDrivePrefix(cursor + 1)) {
+            result = &cursor[1];
+        } else if (HasDrivePrefix(cursor)) {
+            result = cursor;
+        } else {
+            result = "\\\\";
+            result << cursor;
+        }
+    } else if (cursor[0] == '/' && HasDrivePrefix(cursor + 1)) {
+        result = &cursor[1];
+    } else {
+        result = cursor;
+    }
+
+    if (result.Length() <= 0) {
+        return false;
+    }
+
+    for (int i = 0; i < result.Length(); ++i) {
+        if (result[i] == '/') {
+            result[i] = '\\';
+        }
+    }
+
+    decodedPath = result;
+    return true;
+}
+
 XString CKGetTempPath() {
     char buf[_MAX_PATH];
     char dir[64];
@@ -85,6 +163,12 @@ CKERROR CKPathManager::RenameCategory(int catIdx, XString &newName) {
     if (catIdx < 0 || catIdx >= m_Categories.Size()) {
         return CKERR_INVALIDPARAMETER;
     }
+
+    const int duplicateIdx = GetCategoryIndex(newName);
+    if (duplicateIdx != -1 && duplicateIdx != catIdx) {
+        return CKERR_ALREADYPRESENT;
+    }
+
     m_Categories[catIdx].m_Name = newName;
     return CK_OK;
 }
@@ -175,6 +259,9 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     if (file.Length() <= 0) {
         return CKERR_INVALIDFILE;
     }
+    if (startIdx < -1) {
+        return CKERR_INVALIDPARAMETER;
+    }
 
     // If starting index is unspecified, check special locations first
     if (startIdx == -1) {
@@ -193,8 +280,17 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
             return CK_OK;
         }
 
-        // Check existing files/UNC paths
-        if (PathIsFile(file) || PathIsUNC(file)) {
+        // Check existing file URLs
+        if (PathIsFile(file)) {
+            XString localFilePath;
+            if (TryDecodeFileUri(file, localFilePath) && TryOpenAbsolutePath(localFilePath)) {
+                file = localFilePath;
+                return CK_OK;
+            }
+        }
+
+        // Check UNC paths
+        if (PathIsUNC(file)) {
             return CK_OK;
         }
 
@@ -269,7 +365,12 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
             RemoveEscapedSpace(path);
             XString fullPath = path;
             if (TryOpenFilePath(fullPath)) {
-                file = &fullPath[(int)sizeof("file://") - 1];
+                XString localFilePath;
+                if (TryDecodeFileUri(fullPath, localFilePath)) {
+                    file = localFilePath;
+                } else {
+                    file = fullPath;
+                }
                 return CK_OK;
             }
         } else if (PathIsURL(pathEntry)) {
@@ -362,7 +463,10 @@ CKBOOL CKPathManager::TryOpenAbsolutePath(XString &file) {
 }
 
 CKBOOL CKPathManager::TryOpenFilePath(XString &file) {
-    XString path = &file[(int)(sizeof("file://") - 1)];
+    XString path;
+    if (!TryDecodeFileUri(file, path)) {
+        return FALSE;
+    }
     return TryOpenAbsolutePath(path);
 }
 
