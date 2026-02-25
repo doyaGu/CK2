@@ -39,9 +39,9 @@ int CKMessage::GetParameterCount() {
 }
 
 CKParameter *CKMessage::GetParameter(int pos) {
-    if (!m_Parameters)
+    if (!m_Parameters || !m_Context || pos < 0 || pos >= m_Parameters->Size())
         return nullptr;
-    return (CKParameter *) m_Context->GetObject((*m_Parameters)[pos]);
+    return CKParameter::Cast(m_Context->GetObject((*m_Parameters)[pos]));
 }
 
 CKMessage::CKMessage(CKContext *context) {

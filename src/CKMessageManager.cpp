@@ -148,13 +148,35 @@ CKERROR CKMessageManager::UnRegisterWait(CKMessageType MsgType, CKBehavior *beha
     if (behav && OutputToActivate != -1)
         output = behav->GetOutput(OutputToActivate);
 
-    for (CKWaitingObjectArray::Iterator it = waitList->Begin(); it != waitList->End(); ++it) {
+    CKBOOL removed = FALSE;
+    for (CKWaitingObjectArray::Iterator it = waitList->Begin(); it != waitList->End();) {
         if (it->m_Behavior == behav && (output == nullptr || it->m_Output == output)) {
-            waitList->Remove(it);
-            if (behav)
-                behav->ModifyFlags(0, CKBEHAVIOR_WAITSFORMESSAGE);
-            break;
+            it = waitList->Remove(it);
+            removed = TRUE;
+            if (output != nullptr)
+                break;
+        } else {
+            ++it;
         }
+    }
+
+    if (behav && removed) {
+        CKBOOL stillWaiting = FALSE;
+        for (int i = 0; i < m_RegisteredMessageTypes.Size() && !stillWaiting; ++i) {
+            CKWaitingObjectArray *list = m_MsgWaitingList[i];
+            if (!list)
+                continue;
+
+            for (CKWaitingObjectArray::Iterator it = list->Begin(); it != list->End(); ++it) {
+                if (it->m_Behavior == behav) {
+                    stillWaiting = TRUE;
+                    break;
+                }
+            }
+        }
+
+        if (!stillWaiting)
+            behav->ModifyFlags(0, CKBEHAVIOR_WAITSFORMESSAGE);
     }
 
     return CK_OK;
@@ -403,9 +425,14 @@ CKERROR CKMessageManager::OnCKReset() {
         }
     }
 
-    // Discards any pending messages here; keep allocation and just clear the list.
-    for (int i = 0; i < m_ReceivedMsgThisFrame.Size(); ++i)
-        m_ReceivedMsgThisFrame[i] = nullptr;
+    // Discard any pending messages and release manager references.
+    for (int i = 0; i < m_ReceivedMsgThisFrame.Size(); ++i) {
+        CKMessage *message = m_ReceivedMsgThisFrame[i];
+        if (message) {
+            message->Release();
+            m_ReceivedMsgThisFrame[i] = nullptr;
+        }
+    }
     m_ReceivedMsgThisFrame.Resize(0);
 
     for (int i = 0; i < m_LastFrameObjects.Size(); ++i) {
@@ -483,7 +510,7 @@ void CKMessageManager::AddMessageToObject(CKObject *obj, CKMessage *msg, CKScene
 
     if (CKIsChildClassOf(obj, CKCID_BEOBJECT)) {
         CKBeObject *beo = (CKBeObject *) obj;
-        if (beo->IsWaitingForMessages() && currentscene->IsObjectActive(beo)) {
+        if (beo->IsWaitingForMessages() && (!currentscene || currentscene->IsObjectActive(beo))) {
             beo->AddLastFrameMessage(msg);
             m_LastFrameObjects.AddIfNotHere(beo);
         }
