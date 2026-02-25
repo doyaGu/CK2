@@ -58,22 +58,21 @@ CKObject *CKDependenciesContext::GetObjects(int i) {
 CK_ID CKDependenciesContext::RemapID(CK_ID &id) {
     XHashItID it = m_MapID.Find(id);
     if (it != m_MapID.End()) {
-        CK_ID remapped = *it;
-        if (remapped)
-            id = remapped;
+        id = *it;
     }
     return id;
 }
 
 CKObject *CKDependenciesContext::Remap(const CKObject *o) {
     if (!o) return nullptr;
+    if (!m_CKContext) return nullptr;
 
     CK_ID id = o->m_ID;
     XHashItID it = m_MapID.Find(id);
     if (it != m_MapID.End()) {
-        CK_ID remapped = *it;
-        if (remapped)
-            id = remapped;
+        id = *it;
+        if (!id)
+            return nullptr;
     }
     return m_CKContext->GetObject(id);
 }
@@ -141,7 +140,11 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
         CKObject *copy = m_CKContext->CreateObject(original->GetClassID(), nullptr, (CK_OBJECTCREATION_OPTIONS) m_CreationMode);
         if (copy) {
             *it = copy->GetID();
-            copy->Copy(*original, *this);
+            CKERROR copyErr = copy->Copy(*original, *this);
+            if (copyErr != CK_OK) {
+                *it = 0;
+                m_CKContext->DestroyObject(copy, CK_DESTROY_NONOTIFY);
+            }
         } else {
             *it = 0;
         }
@@ -150,7 +153,9 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
     for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
         CKObject *copy = m_CKContext->GetObject(*it);
         if (copy) {
-            copy->RemapDependencies(*this);
+            CKERROR remapErr = copy->RemapDependencies(*this);
+            if (remapErr != CK_OK)
+                *it = 0;
         }
     }
 

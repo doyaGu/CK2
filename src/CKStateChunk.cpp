@@ -2674,17 +2674,17 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
     if (!it || !it->Data)
         return 0;
 
-    auto remapId = [&](CK_ID &value) {
+    auto remapId = [&](CK_ID &value) -> bool {
+        const CK_ID oldValue = value;
         if (it->DepContext) {
             XHashID::Iterator mapIt = it->DepContext->m_MapID.Find(value);
             if (mapIt != it->DepContext->m_MapID.End()) {
-                CK_ID mapped = *mapIt;
-                if (mapped)
-                    value = mapped;
+                value = *mapIt;
             }
         } else if (it->Context && it->Context->m_ObjectManager) {
             value = it->Context->m_ObjectManager->RealId(value);
         }
+        return value != oldValue;
     };
 
     int remappedCount = 0;
@@ -2698,8 +2698,8 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
             if (dataOffset >= 0) {
                 if (dataOffset >= 0 && dataOffset < it->ChunkSize) {
                     CK_ID &value = reinterpret_cast<CK_ID &>(it->Data[dataOffset]);
-                    remapId(value);
-                    ++remappedCount;
+                    if (remapId(value))
+                        ++remappedCount;
                 }
                 ++idx;
                 continue;
@@ -2721,9 +2721,9 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
             if (count > 0 && lastEntry <= it->ChunkSize) {
                 for (int cursor = firstEntry; cursor < lastEntry; ++cursor) {
                     CK_ID &value = reinterpret_cast<CK_ID &>(it->Data[cursor]);
-                    remapId(value);
+                    if (remapId(value))
+                        ++remappedCount;
                 }
-                remappedCount += count;
             }
 
             ++idx;
@@ -2739,13 +2739,13 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
             it->Data[pos - 2] == OBJID_MARKER[1] &&
             it->Data[pos - 1] == OBJID_MARKER[2]) {
             CK_ID &value = reinterpret_cast<CK_ID &>(it->Data[pos]);
-            remapId(value);
-            ++remappedCount;
+            if (remapId(value))
+                ++remappedCount;
         }
     }
 
     if (it->ChunkSize > 5) {
-        for (int pos = 2; pos < it->ChunkSize - 2; ++pos) {
+        for (int pos = 2; pos < it->ChunkSize - 3; ++pos) {
             if (it->Data[pos - 2] == SEQ_MARKER[0] &&
                 it->Data[pos - 1] == SEQ_MARKER[1] &&
                 it->Data[pos] == SEQ_MARKER[2] &&
@@ -2758,10 +2758,10 @@ int CKStateChunk::ObjectRemapper(ChunkIteratorData *it) {
                     if (lastEntry <= it->ChunkSize) {
                         for (int cursor = firstEntry; cursor < lastEntry; ++cursor) {
                             CK_ID &value = reinterpret_cast<CK_ID &>(it->Data[cursor]);
-                            remapId(value);
+                            if (remapId(value))
+                                ++remappedCount;
                         }
                     }
-                    remappedCount += count;
                 }
             }
         }
@@ -2783,8 +2783,11 @@ int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
                 if (guid == it->Guid) {
                     int &value = it->Data[offset + 2];
                     if (value >= 0 && value < it->NbEntries) {
-                        value = it->ConversionTable[value];
-                        ++total;
+                        int mapped = it->ConversionTable[value];
+                        if (mapped != value) {
+                            value = mapped;
+                            ++total;
+                        }
                     }
                 }
             }
@@ -2815,11 +2818,15 @@ int CKStateChunk::ManagerRemapper(ChunkIteratorData *it) {
             if (endValue <= it->ChunkSize) {
                 for (int cursor = firstValue; cursor < endValue; ++cursor) {
                     int &value = it->Data[cursor];
-                    if (value >= 0 && value < it->NbEntries)
-                        value = it->ConversionTable[value];
+                    if (value >= 0 && value < it->NbEntries) {
+                        int mapped = it->ConversionTable[value];
+                        if (mapped != value) {
+                            value = mapped;
+                            ++total;
+                        }
+                    }
                 }
             }
-            total += count;
         }
 
         ++idx;

@@ -2248,22 +2248,20 @@ CKERROR CKDataArray::RemapDependencies(CKDependenciesContext &context) {
 
                 switch (format->m_Type) {
                 case CKARRAYTYPE_OBJECT: {
-                    // DLL: Uses direct hash table lookup on m_MapID for OBJECT columns
+                    // Keep mapped-to-zero entries cleared instead of preserving stale IDs.
                     CK_ID oldId = (CK_ID)element;
                     CK_ID newId = context.RemapID(oldId);
-                    if (newId != 0) {
-                        element = newId;
-                    }
+                    element = (CKUINTPTR)newId;
                     break;
                 }
 
                 case CKARRAYTYPE_PARAMETER: {
-                    // DLL: Uses context.Remap for PARAMETER columns (remaps the pointer)
+                    // Clear shortcuts when their source was part of the dependency map but failed remap.
                     CKObject *param = (CKObject *) element;
+                    CKBOOL hadMapping = param ? context.IsDependenciesHere(param->GetID()) : FALSE;
                     CKObject *newParam = context.Remap(param);
-                    if (newParam) {
+                    if (newParam || hadMapping)
                         element = (CKUINTPTR) newParam;
-                    }
                     break;
                 }
                 default:
