@@ -160,3 +160,10 @@ add_ck2_test(CKContextRegressionTest
         DEPENDENCIES
         CK2 VxMath
 )
+
+add_ck2_test(CKSceneRegressionTest
+        SOURCES
+        CKSceneRegressionTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)

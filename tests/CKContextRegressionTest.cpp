@@ -96,6 +96,15 @@ public:
     int on_end_calls;
 };
 
+class TestDependenciesContext : public CKDependenciesContext {
+public:
+    explicit TestDependenciesContext(CKContext *context) : CKDependenciesContext(context) {}
+
+    void SetMapping(CK_ID source, CK_ID target) {
+        m_MapID.Insert(source, target, TRUE);
+    }
+};
+
 } // namespace
 
 TEST_F(CKRuntimeFixture, GetSecureNameRespectsCallerProvidedBufferSize) {
@@ -245,6 +254,82 @@ TEST_F(CKRuntimeFixture, RemoveSceneByIndexClearsSceneLinks) {
     EXPECT_EQ(0, level->GetSceneCount());
     EXPECT_EQ(nullptr, scene->GetLevel());
     EXPECT_FALSE(scene->IsObjectHere(level));
+}
+
+TEST_F(CKRuntimeFixture, DependenciesContextRemapIdMappedToZeroClearsId) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKObject *obj = context_->CreateObject(
+        CKCID_OBJECT,
+        MakeUniqueName("DepsRemapIdZero").c_str(),
+        CK_OBJECTCREATION_DYNAMIC);
+    ASSERT_NE(nullptr, obj);
+
+    TestDependenciesContext depsContext(context_);
+    CK_ID id = obj->GetID();
+    depsContext.SetMapping(id, 0);
+
+    EXPECT_EQ((CK_ID)0, depsContext.RemapID(id));
+    EXPECT_EQ((CK_ID)0, id);
+}
+
+TEST_F(CKRuntimeFixture, DependenciesContextRemapMappedToZeroReturnsNull) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKObject *obj = context_->CreateObject(
+        CKCID_OBJECT,
+        MakeUniqueName("DepsRemapObjZero").c_str(),
+        CK_OBJECTCREATION_DYNAMIC);
+    ASSERT_NE(nullptr, obj);
+
+    TestDependenciesContext depsContext(context_);
+    depsContext.SetMapping(obj->GetID(), 0);
+
+    EXPECT_EQ(nullptr, depsContext.Remap(obj));
+}
+
+TEST_F(CKRuntimeFixture, DataArrayRemapClearsMappedToZeroEntries) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKDataArray *array = static_cast<CKDataArray *>(
+        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("DepsRemapArray").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, array);
+
+    array->InsertColumn(-1, CKARRAYTYPE_OBJECT, "ObjCol");
+    array->InsertColumn(-1, CKARRAYTYPE_PARAMETER, "ParamCol", CKPGUID_INT);
+    array->AddRow();
+
+    CKObject *obj = context_->CreateObject(
+        CKCID_OBJECT,
+        MakeUniqueName("DepsRemapArrayObj").c_str(),
+        CK_OBJECTCREATION_DYNAMIC);
+    ASSERT_NE(nullptr, obj);
+    ASSERT_TRUE(array->SetElementObject(0, 0, obj));
+
+    CKUINTPTR *paramCell = array->GetElement(0, 1);
+    ASSERT_NE(nullptr, paramCell);
+    CKObject *paramObject = reinterpret_cast<CKObject *>(*paramCell);
+    ASSERT_NE(nullptr, paramObject);
+
+    TestDependenciesContext depsContext(context_);
+    depsContext.SetOperationMode(CK_DEPENDENCIES_COPY);
+
+    CKDependencies fullDeps;
+    fullDeps.m_Flags = CK_DEPENDENCIES_FULL;
+    depsContext.StartDependencies(&fullDeps);
+    depsContext.SetMapping(obj->GetID(), 0);
+    depsContext.SetMapping(paramObject->GetID(), 0);
+
+    EXPECT_EQ(CK_OK, array->RemapDependencies(depsContext));
+    depsContext.StopDependencies();
+
+    CK_ID objectCellId = -1;
+    EXPECT_TRUE(array->GetElementValue(0, 0, &objectCellId));
+    EXPECT_EQ((CK_ID)0, objectCellId);
+
+    paramCell = array->GetElement(0, 1);
+    ASSERT_NE(nullptr, paramCell);
+    EXPECT_EQ((CKUINTPTR)0, *paramCell);
 }
 
 int main(int argc, char **argv) {
