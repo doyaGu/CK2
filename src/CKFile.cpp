@@ -97,10 +97,10 @@ CKBOOL CKBufferParser::Read(void *x, int size) {
 
 char *CKBufferParser::ReadString() {
     int len = ReadInt();
-    if (len == 0)
+    if (len <= 0)
         return nullptr;
 
-    if (m_CursorPos + len > m_Size)
+    if (len > (m_Size - m_CursorPos))
         return nullptr;
 
     char *str = new char[len + 1];
@@ -406,6 +406,21 @@ void CKFile::ClearData() {
     m_ReadFileDataDone = FALSE;
 }
 
+CKERROR CKFile::ReturnWithParserCleanup(CKBufferParser *parser, CKBufferParser **ParserPtr, CKERROR err) {
+    if (parser && parser != *ParserPtr) {
+        delete parser;
+    }
+    return err;
+}
+
+void CKFile::FinalizeSaveState() {
+    ClearData();
+    m_Context->SetAutomaticLoadMode(CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID);
+    m_Context->SetUserLoadCallback(nullptr, nullptr);
+    m_Context->ExecuteManagersPostSave();
+    m_Context->m_Saving = FALSE;
+}
+
 CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
     CKBufferParser *parser = *ParserPtr;
     m_IncludedFiles.Clear();
@@ -494,6 +509,10 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
             oit->Data = nullptr;
             oit->Object = parser->ReadInt();
             oit->ObjectCid = parser->ReadInt();
+            if (oit->ObjectCid < 0 || oit->ObjectCid >= g_MaxClassID) {
+                m_Context->OutputToConsoleEx("Load:Invalid class id %d in file header.", oit->ObjectCid);
+                return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+            }
             oit->FileIndex = parser->ReadInt();
             oit->Name = parser->ReadString();
         }
@@ -503,11 +522,17 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
 
     if (m_FileInfo.FileVersion >= 8) {
         const int pluginsDepCount = parser->ReadInt();
+        if (pluginsDepCount < 0) {
+            return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+        }
         m_PluginsDep.Resize(pluginsDepCount);
         for (XArray<CKFilePluginDependencies>::Iterator pit = m_PluginsDep.Begin(); pit != m_PluginsDep.End(); ++pit) {
             pit->m_PluginCategory = parser->ReadInt();
 
             const int count = parser->ReadInt();
+            if (count < 0) {
+                return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+            }
             pit->m_Guids.Resize(count);
 
             if (count > 0) {
@@ -529,10 +554,19 @@ CKERROR CKFile::ReadFileHeaders(CKBufferParser **ParserPtr) {
         }
 
         int includedFileSize = parser->ReadInt();
+        if (includedFileSize < 0) {
+            return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+        }
         if (includedFileSize > 0) {
             int includedFileCount = parser->ReadInt();
+            if (includedFileCount < 0) {
+                return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+            }
             m_IncludedFiles.Resize(includedFileCount);
             includedFileSize -= sizeof(int);
+            if (includedFileSize < 0) {
+                return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+            }
         }
         parser->Skip(includedFileSize);
     }
@@ -733,6 +767,12 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                     oit->Name = tmpName;
                 }
                 oit->ObjectCid = oit->Data->GetChunkClassID();
+                if (oit->ObjectCid < 0 || oit->ObjectCid >= g_MaxClassID) {
+                    if (parser && parser != *ParserPtr)
+                        delete parser;
+                    m_Context->OutputToConsoleEx("Load:Invalid class id %d in object chunk.", oit->ObjectCid);
+                    return CKERR_INVALIDFILE;
+                }
             }
         }
     }
@@ -742,12 +782,24 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
              iit != m_IncludedFiles.End(); ++iit) {
             const int fileNameLength = parser->ReadInt();
             char fileName[CKMAX_PATH] = {0};
+            if (fileNameLength < 0) {
+                if (parser && parser != *ParserPtr)
+                    delete parser;
+                return CKERR_INVALIDFILE;
+            }
             if (fileNameLength > 0 && fileNameLength < CKMAX_PATH) {
                 parser->Read(fileName, fileNameLength);
                 fileName[fileNameLength] = '\0';
+            } else if (fileNameLength > 0) {
+                parser->Skip(fileNameLength);
             }
 
             const int fileSize = parser->ReadInt();
+            if (fileSize < 0) {
+                if (parser && parser != *ParserPtr)
+                    delete parser;
+                return CKERR_INVALIDFILE;
+            }
             if (fileSize > 0) {
                 XString temp = m_Context->GetPathManager()->GetVirtoolsTemporaryFolder();
                 CKPathMaker pm(nullptr, temp.Str(), fileName, nullptr);
@@ -797,14 +849,20 @@ CKERROR CKFile::StartSave(CKSTRING filename, CKDWORD Flags) {
     delete[] m_FileName;
     m_FileName = nullptr;
     if (!filename) {
+        m_Context->ExecuteManagersPostSave();
         m_Context->m_Saving = FALSE;
         return CKERR_INVALIDFILE;
     }
 
     m_FileName = CKStrdup(filename);
     FILE *fp = fopen(m_FileName, "ab");
-    if (!fp)
+    if (!fp) {
+        delete[] m_FileName;
+        m_FileName = nullptr;
+        m_Context->ExecuteManagersPostSave();
+        m_Context->m_Saving = FALSE;
         return CKERR_CANTWRITETOFILE;
+    }
 
     fclose(fp);
 
@@ -1127,10 +1185,7 @@ CKERROR CKFile::EndSave() {
             delete hdr1BufferParser;
         if (parser)
             delete parser;
-
-        m_Context->m_Saving = FALSE;
-        m_Context->ExecuteManagersPostSave();
-
+        FinalizeSaveState();
         return CKERR_OUTOFMEMORY;
     }
 
@@ -1190,19 +1245,11 @@ CKERROR CKFile::EndSave() {
     m_FileInfo.Crc = crc;
     WriteStats(interfaceDataSize);
 
-    ClearData();
-
-    m_Context->SetAutomaticLoadMode(CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID, CKLOAD_INVALID);
-    m_Context->SetUserLoadCallback(nullptr, nullptr);
-
     FILE *fp = fopen(m_FileName, "wb");
     if (!fp) {
         delete hdr1BufferParser;
         delete dataBufferParser;
-
-        m_Context->m_Saving = FALSE;
-        m_Context->ExecuteManagersPostSave();
-
+        FinalizeSaveState();
         return CKERR_CANTWRITETOFILE;
     }
 
@@ -1245,8 +1292,7 @@ CKERROR CKFile::EndSave() {
 
     fclose(fp);
 
-    m_Context->ExecuteManagersPostSave();
-    m_Context->m_Saving = FALSE;
+    FinalizeSaveState();
 
     return err;
 }
@@ -1346,6 +1392,13 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
 
     for (int i = 0; i < m_FileObjects.Size(); ++i) {
         CKFileObject *it = &m_FileObjects[i];
+        if (it->ObjectCid < 0 || it->ObjectCid >= m_IndexByClassId.Size()) {
+            it->Options = CKFileObject::CK_FO_DONTLOADOBJECT;
+            it->ObjPtr = nullptr;
+            it->CreatedObject = 0;
+            objectManager->RegisterLoadObject(nullptr, it->Object);
+            continue;
+        }
         m_IndexByClassId[it->ObjectCid].PushBack(i);
         if (it->Data && it->ObjectCid != CKCID_RENDERCONTEXT) {
             int id = *(int *) &it->Object;
@@ -1575,7 +1628,7 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        if ((beh->GetFlags() & CKBEHAVIOR_TOPMOST) || beh->GetType() == CKBEHAVIORTYPE_SCRIPT) {
+        if (beh && ((beh->GetFlags() & CKBEHAVIOR_TOPMOST) || beh->GetType() == CKBEHAVIORTYPE_SCRIPT)) {
             if (list) {
                 list->InsertRear(beh);
             }

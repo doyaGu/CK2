@@ -232,6 +232,8 @@ public:
 
 protected:
     void ClearData();
+    CKERROR ReturnWithParserCleanup(CKBufferParser *parser, CKBufferParser **ParserPtr, CKERROR err);
+    void FinalizeSaveState();
 
     CKERROR ReadFileHeaders(CKBufferParser **ParserPtr);
     CKERROR ReadFileData(CKBufferParser **ParserPtr);
