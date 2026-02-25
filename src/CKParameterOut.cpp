@@ -63,10 +63,40 @@ CKERROR CKParameterOut::AddDestination(CKParameter *param, CKBOOL CheckType) {
         return CKERR_INCOMPATIBLEPARAMETERS;
 
     if (CKIsChildClassOf(param, CKCID_PARAMETEROUT)) {
-        CKParameterOut *out = (CKParameterOut *) param;
-        for (auto it = out->m_Destinations.Begin(); it != out->m_Destinations.End(); ++it) {
-            if (*it == this)
+        CKParameterOut *rootOut = (CKParameterOut *)param;
+        XSObjectPointerArray toVisit;
+        XSObjectPointerArray visited;
+        toVisit.AddIfNotHere(rootOut);
+
+        for (int i = 0; i < toVisit.Size(); ++i) {
+            CKObject *currentObj = toVisit[i];
+            if (!currentObj || !visited.AddIfNotHere(currentObj)) {
+                continue;
+            }
+
+            if (currentObj == this) {
                 return CKERR_INVALIDPARAMETER;
+            }
+
+            CKParameterOut *currentOut = CKParameterOut::Cast(currentObj);
+            if (!currentOut) {
+                continue;
+            }
+
+            for (auto it = currentOut->m_Destinations.Begin(); it != currentOut->m_Destinations.End(); ++it) {
+                CKObject *nextObj = *it;
+                if (!nextObj) {
+                    continue;
+                }
+
+                if (nextObj == this) {
+                    return CKERR_INVALIDPARAMETER;
+                }
+
+                if (CKIsChildClassOf(nextObj, CKCID_PARAMETEROUT)) {
+                    toVisit.AddIfNotHere(nextObj);
+                }
+            }
         }
     }
 
@@ -137,7 +167,10 @@ CKERROR CKParameterOut::Load(CKStateChunk *chunk, CKFile *file) {
     if (!chunk)
         return CKERR_INVALIDPARAMETER;
 
-    CKParameter::Load(chunk, file);
+    CKERROR err = CKParameter::Load(chunk, file);
+    if (err != CK_OK) {
+        return err;
+    }
 
     m_ObjectFlags &= ~(CK_PARAMETEROUT_SETTINGS |
                        CK_PARAMETERIN_DISABLED |
@@ -149,7 +182,12 @@ CKERROR CKParameterOut::Load(CKStateChunk *chunk, CKFile *file) {
         m_Destinations.Clear();
         const int destCount = chunk->ReadInt();
         for (int i = 0; i < destCount; ++i) {
-            CKParameter *param = (CKParameter *) chunk->ReadObject(m_Context);
+            CKObject *obj = chunk->ReadObject(m_Context);
+            if (!obj || !CKIsChildClassOf(obj, CKCID_PARAMETER)) {
+                continue;
+            }
+
+            CKParameter *param = (CKParameter *)obj;
             AddDestination(param, FALSE);
         }
     }
@@ -288,8 +326,9 @@ CKParameterOut *CKParameterOut::CreateInstance(CKContext *Context) {
 
 void CKParameterOut::Update() {
     if (!IsToBeDeleted()) {
-        CKParameterOperation *op = (CKParameterOperation *) GetOwner();
-        if (op) {
+        CKObject *owner = GetOwner();
+        if (owner && CKIsChildClassOf(owner, CKCID_PARAMETEROPERATION)) {
+            CKParameterOperation *op = (CKParameterOperation *)owner;
             op->DoOperation();
         }
     }
