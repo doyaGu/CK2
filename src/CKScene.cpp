@@ -146,9 +146,13 @@ void CKScene::RemoveObject(CKSceneObject *o) {
 }
 
 void CKScene::RemoveAllObjects() {
-    // RemoveAllObjects does not access CKContext nor touch scene membership.
-    // Relationship cleanup (RemoveSceneIn) is handled in PreDelete().
+    const CKBOOL canUpdateMembership = (m_Context != nullptr) && !m_Context->IsInClearAll();
     for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End(); ++it) {
+        if (canUpdateMembership) {
+            CKObject *obj = m_Context->GetObject(it.GetKey());
+            if (obj && CKIsChildClassOf(obj, CKCID_SCENEOBJECT))
+                ((CKSceneObject *)obj)->RemoveSceneIn(this);
+        }
         CKSceneObjectDesc &desc = *it;
         desc.Clear();
     }
@@ -835,6 +839,13 @@ CKERROR CKScene::Load(CKStateChunk *chunk, CKFile *file) {
 
             // Load scene objects
             const int descCount = chunk->ReadInt();
+            if (descCount < 0)
+                return CKERR_INVALIDPARAMETER;
+
+            const int remainingDwords = chunk->GetDataSize() - chunk->GetCurrentPos();
+            if (remainingDwords < 0 || descCount > remainingDwords)
+                return CKERR_INVALIDPARAMETER;
+
             CKSceneObjectDesc *descList = new CKSceneObjectDesc[descCount];
 
             // Read object IDs
@@ -990,6 +1001,56 @@ CKERROR CKScene::RemapDependencies(CKDependenciesContext &context) {
     if (err != CK_OK) return err;
 
     m_Level = context.RemapID(m_Level);
+    m_BackgroundTexture = context.RemapID(m_BackgroundTexture);
+    m_StartingCamera = context.RemapID(m_StartingCamera);
+
+    CKSODHash remappedSceneObjects;
+
+    // Clear scene membership bits from currently referenced objects before remapping IDs.
+    for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End(); ++it) {
+        CKObject *obj = m_Context->GetObject(it.GetKey());
+        if (obj && CKIsChildClassOf(obj, CKCID_SCENEOBJECT))
+            ((CKSceneObject *)obj)->RemoveSceneIn(this);
+    }
+
+    for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End(); ++it) {
+        CKSceneObjectDesc &srcDesc = *it;
+
+        CK_ID remappedObject = srcDesc.m_Object;
+        remappedObject = context.RemapID(remappedObject);
+        if (!remappedObject) {
+            srcDesc.Clear();
+            continue;
+        }
+
+        if (remappedSceneObjects.Find(remappedObject) != remappedSceneObjects.End()) {
+            // Keep first descriptor for duplicate remaps and dispose the current one.
+            srcDesc.Clear();
+            continue;
+        }
+
+        CKSceneObjectDesc remappedDesc;
+        remappedDesc.m_Object = remappedObject;
+        remappedDesc.m_Flags = srcDesc.m_Flags;
+        remappedDesc.m_InitialValue = srcDesc.m_InitialValue;
+        srcDesc.m_InitialValue = nullptr;
+
+        if (remappedDesc.m_InitialValue)
+            remappedDesc.m_InitialValue->RemapObjects(m_Context, &context);
+
+        remappedSceneObjects.Insert(remappedObject, remappedDesc);
+        srcDesc.Clear();
+    }
+
+    m_SceneObjects.Clear();
+    m_SceneObjects = remappedSceneObjects;
+
+    for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End(); ++it) {
+        CKObject *obj = m_Context->GetObject(it.GetKey());
+        if (obj && CKIsChildClassOf(obj, CKCID_SCENEOBJECT))
+            ((CKSceneObject *)obj)->AddSceneIn(this);
+    }
+
     return CK_OK;
 }
 
@@ -998,10 +1059,25 @@ CKERROR CKScene::Copy(CKObject &o, CKDependenciesContext &context) {
     if (err != CK_OK) return err;
 
     CKScene &scene = (CKScene &)o;
+    if (this == &scene)
+        return CK_OK;
+
+    RemoveAllObjects();
+
     if (&m_SceneObjects != &scene.m_SceneObjects) {
-        m_SceneObjects = scene.m_SceneObjects;
+        for (CKSODHashIt it = scene.m_SceneObjects.Begin(); it != scene.m_SceneObjects.End(); ++it) {
+            const CKSceneObjectDesc &srcDesc = *it;
+
+            CKSceneObjectDesc copiedDesc;
+            copiedDesc.m_Object = srcDesc.m_Object;
+            copiedDesc.m_Flags = srcDesc.m_Flags;
+            copiedDesc.m_InitialValue = srcDesc.m_InitialValue ? new CKStateChunk(*srcDesc.m_InitialValue) : nullptr;
+
+            m_SceneObjects.InsertUnique(copiedDesc.m_Object, copiedDesc);
+        }
     }
 
+    m_Level = scene.m_Level;
     m_EnvironmentSettings = scene.m_EnvironmentSettings;
     m_BackgroundColor = scene.m_BackgroundColor;
     m_BackgroundTexture = scene.m_BackgroundTexture;
@@ -1012,6 +1088,14 @@ CKERROR CKScene::Copy(CKObject &o, CKDependenciesContext &context) {
     m_FogEnd = scene.m_FogEnd;
     m_FogColor = scene.m_FogColor;
     m_FogDensity = scene.m_FogDensity;
+
+    // Keep scene membership flags coherent for direct Copy() usage.
+    for (CKSODHashIt it = m_SceneObjects.Begin(); it != m_SceneObjects.End(); ++it) {
+        CKObject *obj = m_Context->GetObject(it.GetKey());
+        if (obj && CKIsChildClassOf(obj, CKCID_SCENEOBJECT))
+            ((CKSceneObject *)obj)->AddSceneIn(this);
+    }
+
     return CK_OK;
 }
 
@@ -1072,11 +1156,10 @@ CKSceneObjectDesc *CKScene::AddObjectDesc(CKSceneObject *o) {
         if (beh->GetType() != CKBEHAVIORTYPE_SCRIPT) return nullptr;
         CKBeObject *owner = beh->GetOwner();
         if (!owner) return nullptr;
-        // For scripts owned by a level, check if this scene is NOT the default scene
-        // of the current level. If so, clear the START_RESET flag.
+        // For scripts owned by a level, clear START_RESET outside the owner level scene.
         if (CKIsChildClassOf(owner, CKCID_LEVEL)) {
-            CKLevel *currentLevel = m_Context->GetCurrentLevel();
-            CKScene *defaultScene = currentLevel ? currentLevel->GetLevelScene() : nullptr;
+            CKLevel *ownerLevel = (CKLevel *)owner;
+            CKScene *defaultScene = ownerLevel->GetLevelScene();
             if (!defaultScene || m_ID != defaultScene->GetID())
                 removeFlags = CK_SCENEOBJECT_START_RESET;
         }
