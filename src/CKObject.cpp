@@ -5,18 +5,29 @@
 CK_CLASSID CKObject::m_ClassID = CKCID_OBJECT;
 
 void CKObject::SetName(CKSTRING Name, CKBOOL shared) {
-    if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) == 0)
-        delete[] m_Name;
-    m_Name = nullptr;
+    // Alias-safe: compute the new storage first, then release the old one.
+    if (Name == m_Name) {
+        return;
+    }
+
+    char *newName = nullptr;
+    CKBOOL newShared = FALSE;
 
     if (Name) {
         if (shared) {
-            m_ObjectFlags |= CK_OBJECT_NAMESHARED;
-            m_Name = const_cast<char *>(Name);
+            newShared = TRUE;
+            newName = const_cast<char *>(Name);
         } else {
-            m_ObjectFlags &= ~CK_OBJECT_NAMESHARED;
-            m_Name = CKStrdup(Name);
+            newName = CKStrdup(Name);
         }
+    }
+
+    if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) == 0)
+        delete[] m_Name;
+
+    m_Name = newName;
+    if (newShared) {
+        m_ObjectFlags |= CK_OBJECT_NAMESHARED;
     } else {
         m_ObjectFlags &= ~CK_OBJECT_NAMESHARED;
     }
@@ -151,6 +162,9 @@ CKERROR CKObject::RemapDependencies(CKDependenciesContext &context) {
 }
 
 CKERROR CKObject::Copy(CKObject &o, CKDependenciesContext &context) {
+    if (this == &o)
+        return CK_OK;
+
     m_ObjectFlags &= ~(CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE);
     m_ObjectFlags |= o.m_ObjectFlags & (CK_OBJECT_VISIBLE | CK_OBJECT_HIERACHICALHIDE);
 
