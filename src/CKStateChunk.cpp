@@ -2677,7 +2677,7 @@ bool CKStateChunk::RemapObjectId(ChunkIteratorData *it, CK_ID &value) {
     const CK_ID oldValue = value;
     if (it->DepContext) {
         const XHashID &mapId = it->DepContext->GetDependenciesMap();
-        XHashID::Iterator mapIt = mapId.Find(value);
+        XHashID::ConstIterator mapIt = mapId.Find(value);
         if (mapIt != mapId.End())
             value = *mapIt;
     } else if (it->Context && it->Context->m_ObjectManager) {
