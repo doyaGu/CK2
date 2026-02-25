@@ -203,6 +203,50 @@ TEST_F(CKRuntimeFixture, ClearAllReactivatesAllInactiveManagers) {
     }
 }
 
+TEST_F(CKRuntimeFixture, RemoveSceneByIndexRejectsInvalidIndices) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    const std::string levelName = MakeUniqueName("RemoveSceneInvalidIndexLevel");
+    CKLevel *level = static_cast<CKLevel *>(
+        context_->CreateObject(CKCID_LEVEL, levelName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, level);
+
+    const std::string sceneName = MakeUniqueName("RemoveSceneInvalidIndexScene");
+    CKScene *scene = static_cast<CKScene *>(
+        context_->CreateObject(CKCID_SCENE, sceneName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, scene);
+    ASSERT_EQ(CK_OK, level->AddScene(scene));
+
+    ASSERT_EQ(1, level->GetSceneCount());
+    EXPECT_EQ(nullptr, level->RemoveScene(-1));
+    EXPECT_EQ(nullptr, level->RemoveScene(1));
+    EXPECT_EQ(1, level->GetSceneCount());
+    EXPECT_EQ(level, scene->GetLevel());
+    EXPECT_TRUE(scene->IsObjectHere(level));
+}
+
+TEST_F(CKRuntimeFixture, RemoveSceneByIndexClearsSceneLinks) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    const std::string levelName = MakeUniqueName("RemoveSceneByIndexLevel");
+    CKLevel *level = static_cast<CKLevel *>(
+        context_->CreateObject(CKCID_LEVEL, levelName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, level);
+
+    const std::string sceneName = MakeUniqueName("RemoveSceneByIndexScene");
+    CKScene *scene = static_cast<CKScene *>(
+        context_->CreateObject(CKCID_SCENE, sceneName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, scene);
+    ASSERT_EQ(CK_OK, level->AddScene(scene));
+    ASSERT_EQ(1, level->GetSceneCount());
+
+    CKScene *removed = level->RemoveScene(0);
+    ASSERT_EQ(scene, removed);
+    EXPECT_EQ(0, level->GetSceneCount());
+    EXPECT_EQ(nullptr, scene->GetLevel());
+    EXPECT_FALSE(scene->IsObjectHere(level));
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
