@@ -382,6 +382,7 @@ public:
     ~CKStateChunk();
 
     static int IterateAndDo(ChunkIterateFct fct, ChunkIteratorData *it);
+    static bool RemapObjectId(ChunkIteratorData *it, CK_ID &value);
     static int ObjectRemapper(ChunkIteratorData *it);
     static int ManagerRemapper(ChunkIteratorData *it);
     static int ParameterRemapper(ChunkIteratorData *it);
