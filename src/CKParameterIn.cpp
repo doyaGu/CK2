@@ -8,11 +8,15 @@
 CK_CLASSID CKParameterIn::m_ClassID = CKCID_PARAMETERIN;
 
 CKERROR CKParameterIn::SetDirectSource(CKParameter *param) {
-    if (param && param->m_ParamType) {
+    if (param) {
+        if (!m_ParamType || !param->m_ParamType) {
+            return CKERR_INCOMPATIBLEPARAMETERS;
+        }
+
         CKParameterManager *pm = m_Context->GetParameterManager();
 
         int paramTypeIndex = param->GetType();
-        int thisTypeIndex = (m_ParamType) ? m_ParamType->Index : -1;
+        int thisTypeIndex = m_ParamType->Index;
 
         if (!pm->IsDerivedFrom(paramTypeIndex, thisTypeIndex) &&
             !pm->IsDerivedFrom(thisTypeIndex, paramTypeIndex)) {
@@ -35,7 +39,27 @@ CKERROR CKParameterIn::SetDirectSource(CKParameter *param) {
 }
 
 CKERROR CKParameterIn::ShareSourceWith(CKParameterIn *param) {
-    if (param && param->m_ParamType) {
+    if (param) {
+        // Reject cycles in shared-input chains.
+        CKParameterIn *current = param;
+        int sharedDepth = 0;
+        while (current) {
+            if (current == this) {
+                return CKERR_INVALIDPARAMETER;
+            }
+            if (!(current->m_ObjectFlags & CK_PARAMETERIN_SHARED)) {
+                break;
+            }
+            current = current->m_InShared;
+            if (++sharedDepth > 1024) {
+                return CKERR_INVALIDPARAMETER;
+            }
+        }
+
+        if (!m_ParamType || !param->m_ParamType) {
+            return CKERR_INCOMPATIBLEPARAMETERS;
+        }
+
         CKParameterManager *paramManager = m_Context->GetParameterManager();
 
         int sourceTypeIndex = param->m_ParamType->Index;
@@ -180,6 +204,7 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
     CKObject::Load(chunk, file);
 
     m_ObjectFlags &= ~CK_OBJECT_PARAMMASK;
+    m_OutSource = nullptr;
 
     const int dataVersion = chunk->GetDataVersion();
     if (dataVersion >= 1) {
@@ -196,8 +221,13 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
                 chunk->ReadObjectID();
             }
 
-            m_InShared = (CKParameterIn *)chunk->ReadObject(m_Context);
-            m_ObjectFlags |= CK_PARAMETERIN_SHARED;
+            CKObject *sharedObj = chunk->ReadObject(m_Context);
+            if (sharedObj && CKIsChildClassOf(sharedObj, CKCID_PARAMETERIN)) {
+                m_InShared = (CKParameterIn *)sharedObj;
+                m_ObjectFlags |= CK_PARAMETERIN_SHARED;
+            } else {
+                m_InShared = nullptr;
+            }
         } else if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DATASOURCE)) {
             CKGUID guid = chunk->ReadGuid();
             ConvertLegacyGuid(guid);
@@ -210,7 +240,12 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
                 chunk->ReadObjectID();
             }
 
-            m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
+            CKObject *sourceObj = chunk->ReadObject(m_Context);
+            if (sourceObj && CKIsChildClassOf(sourceObj, CKCID_PARAMETER)) {
+                m_OutSource = (CKParameter *)sourceObj;
+            } else {
+                m_OutSource = nullptr;
+            }
         } else if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DEFAULTDATA)) {
             CKGUID guid = chunk->ReadGuid();
             ConvertLegacyGuid(guid);
@@ -219,13 +254,26 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
             m_ParamType = pm->GetParameterTypeDescription(guid);
 
             m_Owner = chunk->ReadObject(m_Context);
-            m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
-            CKParameterIn *param = (CKParameterIn *)chunk->ReadObject(m_Context);
+            CKObject *sourceObj = chunk->ReadObject(m_Context);
+            if (sourceObj && CKIsChildClassOf(sourceObj, CKCID_PARAMETER)) {
+                m_OutSource = (CKParameter *)sourceObj;
+            } else {
+                m_OutSource = nullptr;
+            }
+
+            CKObject *sharedObj = chunk->ReadObject(m_Context);
+            CKParameterIn *param = nullptr;
+            if (sharedObj && CKIsChildClassOf(sharedObj, CKCID_PARAMETERIN)) {
+                param = (CKParameterIn *)sharedObj;
+            }
+
             if (m_OutSource) {
                 m_InShared = nullptr;
             } else {
                 m_InShared = param;
-                m_ObjectFlags |= CK_PARAMETERIN_SHARED;
+                if (m_InShared) {
+                    m_ObjectFlags |= CK_PARAMETERIN_SHARED;
+                }
             }
         }
 
@@ -249,16 +297,24 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
         }
 
         if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_INSHARED)) {
-            CKParameter *param = (CKParameter *)chunk->ReadObject(m_Context);
+            CKObject *sharedObj = chunk->ReadObject(m_Context);
+            CKParameterIn *param = nullptr;
+            if (sharedObj && CKIsChildClassOf(sharedObj, CKCID_PARAMETERIN)) {
+                param = (CKParameterIn *)sharedObj;
+            }
             if (param) {
                 m_ObjectFlags |= CK_PARAMETERIN_SHARED;
-                m_OutSource = param;
+                m_InShared = param;
             }
         }
 
         if (!(m_ObjectFlags & CK_PARAMETERIN_SHARED) &&
             chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_OUTSOURCE)) {
-            CKParameter *param = (CKParameter *)chunk->ReadObject(m_Context);
+            CKObject *sourceObj = chunk->ReadObject(m_Context);
+            CKParameter *param = nullptr;
+            if (sourceObj && CKIsChildClassOf(sourceObj, CKCID_PARAMETER)) {
+                param = (CKParameter *)sourceObj;
+            }
             if (param) {
                 m_OutSource = param;
             }
@@ -331,7 +387,11 @@ CKERROR CKParameterIn::RemapDependencies(CKDependenciesContext &context) {
 
     m_Owner = context.Remap(m_Owner);
 
-    m_OutSource = (CKParameter *)context.Remap(m_OutSource);
+    if (m_ObjectFlags & CK_PARAMETERIN_SHARED) {
+        m_InShared = (CKParameterIn *)context.Remap(m_InShared);
+    } else {
+        m_OutSource = (CKParameter *)context.Remap(m_OutSource);
+    }
 
     return CK_OK;
 }

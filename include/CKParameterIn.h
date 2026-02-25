@@ -117,15 +117,35 @@ public:
     ********************************************/
     CKParameter *GetRealSource()
     {
-        if (m_ObjectFlags & CK_PARAMETERIN_SHARED)
-        {
-            if (m_InShared)
-                return m_InShared->GetRealSource();
-        }
-        else
+        if (!(m_ObjectFlags & CK_PARAMETERIN_SHARED))
             return m_OutSource;
 
-        return NULL;
+        // Resolve shared chains iteratively and detect cycles.
+        CKParameterIn *slow = this;
+        CKParameterIn *fast = this;
+        while (true) {
+            if (!(slow->m_ObjectFlags & CK_PARAMETERIN_SHARED)) {
+                return slow->m_OutSource;
+            }
+            slow = slow->m_InShared;
+            if (!slow) {
+                return NULL;
+            }
+
+            for (int i = 0; i < 2; ++i) {
+                if (!(fast->m_ObjectFlags & CK_PARAMETERIN_SHARED)) {
+                    return fast->m_OutSource;
+                }
+                fast = fast->m_InShared;
+                if (!fast) {
+                    return NULL;
+                }
+            }
+
+            if (slow == fast) {
+                return NULL;
+            }
+        }
     }
 
     /*******************************************
