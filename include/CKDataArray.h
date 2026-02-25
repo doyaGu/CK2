@@ -115,9 +115,9 @@ public:
     // Set the value of an existing element
     DLL_EXPORT CKBOOL SetElementStringValue(int i, int c, CKSTRING svalue);
     // Set the value of an existing element
-    DLL_EXPORT int GetStringValue(CKUINTPTR key, int c, char *svalue);
+    DLL_EXPORT int GetStringValue(CKUINTPTR key, int c, char *svalue, int svalueSize);
     // Set the value of an existing element
-    DLL_EXPORT int GetElementStringValue(int i, int c, char *svalue);
+    DLL_EXPORT int GetElementStringValue(int i, int c, char *svalue, int svalueSize);
 
     // Load / Write
 
