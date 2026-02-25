@@ -552,30 +552,138 @@ CKERROR CKReadObjectState(CKObject *obj, CKStateChunk *chunk) {
 }
 
 BITMAP_HANDLE CKLoadBitmap(CKSTRING filename) {
-    return nullptr;
+    if (!filename || !filename[0])
+        return nullptr;
+
+    CKPathSplitter splitter(filename);
+    CKFileExtension ext(splitter.GetExtension());
+
+    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext, nullptr);
+    if (!reader) {
+        CKFileExtension bmpExt("bmp");
+        reader = CKGetPluginManager()->GetBitmapReader(bmpExt, nullptr);
+        if (!reader)
+            return nullptr;
+    }
+
+    CKBitmapProperties *bitmapProps = nullptr;
+    BITMAP_HANDLE bitmap = nullptr;
+    if (reader->ReadFile(filename, &bitmapProps) == 0 && bitmapProps) {
+        bitmapProps->m_Format.Image = (XBYTE *) bitmapProps->m_Data;
+        bitmap = VxCreateBitmap(bitmapProps->m_Format);
+
+        reader->ReleaseMemory(bitmapProps->m_Data);
+        reader->ReleaseMemory(bitmapProps->m_Format.ColorMap);
+        bitmapProps->m_Data = nullptr;
+        bitmapProps->m_Format.ColorMap = nullptr;
+    }
+
+    reader->Release();
+    return bitmap;
 }
 
 CKBOOL CKSaveBitmap(CKSTRING filename, BITMAP_HANDLE bm) {
-    return 0;
+    if (!filename || !filename[0] || !bm)
+        return FALSE;
+
+    CKPathSplitter splitter(filename);
+    CKFileExtension ext(splitter.GetExtension());
+
+    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext, nullptr);
+    if (!reader) {
+        CKFileExtension bmpExt("bmp");
+        reader = CKGetPluginManager()->GetBitmapReader(bmpExt, nullptr);
+    }
+    if (!reader)
+        return FALSE;
+
+    VxImageDescEx desc = {};
+    CKBYTE *imageData = VxConvertBitmap(bm, desc);
+    if (!imageData) {
+        reader->Release();
+        return FALSE;
+    }
+
+    CKBitmapProperties *saveProps = nullptr;
+    reader->GetBitmapDefaultProperties(&saveProps);
+    if (!saveProps) {
+        delete[] imageData;
+        reader->Release();
+        return FALSE;
+    }
+
+    saveProps->m_Format = desc;
+    saveProps->m_Data = imageData;
+
+    const CKBOOL result = reader->SaveFile(filename, saveProps) > 0 ? TRUE : FALSE;
+
+    saveProps->m_Data = nullptr;
+    delete[] imageData;
+    reader->Release();
+
+    return result;
 }
 
 CKBOOL CKSaveBitmap(CKSTRING filename, VxImageDescEx &desc) {
-    return 0;
+    if (!filename || !filename[0] || !desc.Image)
+        return FALSE;
+
+    CKPathSplitter splitter(filename);
+    CKFileExtension ext(splitter.GetExtension());
+
+    CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(ext, nullptr);
+    if (!reader) {
+        CKFileExtension bmpExt("bmp");
+        reader = CKGetPluginManager()->GetBitmapReader(bmpExt, nullptr);
+    }
+    if (!reader)
+        return FALSE;
+
+    CKBitmapProperties *saveProps = nullptr;
+    reader->GetBitmapDefaultProperties(&saveProps);
+    if (!saveProps) {
+        reader->Release();
+        return FALSE;
+    }
+
+    saveProps->m_Format = desc;
+    saveProps->m_Data = desc.Image;
+
+    const CKBOOL result = reader->SaveFile(filename, saveProps) > 0 ? TRUE : FALSE;
+
+    saveProps->m_Data = nullptr;
+    reader->Release();
+
+    return result;
 }
 
 void CKConvertEndianArray32(void *buf, int DwordCount) {
-    // EMPTY
+    if (!buf || DwordCount <= 0)
+        return;
+
+    CKDWORD *values = (CKDWORD *) buf;
+    for (int i = 0; i < DwordCount; ++i) {
+        ENDIANSWAP32(values[i]);
+    }
 }
 
 void CKConvertEndianArray16(void *buf, int DwordCount) {
-    // EMPTY
+    if (!buf || DwordCount <= 0)
+        return;
+
+    CKWORD *values = (CKWORD *) buf;
+    for (int i = 0; i < DwordCount; ++i) {
+        ENDIANSWAP16(values[i]);
+    }
 }
 
 CKDWORD CKConvertEndian32(CKDWORD dw) {
+    ENDIANSWAP32(dw);
     return dw;
 }
 
 CKWORD CKConvertEndian16(CKWORD w) {
+    ENDIANSWAP16(w);
     return w;
 }
 
