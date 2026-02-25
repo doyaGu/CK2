@@ -1631,9 +1631,28 @@ void CKContext::BuildSortedLists() {
 
     for (XManagerHashTableIt it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
         CKBaseManager *manager = *it;
+        CKDWORD mask = manager->GetValidFunctionsMask();
         for (int i = 0; i < 32; ++i) {
-            if (manager->GetValidFunctionsMask() & (1 << i)) {
-                m_ManagerList[i].PushBack(manager);
+            const CKDWORD functionMask = (1u << i);
+            if (mask & functionMask) {
+                XManagerArray &list = m_ManagerList[i];
+                const CKMANAGER_FUNCTIONS function = static_cast<CKMANAGER_FUNCTIONS>(functionMask);
+                const int priority = manager->GetFunctionPriority(function);
+
+                int insertPos = list.Size();
+                for (int pos = 0; pos < list.Size(); ++pos) {
+                    CKBaseManager *existing = list[pos];
+                    if (existing && existing->GetFunctionPriority(function) < priority) {
+                        insertPos = pos;
+                        break;
+                    }
+                }
+
+                if (insertPos < list.Size()) {
+                    list.Insert(insertPos, manager);
+                } else {
+                    list.PushBack(manager);
+                }
             }
         }
     }
