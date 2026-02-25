@@ -144,12 +144,13 @@ CKERROR CKLevel::RemoveScene(CKScene *scn) {
 }
 
 CKScene *CKLevel::RemoveScene(int pos) {
-    CKScene *scene = nullptr;
-    CKObject **ptr = m_SceneList.Begin() + pos;
-    if (ptr < m_SceneList.End()) {
-        scene = (CKScene *)*ptr;
-        m_SceneList.RemoveAt(pos);
-    }
+    CKScene *scene = GetScene(pos);
+    if (!scene)
+        return nullptr;
+
+    if (RemoveScene(scene) != CK_OK)
+        return nullptr;
+
     return scene;
 }
 
@@ -241,6 +242,7 @@ void CKLevel::AddRenderContext(CKRenderContext *dev, CKBOOL Main) {
 
     CKScene *scene = GetCurrentScene();
     if (!scene) scene = GetLevelScene();
+    if (!scene) return;
 
     for (CKSceneObjectIterator it = scene->GetObjectIterator(); !it.End(); it++) {
         CKObject *obj = m_Context->GetObject(it.GetObjectID());
