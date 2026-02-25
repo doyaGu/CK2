@@ -94,7 +94,7 @@ CKERROR CKParameterManager::UnRegisterParameterType(CKGUID guid) {
     CK_ID *paramInList = m_Context->GetObjectsListByClassID(CKCID_PARAMETERIN);
     for (int i = 0; i < paramInCount; ++i) {
         CKParameterIn *param = (CKParameterIn *) m_Context->GetObject(paramInList[i]);
-        if (param->m_ParamType == foundDesc) {
+        if (param && param->m_ParamType == foundDesc) {
             param->m_ParamType = nullptr;
             parametersAffected = TRUE;
         }
@@ -339,8 +339,9 @@ CKERROR CKParameterManager::RegisterNewFlags(CKGUID FlagsGuid, CKSTRING FlagsNam
     for (int i = 0; i < flagCount; ++i) {
         const char *end = strchr(currentPos, ',');
         size_t len = end ? (end - currentPos) : strlen(currentPos);
-        strncpy(buffer, currentPos, len);
-        buffer[len] = '\0';
+        size_t copyLength = XMin((size_t) 511, len);
+        strncpy(buffer, currentPos, copyLength);
+        buffer[copyLength] = '\0';
 
         char *equalSign = strchr(buffer, '=');
         if (equalSign) {
@@ -600,8 +601,9 @@ CKERROR CKParameterManager::ChangeFlagsDeclaration(CKGUID FlagsGuid, CKSTRING Fl
     for (int i = 0; i < entryCount; ++i) {
         const char *end = strchr(currentPos, ',');
         size_t len = end ? (end - currentPos) : strlen(currentPos);
-        strncpy(buffer, currentPos, len);
-        buffer[len] = '\0';
+        size_t copyLength = XMin((size_t) 511, len);
+        strncpy(buffer, currentPos, copyLength);
+        buffer[copyLength] = '\0';
 
         char *equalSign = strchr(buffer, '=');
         if (equalSign) {
@@ -696,7 +698,7 @@ CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING Str
 }
 
 CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData, XArray<CKGUID> &ListGuid) {
-    if (!StructData || !StructName[0])
+    if (!StructData || !StructName || !StructName[0])
         return CKERR_INVALIDPARAMETER;
 
     if (ParameterGuidToType(StructGuid) >= 0)
@@ -801,6 +803,9 @@ CKStructStruct *CKParameterManager::GetStructDescByType(CKParameterType pType) {
 }
 
 CKOperationType CKParameterManager::RegisterOperationType(CKGUID OpCode, CKSTRING name) {
+    if (!name || name[0] == '\0')
+        return -1;
+
     CKOperationType existingCode = OperationNameToCode(name);
     if (existingCode >= 0)
         return existingCode;
