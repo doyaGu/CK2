@@ -30,18 +30,18 @@ CKERROR CKSceneObjectDesc::ReadState(CKStateChunk *chunk) {
             m_Flags = chunk->ReadInt();
         }
 
-        // Convert legacy flags
+        // Convert legacy flags exactly like CK2.dll:
+        // keep a copy of old bits (1/2) before clamping to ACTIVE.
+        const CKDWORD legacyFlags = m_Flags;
         m_Flags &= CK_SCENEOBJECT_ACTIVE;
 
-        if (m_Flags & 2) {
+        if (legacyFlags & 2)
             m_Flags |= CK_SCENEOBJECT_START_RESET;
-        }
 
-        if (m_Flags & 1) {
+        if (legacyFlags & 1)
             m_Flags |= CK_SCENEOBJECT_START_ACTIVATE;
-        } else {
+        else
             m_Flags |= CK_SCENEOBJECT_START_DEACTIVATE;
-        }
     }
 
     return CK_OK;
