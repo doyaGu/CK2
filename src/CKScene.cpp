@@ -599,6 +599,7 @@ void CKScene::Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_F
         if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
             CKBehavior *beh = (CKBehavior *) obj;
             if (doNothing) {
+                reset = FALSE;
                 if (beh->IsActive())
                     desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
                 else
