@@ -1194,14 +1194,14 @@ CKERROR CKBehavior::AddSubBehavior(CKBehavior *cbk) {
         }
     }
 
-    // Save the current owner and parent of the sub–behavior.
+    // Save the current owner and parent of the sub-behavior.
     CKBeObject *origOwner = cbk->GetOwner();
     CKBehavior *origParent = cbk->GetParent();
 
     // Set this behavior as the new parent.
     cbk->SetParent(this);
 
-    // Set the owner of the sub–behavior to be the same as this behavior's owner.
+    // Set the owner of the sub-behavior to be the same as this behavior's owner.
     CKBeObject *newOwner = this->GetOwner();
     CKERROR err = cbk->SetOwner(newOwner, TRUE);
     if (err != CK_OK) {
