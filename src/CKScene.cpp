@@ -598,8 +598,12 @@ void CKScene::Init(XObjectPointerArray &renderContexts, CK_SCENEOBJECTACTIVITY_F
 
         if (CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
             CKBehavior *beh = (CKBehavior *) obj;
-            if (beh->IsActive()) desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
-            else desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+            if (doNothing) {
+                if (beh->IsActive())
+                    desc->m_Flags |= CK_SCENEOBJECT_ACTIVE;
+                else
+                    desc->m_Flags &= ~CK_SCENEOBJECT_ACTIVE;
+            }
             beh->ModifyFlags(0, CKBEHAVIOR_ACTIVATENEXTFRAME | CKBEHAVIOR_RESETNEXTFRAME | CKBEHAVIOR_DEACTIVATENEXTFRAME);
             beh->Activate((desc->m_Flags & CK_SCENEOBJECT_ACTIVE) != 0, reset);
         }
