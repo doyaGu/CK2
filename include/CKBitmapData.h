@@ -570,8 +570,8 @@ public:
     void SetMovieInfo(CKMovieInfo *mi);
 
     CKBitmapData();
-    CKBitmapData(const CKBitmapData &rhs);
-    CKBitmapData &operator=(const CKBitmapData &rhs);
+    CKBitmapData(const CKBitmapData &rhs) = delete;
+    CKBitmapData &operator=(const CKBitmapData &rhs) = delete;
     ~CKBitmapData();
 
 public:
