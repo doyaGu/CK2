@@ -45,7 +45,7 @@ CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATI
         case CK_OBJECTCREATION_RENAME:
             obj = GetObjectByNameAndClass(Name, cid);
             if (obj) {
-                GetSecureName(buffer, Name, cid);
+                GetSecureName(buffer, Name, cid, 512);
                 creationMode = CKLOAD_RENAME;
             }
             break;
@@ -56,7 +56,7 @@ CKObject *CKContext::CreateObject(CK_CLASSID cid, CKSTRING Name, CK_OBJECTCREATI
             }
             break;
         case CK_OBJECTCREATION_ASK:
-            creationMode = LoadVerifyObjectUnicity(Name, cid, buffer, &obj);
+            creationMode = LoadVerifyObjectUnicity(Name, cid, buffer, &obj, 512);
             break;
         case CK_OBJECTCREATION_NONAMECHECK:
         case CK_OBJECTCREATION_REPLACE:
@@ -353,7 +353,11 @@ CKERROR CKContext::ClearAll() {
     m_PVInformation = m_VirtoolsVersion;
     ExecuteManagersPostClearAll();
 
+    XManagerArray inactiveManagers;
     for (XManagerArray::Iterator it = m_InactiveManagers.Begin(); it != m_InactiveManagers.End(); ++it) {
+        inactiveManagers.PushBack(*it);
+    }
+    for (XManagerArray::Iterator it = inactiveManagers.Begin(); it != inactiveManagers.End(); ++it) {
         ActivateManager(*it, TRUE);
     }
 
@@ -435,7 +439,8 @@ CKParameterLocal *CKContext::CreateCKParameterLocal(CKSTRING Name, CKParameterTy
     if (m_ParameterManager->CheckParamTypeValidity(type)) {
         pLocal = (CKParameterLocal *) CreateObject(
             CKCID_PARAMETERLOCAL, Name, Dynamic ? CK_OBJECTCREATION_DYNAMIC : CK_OBJECTCREATION_NONAMECHECK);
-        pLocal->SetType(type);
+        if (pLocal)
+            pLocal->SetType(type);
     }
     return pLocal;
 }
@@ -452,7 +457,8 @@ CKParameterLocal *CKContext::CreateCKParameterLocal(CKSTRING Name, CKSTRING Type
 
 CKParameterOperation *CKContext::CreateCKParameterOperation(CKSTRING Name, CKGUID opguid, CKGUID ResGuid, CKGUID p1Guid, CKGUID p2Guid) {
     CKParameterOperation *pOperation = (CKParameterOperation *) CreateObject(CKCID_PARAMETEROPERATION, Name);
-    pOperation->Reconstruct(Name, opguid, ResGuid, p1Guid, p2Guid);
+    if (pOperation)
+        pOperation->Reconstruct(Name, opguid, ResGuid, p1Guid, p2Guid);
     return pOperation;
 }
 
@@ -655,6 +661,9 @@ CKBaseManager *CKContext::GetManagerByGuid(CKGUID guid) {
 }
 
 CKBaseManager *CKContext::GetManagerByName(CKSTRING ManagerName) {
+    if (!ManagerName)
+        return nullptr;
+
     for (XManagerHashTableIt it = m_ManagerTable.Begin(); it != m_ManagerTable.End(); ++it) {
         CKBaseManager *manager = *it;
         if (!strcmp(manager->GetName(), ManagerName))
@@ -851,8 +860,11 @@ CKBitmapProperties *CKContext::GetGlobalImagesSaveFormat() {
 
 void CKContext::SetGlobalImagesSaveFormat(CKBitmapProperties *Format) {
     if (Format && Format->m_Size != 0) {
-        delete[] reinterpret_cast<CKBYTE *>(m_GlobalImagesSaveFormat);
-        m_GlobalImagesSaveFormat = CKCopyBitmapProperties(Format);
+        CKBitmapProperties *newFormat = CKCopyBitmapProperties(Format);
+        if (newFormat) {
+            delete[] reinterpret_cast<CKBYTE *>(m_GlobalImagesSaveFormat);
+            m_GlobalImagesSaveFormat = newFormat;
+        }
     }
 }
 
@@ -1027,7 +1039,7 @@ void CKContext::SetUserLoadCallback(CK_USERLOADCALLBACK fct, void *Arg) {
     m_UserLoadCallBackArgs = Arg;
 }
 
-CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, char *NewName, CKObject **newobj) {
+CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, char *NewName, CKObject **newobj, int NewNameSize) {
     if (!OldName) return CKLOAD_OK;
 
     CKClassDesc &classDesc = g_CKClassInfo[Cid];
@@ -1054,14 +1066,14 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
         }
 
         if (autoMode != CKLOAD_INVALID) {
-            if (autoMode == CKLOAD_RENAME) GetSecureName(NewName, OldName, Cid);
+            if (autoMode == CKLOAD_RENAME) GetSecureName(NewName, OldName, Cid, NewNameSize);
             return autoMode;
         }
 
         CK_OBJECTCREATION_OPTIONS globalOption = (CK_OBJECTCREATION_OPTIONS) m_GeneralRenameOption;
         if (globalOption != CK_OBJECTCREATION_NONAMECHECK) {
             if (globalOption == CK_OBJECTCREATION_RENAME) {
-                GetSecureName(NewName, OldName, Cid);
+                GetSecureName(NewName, OldName, Cid, NewNameSize);
                 if (newobj) *newobj = nullptr;
                 return CKLOAD_RENAME;
             }
@@ -1081,14 +1093,14 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
         }
 
         if (autoMode != CKLOAD_INVALID) {
-            if (autoMode == CKLOAD_RENAME) GetSecureName(NewName, OldName, Cid);
+            if (autoMode == CKLOAD_RENAME) GetSecureName(NewName, OldName, Cid, NewNameSize);
             return autoMode;
         }
 
         CK_OBJECTCREATION_OPTIONS globalOption = (CK_OBJECTCREATION_OPTIONS) m_MatTexturesRenameOption;
         if (globalOption != CK_OBJECTCREATION_NONAMECHECK) {
             if (globalOption == CK_OBJECTCREATION_RENAME) {
-                GetSecureName(NewName, OldName, Cid);
+                GetSecureName(NewName, OldName, Cid, NewNameSize);
                 if (newobj) *newobj = nullptr;
                 return CKLOAD_RENAME;
             }
@@ -1113,14 +1125,14 @@ CK_LOADMODE CKContext::LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid,
         else m_GeneralRenameOption = CKLOAD_REPLACE;
         return CKLOAD_OK;
     case 2: // Rename
-        GetSecureName(NewName, OldName, Cid);
+        GetSecureName(NewName, OldName, Cid, NewNameSize);
         if (newobj) *newobj = nullptr;
         return CKLOAD_RENAME;
     case 3: // Rename All
         if (classDesc.DefaultOptions & CK_GENERALOPTIONS_CANUSECURRENTOBJECT)
             m_MatTexturesRenameOption = CKLOAD_RENAME;
         else m_GeneralRenameOption = CKLOAD_RENAME;
-        GetSecureName(NewName, OldName, Cid);
+        GetSecureName(NewName, OldName, Cid, NewNameSize);
         if (newobj) *newobj = nullptr;
         return CKLOAD_RENAME;
     case 4: // Use Existing
@@ -1502,7 +1514,14 @@ int CKContext::WarnAllBehaviors(CKDWORD Message) {
     return result;
 }
 
-void CKContext::GetSecureName(char *secureName, CKSTRING name, CK_CLASSID cid) {
+void CKContext::GetSecureName(char *secureName, CKSTRING name, CK_CLASSID cid, int secureNameSize) {
+    if (!secureName || secureNameSize <= 0)
+        return;
+    if (!name) {
+        secureName[0] = '\0';
+        return;
+    }
+
     int highestNumber = -1;
     XString baseName(name);
 
@@ -1528,7 +1547,7 @@ void CKContext::GetSecureName(char *secureName, CKSTRING name, CK_CLASSID cid) {
         }
     }
 
-    sprintf(secureName, "%s%03d", name, highestNumber + 1);
+    snprintf(secureName, secureNameSize, "%s%03d", name, highestNumber + 1);
 }
 
 void CKContext::GetObjectSecureName(XString &secureName, CKSTRING name, CK_CLASSID cid) {
@@ -1727,9 +1746,13 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_GlobalImagesSaveOptions = CKTEXTURE_RAWDATA;
     m_GlobalSoundsSaveOptions = CKSOUND_EXTERNAL;
     m_FileWriteMode = CKFILE_UNCOMPRESSED;
-    m_GlobalImagesSaveFormat = new CKBitmapProperties;
-    memset(m_GlobalImagesSaveFormat, 0, sizeof(CKBitmapProperties));
-    m_GlobalImagesSaveFormat->m_Ext = CKFileExtension("bmp");
+    CKBitmapProperties defaultSaveFormat;
+    defaultSaveFormat.m_Size = sizeof(CKBitmapProperties);
+    defaultSaveFormat.m_ReaderGuid = CKGUID();
+    memset(&defaultSaveFormat.m_Format, 0, sizeof(defaultSaveFormat.m_Format));
+    defaultSaveFormat.m_Data = nullptr;
+    defaultSaveFormat.m_Ext = CKFileExtension("bmp");
+    m_GlobalImagesSaveFormat = CKCopyBitmapProperties(&defaultSaveFormat);
     m_GeneralLoadMode = CKLOAD_INVALID;
     m_3DObjectsLoadMode = CKLOAD_INVALID;
     m_MeshLoadMode = CKLOAD_INVALID;
@@ -1737,8 +1760,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_UserLoadCallBack = nullptr;
     m_UserLoadCallBackArgs = nullptr;
 
-    field_3C8 = new char[_MAX_PATH];
-    field_3CC = new char[_MAX_PATH];
+    m_TempPathBuffer = new char[_MAX_PATH];
+    m_TempPathBufferAlt = new char[_MAX_PATH];
     m_GeneralRenameOption = 0;
     m_MatTexturesRenameOption = 0;
 
@@ -1773,16 +1796,17 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
 
     memset(&m_Stats, 0, sizeof(CKStats));
     memset(&m_ProfileStats, 0, sizeof(CKStats));
+    memset(m_UserProfileTime, 0, sizeof(m_UserProfileTime));
 }
 
 CKContext::~CKContext() {
     m_Init = TRUE;
     delete[] reinterpret_cast<CKBYTE *>(m_GlobalImagesSaveFormat);
 
-    delete[] field_3C8;
-    field_3C8 = nullptr;
-    delete[] field_3CC;
-    field_3CC = nullptr;
+    delete[] m_TempPathBuffer;
+    m_TempPathBuffer = nullptr;
+    delete[] m_TempPathBufferAlt;
+    m_TempPathBufferAlt = nullptr;
 
     if (m_DebugContext)
         delete m_DebugContext;

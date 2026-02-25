@@ -202,7 +202,7 @@ public:
 
     void SetAutomaticLoadMode(CK_LOADMODE GeneralMode, CK_LOADMODE _3DObjectsMode, CK_LOADMODE MeshMode, CK_LOADMODE MatTexturesMode);
     void SetUserLoadCallback(CK_USERLOADCALLBACK fct, void *Arg);
-    CK_LOADMODE LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, char *NewName, CKObject **newobj);
+    CK_LOADMODE LoadVerifyObjectUnicity(CKSTRING OldName, CK_CLASSID Cid, char *NewName, CKObject **newobj, int NewNameSize = 260);
 
     CKBOOL IsInLoad();
     CKBOOL IsInSave();
@@ -255,7 +255,7 @@ public:
 
     int WarnAllBehaviors(CKDWORD Message);
 
-    void GetSecureName(char *secureName, CKSTRING name, CK_CLASSID cid);
+    void GetSecureName(char *secureName, CKSTRING name, CK_CLASSID cid, int secureNameSize = 260);
     void GetObjectSecureName(XString &secureName, CKSTRING name, CK_CLASSID cid);
 
     int PrepareDestroyObjects(CK_ID *obj_ids, int Count, CKDWORD Flags, CKDependencies *Dependencies);
@@ -312,8 +312,8 @@ public:
     float m_UserProfileTime[8];
     XString m_StringBuffer;
     CKDWORD m_StartOptions;
-    char *field_3C8;
-    char *field_3CC;
+    char *m_TempPathBuffer;
+    char *m_TempPathBufferAlt;
     CK_LOADMODE m_GeneralLoadMode;
     CK_LOADMODE m_3DObjectsLoadMode;
     CK_LOADMODE m_MeshLoadMode;
