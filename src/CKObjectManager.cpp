@@ -10,6 +10,9 @@
 #include "CKBehavior.h"
 #include "CKGlobals.h"
 
+#include <limits>
+#include <new>
+
 extern XClassInfoArray g_CKClassInfo;
 extern CK_CLASSID g_MaxClassID;
 
@@ -315,7 +318,7 @@ CKERROR CKObjectManager::GetRootEntities(XObjectPointerArray &array) {
     if (g_MaxClassID == 0)
         return CK_OK;
 
-    for (CK_CLASSID cid = CKCID_OBJECT; cid <= g_MaxClassID; ++cid) {
+    for (CK_CLASSID cid = CKCID_OBJECT; cid < g_MaxClassID; ++cid) {
         if (CKIsChildClassOf(cid, CKCID_3DENTITY)) {
             XObjectArray &classList = m_ClassLists[cid];
             for (XObjectArray::Iterator it = classList.Begin(); it != classList.End(); ++it) {
@@ -475,13 +478,26 @@ CKBOOL CKObjectManager::InLoadSession() {
     return m_InLoadSession;
 }
 
-void CKObjectManager::StartLoadSession(int MaxObjectID) {
+void CKObjectManager::StartLoadSession(CKDWORD MaxObjectID) {
     if (!m_InLoadSession) {
         if (m_LoadSession)
             delete[] m_LoadSession;
-        m_MaxObjectID = MaxObjectID;
-        m_LoadSession = new CK_ID[MaxObjectID];
-        memset(m_LoadSession, 0, sizeof(CK_ID) * MaxObjectID);
+        m_LoadSession = nullptr;
+        m_MaxObjectID = 0;
+
+        if (MaxObjectID > 0) {
+            const size_t count = static_cast<size_t>(MaxObjectID);
+            const size_t maxCount = std::numeric_limits<size_t>::max() / sizeof(CK_ID);
+            if (count <= maxCount) {
+                CK_ID *session = new (std::nothrow) CK_ID[count];
+                if (session) {
+                    memset(session, 0, sizeof(CK_ID) * count);
+                    m_LoadSession = session;
+                    m_MaxObjectID = MaxObjectID;
+                }
+            }
+        }
+
         m_InLoadSession = TRUE;
     }
 }
@@ -499,8 +515,10 @@ void CKObjectManager::RegisterLoadObject(CKObject *iObject, CK_ID ObjectID) {
 }
 
 CK_ID CKObjectManager::RealId(CK_ID id) {
-    if (!m_LoadSession)
+    if (!m_InLoadSession)
         return id;
+    if (!m_LoadSession)
+        return 0;
     if (id < m_MaxObjectID)
         return m_LoadSession[id];
     return 0;

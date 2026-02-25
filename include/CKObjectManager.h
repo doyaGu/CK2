@@ -43,7 +43,7 @@ public:
     CKERROR GetObjectListByType(CK_CLASSID cid, XObjectPointerArray &array, CKBOOL derived);
 
     CKBOOL InLoadSession();
-    void StartLoadSession(int MaxObjectID);
+    void StartLoadSession(CKDWORD MaxObjectID);
     void EndLoadSession();
 
     void RegisterLoadObject(CKObject *iObject, CK_ID ObjectID);
