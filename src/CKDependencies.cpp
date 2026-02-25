@@ -110,6 +110,7 @@ CKDWORD CKDependenciesContext::GetClassDependencies(int c) {
 void CKDependenciesContext::Copy(CKSTRING appendstring) {
     m_CopyAppendString = appendstring;
     m_Mode = CK_DEPENDENCIES_COPY;
+    CKBOOL copyFailed = FALSE;
 
     m_Objects.Prepare(*this);
     m_ObjectsClassMask.Clear();
@@ -142,10 +143,12 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
             *it = copy->GetID();
             CKERROR copyErr = copy->Copy(*original, *this);
             if (copyErr != CK_OK) {
+                copyFailed = TRUE;
                 *it = 0;
                 m_CKContext->DestroyObject(copy, CK_DESTROY_NONOTIFY);
             }
         } else {
+            copyFailed = TRUE;
             *it = 0;
         }
     }
@@ -154,49 +157,62 @@ void CKDependenciesContext::Copy(CKSTRING appendstring) {
         CKObject *copy = m_CKContext->GetObject(*it);
         if (copy) {
             CKERROR remapErr = copy->RemapDependencies(*this);
-            if (remapErr != CK_OK)
+            if (remapErr != CK_OK) {
+                copyFailed = TRUE;
                 *it = 0;
+            }
         }
     }
 
-    CKDWORD sceneObjectDependencies = GetClassDependencies(CKCID_SCENEOBJECT);
-    CKLevel *currentLevel = m_CKContext->GetCurrentLevel();
-    if (currentLevel) {
-        CKScene *levelScene = currentLevel->GetLevelScene();
-        const int sceneCount = m_CKContext->GetObjectsCountByClassID(CKCID_SCENE);
-        CK_ID *sceneIds = m_CKContext->GetObjectsListByClassID(CKCID_SCENE);
-        for (int i = 0; i < sceneCount; ++i) {
-            CKScene *scene = (CKScene *) m_CKContext->GetObject(sceneIds[i]);
-            if (!scene) continue;
+    if (copyFailed) {
+        for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
+            CKObject *copy = m_CKContext->GetObject(*it);
+            if (copy)
+                m_CKContext->DestroyObject(copy, CK_DESTROY_NONOTIFY);
+            *it = 0;
+        }
+    }
 
-            if (scene == levelScene || (sceneObjectDependencies & CK_DEPENDENCIES_COPY_SCENEOBJECT_SCENES)) {
-                scene->BeginAddSequence(TRUE);
-                for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
-                    CKObject *original = m_CKContext->GetObject(it.GetKey());
-                    CKObject *copy = m_CKContext->GetObject(*it);
-                    if (!original || !copy) continue;
+    if (!copyFailed) {
+        CKDWORD sceneObjectDependencies = GetClassDependencies(CKCID_SCENEOBJECT);
+        CKLevel *currentLevel = m_CKContext->GetCurrentLevel();
+        if (currentLevel) {
+            CKScene *levelScene = currentLevel->GetLevelScene();
+            const int sceneCount = m_CKContext->GetObjectsCountByClassID(CKCID_SCENE);
+            CK_ID *sceneIds = m_CKContext->GetObjectsListByClassID(CKCID_SCENE);
+            for (int i = 0; i < sceneCount; ++i) {
+                CKScene *scene = (CKScene *) m_CKContext->GetObject(sceneIds[i]);
+                if (!scene) continue;
 
-                    if (CKIsChildClassOf(copy, CKCID_SCENE)) {
-                        // The copied scene itself needs to be added to the level
-                        currentLevel->AddScene((CKScene *) copy);
-                    } else if (CKIsChildClassOf(copy, CKCID_SCENEOBJECT)) {
-                        CKSceneObject *sceneObjOrig = (CKSceneObject *) original;
-                        CKSceneObject *sceneObjCopy = (CKSceneObject *) copy;
-                        if (sceneObjOrig->IsInScene(scene)) {
-                            scene->AddObject(sceneObjCopy);
-                            CKDWORD origFlags = scene->GetObjectFlags(sceneObjOrig);
-                            scene->SetObjectFlags(sceneObjCopy, (CK_SCENEOBJECT_FLAGS) (origFlags & ~CK_SCENEOBJECT_ACTIVE));
+                if (scene == levelScene || (sceneObjectDependencies & CK_DEPENDENCIES_COPY_SCENEOBJECT_SCENES)) {
+                    scene->BeginAddSequence(TRUE);
+                    for (XHashItID it = m_MapID.Begin(); it != m_MapID.End(); ++it) {
+                        CKObject *original = m_CKContext->GetObject(it.GetKey());
+                        CKObject *copy = m_CKContext->GetObject(*it);
+                        if (!original || !copy) continue;
 
-                            // Activate the object if required by creation options or if it was originally active
-                            const bool shouldActivate = ((m_CreationMode & CK_OBJECTCREATION_ACTIVATE) &&
-                                CKIsChildClassOf(sceneObjCopy, CKCID_BEOBJECT)) || scene->IsObjectActive(sceneObjOrig);
-                            if (shouldActivate) {
-                                scene->Activate(sceneObjCopy, TRUE);
+                        if (CKIsChildClassOf(copy, CKCID_SCENE)) {
+                            // The copied scene itself needs to be added to the level
+                            currentLevel->AddScene((CKScene *) copy);
+                        } else if (CKIsChildClassOf(copy, CKCID_SCENEOBJECT)) {
+                            CKSceneObject *sceneObjOrig = (CKSceneObject *) original;
+                            CKSceneObject *sceneObjCopy = (CKSceneObject *) copy;
+                            if (sceneObjOrig->IsInScene(scene)) {
+                                scene->AddObject(sceneObjCopy);
+                                CKDWORD origFlags = scene->GetObjectFlags(sceneObjOrig);
+                                scene->SetObjectFlags(sceneObjCopy, (CK_SCENEOBJECT_FLAGS) (origFlags & ~CK_SCENEOBJECT_ACTIVE));
+
+                                // Activate the object if required by creation options or if it was originally active
+                                const bool shouldActivate = ((m_CreationMode & CK_OBJECTCREATION_ACTIVATE) &&
+                                    CKIsChildClassOf(sceneObjCopy, CKCID_BEOBJECT)) || scene->IsObjectActive(sceneObjOrig);
+                                if (shouldActivate) {
+                                    scene->Activate(sceneObjCopy, TRUE);
+                                }
                             }
                         }
                     }
+                    scene->BeginAddSequence(FALSE);
                 }
-                scene->BeginAddSequence(FALSE);
             }
         }
     }

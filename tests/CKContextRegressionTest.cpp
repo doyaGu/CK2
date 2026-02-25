@@ -332,6 +332,164 @@ TEST_F(CKRuntimeFixture, DataArrayRemapClearsMappedToZeroEntries) {
     EXPECT_EQ((CKUINTPTR)0, *paramCell);
 }
 
+TEST_F(CKRuntimeFixture, BehaviorRemapClearsSceneLinksWhenOwnerMappedToZero) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKScene *scene = static_cast<CKScene *>(
+        context_->CreateObject(CKCID_SCENE, MakeUniqueName("BehaviorRemapScene").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, scene);
+
+    CKBeObject *owner = static_cast<CKBeObject *>(
+        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("BehaviorRemapOwner").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, owner);
+    scene->AddObject(owner);
+
+    CKBehavior *script = static_cast<CKBehavior *>(
+        context_->CreateObject(CKCID_BEHAVIOR, MakeUniqueName("BehaviorRemapScript").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, script);
+    script->SetType(CKBEHAVIORTYPE_SCRIPT);
+    ASSERT_EQ(CK_OK, owner->AddScript(script));
+    ASSERT_EQ(owner, script->GetOwner());
+    ASSERT_TRUE(script->IsInScene(scene));
+
+    TestDependenciesContext depsContext(context_);
+    depsContext.SetMapping(owner->GetID(), 0);
+
+    EXPECT_EQ(CK_OK, script->RemapDependencies(depsContext));
+    EXPECT_EQ(nullptr, script->GetOwner());
+    EXPECT_FALSE(script->IsInScene(scene));
+}
+
+TEST_F(CKRuntimeFixture, ParameterRemapClearsObjectValueWhenMappedToZero) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKParameter *param = static_cast<CKParameter *>(
+        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("ParamRemapObjectValue").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, param);
+
+    CKObject *obj = context_->CreateObject(
+        CKCID_OBJECT,
+        MakeUniqueName("ParamRemapTarget").c_str(),
+        CK_OBJECTCREATION_DYNAMIC);
+    ASSERT_NE(nullptr, obj);
+
+    CKParameterManager *pm = context_->GetParameterManager();
+    ASSERT_NE(nullptr, pm);
+    CKParameterType objectType = pm->ParameterGuidToType(CKPGUID_OBJECT);
+    ASSERT_GE(objectType, 0);
+    param->SetType(objectType);
+
+    CK_ID objectId = obj->GetID();
+    ASSERT_EQ(CK_OK, param->SetValue(&objectId, sizeof(objectId)));
+
+    TestDependenciesContext depsContext(context_);
+    depsContext.SetMapping(obj->GetID(), 0);
+
+    EXPECT_EQ(CK_OK, param->RemapDependencies(depsContext));
+
+    CK_ID *storedId = reinterpret_cast<CK_ID *>(param->GetReadDataPtr());
+    ASSERT_NE(nullptr, storedId);
+    EXPECT_EQ((CK_ID)0, *storedId);
+}
+
+TEST_F(CKRuntimeFixture, GroupCopyReplacesMembershipLinks) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKGroup *srcGroup = static_cast<CKGroup *>(
+        context_->CreateObject(CKCID_GROUP, MakeUniqueName("SrcGroupCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    CKGroup *dstGroup = static_cast<CKGroup *>(
+        context_->CreateObject(CKCID_GROUP, MakeUniqueName("DstGroupCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, srcGroup);
+    ASSERT_NE(nullptr, dstGroup);
+
+    CKBeObject *srcMember = static_cast<CKBeObject *>(
+        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("SrcGroupMember").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    CKBeObject *dstMember = static_cast<CKBeObject *>(
+        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("DstGroupMember").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, srcMember);
+    ASSERT_NE(nullptr, dstMember);
+
+    ASSERT_EQ(CK_OK, srcGroup->AddObject(srcMember));
+    ASSERT_EQ(CK_OK, dstGroup->AddObject(dstMember));
+    ASSERT_TRUE(srcMember->IsInGroup(srcGroup));
+    ASSERT_TRUE(dstMember->IsInGroup(dstGroup));
+
+    CKDependenciesContext depsContext(context_);
+    EXPECT_EQ(CK_OK, dstGroup->Copy(*srcGroup, depsContext));
+
+    EXPECT_EQ(1, dstGroup->GetObjectCount());
+    EXPECT_EQ(srcMember, dstGroup->GetObject(0));
+    EXPECT_TRUE(srcMember->IsInGroup(dstGroup));
+    EXPECT_FALSE(dstMember->IsInGroup(dstGroup));
+}
+
+TEST_F(CKRuntimeFixture, DataArrayCopyClearsDestinationBeforeClone) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKDataArray *src = static_cast<CKDataArray *>(
+        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("SrcArrayCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    CKDataArray *dst = static_cast<CKDataArray *>(
+        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("DstArrayCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, src);
+    ASSERT_NE(nullptr, dst);
+
+    src->InsertColumn(-1, CKARRAYTYPE_INT, "SrcCol");
+    src->AddRow();
+    int srcValue = 42;
+    ASSERT_TRUE(src->SetElementValue(0, 0, &srcValue, sizeof(srcValue)));
+
+    dst->InsertColumn(-1, CKARRAYTYPE_INT, "DstCol");
+    dst->AddRow();
+    dst->AddRow();
+    int dstValue = 7;
+    ASSERT_TRUE(dst->SetElementValue(0, 0, &dstValue, sizeof(dstValue)));
+
+    CKDependenciesContext depsContext(context_);
+    EXPECT_EQ(CK_OK, dst->Copy(*src, depsContext));
+
+    EXPECT_EQ(src->GetColumnCount(), dst->GetColumnCount());
+    EXPECT_EQ(src->GetRowCount(), dst->GetRowCount());
+
+    int copiedValue = 0;
+    ASSERT_TRUE(dst->GetElementValue(0, 0, &copiedValue));
+    EXPECT_EQ(srcValue, copiedValue);
+}
+
+TEST_F(CKRuntimeFixture, ParameterOutCopyReplacesDestinationList) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKParameterOut *srcOut = static_cast<CKParameterOut *>(
+        context_->CreateObject(CKCID_PARAMETEROUT, MakeUniqueName("SrcParameterOutCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    CKParameterOut *dstOut = static_cast<CKParameterOut *>(
+        context_->CreateObject(CKCID_PARAMETEROUT, MakeUniqueName("DstParameterOutCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    CKParameter *srcDest = static_cast<CKParameter *>(
+        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("SrcParameterDest").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    CKParameter *dstDest = static_cast<CKParameter *>(
+        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("DstParameterDest").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, srcOut);
+    ASSERT_NE(nullptr, dstOut);
+    ASSERT_NE(nullptr, srcDest);
+    ASSERT_NE(nullptr, dstDest);
+
+    CKParameterManager *pm = context_->GetParameterManager();
+    ASSERT_NE(nullptr, pm);
+    CKParameterType intType = pm->ParameterGuidToType(CKPGUID_INT);
+    ASSERT_GE(intType, 0);
+    srcOut->SetType(intType);
+    dstOut->SetType(intType);
+    srcDest->SetType(intType);
+    dstDest->SetType(intType);
+
+    ASSERT_EQ(CK_OK, srcOut->AddDestination(srcDest, TRUE));
+    ASSERT_EQ(CK_OK, dstOut->AddDestination(dstDest, TRUE));
+
+    CKDependenciesContext depsContext(context_);
+    EXPECT_EQ(CK_OK, dstOut->Copy(*srcOut, depsContext));
+
+    EXPECT_EQ(1, dstOut->GetDestinationCount());
+    EXPECT_EQ(srcDest, dstOut->GetDestination(0));
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -303,7 +303,25 @@ CKERROR CKGroup::Copy(CKObject &o, CKDependenciesContext &context) {
     CKERROR err = CKBeObject::Copy(o, context);
     if (err != CK_OK)
         return err;
-    m_ObjectArray = ((CKGroup &)o).m_ObjectArray;
+
+    CKGroup &srcGroup = (CKGroup &)o;
+    if (this == &srcGroup)
+        return CK_OK;
+
+    for (int i = 0; i < m_ObjectArray.Size(); ++i) {
+        CKBeObject *obj = (CKBeObject *)m_ObjectArray[i];
+        if (obj)
+            obj->RemoveFromGroup(this);
+    }
+
+    m_ObjectArray = srcGroup.m_ObjectArray;
+
+    for (int i = 0; i < m_ObjectArray.Size(); ++i) {
+        CKBeObject *obj = (CKBeObject *)m_ObjectArray[i];
+        if (obj)
+            obj->AddToGroup(this);
+    }
+
     return CK_OK;
 }
 

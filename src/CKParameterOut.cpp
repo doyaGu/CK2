@@ -254,6 +254,11 @@ CKERROR CKParameterOut::Copy(CKObject &o, CKDependenciesContext &context) {
     }
 
     CKParameterOut *pOut = (CKParameterOut *) &o;
+    if (this == pOut)
+        return CK_OK;
+
+    m_Destinations.Clear();
+
     for (CKObject **it = pOut->m_Destinations.Begin(); it != pOut->m_Destinations.End(); ++it) {
         CKParameter *param = (CKParameter *) *it;
         AddDestination(param, TRUE);

@@ -2280,6 +2280,11 @@ CKERROR CKDataArray::Copy(CKObject &o, CKDependenciesContext &context) {
         return err;
 
     CKDataArray *src = (CKDataArray *) &o;
+    if (this == src)
+        return CK_OK;
+
+    DataDelete(TRUE);
+
     CKDWORD classDeps = context.GetClassDependencies(m_ClassID);
 
     // DLL: Resize format array to match source, then copy-construct each format

@@ -500,10 +500,7 @@ CKERROR CKParameter::RemapDependencies(CKDependenciesContext &context) {
         if (m_ParamType->Cid) {
             if (m_Buffer) {
                 CK_ID *id = (CK_ID *)m_Buffer;
-                CK_ID newID = context.RemapID(*id);
-                if (newID != 0) {
-                    *id = newID;
-                }
+                *id = context.RemapID(*id);
             }
         } else if (m_ParamType->Guid == CKPGUID_OBJECTARRAY) {
             if (m_Buffer) {

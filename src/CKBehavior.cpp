@@ -2070,8 +2070,9 @@ CKERROR CKBehavior::RemapDependencies(CKDependenciesContext &context) {
 
     // Remap owner reference
     CK_ID oldOwner = m_Owner;
+    CKBOOL hadOwnerMapping = (oldOwner != 0) && context.IsDependenciesHere(oldOwner);
     CK_ID remappedOwner = context.RemapID(m_Owner);
-    if (remappedOwner == oldOwner) {
+    if (hadOwnerMapping && remappedOwner == 0) {
         m_Owner = 0;
         RemoveFromAllScenes();
     } else {

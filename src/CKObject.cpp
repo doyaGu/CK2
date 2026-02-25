@@ -188,11 +188,9 @@ CKERROR CKObject::Copy(CKObject &o, CKDependenciesContext &context) {
             SetName(name.Str());
         } else {
             // Special handling for shared names, parameters, etc.
-             if (context.m_Dependencies && (context.m_Dependencies->m_Flags & CK_DEPENDENCIES_COPY_OBJECT_NAME)) {
-                 SetName(o.GetName());
-             } else if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) || cid == CKCID_PARAMETEROUT || cid == CKCID_PARAMETERIN) {
-                 SetName(o.GetName(), (o.m_ObjectFlags & CK_OBJECT_NAMESHARED) != 0);
-             }
+            if ((m_ObjectFlags & CK_OBJECT_NAMESHARED) || cid == CKCID_PARAMETEROUT || cid == CKCID_PARAMETERIN) {
+                SetName(o.GetName(), (o.m_ObjectFlags & CK_OBJECT_NAMESHARED) != 0);
+            }
         }
     }
 
