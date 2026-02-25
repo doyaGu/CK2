@@ -210,7 +210,6 @@ CKERROR CKLevel::LaunchScene(CKScene *scene, CK_SCENEOBJECTACTIVITY_FLAGS Active
         CKCamera *startingCamera = newScene->GetStartingCamera();
         if (startingCamera) {
             renderContext->AttachViewpointToCamera(startingCamera);
-            previousScene = (CKScene *)m_Context->GetObject(m_CurrentScene);
         } else if (previousCamera && previousCamera->IsInScene(newScene)) {
             renderContext->AttachViewpointToCamera(previousCamera);
         }
