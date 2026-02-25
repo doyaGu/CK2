@@ -9,14 +9,17 @@ CK_CLASSID CKParameterLocal::m_ClassID = CKCID_PARAMETERLOCAL;
 
 void CKParameterLocal::SetAsMyselfParameter(CKBOOL act) {
     if (act) {
-        CKBehavior *behaviorOwner = (CKBehavior *)m_Owner;
+        CKObject *owner = m_Owner;
         CKBeObject *targetObject = nullptr;
 
         // Get the actual object owner (either behavior's owner or direct owner)
-        if (behaviorOwner && behaviorOwner->GetClassID() == CKCID_BEHAVIOR) {
+        if (owner && CKIsChildClassOf(owner, CKCID_BEHAVIOR)) {
+            CKBehavior *behaviorOwner = (CKBehavior *)owner;
             targetObject = behaviorOwner->GetOwner();
+        } else if (owner && CKIsChildClassOf(owner, CKCID_BEOBJECT)) {
+            targetObject = (CKBeObject *)owner;
         } else {
-            targetObject = (CKBeObject *)m_Owner;
+            targetObject = nullptr;
         }
 
         // Determine parameter type from object's class
@@ -33,7 +36,9 @@ void CKParameterLocal::SetAsMyselfParameter(CKBOOL act) {
             SetGUID(CKPGUID_BEOBJECT);
         }
 
-        *(CK_ID *)m_Buffer = targetObject ? targetObject->GetID() : 0;
+        if (m_Buffer && m_Size >= (int)sizeof(CK_ID)) {
+            *(CK_ID *)m_Buffer = targetObject ? targetObject->GetID() : 0;
+        }
 
         m_ObjectFlags |= CK_PARAMETERIN_THIS;
     } else {
@@ -124,7 +129,10 @@ CKERROR CKParameterLocal::Load(CKStateChunk *chunk, CKFile *file) {
     if (!chunk)
         return CKERR_INVALIDPARAMETER;
 
-    CKParameter::Load(chunk, file);
+    CKERROR err = CKParameter::Load(chunk, file);
+    if (err != CK_OK) {
+        return err;
+    }
 
     if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETEROUT_MYSELF)) {
         SetAsMyselfParameter(TRUE);
