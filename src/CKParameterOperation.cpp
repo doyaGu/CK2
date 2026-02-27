@@ -335,9 +335,9 @@ CKERROR CKParameterOperation::Load(CKStateChunk *chunk, CKFile *file) {
             }
         }
 
-        Update();
     }
 
+    Update();
     return CK_OK;
 }
 
