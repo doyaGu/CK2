@@ -205,6 +205,7 @@ TEST_F(CKRuntimeFixture, LoadWithFileInvokesUpdateAndResolvesOperationFunction) 
 
     ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), file.get()));
     EXPECT_TRUE(loaded->GetOperationGuid() == opGuid);
+    EXPECT_NE(nullptr, loaded->GetOperationFunction());
 }
 
 TEST_F(CKRuntimeFixture, DoOperationSkipsExecutionWhenRequiredInputSourceIsMissing) {

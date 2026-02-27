@@ -254,13 +254,16 @@ TEST_F(CKRuntimeFixture, SetSharedSourceRejectsIncompatibleParameterType) {
 TEST_F(CKRuntimeFixture, LegacyLoadInSharedSetsSharedFlagAndSource) {
     CKParameterOut *sourceOut = context_->CreateCKParameterOut("legacyOut", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, sourceOut);
+    CKParameterIn *sharedRoot = context_->CreateCKParameterIn("legacySharedRoot", CKPGUID_INT, TRUE);
+    ASSERT_NE(nullptr, sharedRoot);
+    ASSERT_EQ(CK_OK, sharedRoot->SetDirectSource(sourceOut));
 
     CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
     ASSERT_NE(nullptr, chunk.get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_PARAMETERIN_INSHARED);
-    chunk->WriteObject(sourceOut);
+    chunk->WriteObject(sharedRoot);
     chunk->SetDataVersion(0);
     chunk->CloseChunk();
 
@@ -269,7 +272,8 @@ TEST_F(CKRuntimeFixture, LegacyLoadInSharedSetsSharedFlagAndSource) {
     ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
 
     EXPECT_EQ(nullptr, loaded->GetDirectSource());
-    EXPECT_NE(nullptr, loaded->GetSharedSource());
+    EXPECT_EQ(sharedRoot, loaded->GetSharedSource());
+    EXPECT_EQ(sourceOut, loaded->GetRealSource());
 }
 
 TEST_F(CKRuntimeFixture, LegacyLoadOutSourceAssignsDirectSourceWhenNotShared) {
