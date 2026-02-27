@@ -2776,13 +2776,14 @@ void CKBehavior::HierarchyPostLoad() {
             CKSTRING expectedName = proto->GetInParamName(paramIndex);
             if (expectedName) {
                 CKSTRING paramName = param->GetName();
-                if (paramName) {
-                    if (!strcmp(paramName, expectedName)) {
-                        param->SetName(expectedName, TRUE);
-                    }
+                if (!paramName || strcmp(paramName, expectedName) != 0) {
+                    param->SetName(expectedName, TRUE);
+                }
 
-                    CKParameter *source = param->GetRealSource();
-                    if (source && source->GetName() && !strcmp(source->GetName(), expectedName)) {
+                CKParameter *source = param->GetRealSource();
+                if (source) {
+                    CKSTRING sourceName = source->GetName();
+                    if (!sourceName || strcmp(sourceName, expectedName) != 0) {
                         source->SetName(expectedName, TRUE);
                     }
                 }
@@ -2801,7 +2802,8 @@ void CKBehavior::HierarchyPostLoad() {
 
             if (proto) {
                 CKSTRING expectedName = proto->GetOutParamName(paramIndex);
-                if (expectedName && param->GetName() && !strcmp(param->GetName(), expectedName)) {
+                CKSTRING paramName = param->GetName();
+                if (expectedName && (!paramName || strcmp(paramName, expectedName) != 0)) {
                     param->SetName(expectedName, TRUE);
                 }
             }
@@ -2818,7 +2820,8 @@ void CKBehavior::HierarchyPostLoad() {
 
         if (proto) {
             CKSTRING expectedName = proto->GetLocalParamName(paramIndex);
-            if (expectedName && param->GetName() && !strcmp(param->GetName(), expectedName)) {
+            CKSTRING paramName = param->GetName();
+            if (expectedName && (!paramName || strcmp(paramName, expectedName) != 0)) {
                 param->SetName(expectedName, TRUE);
             }
         }
@@ -2834,7 +2837,8 @@ void CKBehavior::HierarchyPostLoad() {
 
         if (proto) {
             CKSTRING expectedName = proto->GetInIOName(ioIndex);
-            if (expectedName && io->GetName() && !strcmp(io->GetName(), expectedName)) {
+            CKSTRING ioName = io->GetName();
+            if (expectedName && (!ioName || strcmp(ioName, expectedName) != 0)) {
                 io->SetName(expectedName, TRUE);
             }
         }
@@ -2850,7 +2854,8 @@ void CKBehavior::HierarchyPostLoad() {
 
         if (proto) {
             CKSTRING expectedName = proto->GetOutIOName(ioIndex);
-            if (expectedName && io->GetName() && !strcmp(io->GetName(), expectedName)) {
+            CKSTRING ioName = io->GetName();
+            if (expectedName && (!ioName || strcmp(ioName, expectedName) != 0)) {
                 io->SetName(expectedName, TRUE);
             }
         }
