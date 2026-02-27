@@ -23,6 +23,8 @@
 #include "CKSynchroObject.h"
 #include "CKParameterOperation.h"
 
+#include <climits>
+
 extern XClassInfoArray g_CKClassInfo;
 extern CKPluginManager g_ThePluginManager;
 
@@ -922,7 +924,11 @@ CKERROR CKContext::GetFileInfo(CKSTRING FileName, CKFileInfo *FileInfo) {
     if (!file.IsValid())
         return CKERR_INVALIDFILE;
 
-    return GetFileInfo((int)file.GetFileSize(), file.GetBase(), FileInfo);
+    const size_t fileSize = file.GetFileSize();
+    if (fileSize > static_cast<size_t>(INT_MAX))
+        return CKERR_INVALIDFILE;
+
+    return GetFileInfo(static_cast<int>(fileSize), file.GetBase(), FileInfo);
 }
 
 CKERROR CKContext::GetFileInfo(int BufferSize, void *MemoryBuffer, CKFileInfo *FileInfo) {

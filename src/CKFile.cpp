@@ -9,6 +9,8 @@
 #include "CKBeObject.h"
 #include "CKInterfaceObjectManager.h"
 
+#include <climits>
+
 struct CKFileHeaderPart0 {
     char Signature[8];
     CKDWORD Crc;
@@ -264,8 +266,17 @@ CKERROR CKFile::OpenFile(CKSTRING filename, CK_LOAD_FLAGS Flags) {
         return CKERR_INVALIDFILE;
     }
 
+    const size_t mappedSize = m_MappedFile->GetFileSize();
+    if (mappedSize > static_cast<size_t>(INT_MAX)) {
+        delete m_MappedFile;
+        m_MappedFile = nullptr;
+        delete[] m_FileName;
+        m_FileName = nullptr;
+        return CKERR_INVALIDFILE;
+    }
+
     m_Context->SetLastCmoLoaded(filename);
-    return OpenMemory(m_MappedFile->GetBase(), (int)m_MappedFile->GetFileSize(), Flags);
+    return OpenMemory(m_MappedFile->GetBase(), static_cast<int>(mappedSize), Flags);
 }
 
 CKERROR CKFile::OpenMemory(void *MemoryBuffer, int BufferSize, CK_LOAD_FLAGS Flags) {
