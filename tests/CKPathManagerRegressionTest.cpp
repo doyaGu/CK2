@@ -102,3 +102,11 @@ TEST_F(CKRuntimeFixture, ResolveFileNameValidatesFileSchemeTargetExists) {
     missingFileUri << absoluteFilePath;
     EXPECT_EQ(CKERR_NOTFOUND, pathManager->ResolveFileName(missingFileUri, DATA_PATH_IDX, -1));
 }
+
+TEST_F(CKRuntimeFixture, ResolveFileNameRejectsMissingUncPath) {
+    CKPathManager *pathManager = context_->GetPathManager();
+    ASSERT_NE(nullptr, pathManager);
+
+    XString missingUncPath = "\\\\";
+    EXPECT_EQ(CKERR_NOTFOUND, pathManager->ResolveFileName(missingUncPath, DATA_PATH_IDX, -1));
+}
