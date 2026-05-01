@@ -95,6 +95,14 @@ add_ck2_test(CKStateChunkRoundTripTest
         CK2 VxMath
 )
 
+add_ck2_test(CKJpegDecoderRegressionTest
+        SOURCES
+        CKJpegDecoderRegressionTest.cpp
+        "${CK2_SOURCE_DIR}/CKJpegDecoder.cpp"
+        DEPENDENCIES
+        CK2 VxMath stb
+)
+
 add_ck2_test(CKParameterInRegressionTest
         SOURCES
         CKParameterInRegressionTest.cpp
