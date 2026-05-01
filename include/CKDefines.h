@@ -60,7 +60,7 @@
 
 // GetObject,LoadImage and GetClassName are #defined by windows.h which can cause unresolved externals
 // when linking : to avoid this we use the same defines .... :(
-#ifdef WIN32
+#if defined(_WIN32) || defined(WIN32)
 #ifndef GetObject
 #ifdef UNICODE
 #define GetObject GetObjectW
