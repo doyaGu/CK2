@@ -171,7 +171,7 @@ TEST_F(CKRuntimeFixture, LoadWithNullFileInvokesUpdateAndResolvesOperationFuncti
     EXPECT_NE(nullptr, loaded->GetOperationFunction());
 }
 
-TEST_F(CKRuntimeFixture, LoadWithFileInvokesUpdateAndResolvesOperationFunction) {
+TEST_F(CKRuntimeFixture, LoadWithFileDefersOperationFunctionResolution) {
     CKParameterManager *pm = context_->GetParameterManager();
     ASSERT_NE(nullptr, pm);
 
@@ -205,7 +205,7 @@ TEST_F(CKRuntimeFixture, LoadWithFileInvokesUpdateAndResolvesOperationFunction) 
 
     ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), file.get()));
     EXPECT_TRUE(loaded->GetOperationGuid() == opGuid);
-    EXPECT_NE(nullptr, loaded->GetOperationFunction());
+    EXPECT_EQ(nullptr, loaded->GetOperationFunction());
 }
 
 TEST_F(CKRuntimeFixture, DoOperationSkipsExecutionWhenRequiredInputSourceIsMissing) {

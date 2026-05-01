@@ -221,13 +221,8 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
                 chunk->ReadObjectID();
             }
 
-            CKObject *sharedObj = chunk->ReadObject(m_Context);
-            if (sharedObj && CKIsChildClassOf(sharedObj, CKCID_PARAMETERIN)) {
-                m_InShared = (CKParameterIn *)sharedObj;
-                m_ObjectFlags |= CK_PARAMETERIN_SHARED;
-            } else {
-                m_InShared = nullptr;
-            }
+            m_InShared = (CKParameterIn *)chunk->ReadObject(m_Context);
+            m_ObjectFlags |= CK_PARAMETERIN_SHARED;
         } else if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DATASOURCE)) {
             CKGUID guid = chunk->ReadGuid();
             ConvertLegacyGuid(guid);
@@ -240,12 +235,7 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
                 chunk->ReadObjectID();
             }
 
-            CKObject *sourceObj = chunk->ReadObject(m_Context);
-            if (sourceObj && CKIsChildClassOf(sourceObj, CKCID_PARAMETER)) {
-                m_OutSource = (CKParameter *)sourceObj;
-            } else {
-                m_OutSource = nullptr;
-            }
+            m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
         } else if (chunk->SeekIdentifier(CK_STATESAVE_PARAMETERIN_DEFAULTDATA)) {
             CKGUID guid = chunk->ReadGuid();
             ConvertLegacyGuid(guid);
@@ -254,26 +244,14 @@ CKERROR CKParameterIn::Load(CKStateChunk *chunk, CKFile *file) {
             m_ParamType = pm->GetParameterTypeDescription(guid);
 
             m_Owner = chunk->ReadObject(m_Context);
-            CKObject *sourceObj = chunk->ReadObject(m_Context);
-            if (sourceObj && CKIsChildClassOf(sourceObj, CKCID_PARAMETER)) {
-                m_OutSource = (CKParameter *)sourceObj;
-            } else {
-                m_OutSource = nullptr;
-            }
-
-            CKObject *sharedObj = chunk->ReadObject(m_Context);
-            CKParameterIn *param = nullptr;
-            if (sharedObj && CKIsChildClassOf(sharedObj, CKCID_PARAMETERIN)) {
-                param = (CKParameterIn *)sharedObj;
-            }
+            m_OutSource = (CKParameter *)chunk->ReadObject(m_Context);
+            CKParameterIn *param = (CKParameterIn *)chunk->ReadObject(m_Context);
 
             if (m_OutSource) {
                 m_InShared = nullptr;
             } else {
                 m_InShared = param;
-                if (m_InShared) {
-                    m_ObjectFlags |= CK_PARAMETERIN_SHARED;
-                }
+                m_ObjectFlags |= CK_PARAMETERIN_SHARED;
             }
         }
 

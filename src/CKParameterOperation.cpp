@@ -21,10 +21,6 @@ CKERROR CKParameterOperation::DoOperation() {
         return CKERR_NOTINITIALIZED;
     }
 
-    if (!m_Out) {
-        return CKERR_NOTINITIALIZED;
-    }
-
     if (m_In1 && m_In1->GetGUID() != CKPGUID_NONE && !m_In1->GetRealSource()) {
         return CKERR_NOTINITIALIZED;
     }
@@ -237,35 +233,25 @@ CKERROR CKParameterOperation::Load(CKStateChunk *chunk, CKFile *file) {
                 chunk->ReadObject(m_Context);
             }
 
-            CKObject *in1Obj = chunk->ReadObject(m_Context);
-            m_In1 = (in1Obj && CKIsChildClassOf(in1Obj, CKCID_PARAMETERIN)) ? (CKParameterIn *)in1Obj : nullptr;
-
-            CKObject *in2Obj = chunk->ReadObject(m_Context);
-            m_In2 = (in2Obj && CKIsChildClassOf(in2Obj, CKCID_PARAMETERIN)) ? (CKParameterIn *)in2Obj : nullptr;
-
-            CKObject *outObj = chunk->ReadObject(m_Context);
-            m_Out = (outObj && CKIsChildClassOf(outObj, CKCID_PARAMETEROUT)) ? (CKParameterOut *)outObj : nullptr;
+            m_In1 = (CKParameterIn *)chunk->ReadObject(m_Context);
+            m_In2 = (CKParameterIn *)chunk->ReadObject(m_Context);
+            m_Out = (CKParameterOut *)chunk->ReadObject(m_Context);
         } else {
             if (chunk->SeekIdentifier(CK_STATESAVE_OPERATIONOP)) { // 0x100
                 m_OperationGuid = chunk->ReadGuid();
             }
 
             if (chunk->SeekIdentifier(CK_STATESAVE_OPERATIONDEFAULTDATA)) { // 0x200
-                CKObject *ownerObj = chunk->ReadObject(m_Context);
-                m_Owner = (ownerObj && CKIsChildClassOf(ownerObj, CKCID_BEHAVIOR)) ? (CKBehavior *)ownerObj : nullptr;
+                m_Owner = (CKBehavior *)chunk->ReadObject(m_Context);
             }
 
             if (chunk->SeekIdentifier(CK_STATESAVE_OPERATIONOUTPUT)) { // 0x80
-                CKObject *outObj = chunk->ReadObject(m_Context);
-                m_Out = (outObj && CKIsChildClassOf(outObj, CKCID_PARAMETEROUT)) ? (CKParameterOut *)outObj : nullptr;
+                m_Out = (CKParameterOut *)chunk->ReadObject(m_Context);
             }
 
             if (chunk->SeekIdentifier(CK_STATESAVE_OPERATIONINPUTS)) { // 0x40
-                CKObject *in1Obj = chunk->ReadObject(m_Context);
-                m_In1 = (in1Obj && CKIsChildClassOf(in1Obj, CKCID_PARAMETERIN)) ? (CKParameterIn *)in1Obj : nullptr;
-
-                CKObject *in2Obj = chunk->ReadObject(m_Context);
-                m_In2 = (in2Obj && CKIsChildClassOf(in2Obj, CKCID_PARAMETERIN)) ? (CKParameterIn *)in2Obj : nullptr;
+                m_In1 = (CKParameterIn *)chunk->ReadObject(m_Context);
+                m_In2 = (CKParameterIn *)chunk->ReadObject(m_Context);
             }
         }
     } else {
@@ -274,23 +260,14 @@ CKERROR CKParameterOperation::Load(CKStateChunk *chunk, CKFile *file) {
         }
 
         if (chunk->SeekIdentifier(CK_STATESAVE_OPERATIONDEFAULTDATA)) { // 0x200
-            CKObject *ownerObj = chunk->ReadObject(m_Context);
-            m_Owner = (ownerObj && CKIsChildClassOf(ownerObj, CKCID_BEHAVIOR)) ? (CKBehavior *)ownerObj : nullptr;
+            m_Owner = (CKBehavior *)chunk->ReadObject(m_Context);
         }
 
         if (chunk->SeekIdentifier(CK_STATESAVE_OPERATIONOUTPUT)) { // 0x80
-            CKObject *outObj = chunk->ReadObject(m_Context);
-            m_Out = (outObj && CKIsChildClassOf(outObj, CKCID_PARAMETEROUT)) ? (CKParameterOut *)outObj : nullptr;
+            m_Out = (CKParameterOut *)chunk->ReadObject(m_Context);
             CKStateChunk *outChunk = chunk->ReadSubChunk();
             if (m_Out && outChunk) {
-                CKERROR loadErr = m_Out->Load(outChunk, nullptr);
-                if (outChunk) {
-                    delete outChunk;
-                }
-                if (loadErr != CK_OK) {
-                    return loadErr;
-                }
-                outChunk = nullptr;
+                m_Out->Load(outChunk, nullptr);
             }
             if (outChunk) {
                 delete outChunk;
@@ -299,45 +276,29 @@ CKERROR CKParameterOperation::Load(CKStateChunk *chunk, CKFile *file) {
 
         if (chunk->SeekIdentifier(CK_STATESAVE_OPERATIONINPUTS)) { // 0x40
             // Load first input
-            CKObject *in1Obj = chunk->ReadObject(m_Context);
-            m_In1 = (in1Obj && CKIsChildClassOf(in1Obj, CKCID_PARAMETERIN)) ? (CKParameterIn *)in1Obj : nullptr;
+            m_In1 = (CKParameterIn *)chunk->ReadObject(m_Context);
             CKStateChunk *in1Chunk = chunk->ReadSubChunk();
             if (m_In1 && in1Chunk) {
-                CKERROR loadErr = m_In1->Load(in1Chunk, nullptr);
-                if (in1Chunk) {
-                    delete in1Chunk;
-                }
-                if (loadErr != CK_OK) {
-                    return loadErr;
-                }
-                in1Chunk = nullptr;
+                m_In1->Load(in1Chunk, nullptr);
             }
             if (in1Chunk) {
                 delete in1Chunk;
             }
 
             // Load second input
-            CKObject *in2Obj = chunk->ReadObject(m_Context);
-            m_In2 = (in2Obj && CKIsChildClassOf(in2Obj, CKCID_PARAMETERIN)) ? (CKParameterIn *)in2Obj : nullptr;
+            m_In2 = (CKParameterIn *)chunk->ReadObject(m_Context);
             CKStateChunk *in2Chunk = chunk->ReadSubChunk();
             if (m_In2 && in2Chunk) {
-                CKERROR loadErr = m_In2->Load(in2Chunk, nullptr);
-                if (in2Chunk) {
-                    delete in2Chunk;
-                }
-                if (loadErr != CK_OK) {
-                    return loadErr;
-                }
-                in2Chunk = nullptr;
+                m_In2->Load(in2Chunk, nullptr);
             }
             if (in2Chunk) {
                 delete in2Chunk;
             }
         }
 
+        Update();
     }
 
-    Update();
     return CK_OK;
 }
 
