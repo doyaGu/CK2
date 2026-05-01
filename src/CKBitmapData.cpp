@@ -7,8 +7,6 @@
 #include "CKPluginManager.h"
 #include "CKPathManager.h"
 
-#include <limits>
-
 extern CKSTRING CKJustFile(CKSTRING path);
 
 static bool ComputeImageBufferSize(int width, int height, size_t &outSize) {
