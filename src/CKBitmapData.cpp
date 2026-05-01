@@ -18,7 +18,7 @@ static bool ComputeImageBufferSize(int width, int height, size_t &outSize) {
 
     const size_t widthSize = static_cast<size_t>(width);
     const size_t heightSize = static_cast<size_t>(height);
-    const size_t maxSize = std::numeric_limits<size_t>::max();
+    const size_t maxSize = SIZE_MAX;
 
     if (heightSize > maxSize / widthSize) {
         return false;
