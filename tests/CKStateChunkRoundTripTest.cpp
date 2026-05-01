@@ -188,6 +188,40 @@ TEST(CKStateChunkRoundTripTest, ReadGuidOutOfDataReturnsZeroGuid) {
     EXPECT_TRUE(guid == CKGUID(0u, 0u));
 }
 
+TEST(CKStateChunkRoundTripTest, CopyConstructorClonesIndependentStorage) {
+    CKStateChunkPtr original = CreateEmptyChunk();
+    ASSERT_NE(nullptr, original.get());
+
+    original->StartWrite();
+    original->WriteString("original");
+    original->CloseChunk();
+
+    CKStateChunkPtr copy(new CKStateChunk(*original));
+    ASSERT_NE(nullptr, copy.get());
+
+    copy->StartRead();
+    char *copiedText = nullptr;
+    ASSERT_GT(copy->ReadString(&copiedText), 0);
+    ASSERT_NE(nullptr, copiedText);
+    EXPECT_STREQ("original", copiedText);
+    CKDeletePointer(copiedText);
+
+    copy->StartWrite();
+    copy->WriteString("copy");
+    copy->CloseChunk();
+
+    original->StartRead();
+    char *originalText = nullptr;
+    ASSERT_GT(original->ReadString(&originalText), 0);
+    ASSERT_NE(nullptr, originalText);
+    EXPECT_STREQ("original", originalText);
+    CKDeletePointer(originalText);
+}
+
+TEST(CKStateChunkRoundTripTest, CreateContextRejectsNullOutputPointer) {
+    EXPECT_EQ(CKERR_INVALIDPARAMETER, CKCreateContext(nullptr, NULL, 0, 0));
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -1,6 +1,7 @@
 #include "CKGlobals.h"
 
 #include <time.h>
+#include <new>
 
 #include <miniz.h>
 
@@ -148,6 +149,9 @@ CKObject *CKGetObject(CKContext *iCtx, CK_ID iID) {
 }
 
 CKERROR CKCreateContext(CKContext **iContext, WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) {
+    if (!iContext)
+        return CKERR_INVALIDPARAMETER;
+
     if (iRenderEngine < 0 || iRenderEngine >= g_ThePluginManager.GetPluginCount(CKPLUGIN_RENDERENGINE_DLL))
         iRenderEngine = 0;
 
