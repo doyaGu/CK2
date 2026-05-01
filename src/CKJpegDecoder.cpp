@@ -1,10 +1,9 @@
 #include "CKJpegDecoder.h"
 
-#include <algorithm>
+#include "XArray.h"
+
+#include <climits>
 #include <cstring>
-#include <limits>
-#include <new>
-#include <vector>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_JPEG
@@ -19,9 +18,14 @@ void CKJpegEncoderWriteCallback(void *context, void *data, int size) {
     if (!context || !data || size <= 0)
         return;
 
-    auto *buffer = static_cast<std::vector<CKBYTE> *>(context);
+    XArray<CKBYTE> *buffer = static_cast<XArray<CKBYTE> *>(context);
+    const int oldSize = buffer->Size();
+    if (size > INT_MAX - oldSize)
+        return;
+
     const CKBYTE *bytes = static_cast<const CKBYTE *>(data);
-    buffer->insert(buffer->end(), bytes, bytes + size);
+    buffer->Expand(size);
+    memcpy(buffer->Begin() + oldSize, bytes, size);
 }
 
 CKBOOL CKJpegDecoder::DecodeGrayscalePlane(const CKBYTE *encodedData,
@@ -33,6 +37,8 @@ CKBOOL CKJpegDecoder::DecodeGrayscalePlane(const CKBYTE *encodedData,
         *outPlane = nullptr;
 
     if (!encodedData || encodedSize == 0 || !outPlane || expectedWidth <= 0 || expectedHeight <= 0)
+        return FALSE;
+    if (encodedSize > static_cast<size_t>(INT_MAX))
         return FALSE;
 
     int decodedWidth = 0;
@@ -53,7 +59,7 @@ CKBOOL CKJpegDecoder::DecodeGrayscalePlane(const CKBYTE *encodedData,
     }
 
     const size_t planeSize = static_cast<size_t>(decodedWidth) * static_cast<size_t>(decodedHeight);
-    CKBYTE *plane = new (std::nothrow) CKBYTE[planeSize];
+    CKBYTE *plane = new CKBYTE[planeSize];
     if (!plane) {
         stbi_image_free(decoded);
         return FALSE;
@@ -79,10 +85,16 @@ CKBOOL CKJpegDecoder::EncodeGrayscalePlane(const CKBYTE *planeData,
     if (!planeData || !outBuffer || width <= 0 || height <= 0)
         return FALSE;
 
-    quality = std::max(1, std::min(quality, 100));
+    if (quality < 1)
+        quality = 1;
+    else if (quality > 100)
+        quality = 100;
 
-    std::vector<CKBYTE> encodedBytes;
-    encodedBytes.reserve(static_cast<size_t>(width) * static_cast<size_t>(height) / 4 + 512);
+    XArray<CKBYTE> encodedBytes;
+    const size_t initialCapacity = static_cast<size_t>(width) * static_cast<size_t>(height) / 4 + 512;
+    if (initialCapacity > static_cast<size_t>(INT_MAX))
+        return FALSE;
+    encodedBytes.Reserve(static_cast<int>(initialCapacity));
 
     if (!stbi_write_jpg_to_func(CKJpegEncoderWriteCallback,
                                 &encodedBytes,
@@ -94,18 +106,16 @@ CKBOOL CKJpegDecoder::EncodeGrayscalePlane(const CKBYTE *planeData,
         return FALSE;
     }
 
-    if (encodedBytes.empty())
+    const int encodedSize = encodedBytes.Size();
+    if (encodedSize <= 0)
         return FALSE;
 
-    if (encodedBytes.size() > static_cast<size_t>(std::numeric_limits<int>::max()))
-        return FALSE;
-
-    CKBYTE *buffer = new (std::nothrow) CKBYTE[encodedBytes.size()];
+    CKBYTE *buffer = new CKBYTE[encodedSize];
     if (!buffer)
         return FALSE;
 
-    memcpy(buffer, encodedBytes.data(), encodedBytes.size());
+    memcpy(buffer, encodedBytes.Begin(), encodedSize);
     *outBuffer = buffer;
-    outSize = static_cast<int>(encodedBytes.size());
+    outSize = encodedSize;
     return TRUE;
 }
