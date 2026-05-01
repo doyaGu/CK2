@@ -107,6 +107,40 @@ TEST_F(CKRuntimeFixture, CopySelfKeepsSceneObjects) {
     EXPECT_NE(nullptr, scene->GetSceneObjectDesc(obj));
 }
 
+TEST_F(CKRuntimeFixture, LoadRejectsSceneObjectCountWhenOnlyByteBudgetMatches) {
+    ASSERT_EQ(CK_OK, context_->ClearAll());
+
+    CKScene *source = static_cast<CKScene *>(
+        context_->CreateObject(CKCID_SCENE, MakeUniqueName("SceneLoadBudgetSrc").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, source);
+
+    CKSceneObject *obj = static_cast<CKSceneObject *>(
+        context_->CreateObject(CKCID_SCENEOBJECT, MakeUniqueName("SceneLoadBudgetObj").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, obj);
+    source->AddObject(obj);
+
+    CKStateChunk *chunk = source->Save(nullptr, CK_STATESAVE_ALL);
+    ASSERT_NE(nullptr, chunk);
+    chunk->StartRead();
+    ASSERT_TRUE(chunk->SeekIdentifier(CK_STATESAVE_SCENENEWDATA));
+    chunk->ReadObjectID();
+
+    const int remainingDwords = (chunk->GetDataSize() / static_cast<int>(sizeof(int))) - chunk->GetCurrentPos();
+    ASSERT_GT(remainingDwords, 0);
+
+    int *descCount = static_cast<int *>(chunk->LockReadBuffer());
+    ASSERT_NE(nullptr, descCount);
+    *descCount = remainingDwords + 1;
+
+    CKScene *loaded = static_cast<CKScene *>(
+        context_->CreateObject(CKCID_SCENE, MakeUniqueName("SceneLoadBudgetDst").c_str(), CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, loaded);
+
+    EXPECT_EQ(CKERR_INVALIDPARAMETER, loaded->Load(chunk, nullptr));
+
+    delete chunk;
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

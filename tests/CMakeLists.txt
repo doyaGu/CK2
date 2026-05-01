@@ -13,6 +13,10 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+if (NOT TARGET CK2 AND TARGET CK2Static)
+    add_library(CK2 ALIAS CK2Static)
+endif ()
+
 function(add_ck2_test test_name)
     cmake_parse_arguments(TEST "" "" "SOURCES;DEPENDENCIES" ${ARGN})
 
