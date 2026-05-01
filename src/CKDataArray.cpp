@@ -1876,6 +1876,9 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
         DataDelete(TRUE); // Clear existing data
 
         int columnCount = chunk->ReadInt();
+        if (columnCount < 0)
+            return CKERR_INVALIDPARAMETER;
+
         m_FormatArray.Resize(columnCount);
 
         for (int i = 0; i < columnCount; ++i) {
@@ -1920,6 +1923,8 @@ CKERROR CKDataArray::Load(CKStateChunk *chunk, CKFile *file) {
     // Load data rows
     if (chunk->SeekIdentifier(CK_STATESAVE_DATAARRAYDATA)) {
         int rowCount = chunk->ReadInt();
+        if (rowCount < 0)
+            return CKERR_INVALIDPARAMETER;
         m_DataMatrix.Reserve(rowCount);
 
         for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
@@ -2320,6 +2325,20 @@ CKERROR CKDataArray::Copy(CKObject &o, CKDependenciesContext &context) {
             if (fmt->m_Type == CKARRAYTYPE_STRING) {
                 char *str = (char *) element;
                 (*newRow)[colIdx] = (CKUINTPTR) CKStrdup(str);
+            } else if (fmt->m_Type == CKARRAYTYPE_PARAMETER) {
+                CKParameterOut *param = (CKParameterOut *) element;
+                if (!param) {
+                    (*newRow)[colIdx] = 0;
+                } else {
+                    CKParameterOut *newParam = m_Context->CreateCKParameterOut(nullptr, param->GetType(), IsDynamic());
+                    if (newParam) {
+                        newParam->CopyValue(param, TRUE);
+                        newParam->SetOwner(this);
+                        (*newRow)[colIdx] = (CKUINTPTR) newParam;
+                    } else {
+                        (*newRow)[colIdx] = 0;
+                    }
+                }
             } else {
                 (*newRow)[colIdx] = element;
             }

@@ -268,6 +268,55 @@ TEST_F(CKRuntimeFixture, GetElementStringValueRespectsDestinationCapacity) {
     EXPECT_STREQ("ABCDEFG", small);
 }
 
+TEST_F(CKRuntimeFixture, CopyDeepCopiesOwnedParameterCells) {
+    CKDataArray *source = static_cast<CKDataArray *>(
+        context_->CreateObject(CKCID_DATAARRAY, "DataArrayCopyParameterRegressionSrc", CK_OBJECTCREATION_DYNAMIC));
+    CKDataArray *dest = static_cast<CKDataArray *>(
+        context_->CreateObject(CKCID_DATAARRAY, "DataArrayCopyParameterRegressionDst", CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, dest);
+
+    source->InsertColumn(-1, CKARRAYTYPE_PARAMETER, "Param", CKPGUID_INT);
+    source->AddRow();
+
+    int value = 1337;
+    CKParameterOut *sourceParam = reinterpret_cast<CKParameterOut *>(*source->GetElement(0, 0));
+    ASSERT_NE(nullptr, sourceParam);
+    ASSERT_EQ(CK_OK, sourceParam->SetValue(&value, sizeof(value)));
+
+    CKDependenciesContext depsContext(context_);
+    ASSERT_EQ(CK_OK, dest->Copy(*source, depsContext));
+    ASSERT_EQ(1, dest->GetRowCount());
+
+    CKParameterOut *copiedParam = reinterpret_cast<CKParameterOut *>(*dest->GetElement(0, 0));
+    ASSERT_NE(nullptr, copiedParam);
+    EXPECT_NE(sourceParam, copiedParam);
+    EXPECT_EQ(dest, copiedParam->GetOwner());
+
+    int copiedValue = 0;
+    ASSERT_TRUE(dest->GetElementValue(0, 0, &copiedValue));
+    EXPECT_EQ(value, copiedValue);
+}
+
+TEST_F(CKRuntimeFixture, LoadRejectsNegativeColumnCount) {
+    CKDataArray *array = static_cast<CKDataArray *>(
+        context_->CreateObject(CKCID_DATAARRAY, "DataArrayNegativeColumnCountRegression", CK_OBJECTCREATION_DYNAMIC));
+    ASSERT_NE(nullptr, array);
+
+    CKStateChunk *chunk = array->Save(nullptr, CK_STATESAVE_ALL);
+    ASSERT_NE(nullptr, chunk);
+    chunk->StartRead();
+    ASSERT_TRUE(chunk->SeekIdentifier(CK_STATESAVE_DATAARRAYFORMAT));
+
+    int *columnCount = static_cast<int *>(chunk->LockReadBuffer());
+    ASSERT_NE(nullptr, columnCount);
+    *columnCount = -1;
+
+    EXPECT_EQ(CKERR_INVALIDPARAMETER, array->Load(chunk, nullptr));
+
+    delete chunk;
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
