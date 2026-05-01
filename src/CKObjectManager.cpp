@@ -10,9 +10,6 @@
 #include "CKBehavior.h"
 #include "CKGlobals.h"
 
-#include <limits>
-#include <new>
-
 extern XClassInfoArray g_CKClassInfo;
 extern CK_CLASSID g_MaxClassID;
 
@@ -487,9 +484,9 @@ void CKObjectManager::StartLoadSession(CKDWORD MaxObjectID) {
 
         if (MaxObjectID > 0) {
             const size_t count = static_cast<size_t>(MaxObjectID);
-            const size_t maxCount = std::numeric_limits<size_t>::max() / sizeof(CK_ID);
+            const size_t maxCount = ((size_t) SIZE_MAX) / sizeof(CK_ID);
             if (count <= maxCount) {
-                CK_ID *session = new (std::nothrow) CK_ID[count];
+                CK_ID *session = new CK_ID[count];
                 if (session) {
                     memset(session, 0, sizeof(CK_ID) * count);
                     m_LoadSession = session;
