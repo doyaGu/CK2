@@ -2779,14 +2779,6 @@ void CKBehavior::HierarchyPostLoad() {
                 if (!paramName || strcmp(paramName, expectedName) != 0) {
                     param->SetName(expectedName, TRUE);
                 }
-
-                CKParameter *source = param->GetRealSource();
-                if (source) {
-                    CKSTRING sourceName = source->GetName();
-                    if (!sourceName || strcmp(sourceName, expectedName) != 0) {
-                        source->SetName(expectedName, TRUE);
-                    }
-                }
             }
         }
     }
