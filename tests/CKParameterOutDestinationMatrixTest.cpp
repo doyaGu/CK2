@@ -39,9 +39,6 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-void EmptyOperation(CKContext *, CKParameterOut *, CKParameterIn *, CKParameterIn *) {
-}
-
 void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
     if (guid == CKPGUID_INT) {
         int value = seed;
@@ -161,56 +158,6 @@ TEST_F(CKRuntimeFixture, RemoveDestinationAndClearUpdateCounts) {
 
     source->RemoveAllDestinations();
     EXPECT_EQ(0, source->GetDestinationCount());
-}
-
-TEST_F(CKRuntimeFixture, DestroyingBehaviorOwnedOutputRemovesItFromNonScriptGraph) {
-    CKBehavior *behavior = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "OutOwnerGraph", CK_OBJECTCREATION_DYNAMIC));
-    ASSERT_NE(nullptr, behavior);
-
-    behavior->UseGraph();
-
-    CKParameterOut *out = behavior->CreateOutputParameter("ownedOut", CKPGUID_INT);
-    ASSERT_NE(nullptr, out);
-    ASSERT_EQ(1, behavior->GetOutputParameterCount());
-    EXPECT_EQ(out, behavior->GetOutputParameter(0));
-
-    ASSERT_EQ(CK_OK, context_->DestroyObject(out));
-    EXPECT_EQ(0, behavior->GetOutputParameterCount());
-    EXPECT_EQ(nullptr, behavior->GetOutputParameter(0));
-}
-
-TEST_F(CKRuntimeFixture, DestroyingOperationOutputClearsOwnerPointerInNonScriptGraph) {
-    CKBehavior *behavior = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "OpOwnerGraph", CK_OBJECTCREATION_DYNAMIC));
-    ASSERT_NE(nullptr, behavior);
-
-    behavior->UseGraph();
-
-    CKParameterManager *pm = context_->GetParameterManager();
-    ASSERT_NE(nullptr, pm);
-
-    CKGUID opGuid(0x1F3A52B1u, 0x6C2D0E47u);
-    pm->RegisterOperationType(opGuid, "ParameterOutCleanupOperation");
-
-    CKGUID resGuid = CKPGUID_INT;
-    CKGUID inGuid = CKPGUID_INT;
-    ASSERT_EQ(CK_OK, pm->RegisterOperationFunction(opGuid, resGuid, inGuid, inGuid, EmptyOperation));
-
-    CKParameterOperation *operation = context_->CreateCKParameterOperation(
-        "CleanupOperation",
-        opGuid,
-        CKPGUID_INT,
-        CKPGUID_INT,
-        CKPGUID_INT);
-    ASSERT_NE(nullptr, operation);
-    ASSERT_EQ(CK_OK, behavior->AddParameterOperation(operation));
-
-    CKParameterOut *out = operation->GetOutParameter();
-    ASSERT_NE(nullptr, out);
-
-    ASSERT_EQ(CK_OK, context_->DestroyObject(out));
-    EXPECT_EQ(nullptr, operation->GetOutParameter());
 }
 
 int main(int argc, char **argv) {

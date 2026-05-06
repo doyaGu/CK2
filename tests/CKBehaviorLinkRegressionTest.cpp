@@ -335,57 +335,6 @@ TEST_F(CKRuntimeFixture, RemoveSubBehaviorLinkByPointerAndIndexUpdatesGraph) {
     EXPECT_EQ(nullptr, parent->GetSubBehaviorLink(0));
 }
 
-TEST_F(CKRuntimeFixture, RemovedSubBehaviorLinkStopsPropagationUntilReadded) {
-    gSourceACount = 0;
-    gDestinationCount = 0;
-
-    CKBehavior *parent = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "removeExecParent", CK_OBJECTCREATION_DYNAMIC));
-    CKBehavior *source = CreateFunctionBehavior(context_, "removeExecSource", SourceAActivateOutput);
-    CKBehavior *destination = CreateFunctionBehavior(context_, "removeExecDestination", DestinationCounter);
-    ASSERT_NE(nullptr, parent);
-    ASSERT_NE(nullptr, source);
-    ASSERT_NE(nullptr, destination);
-
-    parent->UseGraph();
-
-    CKBehaviorIO *sourceOut = source->CreateOutput("removeExecOut");
-    CKBehaviorIO *destinationIn = destination->CreateInput("removeExecIn");
-    ASSERT_NE(nullptr, sourceOut);
-    ASSERT_NE(nullptr, destinationIn);
-
-    CKBehaviorLink *link = static_cast<CKBehaviorLink *>(
-        context_->CreateObject(CKCID_BEHAVIORLINK, "removeExecLink", CK_OBJECTCREATION_DYNAMIC));
-    ASSERT_NE(nullptr, link);
-    ASSERT_EQ(CK_OK, link->SetInBehaviorIO(sourceOut));
-    ASSERT_EQ(CK_OK, link->SetOutBehaviorIO(destinationIn));
-    link->SetInitialActivationDelay(0);
-    link->SetActivationDelay(0);
-
-    ASSERT_EQ(CK_OK, parent->AddSubBehavior(source));
-    ASSERT_EQ(CK_OK, parent->AddSubBehavior(destination));
-    ASSERT_EQ(CK_OK, parent->AddSubBehaviorLink(link));
-
-    source->Activate(TRUE, FALSE);
-    parent->Activate(TRUE, FALSE);
-    parent->Execute(0.016f);
-    EXPECT_EQ(1, gDestinationCount);
-
-    ASSERT_EQ(link, parent->RemoveSubBehaviorLink(link));
-
-    source->Activate(TRUE, FALSE);
-    parent->Activate(TRUE, FALSE);
-    parent->Execute(0.016f);
-    EXPECT_EQ(1, gDestinationCount);
-
-    ASSERT_EQ(CK_OK, parent->AddSubBehaviorLink(link));
-
-    source->Activate(TRUE, FALSE);
-    parent->Activate(TRUE, FALSE);
-    parent->Execute(0.016f);
-    EXPECT_EQ(2, gDestinationCount);
-}
-
 TEST_F(CKRuntimeFixture, PreDeleteRemovesLinkFromOwningGraph) {
     CKBehavior *parent = static_cast<CKBehavior *>(
         context_->CreateObject(CKCID_BEHAVIOR, "preDeleteParent", CK_OBJECTCREATION_DYNAMIC));

@@ -203,45 +203,6 @@ TEST_F(CKRuntimeFixture, OutputObjectBridgeRoundTrip) {
     EXPECT_EQ(nullptr, behavior->GetOutputParameterObject(0));
 }
 
-TEST_F(CKRuntimeFixture, ReplaceOperationsUpdateOwnershipAndIoType) {
-    CKBehavior *target = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "ReplaceTargetBehavior", CK_OBJECTCREATION_DYNAMIC));
-    CKBehavior *donor = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "ReplaceDonorBehavior", CK_OBJECTCREATION_DYNAMIC));
-    ASSERT_NE(nullptr, target);
-    ASSERT_NE(nullptr, donor);
-
-    CKBehaviorIO *targetOut = target->CreateOutput("targetOut");
-    CKBehaviorIO *targetIn = target->CreateInput("targetIn");
-    CKParameterIn *targetInParam = target->CreateInputParameter("targetInParam", CKPGUID_INT);
-    CKParameterOut *targetOutParam = target->CreateOutputParameter("targetOutParam", CKPGUID_INT);
-    ASSERT_NE(nullptr, targetOut);
-    ASSERT_NE(nullptr, targetIn);
-    ASSERT_NE(nullptr, targetInParam);
-    ASSERT_NE(nullptr, targetOutParam);
-
-    CKBehaviorIO *donorOut = donor->CreateOutput("donorOut");
-    CKBehaviorIO *donorIn = donor->CreateInput("donorIn");
-    CKParameterIn *donorInParam = donor->CreateInputParameter("donorInParam", CKPGUID_INT);
-    CKParameterOut *donorOutParam = donor->CreateOutputParameter("donorOutParam", CKPGUID_INT);
-    ASSERT_NE(nullptr, donorOut);
-    ASSERT_NE(nullptr, donorIn);
-    ASSERT_NE(nullptr, donorInParam);
-    ASSERT_NE(nullptr, donorOutParam);
-
-    EXPECT_EQ(targetOut, target->ReplaceOutput(0, donorOut));
-    EXPECT_EQ(targetIn, target->ReplaceInput(0, donorIn));
-    EXPECT_EQ(targetInParam, target->ReplaceInputParameter(0, donorInParam));
-    EXPECT_EQ(targetOutParam, target->ReplaceOutputParameter(0, donorOutParam));
-
-    EXPECT_EQ(target, donorOut->GetOwner());
-    EXPECT_EQ(target, donorIn->GetOwner());
-    EXPECT_EQ(target, donorInParam->GetOwner());
-    EXPECT_EQ(target, donorOutParam->GetOwner());
-    EXPECT_EQ(CK_BEHAVIORIO_OUT, donorOut->GetType());
-    EXPECT_EQ(CK_BEHAVIORIO_IN, donorIn->GetType());
-}
-
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

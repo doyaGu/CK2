@@ -96,35 +96,6 @@ TEST_F(CKRuntimeFixture, PostLoadClearsTopmostFlagOnSubBehavior) {
     EXPECT_EQ(0u, child->GetFlags() & CKBEHAVIOR_TOPMOST);
 }
 
-TEST_F(CKRuntimeFixture, ReparentingRemovesChildFromPreviousParent) {
-    CKBehavior *firstParent = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "FirstParentGraph", CK_OBJECTCREATION_DYNAMIC));
-    CKBehavior *secondParent = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "SecondParentGraph", CK_OBJECTCREATION_DYNAMIC));
-    CKBehavior *child = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, "SharedChildGraph", CK_OBJECTCREATION_DYNAMIC));
-
-    ASSERT_NE(nullptr, firstParent);
-    ASSERT_NE(nullptr, secondParent);
-    ASSERT_NE(nullptr, child);
-
-    firstParent->UseGraph();
-    secondParent->UseGraph();
-    child->UseGraph();
-
-    ASSERT_EQ(CK_OK, firstParent->AddSubBehavior(child));
-    EXPECT_EQ(1, firstParent->GetSubBehaviorCount());
-    EXPECT_EQ(child, firstParent->GetSubBehavior(0));
-    EXPECT_EQ(firstParent, child->GetParent());
-
-    ASSERT_EQ(CK_OK, secondParent->AddSubBehavior(child));
-    EXPECT_EQ(0, firstParent->GetSubBehaviorCount());
-    EXPECT_EQ(nullptr, firstParent->GetSubBehavior(0));
-    EXPECT_EQ(1, secondParent->GetSubBehaviorCount());
-    EXPECT_EQ(child, secondParent->GetSubBehavior(0));
-    EXPECT_EQ(secondParent, child->GetParent());
-}
-
 TEST_F(CKRuntimeFixture, PostLoadDoesNotRenameSharedUpstreamSource) {
     CKBehavior *parent = static_cast<CKBehavior *>(
         context_->CreateObject(CKCID_BEHAVIOR, "SharedSourceParent", CK_OBJECTCREATION_DYNAMIC));

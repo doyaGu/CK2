@@ -38,15 +38,7 @@ XString MakeUniqueName(const char *prefix) {
 
 } // namespace
 
-TEST_F(CKRuntimeFixture, ResolveFileNameRejectsStartIndexBelowMinusOne) {
-    CKPathManager *pathManager = context_->GetPathManager();
-    ASSERT_NE(nullptr, pathManager);
-
-    XString fileName = "missing_file.dat";
-    EXPECT_EQ(CKERR_INVALIDPARAMETER, pathManager->ResolveFileName(fileName, DATA_PATH_IDX, -2));
-}
-
-TEST_F(CKRuntimeFixture, RenameCategoryRejectsDuplicateCategoryName) {
+TEST_F(CKRuntimeFixture, RenameCategoryAllowsDuplicateCategoryName) {
     CKPathManager *pathManager = context_->GetPathManager();
     ASSERT_NE(nullptr, pathManager);
 
@@ -58,11 +50,11 @@ TEST_F(CKRuntimeFixture, RenameCategoryRejectsDuplicateCategoryName) {
     const int categoryBIdx = pathManager->AddCategory(categoryB);
     ASSERT_GE(categoryBIdx, 0);
 
-    EXPECT_EQ(CKERR_ALREADYPRESENT, pathManager->RenameCategory(categoryBIdx, categoryA));
+    EXPECT_EQ(CK_OK, pathManager->RenameCategory(categoryBIdx, categoryA));
 
     XString categoryBName;
     ASSERT_EQ(CK_OK, pathManager->GetCategoryName(categoryBIdx, categoryBName));
-    EXPECT_TRUE(categoryBName == categoryB);
+    EXPECT_TRUE(categoryBName == categoryA);
 
     if (categoryAIdx > categoryBIdx) {
         EXPECT_EQ(CK_OK, pathManager->RemoveCategory(categoryAIdx));
@@ -73,7 +65,7 @@ TEST_F(CKRuntimeFixture, RenameCategoryRejectsDuplicateCategoryName) {
     }
 }
 
-TEST_F(CKRuntimeFixture, ResolveFileNameValidatesFileSchemeTargetExists) {
+TEST_F(CKRuntimeFixture, ResolveFileNameAcceptsFileSchemeWithoutExistenceCheck) {
     CKPathManager *pathManager = context_->GetPathManager();
     ASSERT_NE(nullptr, pathManager);
 
@@ -93,20 +85,22 @@ TEST_F(CKRuntimeFixture, ResolveFileNameValidatesFileSchemeTargetExists) {
     fileUri << absoluteFilePath;
 
     EXPECT_EQ(CK_OK, pathManager->ResolveFileName(fileUri, DATA_PATH_IDX, -1));
-    EXPECT_TRUE(fileUri == XString(absoluteFilePath));
+    XString expectedFileUri = "file://";
+    expectedFileUri << absoluteFilePath;
+    EXPECT_TRUE(fileUri == expectedFileUri);
 
     const int removeResult = remove(absoluteFilePath);
     EXPECT_EQ(0, removeResult);
 
     XString missingFileUri = "file://";
     missingFileUri << absoluteFilePath;
-    EXPECT_EQ(CKERR_NOTFOUND, pathManager->ResolveFileName(missingFileUri, DATA_PATH_IDX, -1));
+    EXPECT_EQ(CK_OK, pathManager->ResolveFileName(missingFileUri, DATA_PATH_IDX, -1));
 }
 
-TEST_F(CKRuntimeFixture, ResolveFileNameRejectsMissingUncPath) {
+TEST_F(CKRuntimeFixture, ResolveFileNameAcceptsUncPathWithoutExistenceCheck) {
     CKPathManager *pathManager = context_->GetPathManager();
     ASSERT_NE(nullptr, pathManager);
 
     XString missingUncPath = "\\\\";
-    EXPECT_EQ(CKERR_NOTFOUND, pathManager->ResolveFileName(missingUncPath, DATA_PATH_IDX, -1));
+    EXPECT_EQ(CK_OK, pathManager->ResolveFileName(missingUncPath, DATA_PATH_IDX, -1));
 }

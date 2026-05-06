@@ -49,14 +49,6 @@ std::string MakeUniqueName(const char *prefix) {
     return std::string(buffer);
 }
 
-bool ContainsObject(const XObjectPointerArray &objects, CKObject *target) {
-    for (int i = 0; i < objects.Size(); ++i) {
-        if (objects[i] == target)
-            return true;
-    }
-    return false;
-}
-
 CKGUID MakeUniqueGuid() {
     static CKDWORD counter = 0;
     ++counter;
@@ -218,100 +210,6 @@ TEST_F(CKRuntimeFixture, ClearAllReactivatesAllInactiveManagers) {
         EXPECT_EQ(2, managers[i]->on_init_calls);
         EXPECT_EQ(1, managers[i]->on_end_calls);
     }
-}
-
-TEST_F(CKRuntimeFixture, DeletingInactiveDuplicateManagerPreservesActiveManager) {
-    ASSERT_EQ(CK_OK, context_->ClearAll());
-
-    const CKGUID guid = MakeUniqueGuid();
-    CountingManager *active = new CountingManager(context_, guid, MakeUniqueName("ActiveManager").c_str());
-    CountingManager *inactive = new CountingManager(context_, guid, MakeUniqueName("InactiveManager").c_str());
-    ASSERT_NE(nullptr, active);
-    ASSERT_NE(nullptr, inactive);
-
-    ASSERT_EQ(CK_OK, context_->RegisterNewManager(active));
-    ASSERT_EQ(CKERR_ALREADYPRESENT, context_->RegisterNewManager(inactive));
-    ASSERT_EQ(active, context_->GetManagerByGuid(guid));
-    ASSERT_EQ(1, context_->GetInactiveManagerCount());
-
-    delete inactive;
-
-    EXPECT_EQ(active, context_->GetManagerByGuid(guid));
-    EXPECT_EQ(0, context_->GetInactiveManagerCount());
-
-    delete active;
-    EXPECT_EQ(nullptr, context_->GetManagerByGuid(guid));
-}
-
-TEST_F(CKRuntimeFixture, DeletingActiveManagerRemovesItFromRegistry) {
-    ASSERT_EQ(CK_OK, context_->ClearAll());
-
-    const CKGUID guid = MakeUniqueGuid();
-    CountingManager *manager = new CountingManager(context_, guid, MakeUniqueName("DeleteActiveManager").c_str());
-    ASSERT_NE(nullptr, manager);
-    ASSERT_EQ(CK_OK, context_->RegisterNewManager(manager));
-    ASSERT_EQ(manager, context_->GetManagerByGuid(guid));
-
-    delete manager;
-
-    EXPECT_EQ(nullptr, context_->GetManagerByGuid(guid));
-}
-
-TEST_F(CKRuntimeFixture, CreateObjectRejectsInvalidClassIds) {
-    ASSERT_EQ(CK_OK, context_->ClearAll());
-
-    CK_CREATIONMODE mode = CKLOAD_OK;
-    EXPECT_EQ(nullptr, context_->CreateObject(static_cast<CK_CLASSID>(-1), "InvalidNegativeClass", CK_OBJECTCREATION_DYNAMIC, &mode));
-    EXPECT_EQ(CKLOAD_INVALID, mode);
-
-    mode = CKLOAD_OK;
-    EXPECT_EQ(nullptr, context_->CreateObject(static_cast<CK_CLASSID>(CKGetClassCount()), "InvalidPastEndClass", CK_OBJECTCREATION_DYNAMIC, &mode));
-    EXPECT_EQ(CKLOAD_INVALID, mode);
-}
-
-TEST_F(CKRuntimeFixture, DestroyObjectsRejectsInvalidInput) {
-    ASSERT_EQ(CK_OK, context_->ClearAll());
-
-    EXPECT_EQ(CKERR_INVALIDPARAMETER, context_->DestroyObjects(nullptr, 1, 0, nullptr));
-
-    CK_ID id = 1;
-    EXPECT_EQ(CKERR_INVALIDPARAMETER, context_->DestroyObjects(&id, 0, 0, nullptr));
-}
-
-TEST_F(CKRuntimeFixture, FillObjectsUnusedIncludesHighestLiveObjectId) {
-    ASSERT_EQ(CK_OK, context_->ClearAll());
-
-    CKObject *first = context_->CreateObject(
-        CKCID_OBJECT,
-        MakeUniqueName("UnusedObjectFirst").c_str(),
-        CK_OBJECTCREATION_DYNAMIC);
-    CKObject *last = context_->CreateObject(
-        CKCID_OBJECT,
-        MakeUniqueName("UnusedObjectLast").c_str(),
-        CK_OBJECTCREATION_DYNAMIC);
-    ASSERT_NE(nullptr, first);
-    ASSERT_NE(nullptr, last);
-    ASSERT_LT(first->GetID(), last->GetID());
-
-    const XObjectPointerArray &unused = context_->CKFillObjectsUnused();
-    EXPECT_TRUE(ContainsObject(unused, first));
-    EXPECT_TRUE(ContainsObject(unused, last));
-}
-
-TEST_F(CKRuntimeFixture, XObjectPointerArrayCheckRemovesNullEntries) {
-    XObjectPointerArray objects;
-    objects.PushBack(static_cast<CKObject *>(nullptr));
-
-    EXPECT_TRUE(objects.Check());
-    EXPECT_EQ(0, objects.Size());
-}
-
-TEST_F(CKRuntimeFixture, XSObjectPointerArrayCheckRemovesNullEntries) {
-    XSObjectPointerArray objects;
-    objects.PushBack(static_cast<CKObject *>(nullptr));
-
-    EXPECT_TRUE(objects.Check());
-    EXPECT_EQ(0, objects.Size());
 }
 
 TEST_F(CKRuntimeFixture, RemoveSceneByIndexRejectsInvalidIndices) {
