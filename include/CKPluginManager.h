@@ -39,11 +39,14 @@ struct CKPluginDll
     XString m_DllFileName;         // DLL Path
     INSTANCE_HANDLE m_DllInstance; // Instance of the Loaded Dll (as HINSTANCE on Windows)
     int m_PluginInfoCount;         // Number of plugins declared by this DLL
+    CKBOOL m_Static;               // TRUE for plugins linked into the host executable
 
     CKPluginDll()
     {
         m_DllFileName = "";
         m_DllInstance = 0;
+        m_PluginInfoCount = 0;
+        m_Static = FALSE;
     }
 
     // Summary: Returns a pointer to a function inside the plugin.
@@ -53,6 +56,9 @@ struct CKPluginDll
     //	A Pointer to the function or NULL if the function was not found in the DLL.
     void *GetFunctionPtr(CKSTRING FunctionName)
     {
+        if (m_Static)
+            return NULL;
+
         VxSharedLibrary shl;
         shl.Attach(m_DllInstance);
         return shl.GetFunctionPtr(FunctionName);
@@ -203,6 +209,12 @@ public:
     DLL_EXPORT int ParsePlugins(CKSTRING Directory);
     //------ Registers a specific plugin Dll
     DLL_EXPORT CKERROR RegisterPlugin(CKSTRING str);
+    DLL_EXPORT CKERROR RegisterStaticPlugin(
+            CKSTRING name,
+            CKPluginGetInfoCountFunction getPluginInfoCountFunc,
+            CKPluginGetInfoFunction getPluginInfoFunc,
+            CKReaderGetReaderFunction getReaderFunc = NULL,
+            CKDLL_OBJECTDECLARATIONFUNCTION registerBehaviorDeclarationsFunc = NULL);
 
     DLL_EXPORT CKPluginEntry *FindComponent(CKGUID Component, int catIdx = -1); // Search for behaviors,managers,readers,etc.. to see if they exists
 

@@ -255,12 +255,16 @@ if (CK2_BUILD_STATIC)
     target_compile_definitions(CK2Static PUBLIC CK_LIB)
 
     list(APPEND CK2_TARGETS CK2Static)
+
+    if (NOT TARGET CK2)
+        add_library(CK2 ALIAS CK2Static)
+    endif ()
 endif ()
 
 # Installation rules (only if CK2_INSTALL is enabled)
 if (CK2_INSTALL)
     # Install library to Bin directory (shared) or lib directory (static)
-    if (TARGET CK2)
+    if (CK2_BUILD_SHARED AND TARGET CK2)
         install(TARGETS CK2
                 EXPORT CK2Targets
                 RUNTIME DESTINATION Bin

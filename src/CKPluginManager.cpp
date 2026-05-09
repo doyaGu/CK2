@@ -115,7 +115,7 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
     int idx = -1;
     CKPluginDll *plugin = GetPluginDllInfo(path, &idx);
     if (plugin) {
-        if (!plugin->m_DllInstance)
+        if (!plugin->m_DllInstance && !plugin->m_Static)
             return ReLoadPluginDll(idx);
         return CKERR_ALREADYPRESENT;
     }
@@ -141,6 +141,7 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
     pluginDll.m_DllFileName = path;
     pluginDll.m_PluginInfoCount = getPluginInfoCountFunc ? getPluginInfoCountFunc() : 1;
     pluginDll.m_DllInstance = handle;
+    pluginDll.m_Static = FALSE;
 
     CKERROR err = CKERR_INVALIDPLUGIN;
     for (int i = 0; i < pluginDll.m_PluginInfoCount; ++i) {
@@ -191,6 +192,84 @@ CKERROR CKPluginManager::RegisterPlugin(CKSTRING path) {
         shl.ReleaseLibrary();
         return err;
     }
+
+    m_PluginDlls.PushBack(pluginDll);
+    if (!g_Contextes.IsEmpty()) {
+        for (XArray<CKContext *>::Iterator cit = g_Contextes.Begin(); cit != g_Contextes.End(); ++cit) {
+            for (XClassArray<CKPluginEntry>::Iterator eit = pluginEntries.Begin(); eit != pluginEntries.End(); ++eit) {
+                InitInstancePluginEntry(&*eit, *cit);
+            }
+        }
+    }
+
+    return err;
+}
+
+CKERROR CKPluginManager::RegisterStaticPlugin(
+        CKSTRING name,
+        CKPluginGetInfoCountFunction getPluginInfoCountFunc,
+        CKPluginGetInfoFunction getPluginInfoFunc,
+        CKReaderGetReaderFunction getReaderFunc,
+        CKDLL_OBJECTDECLARATIONFUNCTION registerBehaviorDeclarationsFunc) {
+    if (!name || !getPluginInfoFunc)
+        return CKERR_INVALIDPARAMETER;
+
+    int idx = -1;
+    CKPluginDll *plugin = GetPluginDllInfo(name, &idx);
+    if (plugin)
+        return CKERR_ALREADYPRESENT;
+
+    XClassArray<CKPluginEntry> pluginEntries;
+
+    CKPluginDll pluginDll;
+    pluginDll.m_DllFileName = name;
+    pluginDll.m_PluginInfoCount = getPluginInfoCountFunc ? getPluginInfoCountFunc() : 1;
+    pluginDll.m_DllInstance = nullptr;
+    pluginDll.m_Static = TRUE;
+
+    CKERROR err = CKERR_INVALIDPLUGIN;
+    for (int i = 0; i < pluginDll.m_PluginInfoCount; ++i) {
+        CKPluginInfo *info = getPluginInfoFunc(i);
+        if (!info)
+            continue;
+
+        CKPluginEntry *pEntry = new CKPluginEntry;
+        CKPluginEntry &entry = *pEntry;
+        entry.m_PluginDllIndex = m_PluginDlls.Size();
+        entry.m_PositionInDll = i;
+        entry.m_PluginInfo = *info;
+
+        CK_PLUGIN_TYPE type = info->m_Type;
+        if (type > m_PluginCategories.Size() - 1)
+            m_PluginCategories.Resize(type + 1);
+        entry.m_IndexInCategory = m_PluginCategories[type].m_Entries.Size();
+
+        switch (type) {
+            case CKPLUGIN_BITMAP_READER:
+            case CKPLUGIN_SOUND_READER:
+            case CKPLUGIN_MODEL_READER:
+            case CKPLUGIN_MOVIE_READER:
+                entry.m_ReadersInfo = new CKPluginEntryReadersData;
+                entry.m_ReadersInfo->m_GetReaderFct = getReaderFunc;
+                break;
+            case CKPLUGIN_BEHAVIOR_DLL:
+                entry.m_BehaviorsInfo = new CKPluginEntryBehaviorsData;
+                InitializeBehaviors(registerBehaviorDeclarationsFunc, entry);
+                break;
+            default:
+                break;
+        }
+
+        m_PluginCategories[type].m_Entries.PushBack(pEntry);
+        if (!g_Contextes.IsEmpty()) {
+            pluginEntries.PushBack(entry);
+        }
+
+        err = CK_OK;
+    }
+
+    if (err != CK_OK)
+        return err;
 
     m_PluginDlls.PushBack(pluginDll);
     if (!g_Contextes.IsEmpty()) {
@@ -329,7 +408,7 @@ CKPluginDll *CKPluginManager::GetPluginDllInfo(CKSTRING PluginName, int *idx) {
 
 CKERROR CKPluginManager::UnLoadPluginDll(int PluginDllIdx) {
     CKPluginDll *pluginDll = GetPluginDllInfo(PluginDllIdx);
-    if (!pluginDll || !pluginDll->m_DllInstance)
+    if (!pluginDll || pluginDll->m_Static || !pluginDll->m_DllInstance)
         return CKERR_INVALIDPARAMETER;
 
     for (XClassArray<CKPluginCategory>::Iterator cit = m_PluginCategories.Begin(); cit != m_PluginCategories.End(); ++cit) {
@@ -364,7 +443,7 @@ CKERROR CKPluginManager::UnLoadPluginDll(int PluginDllIdx) {
 
 CKERROR CKPluginManager::ReLoadPluginDll(int PluginDllIdx) {
     CKPluginDll *pluginDll = GetPluginDllInfo(PluginDllIdx);
-    if (!pluginDll)
+    if (!pluginDll || pluginDll->m_Static)
         return CKERR_INVALIDPARAMETER;
 
     VxSharedLibrary shl;
@@ -599,7 +678,7 @@ CKERROR CKPluginManager::Save(CKContext *context, CKSTRING FileName, CKObjectArr
 
 void CKPluginManager::ReleaseAllPlugins() {
     for (XClassArray<CKPluginDll>::Iterator it = m_PluginDlls.Begin(); it != m_PluginDlls.End(); ++it) {
-        if (it->m_DllInstance) {
+        if (!it->m_Static && it->m_DllInstance) {
             VxSharedLibrary sl;
             sl.Attach(it->m_DllInstance);
             sl.ReleaseLibrary();
@@ -1138,10 +1217,7 @@ CKDataReader *CKPluginManager::GUIDFindReader(CKGUID &guid, int Category) {
     if (!entry)
         return nullptr;
 
-    auto &pluginDll = m_PluginDlls[entry->m_PluginDllIndex];
-    VxSharedLibrary shl;
-    shl.Attach(pluginDll.m_DllInstance);
-    auto *fct = (CKReaderGetReaderFunction) shl.GetFunctionPtr("CKGetReader");
+    auto *fct = entry->m_ReadersInfo ? entry->m_ReadersInfo->m_GetReaderFct : nullptr;
     return (fct) ? fct(entry->m_PositionInDll) : nullptr;
 }
 
