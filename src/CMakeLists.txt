@@ -273,27 +273,28 @@ if (CK2_INSTALL)
     if (CK2_BUILD_SHARED AND TARGET CK2)
         install(TARGETS CK2
                 EXPORT CK2Targets
-                RUNTIME DESTINATION Bin
-                LIBRARY DESTINATION Bin
-                ARCHIVE DESTINATION lib
+                RUNTIME DESTINATION Bin COMPONENT Runtime
+                LIBRARY DESTINATION Bin COMPONENT Runtime
+                ARCHIVE DESTINATION lib COMPONENT Development
         )
     endif ()
 
     if (TARGET CK2Static)
         install(TARGETS CK2Static
                 EXPORT CK2Targets
-                ARCHIVE DESTINATION lib
+                ARCHIVE DESTINATION lib COMPONENT Development
         )
     endif ()
 
     install(TARGETS miniz
             EXPORT CK2Targets
-            ARCHIVE DESTINATION lib
+            ARCHIVE DESTINATION lib COMPONENT Development
     )
 
     # Install public headers to include root
     install(DIRECTORY ${CK2_INCLUDE_DIR}/
             DESTINATION include
+            COMPONENT Development
             FILES_MATCHING PATTERN "*.h"
     )
 endif ()

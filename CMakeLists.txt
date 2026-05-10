@@ -173,6 +173,7 @@ if (CK2_INSTALL)
     install(EXPORT CK2Targets
             FILE CK2Targets.cmake
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CK2
+            COMPONENT Development
     )
 
     # Configure package config file (if config file template exists)
@@ -203,6 +204,7 @@ if (CK2_INSTALL)
             "${CMAKE_CURRENT_BINARY_DIR}/CK2Config.cmake"
             "${CMAKE_CURRENT_BINARY_DIR}/CK2ConfigVersion.cmake"
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CK2
+            COMPONENT Development
     )
 
     # Add package to CMake package registry (only when top-level)
