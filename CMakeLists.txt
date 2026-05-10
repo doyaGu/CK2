@@ -7,7 +7,7 @@ project(CK2
         VERSION 0.1.0
         DESCRIPTION "Virtools CK Engine Library"
         HOMEPAGE_URL "https://github.com/doyaGu/CK2"
-        LANGUAGES CXX
+        LANGUAGES C CXX
 )
 
 # =============================================================================
@@ -119,6 +119,9 @@ if (NOT TARGET VxMath)
     get_filename_component(_vxmath_local_dir "${_ck2_repo_root}/../VxMath" ABSOLUTE)
     if (EXISTS "${_vxmath_local_dir}/CMakeLists.txt")
         message(STATUS "[CK2] Using local VxMath checkout: ${_vxmath_local_dir}")
+        if (CK2_INSTALL)
+            set(VXMATH_INSTALL ON CACHE BOOL "Generate install target" FORCE)
+        endif ()
         add_subdirectory("${_vxmath_local_dir}" "${CMAKE_BINARY_DIR}/_deps/vxmath-local-build" EXCLUDE_FROM_ALL)
     endif ()
 endif ()

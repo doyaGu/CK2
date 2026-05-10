@@ -198,9 +198,15 @@ function(ck2_configure_target TARGET_NAME)
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     )
 
+    set(_ck2_vxmath_dep VxMath)
+    get_target_property(_ck2_target_type ${TARGET_NAME} TYPE)
+    if (_ck2_target_type STREQUAL "STATIC_LIBRARY" AND TARGET VxMathStatic)
+        set(_ck2_vxmath_dep VxMathStatic)
+    endif ()
+
     target_link_libraries(${TARGET_NAME}
             PUBLIC
-            VxMath
+            ${_ck2_vxmath_dep}
             PRIVATE
             miniz
             stb

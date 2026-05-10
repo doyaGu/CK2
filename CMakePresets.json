@@ -1,0 +1,144 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "msvc-win32-base",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "msvc-x64-base",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "ck2-runtime-msvc-win32",
+      "displayName": "CK2 Runtime (MSVC Win32)",
+      "description": "Build the CK2 shared runtime library.",
+      "inherits": "msvc-win32-base",
+      "cacheVariables": {
+        "CK2_BUILD_SHARED": "ON",
+        "CK2_BUILD_STATIC": "OFF",
+        "CK2_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "ck2-runtime-msvc-x64",
+      "displayName": "CK2 Runtime (MSVC x64)",
+      "description": "Build the x64 CK2 shared runtime library.",
+      "inherits": "msvc-x64-base",
+      "cacheVariables": {
+        "CK2_BUILD_SHARED": "ON",
+        "CK2_BUILD_STATIC": "OFF",
+        "CK2_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "ck2-static-msvc-win32",
+      "displayName": "CK2 Static (MSVC Win32)",
+      "description": "Build the CK2 static library.",
+      "inherits": "msvc-win32-base",
+      "cacheVariables": {
+        "CK2_BUILD_SHARED": "OFF",
+        "CK2_BUILD_STATIC": "ON",
+        "CK2_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "ck2-static-msvc-x64",
+      "displayName": "CK2 Static (MSVC x64)",
+      "description": "Build the x64 CK2 static library.",
+      "inherits": "msvc-x64-base",
+      "cacheVariables": {
+        "CK2_BUILD_SHARED": "OFF",
+        "CK2_BUILD_STATIC": "ON",
+        "CK2_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "ck2-tests-msvc-win32",
+      "displayName": "CK2 Tests (MSVC Win32)",
+      "description": "Build CK2 with unit tests enabled.",
+      "inherits": "ck2-runtime-msvc-win32",
+      "cacheVariables": {
+        "CK2_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "ck2-tests-msvc-x64",
+      "displayName": "CK2 Tests (MSVC x64)",
+      "description": "Build x64 CK2 with unit tests enabled.",
+      "inherits": "ck2-runtime-msvc-x64",
+      "cacheVariables": {
+        "CK2_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ck2-runtime-win32-release",
+      "displayName": "CK2 Runtime Win32 Release",
+      "configurePreset": "ck2-runtime-msvc-win32",
+      "configuration": "Release"
+    },
+    {
+      "name": "ck2-runtime-x64-release",
+      "displayName": "CK2 Runtime x64 Release",
+      "configurePreset": "ck2-runtime-msvc-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ck2-static-win32-release",
+      "displayName": "CK2 Static Win32 Release",
+      "configurePreset": "ck2-static-msvc-win32",
+      "configuration": "Release"
+    },
+    {
+      "name": "ck2-static-x64-release",
+      "displayName": "CK2 Static x64 Release",
+      "configurePreset": "ck2-static-msvc-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ck2-tests-win32-release",
+      "displayName": "CK2 Tests Win32 Release",
+      "configurePreset": "ck2-tests-msvc-win32",
+      "configuration": "Release"
+    },
+    {
+      "name": "ck2-tests-x64-release",
+      "displayName": "CK2 Tests x64 Release",
+      "configurePreset": "ck2-tests-msvc-x64",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ck2-tests-win32-release",
+      "displayName": "CK2 Tests Win32 Release",
+      "configurePreset": "ck2-tests-msvc-win32",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ck2-tests-x64-release",
+      "displayName": "CK2 Tests x64 Release",
+      "configurePreset": "ck2-tests-msvc-x64",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
