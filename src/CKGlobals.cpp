@@ -817,7 +817,7 @@ CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode) {
 }
 
 void CKDeletePointer(void *ptr) {
-    delete ptr;
+    delete[] static_cast<CKBYTE *>(ptr);
 }
 
 CKERROR CKCopyAllAttributes(CKBeObject *Src, CKBeObject *Dest) {
