@@ -223,7 +223,12 @@ endfunction()
 set(CK2_TARGETS)
 
 if (CK2_BUILD_SHARED)
-    add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS})
+    set(_ck2_version_resource)
+    if (COMMAND ballance_configure_version_resource AND DEFINED BALLANCE_MODULE_VERSION_OVERRIDE)
+        ballance_configure_version_resource(_ck2_version_resource CK2 "CK2 Runtime Library" "CK2.dll")
+    endif ()
+
+    add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS} ${_ck2_version_resource})
     ck2_configure_target(CK2)
 
     # Shared library specific settings
