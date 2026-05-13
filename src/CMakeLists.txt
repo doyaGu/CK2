@@ -222,10 +222,36 @@ endfunction()
 # Track created targets for export
 set(CK2_TARGETS)
 
+function(ck2_configure_version_resource OUT_VAR TARGET_NAME FILE_DESCRIPTION ORIGINAL_FILENAME)
+    if (NOT CK2_VERSION_OVERRIDE MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$")
+        message(FATAL_ERROR "CK2_VERSION_OVERRIDE must be a numeric four-part version")
+    endif ()
+
+    string(REPLACE "." ";" _ck2_version_parts "${CK2_VERSION_OVERRIDE}")
+    list(GET _ck2_version_parts 0 CK2_RC_VERSION_MAJOR)
+    list(GET _ck2_version_parts 1 CK2_RC_VERSION_MINOR)
+    list(GET _ck2_version_parts 2 CK2_RC_VERSION_PATCH)
+    list(GET _ck2_version_parts 3 CK2_RC_VERSION_TWEAK)
+
+    set(CK2_RC_VERSION_STRING "${CK2_VERSION_OVERRIDE}")
+    set(CK2_RC_TARGET "${TARGET_NAME}")
+    set(CK2_RC_DESCRIPTION "${FILE_DESCRIPTION}")
+    set(CK2_RC_ORIGINAL_FILENAME "${ORIGINAL_FILENAME}")
+    set(_ck2_version_resource "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}Version.generated.rc")
+
+    configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/Version.rc.in"
+            "${_ck2_version_resource}"
+            @ONLY
+    )
+
+    set(${OUT_VAR} "${_ck2_version_resource}" PARENT_SCOPE)
+endfunction()
+
 if (CK2_BUILD_SHARED)
     set(_ck2_version_resource)
-    if (COMMAND ballance_configure_version_resource AND DEFINED BALLANCE_MODULE_VERSION_OVERRIDE)
-        ballance_configure_version_resource(_ck2_version_resource CK2 "CK2 Runtime Library" "CK2.dll")
+    if (DEFINED CK2_VERSION_OVERRIDE)
+        ck2_configure_version_resource(_ck2_version_resource CK2 "CK2 Runtime Library" "CK2.dll")
     endif ()
 
     add_library(CK2 SHARED ${CK2_SOURCES} ${CK2_PUBLIC_HEADERS} ${CK2_PRIVATE_HEADERS} ${_ck2_version_resource})
