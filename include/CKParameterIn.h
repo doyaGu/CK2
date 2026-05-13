@@ -238,7 +238,7 @@ public:
 
     //-------------------------------------------------------------------
 
-    CKParameterIn(CKContext *Context, CKSTRING name = NULL, int type = NULL);
+    CKParameterIn(CKContext *Context, CKSTRING name = NULL, int type = 0);
     virtual ~CKParameterIn();
     virtual CK_CLASSID GetClassID();
 
