@@ -26,6 +26,7 @@ BEGIN
             VALUE "FileDescription", "@CK2_RC_DESCRIPTION@"
             VALUE "FileVersion", "@CK2_RC_VERSION_STRING@\0"
             VALUE "InternalName", "@CK2_RC_TARGET@\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026\0"
             VALUE "OriginalFilename", "@CK2_RC_ORIGINAL_FILENAME@\0"
             VALUE "ProductName", "Ballanced"
             VALUE "ProductVersion", "@CK2_RC_VERSION_STRING@\0"
