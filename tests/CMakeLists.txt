@@ -53,34 +53,6 @@ function(add_ck2_test test_name)
             )
 endfunction()
 
-add_executable(CK2TestPlayer Player.cpp)
-
-set_target_properties(CK2TestPlayer PROPERTIES
-        WIN32_EXECUTABLE TRUE
-)
-
-target_compile_definitions(CK2TestPlayer PRIVATE
-        PLAYER_STANDALONE
-)
-
-target_include_directories(CK2TestPlayer PRIVATE
-        ${CK2_INCLUDE_DIR}
-        ${CK2_SOURCE_DIR}
-)
-
-target_link_libraries(CK2TestPlayer PRIVATE
-        CK2
-        VxMath
-)
-
-add_ck2_test(PlayerTest
-        SOURCES
-        PlayerTest.cpp
-        Player.cpp
-        DEPENDENCIES
-        CK2 VxMath
-)
-
 add_ck2_test(CKGuidComparisonTest
         SOURCES
         CKGuidComparisonTest.cpp
