@@ -186,3 +186,10 @@ add_ck2_test(CKPathManagerRegressionTest
         DEPENDENCIES
         CK2 VxMath
 )
+
+add_ck2_test(CKPluginManagerPlatformTest
+        SOURCES
+        CKPluginManagerPlatformTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)

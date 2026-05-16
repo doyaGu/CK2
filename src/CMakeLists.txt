@@ -113,8 +113,6 @@ set(CK2_PRIVATE_HEADERS
 )
 
 set(CK2_SOURCES
-        CK2Win32.cpp
-
         # Global Functions and Base Classes
         CKGlobals.cpp
         CKBaseManager.cpp
@@ -189,6 +187,12 @@ set(CK2_SOURCES
         CKDataArray.cpp
         CKObjectArray.cpp
 )
+
+if (WIN32 AND NOT CK2_ENABLE_SDL3)
+    list(PREPEND CK2_SOURCES CK2Win32.cpp)
+else ()
+    list(PREPEND CK2_SOURCES CK2Module.cpp)
+endif ()
 
 # Function to configure common target settings
 function(ck2_configure_target TARGET_NAME)

@@ -19,6 +19,8 @@
 #ifdef CK_API
 #if defined(WIN32)
 #define DLL_EXPORT __declspec(dllexport)
+#elif defined(__GNUC__) || defined(__clang__)
+#define DLL_EXPORT __attribute__((visibility("default")))
 #else
 #define DLL_EXPORT
 #endif
@@ -36,7 +38,13 @@
 
 #ifndef PLUGIN_EXPORT
 #ifndef CK_LIB
+#if defined(WIN32)
 #define PLUGIN_EXPORT extern "C" __declspec(dllexport)
+#elif defined(__GNUC__) || defined(__clang__)
+#define PLUGIN_EXPORT extern "C" __attribute__((visibility("default")))
+#else
+#define PLUGIN_EXPORT extern "C"
+#endif
 #else
 #define PLUGIN_EXPORT
 #endif // !CK_LIB

@@ -207,6 +207,7 @@ public:
 
     //----- Parse a directory for plugins and returns the number of valid plugins enumerated
     DLL_EXPORT int ParsePlugins(CKSTRING Directory);
+    DLL_EXPORT static CKBOOL IsPluginLibraryFileName(const char *filename);
     //------ Registers a specific plugin Dll
     DLL_EXPORT CKERROR RegisterPlugin(CKSTRING str);
     DLL_EXPORT CKERROR RegisterStaticPlugin(

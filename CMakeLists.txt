@@ -34,10 +34,6 @@ if (CK2_IS_TOP_LEVEL AND CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "In-source builds not allowed. Run CMake from a separate directory: cmake -B build")
 endif ()
 
-if (NOT WIN32)
-    message(FATAL_ERROR "CK2 only supports Windows.")
-endif ()
-
 # =============================================================================
 # C++ standard
 # =============================================================================
@@ -58,6 +54,11 @@ option(CK2_BUILD_TESTS "Build the test suite" OFF)
 option(CK2_BUILD_SHARED "Build CK2 as a shared library" ON)
 option(CK2_BUILD_STATIC "Build CK2 as a static library" OFF)
 option(CK2_INSTALL "Generate install target" ${CK2_IS_TOP_LEVEL})
+option(CK2_ENABLE_SDL3 "Build CK2 with portable SDL3 platform support" OFF)
+
+if (NOT WIN32 AND NOT CK2_ENABLE_SDL3)
+    message(FATAL_ERROR "CK2 only supports non-Windows builds with CK2_ENABLE_SDL3=ON.")
+endif ()
 
 # =============================================================================
 # CMake modules

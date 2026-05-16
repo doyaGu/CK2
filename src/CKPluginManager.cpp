@@ -13,10 +13,61 @@
 #include "CKBehavior.h"
 #include "CKFile.h"
 
+#include <ctype.h>
+#include <string.h>
+
 extern XArray<CKContext *> g_Contextes;
 extern XObjDeclHashTable g_PrototypeDeclarationList;
 
 CKPluginEntry *g_TheCurrentPluginEntry;
+
+static int CKPluginAsciiICompare(const char *lhs, const char *rhs) {
+    if (!lhs || !rhs)
+        return lhs == rhs ? 0 : (lhs ? 1 : -1);
+
+    while (*lhs && *rhs) {
+        const int lc = tolower(static_cast<unsigned char>(*lhs));
+        const int rc = tolower(static_cast<unsigned char>(*rhs));
+        if (lc != rc)
+            return lc - rc;
+        ++lhs;
+        ++rhs;
+    }
+
+    return tolower(static_cast<unsigned char>(*lhs)) - tolower(static_cast<unsigned char>(*rhs));
+}
+
+static const char *CKPluginLibraryFileMask() {
+#if defined(_WIN32)
+    return "*.dll";
+#elif defined(__APPLE__)
+    return "*.dylib";
+#else
+    return "*.so";
+#endif
+}
+
+CKBOOL CKPluginManager::IsPluginLibraryFileName(const char *filename) {
+    if (!filename || !*filename)
+        return FALSE;
+
+    const char *lastSlash = strrchr(filename, '/');
+    const char *lastBackslash = strrchr(filename, '\\');
+    const char *basename = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+    basename = basename ? basename + 1 : filename;
+
+    const char *extension = strrchr(basename, '.');
+    if (!extension || extension == basename)
+        return FALSE;
+
+#if defined(_WIN32)
+    return CKPluginAsciiICompare(extension, ".dll") == 0;
+#elif defined(__APPLE__)
+    return CKPluginAsciiICompare(extension, ".dylib") == 0;
+#else
+    return CKPluginAsciiICompare(extension, ".so") == 0;
+#endif
+}
 
 CKPluginEntry &CKPluginEntry::operator=(const CKPluginEntry &ent) {
     if (this == &ent) {
@@ -98,10 +149,12 @@ CKPluginManager::~CKPluginManager() {
 }
 
 int CKPluginManager::ParsePlugins(CKSTRING Directory) {
-    CKDirectoryParser parser(Directory, "*.dll", TRUE);
+    CKDirectoryParser parser(Directory, CKPluginLibraryFileMask(), TRUE);
     VxAddLibrarySearchPath(Directory);
     int count = 0;
     for (const char *plugin = parser.GetNextFile(); plugin != nullptr; plugin = parser.GetNextFile()) {
+        if (!IsPluginLibraryFileName(plugin))
+            continue;
         if (RegisterPlugin(plugin) == CK_OK)
             ++count;
     }
