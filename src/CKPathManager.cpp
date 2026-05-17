@@ -4,6 +4,17 @@
 #include "CKGlobals.h"
 #include "CKContext.h"
 
+static void NormalizeNativePathSeparators(XString &path) {
+#ifndef _WIN32
+    for (int i = 0; i < path.Length(); ++i) {
+        if (path[i] == '\\')
+            path[i] = '/';
+    }
+#else
+    (void)path;
+#endif
+}
+
 XString CKGetTempPath() {
     char buf[_MAX_PATH];
     char dir[64];
@@ -176,13 +187,17 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         return CKERR_INVALIDFILE;
     }
 
+    XString filesystemFile = file;
+    NormalizeNativePathSeparators(filesystemFile);
+
     // If starting index is unspecified, check special locations first
     if (startIdx == -1) {
         // Check absolute paths
-        if (PathIsAbsolute(file)) {
-            FILE* fp = fopen(file.CStr(), "rb");
+        if (PathIsAbsolute(filesystemFile)) {
+            FILE* fp = fopen(filesystemFile.CStr(), "rb");
             if (fp) {
                 fclose(fp);
+                file = filesystemFile;
                 return CK_OK;
             }
         }
@@ -194,12 +209,14 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         }
 
         // Check existing files/UNC paths
-        if (PathIsFile(file) || PathIsUNC(file)) {
+        if (PathIsFile(file) || PathIsUNC(filesystemFile)) {
+            if (!PathIsFile(file))
+                file = filesystemFile;
             return CK_OK;
         }
 
         // Check application start path
-        XString startPath = XString(CKGetStartPath()) + file;
+        XString startPath = XString(CKGetStartPath()) + filesystemFile;
         if (TryOpenAbsolutePath(startPath)) {
             file = startPath;
             return CK_OK;
@@ -207,7 +224,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
 
         // Check directory of last loaded CMO file
         CKPathSplitter cmoSplitter(m_Context->GetLastCmoLoaded());
-        CKPathMaker cmoMaker(cmoSplitter.GetDrive(), cmoSplitter.GetDir(), file.Str(), nullptr);
+        CKPathMaker cmoMaker(cmoSplitter.GetDrive(), cmoSplitter.GetDir(), filesystemFile.Str(), nullptr);
         XString cmoPath = cmoMaker.GetFileName();
         if (TryOpenAbsolutePath(cmoPath)) {
             file = cmoPath;
@@ -217,7 +234,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         // Check current working directory
         char curDir[4096];
         VxGetCurrentDirectory(curDir);
-        CKPathMaker curDirMaker(nullptr, curDir, file.Str(), nullptr);
+        CKPathMaker curDirMaker(nullptr, curDir, filesystemFile.Str(), nullptr);
         XString curPath = curDirMaker.GetFileName();
         if (TryOpenAbsolutePath(curPath)) {
             file = curPath;
@@ -226,7 +243,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
 
         // Check Virtools temporary folder
         XString tempFolder = GetVirtoolsTemporaryFolder();
-        CKPathMaker tempMaker(nullptr, tempFolder.Str(), file.Str(), nullptr);
+        CKPathMaker tempMaker(nullptr, tempFolder.Str(), filesystemFile.Str(), nullptr);
         XString tempPath = tempMaker.GetFileName();
         if (TryOpenAbsolutePath(tempPath)) {
             file = tempPath;
@@ -238,9 +255,12 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     }
 
     // Split filename into components
-    CKPathSplitter fileSplitter(file.Str());
+    CKPathSplitter fileSplitter(filesystemFile.Str());
     XString baseName = fileSplitter.GetName();
     baseName += fileSplitter.GetExtension();
+    XString searchName = filesystemFile;
+    if (PathIsAbsolute(filesystemFile) || PathIsUNC(filesystemFile) || searchName.Length() == 0)
+        searchName = baseName;
 
     if (catIdx < 0 || catIdx >= m_Categories.Size()) {
         return CKERR_INVALIDPARAMETER;
@@ -254,7 +274,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     for (int i = startIdx; i < pathCount; ++i) {
         XString &pathEntry = category.m_Entries[i];
         char path[4096];
-        if (!VxMakePath(path, pathEntry.Str(), baseName.Str()))
+        if (!VxMakePath(path, pathEntry.Str(), searchName.Str()))
             continue;
 
         // Handle different path types
@@ -286,6 +306,12 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
 }
 
 CKBOOL CKPathManager::PathIsAbsolute(XString &file) {
+    if (file.Length() <= 0)
+        return FALSE;
+#ifndef _WIN32
+    if (file[0] == '/')
+        return TRUE;
+#endif
     if (file.Length() < 3)
         return FALSE;
     if (file[1] == ':' && file[2] == '\\')
@@ -353,6 +379,7 @@ void CKPathManager::RemoveSpace(char *str) {
 }
 
 CKBOOL CKPathManager::TryOpenAbsolutePath(XString &file) {
+    NormalizeNativePathSeparators(file);
     FILE *fp = fopen(file.CStr(), "rb");
     if (fp) {
         fclose(fp);

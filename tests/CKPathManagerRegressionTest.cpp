@@ -97,6 +97,79 @@ TEST_F(CKRuntimeFixture, ResolveFileNameAcceptsFileSchemeWithoutExistenceCheck) 
     EXPECT_EQ(CK_OK, pathManager->ResolveFileName(missingFileUri, DATA_PATH_IDX, -1));
 }
 
+TEST_F(CKRuntimeFixture, ResolveFileNameSearchesAbsoluteCategoryPath) {
+    CKPathManager *pathManager = context_->GetPathManager();
+    ASSERT_NE(nullptr, pathManager);
+
+    const XString uniqueName = MakeUniqueName("CKPathManagerAbsoluteCategory");
+    char directoryPath[_MAX_PATH] = {};
+    ASSERT_TRUE(VxMakePath(directoryPath, VxGetTempPath().Str(), uniqueName.Str()));
+    ASSERT_TRUE(VxMakeDirectory(directoryPath));
+
+    XString fileName = uniqueName + ".tmp";
+    char absoluteFilePath[_MAX_PATH] = {};
+    ASSERT_TRUE(VxMakePath(absoluteFilePath, directoryPath, fileName.Str()));
+
+    FILE *created = fopen(absoluteFilePath, "wb");
+    ASSERT_NE(nullptr, created);
+    fputs("ok", created);
+    fclose(created);
+
+    XString categoryName = uniqueName + "Category";
+    const int categoryIdx = pathManager->AddCategory(categoryName);
+    ASSERT_GE(categoryIdx, 0);
+
+    XString categoryPath = directoryPath;
+    ASSERT_GE(pathManager->AddPath(categoryIdx, categoryPath), 0);
+
+    XString resolvedFile = fileName;
+    EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, categoryIdx, -1));
+    EXPECT_TRUE(resolvedFile == XString(absoluteFilePath));
+
+    EXPECT_EQ(CK_OK, pathManager->RemoveCategory(categoryIdx));
+    EXPECT_TRUE(VxDeleteDirectory(directoryPath));
+}
+
+#ifndef _WIN32
+TEST_F(CKRuntimeFixture, ResolveFileNameAcceptsWindowsStyleRelativeSubdirectories) {
+    CKPathManager *pathManager = context_->GetPathManager();
+    ASSERT_NE(nullptr, pathManager);
+
+    const XString uniqueName = MakeUniqueName("CKPathManagerWindowsStyleSubdir");
+    char rootPath[_MAX_PATH] = {};
+    ASSERT_TRUE(VxMakePath(rootPath, VxGetTempPath().Str(), uniqueName.Str()));
+    ASSERT_TRUE(VxMakeDirectory(rootPath));
+
+    char nestedPath[_MAX_PATH] = {};
+    ASSERT_TRUE(VxMakePath(nestedPath, rootPath, "3D Entities"));
+    ASSERT_TRUE(VxMakeDirectory(nestedPath));
+
+    char absoluteFilePath[_MAX_PATH] = {};
+    ASSERT_TRUE(VxMakePath(absoluteFilePath, nestedPath, "Menu.nmo"));
+
+    FILE *created = fopen(absoluteFilePath, "wb");
+    ASSERT_NE(nullptr, created);
+    fputs("ok", created);
+    fclose(created);
+
+    XString categoryName = uniqueName + "Category";
+    const int categoryIdx = pathManager->AddCategory(categoryName);
+    ASSERT_GE(categoryIdx, 0);
+
+    XString categoryPath = rootPath;
+    ASSERT_GE(pathManager->AddPath(categoryIdx, categoryPath), 0);
+
+    XString resolvedFile = "3D Entities\\Menu.nmo";
+    EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, categoryIdx, -1));
+    EXPECT_TRUE(resolvedFile == XString(absoluteFilePath));
+
+    EXPECT_EQ(CK_OK, pathManager->RemoveCategory(categoryIdx));
+    EXPECT_EQ(0, remove(absoluteFilePath));
+    EXPECT_TRUE(VxDeleteDirectory(nestedPath));
+    EXPECT_TRUE(VxDeleteDirectory(rootPath));
+}
+#endif
+
 TEST_F(CKRuntimeFixture, ResolveFileNameAcceptsUncPathWithoutExistenceCheck) {
     CKPathManager *pathManager = context_->GetPathManager();
     ASSERT_NE(nullptr, pathManager);
