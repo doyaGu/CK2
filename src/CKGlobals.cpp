@@ -721,11 +721,16 @@ char *CKPackData(const char *Data, int size, int &NewSize, int compressionLevel)
 }
 
 char *CKUnPackData(int DestSize, const char *SrcBuffer, int SrcSize) {
+    if (DestSize <= 0 || !SrcBuffer || SrcSize <= 0)
+        return nullptr;
+
     char *buffer = new char[DestSize];
     if (!buffer)
         return nullptr;
 
-    if (uncompress((Bytef *) buffer, (uLongf *) &DestSize, (const Bytef *) SrcBuffer, SrcSize) == Z_OK) {
+    uLongf unpackedSize = static_cast<uLongf>(DestSize);
+    if (uncompress((Bytef *) buffer, &unpackedSize, (const Bytef *) SrcBuffer, SrcSize) == Z_OK &&
+        unpackedSize == static_cast<uLongf>(DestSize)) {
         return buffer;
     }
 
