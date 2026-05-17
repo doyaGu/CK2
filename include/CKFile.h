@@ -7,7 +7,7 @@
 #include "CKObject.h"
 #include "CKStateChunk.h"
 #include "XClassArray.h"
-#include "VxMeMoryMappedFile.h"
+#include "VxMemoryMappedFile.h"
 
 typedef XArray<int> XIntArray;
 typedef XHashTable<int, CK_ID> XFileObjectsTable;
