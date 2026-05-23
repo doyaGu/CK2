@@ -5,14 +5,174 @@
 #include "CKContext.h"
 
 static void NormalizeNativePathSeparators(XString &path) {
-#ifndef _WIN32
     for (int i = 0; i < path.Length(); ++i) {
+#ifdef _WIN32
+        if (path[i] == '/')
+            path[i] = '\\';
+#else
         if (path[i] == '\\')
             path[i] = '/';
-    }
-#else
-    (void)path;
 #endif
+    }
+}
+
+#ifndef _WIN32
+struct FindDirectoryEntryData {
+    const char *Name;
+    XBOOL WantDirectory;
+    XBOOL Found;
+    XString Match;
+};
+
+static XBOOL FindDirectoryEntryCallback(const VxDirectoryEntry *entry, void *userData) {
+    FindDirectoryEntryData *data = (FindDirectoryEntryData *)userData;
+    if (!entry || !data || !data->Name)
+        return TRUE;
+    if (entry->IsDirectory != data->WantDirectory)
+        return TRUE;
+
+    XString entryName = entry->Name;
+    XString requestedName = data->Name;
+    if (entryName.Compare(requestedName) == 0) {
+        data->Match = entry->Name;
+        data->Found = TRUE;
+    } else if (!data->Found && entryName.ICompare(requestedName) == 0) {
+        data->Match = entry->Name;
+        data->Found = TRUE;
+    }
+
+    return TRUE;
+}
+
+static CKBOOL FindDirectoryEntry(const char *directory, const XString &name, XBOOL wantDirectory, XString &match) {
+    FindDirectoryEntryData data;
+    data.Name = name.CStr();
+    data.WantDirectory = wantDirectory;
+    data.Found = FALSE;
+
+    VxListDirectory(directory, "*", TRUE, FindDirectoryEntryCallback, &data);
+    if (!data.Found)
+        return FALSE;
+
+    match = data.Match;
+    return TRUE;
+}
+
+static void RemoveLastNativePathComponent(XString &path) {
+    if (path.Length() <= 1) {
+        path = "/";
+        return;
+    }
+
+    if (path.Back() == '/')
+        path.PopBack();
+
+    XWORD slash = path.RFind('/');
+    if (slash == XString::NOTFOUND || slash == 0) {
+        path = "/";
+    } else {
+        path.Crop(0, slash);
+    }
+}
+
+static CKBOOL ResolveCaseInsensitiveFilePathFromDirectory(const char *directory, const char *file, XString &resolved) {
+    if (!directory || !file || !VxDirectoryExists(directory))
+        return FALSE;
+
+    XString current = directory;
+    NormalizeNativePathSeparators(current);
+
+    XString relative = file;
+    NormalizeNativePathSeparators(relative);
+
+    const char *part = relative.CStr();
+    while (*part) {
+        while (*part == '/')
+            ++part;
+        if (!*part)
+            break;
+
+        const char *end = part;
+        while (*end && *end != '/')
+            ++end;
+
+        XString name(part, (int)(end - part));
+        part = end;
+        if (name == ".")
+            continue;
+        if (name == "..") {
+            RemoveLastNativePathComponent(current);
+            continue;
+        }
+
+        const XBOOL wantDirectory = (*part != '\0') ? TRUE : FALSE;
+        XString match;
+        if (!FindDirectoryEntry(current.CStr(), name, wantDirectory, match))
+            return FALSE;
+
+        char next[_MAX_PATH];
+        if (!VxMakePath(next, current.CStr(), match.CStr()))
+            return FALSE;
+        current = next;
+    }
+
+    if (!VxFileExists(current.CStr()))
+        return FALSE;
+
+    resolved = current;
+    return TRUE;
+}
+
+static CKBOOL ResolveCaseInsensitiveFilePath(const char *path, XString &resolved) {
+    if (!path || path[0] != '/')
+        return FALSE;
+
+    return ResolveCaseInsensitiveFilePathFromDirectory("/", path + 1, resolved);
+}
+#endif
+
+static CKBOOL MakeNativePathCandidate(XString &candidate, const char *directory, const char *file) {
+    char path[_MAX_PATH];
+    if (!VxMakePath(path, directory ? directory : "", file ? file : ""))
+        return FALSE;
+
+    candidate = path;
+    NormalizeNativePathSeparators(candidate);
+    return TRUE;
+}
+
+static CKBOOL MakeLogicalPathCandidate(XString &candidate, const char *directory, const char *file) {
+    char path[_MAX_PATH];
+    if (!VxMakePath(path, directory ? directory : "", file ? file : ""))
+        return FALSE;
+
+    candidate = path;
+    return TRUE;
+}
+
+static CKBOOL ResolveNativePathCandidate(XString &candidate, const char *directory, const char *file, XBOOL unescape) {
+    XString base = directory ? directory : "";
+    XString name = file ? file : "";
+    if (unescape) {
+        VxUnEscapeUrl(base);
+        VxUnEscapeUrl(name);
+    }
+
+    if (!MakeNativePathCandidate(candidate, base.CStr(), name.CStr()))
+        return FALSE;
+
+    if (VxFileExists(candidate.CStr()))
+        return TRUE;
+
+#ifndef _WIN32
+    XString resolved;
+    if (ResolveCaseInsensitiveFilePathFromDirectory(base.CStr(), name.CStr(), resolved)) {
+        candidate = resolved;
+        return TRUE;
+    }
+#endif
+
+    return FALSE;
 }
 
 XString CKGetTempPath() {
@@ -194,9 +354,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     if (startIdx == -1) {
         // Check absolute paths
         if (PathIsAbsolute(filesystemFile)) {
-            FILE* fp = fopen(filesystemFile.CStr(), "rb");
-            if (fp) {
-                fclose(fp);
+            if (ResolveNativeFilePath(filesystemFile)) {
                 file = filesystemFile;
                 return CK_OK;
             }
@@ -216,36 +374,35 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         }
 
         // Check application start path
-        XString startPath = XString(CKGetStartPath()) + filesystemFile;
-        if (TryOpenAbsolutePath(startPath)) {
+        XString startPath;
+        if (ResolveNativePathCandidate(startPath, CKGetStartPath(), filesystemFile.Str(), FALSE)) {
             file = startPath;
             return CK_OK;
         }
 
         // Check directory of last loaded CMO file
         CKPathSplitter cmoSplitter(m_Context->GetLastCmoLoaded());
-        CKPathMaker cmoMaker(cmoSplitter.GetDrive(), cmoSplitter.GetDir(), filesystemFile.Str(), nullptr);
-        XString cmoPath = cmoMaker.GetFileName();
-        if (TryOpenAbsolutePath(cmoPath)) {
+        CKPathMaker cmoDir(cmoSplitter.GetDrive(), cmoSplitter.GetDir(), nullptr, nullptr);
+        XString cmoPath;
+        if (ResolveNativePathCandidate(cmoPath, cmoDir.GetFileName(), filesystemFile.Str(), FALSE)) {
             file = cmoPath;
             return CK_OK;
         }
 
         // Check current working directory
-        char curDir[4096];
-        VxGetCurrentDirectory(curDir);
-        CKPathMaker curDirMaker(nullptr, curDir, filesystemFile.Str(), nullptr);
-        XString curPath = curDirMaker.GetFileName();
-        if (TryOpenAbsolutePath(curPath)) {
-            file = curPath;
-            return CK_OK;
+        char curDir[_MAX_PATH];
+        if (VxGetCurrentDirectory(curDir)) {
+            XString curPath;
+            if (ResolveNativePathCandidate(curPath, curDir, filesystemFile.Str(), FALSE)) {
+                file = curPath;
+                return CK_OK;
+            }
         }
 
         // Check Virtools temporary folder
         XString tempFolder = GetVirtoolsTemporaryFolder();
-        CKPathMaker tempMaker(nullptr, tempFolder.Str(), filesystemFile.Str(), nullptr);
-        XString tempPath = tempMaker.GetFileName();
-        if (TryOpenAbsolutePath(tempPath)) {
+        XString tempPath;
+        if (ResolveNativePathCandidate(tempPath, tempFolder.Str(), filesystemFile.Str(), FALSE)) {
             file = tempPath;
             return CK_OK;
         }
@@ -273,26 +430,28 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
     // Search through category paths
     for (int i = startIdx; i < pathCount; ++i) {
         XString &pathEntry = category.m_Entries[i];
-        char path[4096];
-        if (!VxMakePath(path, pathEntry.Str(), searchName.Str()))
-            continue;
 
         // Handle different path types
         if (PathIsAbsolute(pathEntry) || PathIsUNC(pathEntry)) {
-            RemoveEscapedSpace(path);
-            XString fullPath = path;
-            if (TryOpenAbsolutePath(fullPath)) {
-                file = fullPath;
+            XString path;
+            if (ResolveNativePathCandidate(path, pathEntry.Str(), searchName.Str(), TRUE)) {
+                file = path;
                 return CK_OK;
             }
         } else if (PathIsFile(pathEntry)) {
-            RemoveEscapedSpace(path);
+            XString path;
+            if (!MakeLogicalPathCandidate(path, pathEntry.Str(), searchName.Str()))
+                continue;
+            RemoveEscapedSpace(path.Str());
             XString fullPath = path;
             if (TryOpenFilePath(fullPath)) {
                 file = &fullPath[(int)sizeof("file://") - 1];
                 return CK_OK;
             }
         } else if (PathIsURL(pathEntry)) {
+            XString path;
+            if (!MakeLogicalPathCandidate(path, pathEntry.Str(), searchName.Str()))
+                continue;
             XString fullPath = path;
             AddEscapedSpace(fullPath);
             if (TryOpenURLPath(fullPath)) {
@@ -378,19 +537,28 @@ void CKPathManager::RemoveSpace(char *str) {
     RemoveEscapedSpace(str);
 }
 
-CKBOOL CKPathManager::TryOpenAbsolutePath(XString &file) {
+CKBOOL CKPathManager::ResolveNativeFilePath(XString &file) {
     NormalizeNativePathSeparators(file);
-    FILE *fp = fopen(file.CStr(), "rb");
-    if (fp) {
-        fclose(fp);
+    if (VxFileExists(file.CStr()))
+        return TRUE;
+#ifndef _WIN32
+    XString resolved;
+    if (ResolveCaseInsensitiveFilePath(file.CStr(), resolved)) {
+        file = resolved;
         return TRUE;
     }
+#endif
     return FALSE;
 }
 
 CKBOOL CKPathManager::TryOpenFilePath(XString &file) {
     XString path = &file[(int)(sizeof("file://") - 1)];
-    return TryOpenAbsolutePath(path);
+    if (!ResolveNativeFilePath(path))
+        return FALSE;
+
+    file = "file://";
+    file += path;
+    return TRUE;
 }
 
 CKBOOL CKPathManager::TryOpenURLPath(XString &file) {

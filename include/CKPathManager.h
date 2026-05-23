@@ -128,7 +128,7 @@ protected:
     // Do not use, use RemoveEscapedSpace !
     void RemoveSpace(char *str);
 
-    CKBOOL TryOpenAbsolutePath(XString &file);
+    CKBOOL ResolveNativeFilePath(XString &file);
     CKBOOL TryOpenFilePath(XString &file);
     CKBOOL TryOpenURLPath(XString &file);
 
