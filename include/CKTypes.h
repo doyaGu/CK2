@@ -47,6 +47,7 @@ typedef char CKCHAR;
 typedef int CKBOOL;
 typedef unsigned char CKBYTE;
 typedef uint32_t CKUINT;
+typedef uint64_t CKQWORD;
 typedef uint32_t CKDWORD;
 typedef uint16_t CKWORD;
 typedef int32_t CKERROR;
