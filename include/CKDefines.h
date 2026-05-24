@@ -106,8 +106,6 @@
 
 #define CK_ZERO 0.000001f
 
-#define CKMAX_PATH 512
-
 #define CKMAX_URL 4096
 
 #define CKMAX_MANAGERFUNCTIONS 32

@@ -792,13 +792,13 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
         for (XClassArray<XString>::Iterator iit = m_IncludedFiles.Begin();
              iit != m_IncludedFiles.End(); ++iit) {
             const int fileNameLength = parser->ReadInt();
-            char fileName[CKMAX_PATH] = {0};
+            char fileName[_MAX_PATH] = {0};
             if (fileNameLength < 0) {
                 if (parser && parser != *ParserPtr)
                     delete parser;
                 return CKERR_INVALIDFILE;
             }
-            if (fileNameLength > 0 && fileNameLength < CKMAX_PATH) {
+            if (fileNameLength > 0 && fileNameLength < _MAX_PATH) {
                 parser->Read(fileName, fileNameLength);
                 fileName[fileNameLength] = '\0';
             } else if (fileNameLength > 0) {
