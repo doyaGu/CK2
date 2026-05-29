@@ -2,8 +2,6 @@
 
 #include "CKAll.h"
 
-namespace {
-
 class CKRuntimeFixture : public ::testing::Test {
 protected:
     static void SetUpTestSuite() {
@@ -25,10 +23,8 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-void EmptyOperation(CKContext *, CKParameterOut *, CKParameterIn *, CKParameterIn *) {
+static void EmptyOperation(CKContext *, CKParameterOut *, CKParameterIn *, CKParameterIn *) {
 }
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, PostLoadRebindsParameterOperationOwnerAndFunction) {
     CKBehavior *behavior = static_cast<CKBehavior *>(

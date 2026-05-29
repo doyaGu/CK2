@@ -7,8 +7,6 @@
 
 #include "CKAll.h"
 
-namespace {
-
 class CKRuntimeFixture : public ::testing::Test {
 protected:
     static void SetUpTestSuite() {
@@ -29,8 +27,6 @@ protected:
 };
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, SetElementValueFromParameterClearsUpperBitsForObjectColumn) {
     if (sizeof(CKUINTPTR) <= sizeof(CKDWORD)) {
@@ -264,7 +260,7 @@ TEST_F(CKRuntimeFixture, GetElementStringValueRespectsDestinationCapacity) {
 
     char small[8] = {};
     const int needed = array->GetElementStringValue(0, 0, small, sizeof(small));
-    ASSERT_EQ(static_cast<int>(std::strlen("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) + 1, needed);
+    ASSERT_EQ(static_cast<int>(strlen("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) + 1, needed);
     EXPECT_STREQ("ABCDEFG", small);
 }
 

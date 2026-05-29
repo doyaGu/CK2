@@ -1,18 +1,15 @@
 #include <gtest/gtest.h>
 
 #include <cstdio>
-#include <memory>
 
 #include "CKAll.h"
-
-namespace {
 
 struct ParameterTypeCase {
     const char *name;
     CKGUID guid;
 };
 
-const ParameterTypeCase kPrimaryTypes[] = {
+static const ParameterTypeCase kPrimaryTypes[] = {
     {"int", CKPGUID_INT},
     {"float", CKPGUID_FLOAT},
     {"bool", CKPGUID_BOOL},
@@ -40,40 +37,62 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-struct CKStateChunkDeleter {
-    void operator()(CKStateChunk *chunk) const {
-        if (chunk) {
-            DeleteCKStateChunk(chunk);
-        }
-    }
-};
-
-struct CKFileDeleter {
-    explicit CKFileDeleter(CKContext *context) : context(context) {}
-
-    void operator()(CKFile *file) const {
-        if (file && context) {
-            context->DeleteCKFile(file);
+class ScopedStateChunk {
+public:
+    explicit ScopedStateChunk(CKStateChunk *chunk) : chunk_(chunk) {}
+    ~ScopedStateChunk() {
+        if (chunk_) {
+            DeleteCKStateChunk(chunk_);
         }
     }
 
-    CKContext *context;
+    CKStateChunk *Get() const {
+        return chunk_;
+    }
+
+    CKStateChunk *operator->() const {
+        return chunk_;
+    }
+
+private:
+    ScopedStateChunk(const ScopedStateChunk &);
+    ScopedStateChunk &operator=(const ScopedStateChunk &);
+
+    CKStateChunk *chunk_;
 };
 
-using CKStateChunkPtr = std::unique_ptr<CKStateChunk, CKStateChunkDeleter>;
-using CKFilePtr = std::unique_ptr<CKFile, CKFileDeleter>;
+class ScopedCKFile {
+public:
+    ScopedCKFile(CKContext *context, CKFile *file) : context_(context), file_(file) {}
+    ~ScopedCKFile() {
+        if (file_ && context_) {
+            context_->DeleteCKFile(file_);
+        }
+    }
 
-int gOperationInvocationCount = 0;
+    CKFile *Get() const {
+        return file_;
+    }
 
-void NoInputOperation(CKContext *, CKParameterOut *, CKParameterIn *, CKParameterIn *) {
+private:
+    ScopedCKFile(const ScopedCKFile &);
+    ScopedCKFile &operator=(const ScopedCKFile &);
+
+    CKContext *context_;
+    CKFile *file_;
+};
+
+static int gOperationInvocationCount = 0;
+
+static void NoInputOperation(CKContext *, CKParameterOut *, CKParameterIn *, CKParameterIn *) {
     ++gOperationInvocationCount;
 }
 
-void SwapAwareOperation(CKContext *, CKParameterOut *, CKParameterIn *, CKParameterIn *) {
+static void SwapAwareOperation(CKContext *, CKParameterOut *, CKParameterIn *, CKParameterIn *) {
     ++gOperationInvocationCount;
 }
 
-void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
+static void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
     if (guid == CKPGUID_INT) {
         int value = seed;
         ASSERT_EQ(CK_OK, param->SetValue(&value));
@@ -102,7 +121,7 @@ void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
     FAIL() << "Unsupported test guid";
 }
 
-void AssertOutputEqualsSample(CKParameterOut *param, const CKGUID &guid, int seed) {
+static void AssertOutputEqualsSample(CKParameterOut *param, const CKGUID &guid, int seed) {
     if (guid == CKPGUID_INT) {
         int value = 0;
         ASSERT_EQ(CK_OK, param->GetValue(&value, FALSE));
@@ -136,8 +155,6 @@ void AssertOutputEqualsSample(CKParameterOut *param, const CKGUID &guid, int see
     FAIL() << "Unsupported test guid";
 }
 
-} // namespace
-
 TEST_F(CKRuntimeFixture, LoadWithNullFileInvokesUpdateAndResolvesOperationFunction) {
     CKParameterManager *pm = context_->GetParameterManager();
     ASSERT_NE(nullptr, pm);
@@ -156,8 +173,8 @@ TEST_F(CKRuntimeFixture, LoadWithNullFileInvokesUpdateAndResolvesOperationFuncti
         p2Guid,
         NoInputOperation));
 
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETEROPERATION, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_PARAMETEROPERATION, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_OPERATIONOP);
     chunk->WriteGuid(opGuid);
@@ -167,7 +184,7 @@ TEST_F(CKRuntimeFixture, LoadWithNullFileInvokesUpdateAndResolvesOperationFuncti
         context_->CreateObject(CKCID_PARAMETEROPERATION, "LoadNoFileOperation", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
     EXPECT_NE(nullptr, loaded->GetOperationFunction());
 }
 
@@ -189,21 +206,21 @@ TEST_F(CKRuntimeFixture, LoadWithFileDefersOperationFunctionResolution) {
         p2Guid,
         NoInputOperation));
 
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETEROPERATION, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_PARAMETEROPERATION, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_OPERATIONOP);
     chunk->WriteGuid(opGuid);
     chunk->CloseChunk();
 
-    CKFilePtr file(context_->CreateCKFile(), CKFileDeleter(context_));
-    ASSERT_NE(nullptr, file.get());
+    ScopedCKFile file(context_, context_->CreateCKFile());
+    ASSERT_NE(nullptr, file.Get());
 
     CKParameterOperation *loaded = static_cast<CKParameterOperation *>(
         context_->CreateObject(CKCID_PARAMETEROPERATION, "LoadWithFileOperation", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), file.get()));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), file.Get()));
     EXPECT_TRUE(loaded->GetOperationGuid() == opGuid);
     EXPECT_EQ(nullptr, loaded->GetOperationFunction());
 }
@@ -363,8 +380,8 @@ TEST_F(CKRuntimeFixture, LoadWithFileOldFormatReadsOwnerOutputAndInputs) {
     CKGUID p2Guid = CKPGUID_INT;
     ASSERT_EQ(CK_OK, pm->RegisterOperationFunction(opGuid, resGuid, p1Guid, p2Guid, NoInputOperation));
 
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETEROPERATION, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_PARAMETEROPERATION, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_OPERATIONOP);
     chunk->WriteGuid(opGuid);
@@ -377,14 +394,14 @@ TEST_F(CKRuntimeFixture, LoadWithFileOldFormatReadsOwnerOutputAndInputs) {
     chunk->WriteObject(in2);
     chunk->CloseChunk();
 
-    CKFilePtr file(context_->CreateCKFile(), CKFileDeleter(context_));
-    ASSERT_NE(nullptr, file.get());
+    ScopedCKFile file(context_, context_->CreateCKFile());
+    ASSERT_NE(nullptr, file.Get());
 
     CKParameterOperation *loaded = static_cast<CKParameterOperation *>(
         context_->CreateObject(CKCID_PARAMETEROPERATION, "LoadedOldFormat", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), file.get()));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), file.Get()));
     EXPECT_EQ(owner, loaded->GetOwner());
     EXPECT_EQ(in1, loaded->GetInParameter1());
     EXPECT_EQ(in2, loaded->GetInParameter2());

@@ -1,17 +1,13 @@
 #include <gtest/gtest.h>
 
-#include <memory>
-
 #include "CKAll.h"
-
-namespace {
 
 struct ParameterTypeCase {
     const char *name;
     CKGUID guid;
 };
 
-const ParameterTypeCase kPrimaryTypes[] = {
+static const ParameterTypeCase kPrimaryTypes[] = {
     {"int", CKPGUID_INT},
     {"float", CKPGUID_FLOAT},
     {"bool", CKPGUID_BOOL},
@@ -39,17 +35,29 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-struct CKStateChunkDeleter {
-    void operator()(CKStateChunk *chunk) const {
-        if (chunk) {
-            DeleteCKStateChunk(chunk);
+class ScopedStateChunk {
+public:
+    explicit ScopedStateChunk(CKStateChunk *chunk) : chunk_(chunk) {}
+    ~ScopedStateChunk() {
+        if (chunk_) {
+            DeleteCKStateChunk(chunk_);
         }
     }
+
+    CKStateChunk *Get() const {
+        return chunk_;
+    }
+
+    CKStateChunk *operator->() const {
+        return chunk_;
+    }
+
+private:
+    ScopedStateChunk(const ScopedStateChunk &);
+    ScopedStateChunk &operator=(const ScopedStateChunk &);
+
+    CKStateChunk *chunk_;
 };
-
-using CKStateChunkPtr = std::unique_ptr<CKStateChunk, CKStateChunkDeleter>;
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, SetDirectSourceAndShareSourceRespectExclusivity) {
     CKParameterOut *sourceOut = context_->CreateCKParameterOut("sourceOut", CKPGUID_INT, TRUE);
@@ -118,12 +126,12 @@ TEST_F(CKRuntimeFixture, LoadDataSourceRestoresDirectSourceAndClearsSharedFlag) 
     ASSERT_NE(nullptr, saved);
     ASSERT_EQ(CK_OK, saved->SetDirectSource(sourceOut));
 
-    CKStateChunkPtr chunk(saved->Save(nullptr, 0xFFFFFFFFu));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(saved->Save(nullptr, 0xFFFFFFFFu));
+    ASSERT_NE(nullptr, chunk.Get());
 
     CKParameterIn *loaded = context_->CreateCKParameterIn("loadedDataSource", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_EQ(sourceOut, loaded->GetDirectSource());
     EXPECT_EQ(nullptr, loaded->GetSharedSource());
@@ -142,12 +150,12 @@ TEST_F(CKRuntimeFixture, LoadDataSharedRestoresSharedSourceAndRealSource) {
     ASSERT_NE(nullptr, saved);
     ASSERT_EQ(CK_OK, saved->ShareSourceWith(sharedRoot));
 
-    CKStateChunkPtr chunk(saved->Save(nullptr, 0xFFFFFFFFu));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(saved->Save(nullptr, 0xFFFFFFFFu));
+    ASSERT_NE(nullptr, chunk.Get());
 
     CKParameterIn *loaded = context_->CreateCKParameterIn("loadedDataShared", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_EQ(sharedRoot, loaded->GetSharedSource());
     EXPECT_EQ(nullptr, loaded->GetDirectSource());
@@ -165,12 +173,12 @@ TEST_F(CKRuntimeFixture, SaveLoadDataSourceRoundTripAcrossPrimaryTypes) {
         ASSERT_NE(nullptr, saved);
         ASSERT_EQ(CK_OK, saved->SetDirectSource(sourceOut)) << tc.name;
 
-        CKStateChunkPtr chunk(saved->Save(nullptr, 0xFFFFFFFFu));
-        ASSERT_NE(nullptr, chunk.get());
+        ScopedStateChunk chunk(saved->Save(nullptr, 0xFFFFFFFFu));
+        ASSERT_NE(nullptr, chunk.Get());
 
         CKParameterIn *loaded = context_->CreateCKParameterIn("loadedTyped", tc.guid, TRUE);
         ASSERT_NE(nullptr, loaded);
-        ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr)) << tc.name;
+        ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr)) << tc.name;
 
         EXPECT_TRUE(loaded->GetGUID() == tc.guid) << tc.name;
         EXPECT_EQ(sourceOut, loaded->GetDirectSource()) << tc.name;
@@ -193,12 +201,12 @@ TEST_F(CKRuntimeFixture, SaveLoadDataSharedRoundTripAcrossPrimaryTypes) {
         ASSERT_EQ(CK_OK, sharedRoot->SetDirectSource(sourceOut)) << tc.name;
         ASSERT_EQ(CK_OK, saved->ShareSourceWith(sharedRoot)) << tc.name;
 
-        CKStateChunkPtr chunk(saved->Save(nullptr, 0xFFFFFFFFu));
-        ASSERT_NE(nullptr, chunk.get());
+        ScopedStateChunk chunk(saved->Save(nullptr, 0xFFFFFFFFu));
+        ASSERT_NE(nullptr, chunk.Get());
 
         CKParameterIn *loaded = context_->CreateCKParameterIn("loadedSharedTyped", tc.guid, TRUE);
         ASSERT_NE(nullptr, loaded);
-        ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr)) << tc.name;
+        ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr)) << tc.name;
 
         EXPECT_TRUE(loaded->GetGUID() == tc.guid) << tc.name;
         EXPECT_EQ(sharedRoot, loaded->GetSharedSource()) << tc.name;
@@ -214,12 +222,12 @@ TEST_F(CKRuntimeFixture, SaveLoadPreservesDisabledFlag) {
     saved->Enable(FALSE);
     ASSERT_FALSE(saved->IsEnabled());
 
-    CKStateChunkPtr chunk(saved->Save(nullptr, 0xFFFFFFFFu));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(saved->Save(nullptr, 0xFFFFFFFFu));
+    ASSERT_NE(nullptr, chunk.Get());
 
     CKParameterIn *loaded = context_->CreateCKParameterIn("loadedDisabled", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_FALSE(loaded->IsEnabled());
 }
@@ -258,8 +266,8 @@ TEST_F(CKRuntimeFixture, LegacyLoadInSharedSetsSharedFlagAndSource) {
     ASSERT_NE(nullptr, sharedRoot);
     ASSERT_EQ(CK_OK, sharedRoot->SetDirectSource(sourceOut));
 
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_PARAMETERIN_INSHARED);
@@ -269,7 +277,7 @@ TEST_F(CKRuntimeFixture, LegacyLoadInSharedSetsSharedFlagAndSource) {
 
     CKParameterIn *loaded = context_->CreateCKParameterIn("legacyLoadedShared", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_EQ(nullptr, loaded->GetDirectSource());
     EXPECT_EQ(sharedRoot, loaded->GetSharedSource());
@@ -280,8 +288,8 @@ TEST_F(CKRuntimeFixture, LegacyLoadOutSourceAssignsDirectSourceWhenNotShared) {
     CKParameterOut *sourceOut = context_->CreateCKParameterOut("legacyOutSource", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, sourceOut);
 
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_PARAMETERIN_OUTSOURCE);
@@ -291,15 +299,15 @@ TEST_F(CKRuntimeFixture, LegacyLoadOutSourceAssignsDirectSourceWhenNotShared) {
 
     CKParameterIn *loaded = context_->CreateCKParameterIn("legacyLoadedOutSource", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_EQ(sourceOut, loaded->GetDirectSource());
     EXPECT_EQ(sourceOut, loaded->GetRealSource());
 }
 
 TEST_F(CKRuntimeFixture, LegacyGuidConversionMapsOldMessageToCurrentType) {
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_PARAMETERIN_DATASOURCE);
@@ -310,7 +318,7 @@ TEST_F(CKRuntimeFixture, LegacyGuidConversionMapsOldMessageToCurrentType) {
 
     CKParameterIn *loaded = context_->CreateCKParameterIn("legacyGuidLoaded", CKPGUID_INT, TRUE);
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_TRUE(loaded->GetGUID() == CKPGUID_MESSAGE);
 }
@@ -325,8 +333,8 @@ TEST_F(CKRuntimeFixture, LegacyGuidConversionMapsOldAttributeAndTimeToCurrentTyp
     };
 
     for (int i = 0; i < static_cast<int>(sizeof(pairs) / sizeof(pairs[0])); ++i) {
-        CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
-        ASSERT_NE(nullptr, chunk.get());
+        ScopedStateChunk chunk(CreateCKStateChunk(CKCID_PARAMETERIN, nullptr));
+        ASSERT_NE(nullptr, chunk.Get());
 
         chunk->StartWrite();
         chunk->WriteIdentifier(CK_STATESAVE_PARAMETERIN_DATASOURCE);
@@ -337,7 +345,7 @@ TEST_F(CKRuntimeFixture, LegacyGuidConversionMapsOldAttributeAndTimeToCurrentTyp
 
         CKParameterIn *loaded = context_->CreateCKParameterIn("legacyGuidLoaded2", CKPGUID_INT, TRUE);
         ASSERT_NE(nullptr, loaded);
-        ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+        ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
         EXPECT_TRUE(loaded->GetGUID() == pairs[i].expected);
     }

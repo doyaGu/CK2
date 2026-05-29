@@ -1,11 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <string>
-#include <vector>
-
 #include "CKAll.h"
-
-namespace {
 
 class CKRuntimeFixture : public ::testing::Test {
 protected:
@@ -28,50 +23,51 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-int gSourceExecCount = 0;
-int gDestinationExecCount = 0;
-int gRetryFrames = 0;
-int gHighExecCount = 0;
-int gLowExecCount = 0;
-std::vector<int> gExecutionOrder;
+static int gSourceExecCount = 0;
+static int gDestinationExecCount = 0;
+static int gRetryFrames = 0;
+static int gHighExecCount = 0;
+static int gLowExecCount = 0;
+static int gExecutionOrder[8] = {};
+static int gExecutionOrderCount = 0;
 
-int OneShotActivateOutput(const CKBehaviorContext &context) {
+static int OneShotActivateOutput(const CKBehaviorContext &context) {
     ++gSourceExecCount;
     context.Behavior->ActivateOutput(0, TRUE);
     return CKBR_OK;
 }
 
-int ActivateOutputAndRetry(const CKBehaviorContext &context) {
+static int ActivateOutputAndRetry(const CKBehaviorContext &context) {
     ++gSourceExecCount;
     context.Behavior->ActivateOutput(0, TRUE);
     return CKBR_ACTIVATENEXTFRAME;
 }
 
-int CountDestinationExec(const CKBehaviorContext &) {
+static int CountDestinationExec(const CKBehaviorContext &) {
     ++gDestinationExecCount;
     return CKBR_OK;
 }
 
-int ActivateTwoOutputs(const CKBehaviorContext &context) {
+static int ActivateTwoOutputs(const CKBehaviorContext &context) {
     ++gSourceExecCount;
     context.Behavior->ActivateOutput(0, TRUE);
     context.Behavior->ActivateOutput(1, TRUE);
     return CKBR_OK;
 }
 
-int CountHighExec(const CKBehaviorContext &) {
+static int CountHighExec(const CKBehaviorContext &) {
     ++gHighExecCount;
-    gExecutionOrder.push_back(2);
+    gExecutionOrder[gExecutionOrderCount++] = 2;
     return CKBR_OK;
 }
 
-int CountLowExec(const CKBehaviorContext &) {
+static int CountLowExec(const CKBehaviorContext &) {
     ++gLowExecCount;
-    gExecutionOrder.push_back(1);
+    gExecutionOrder[gExecutionOrderCount++] = 1;
     return CKBR_OK;
 }
 
-int RetryThenStop(const CKBehaviorContext &) {
+static int RetryThenStop(const CKBehaviorContext &) {
     ++gSourceExecCount;
     if (gRetryFrames > 0) {
         --gRetryFrames;
@@ -80,7 +76,7 @@ int RetryThenStop(const CKBehaviorContext &) {
     return CKBR_OK;
 }
 
-CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORFCT fct) {
+static CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORFCT fct) {
     CKBehavior *behavior = static_cast<CKBehavior *>(ctx->CreateObject(CKCID_BEHAVIOR, const_cast<char *>(name), CK_OBJECTCREATION_DYNAMIC));
     if (behavior) {
         behavior->SetFunction(fct);
@@ -88,7 +84,7 @@ CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORF
     return behavior;
 }
 
-CKBehaviorLink *CreateLink(CKContext *ctx, CKBehaviorIO *sourceOut, CKBehaviorIO *targetIn, int initialDelay) {
+static CKBehaviorLink *CreateLink(CKContext *ctx, CKBehaviorIO *sourceOut, CKBehaviorIO *targetIn, int initialDelay) {
     CKBehaviorLink *link = static_cast<CKBehaviorLink *>(ctx->CreateObject(CKCID_BEHAVIORLINK, const_cast<char *>("link"), CK_OBJECTCREATION_DYNAMIC));
     if (!link) {
         return nullptr;
@@ -106,11 +102,11 @@ CKBehaviorLink *CreateLink(CKContext *ctx, CKBehaviorIO *sourceOut, CKBehaviorIO
     return link;
 }
 
-std::string MakeName(const char *prefix, int index) {
-    return std::string(prefix) + std::to_string(index);
+static XString MakeName(const char *prefix, int index) {
+    XString name;
+    name.Format("%s%d", prefix, index);
+    return name;
 }
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, DelayedLinkDoesNotDoubleTriggerWhilePending) {
     gSourceExecCount = 0;
@@ -263,7 +259,7 @@ TEST_F(CKRuntimeFixture, ImmediateMultiDestinationSchedulingFollowsPriority) {
     gSourceExecCount = 0;
     gHighExecCount = 0;
     gLowExecCount = 0;
-    gExecutionOrder.clear();
+    gExecutionOrderCount = 0;
 
     CKBehavior *parent = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR, "parentPriority", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, parent);
@@ -306,7 +302,7 @@ TEST_F(CKRuntimeFixture, ImmediateMultiDestinationSchedulingFollowsPriority) {
 
     ASSERT_EQ(1, gHighExecCount);
     ASSERT_EQ(1, gLowExecCount);
-    ASSERT_EQ(2u, gExecutionOrder.size());
+    ASSERT_EQ(2, gExecutionOrderCount);
     EXPECT_EQ(2, gExecutionOrder[0]);
     EXPECT_EQ(1, gExecutionOrder[1]);
 }
@@ -373,17 +369,17 @@ TEST_F(CKRuntimeFixture, ImmediatePropagationStress100Rounds) {
         gDestinationExecCount = 0;
 
         CKBehavior *parent = static_cast<CKBehavior *>(
-            context_->CreateObject(CKCID_BEHAVIOR, const_cast<char *>(MakeName("stressParentImmediate_", round).c_str()), CK_OBJECTCREATION_DYNAMIC));
+            context_->CreateObject(CKCID_BEHAVIOR, const_cast<char *>(MakeName("stressParentImmediate_", round).CStr()), CK_OBJECTCREATION_DYNAMIC));
         ASSERT_NE(nullptr, parent);
         parent->UseGraph();
 
-        CKBehavior *source = CreateFunctionBehavior(context_, MakeName("stressSourceImmediate_", round).c_str(), OneShotActivateOutput);
-        CKBehavior *destination = CreateFunctionBehavior(context_, MakeName("stressDestinationImmediate_", round).c_str(), CountDestinationExec);
+        CKBehavior *source = CreateFunctionBehavior(context_, MakeName("stressSourceImmediate_", round).CStr(), OneShotActivateOutput);
+        CKBehavior *destination = CreateFunctionBehavior(context_, MakeName("stressDestinationImmediate_", round).CStr(), CountDestinationExec);
         ASSERT_NE(nullptr, source);
         ASSERT_NE(nullptr, destination);
 
-        CKBehaviorIO *sourceOut = source->CreateOutput(const_cast<char *>(MakeName("outImmediate_", round).c_str()));
-        CKBehaviorIO *destinationIn = destination->CreateInput(const_cast<char *>(MakeName("inImmediate_", round).c_str()));
+        CKBehaviorIO *sourceOut = source->CreateOutput(const_cast<char *>(MakeName("outImmediate_", round).CStr()));
+        CKBehaviorIO *destinationIn = destination->CreateInput(const_cast<char *>(MakeName("inImmediate_", round).CStr()));
         ASSERT_NE(nullptr, sourceOut);
         ASSERT_NE(nullptr, destinationIn);
 
@@ -413,17 +409,17 @@ TEST_F(CKRuntimeFixture, DelayedPropagationStress100Rounds) {
         const int delay = (round % 5) + 1;
 
         CKBehavior *parent = static_cast<CKBehavior *>(
-            context_->CreateObject(CKCID_BEHAVIOR, const_cast<char *>(MakeName("stressParentDelayed_", round).c_str()), CK_OBJECTCREATION_DYNAMIC));
+            context_->CreateObject(CKCID_BEHAVIOR, const_cast<char *>(MakeName("stressParentDelayed_", round).CStr()), CK_OBJECTCREATION_DYNAMIC));
         ASSERT_NE(nullptr, parent);
         parent->UseGraph();
 
-        CKBehavior *source = CreateFunctionBehavior(context_, MakeName("stressSourceDelayed_", round).c_str(), OneShotActivateOutput);
-        CKBehavior *destination = CreateFunctionBehavior(context_, MakeName("stressDestinationDelayed_", round).c_str(), CountDestinationExec);
+        CKBehavior *source = CreateFunctionBehavior(context_, MakeName("stressSourceDelayed_", round).CStr(), OneShotActivateOutput);
+        CKBehavior *destination = CreateFunctionBehavior(context_, MakeName("stressDestinationDelayed_", round).CStr(), CountDestinationExec);
         ASSERT_NE(nullptr, source);
         ASSERT_NE(nullptr, destination);
 
-        CKBehaviorIO *sourceOut = source->CreateOutput(const_cast<char *>(MakeName("outDelayed_", round).c_str()));
-        CKBehaviorIO *destinationIn = destination->CreateInput(const_cast<char *>(MakeName("inDelayed_", round).c_str()));
+        CKBehaviorIO *sourceOut = source->CreateOutput(const_cast<char *>(MakeName("outDelayed_", round).CStr()));
+        CKBehaviorIO *destinationIn = destination->CreateInput(const_cast<char *>(MakeName("inDelayed_", round).CStr()));
         ASSERT_NE(nullptr, sourceOut);
         ASSERT_NE(nullptr, destinationIn);
 

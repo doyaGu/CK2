@@ -4,14 +4,12 @@
 
 #include "CKAll.h"
 
-namespace {
-
 struct ParameterTypeCase {
     const char *name;
     CKGUID guid;
 };
 
-const ParameterTypeCase kPrimaryTypes[] = {
+static const ParameterTypeCase kPrimaryTypes[] = {
     {"int", CKPGUID_INT},
     {"float", CKPGUID_FLOAT},
     {"bool", CKPGUID_BOOL},
@@ -39,7 +37,7 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-void SetOutputSampleValue(CKBehavior *behavior, int index, const CKGUID &guid, int seed) {
+static void SetOutputSampleValue(CKBehavior *behavior, int index, const CKGUID &guid, int seed) {
     CKParameterOut *out = behavior->GetOutputParameter(index);
     ASSERT_NE(nullptr, out);
 
@@ -71,7 +69,7 @@ void SetOutputSampleValue(CKBehavior *behavior, int index, const CKGUID &guid, i
     FAIL() << "Unsupported guid";
 }
 
-void AssertInputSampleValue(CKBehavior *behavior, int index, const CKGUID &guid, int seed) {
+static void AssertInputSampleValue(CKBehavior *behavior, int index, const CKGUID &guid, int seed) {
     CKParameterIn *in = behavior->GetInputParameter(index);
     ASSERT_NE(nullptr, in);
     CKParameter *src = in->GetRealSource();
@@ -109,8 +107,6 @@ void AssertInputSampleValue(CKBehavior *behavior, int index, const CKGUID &guid,
 
     FAIL() << "Unsupported guid";
 }
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, IoAndParameterCreationMatrixAcrossTypes) {
     CKBehavior *behavior = static_cast<CKBehavior *>(

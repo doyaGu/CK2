@@ -2,8 +2,6 @@
 
 #include "CKAll.h"
 
-namespace {
-
 class CKRuntimeFixture : public ::testing::Test {
 protected:
     static void SetUpTestSuite() {
@@ -25,25 +23,25 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-int gDstExecCount = 0;
-int gMidExecCount = 0;
+static int gDstExecCount = 0;
+static int gMidExecCount = 0;
 
-int SourceActivateOutput(const CKBehaviorContext &context) {
+static int SourceActivateOutput(const CKBehaviorContext &context) {
     context.Behavior->ActivateOutput(0, TRUE);
     return CKBR_OK;
 }
 
-int DestinationCounter(const CKBehaviorContext &) {
+static int DestinationCounter(const CKBehaviorContext &) {
     ++gDstExecCount;
     return CKBR_OK;
 }
 
-int MidCounter(const CKBehaviorContext &) {
+static int MidCounter(const CKBehaviorContext &) {
     ++gMidExecCount;
     return CKBR_OK;
 }
 
-CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORFCT fct) {
+static CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORFCT fct) {
     CKBehavior *behavior = static_cast<CKBehavior *>(ctx->CreateObject(CKCID_BEHAVIOR, const_cast<char *>(name), CK_OBJECTCREATION_DYNAMIC));
     if (behavior) {
         behavior->SetFunction(fct);
@@ -51,7 +49,7 @@ CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORF
     return behavior;
 }
 
-CKBehaviorLink *CreateLink(CKContext *ctx, CKBehaviorIO *sourceOut, CKBehaviorIO *targetIn, int initialDelay) {
+static CKBehaviorLink *CreateLink(CKContext *ctx, CKBehaviorIO *sourceOut, CKBehaviorIO *targetIn, int initialDelay) {
     CKBehaviorLink *link = static_cast<CKBehaviorLink *>(ctx->CreateObject(CKCID_BEHAVIORLINK, const_cast<char *>("link"), CK_OBJECTCREATION_DYNAMIC));
     if (!link) return nullptr;
 
@@ -62,8 +60,6 @@ CKBehaviorLink *CreateLink(CKContext *ctx, CKBehaviorIO *sourceOut, CKBehaviorIO
     link->SetActivationDelay(initialDelay);
     return link;
 }
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, ImmediateLinkActivatesAndExecutesDestinationSameFrame) {
     gDstExecCount = 0;

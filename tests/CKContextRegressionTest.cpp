@@ -1,12 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
-#include <string>
-#include <vector>
 
 #include "CKAll.h"
-
-namespace {
 
 class CKRuntimeFixture : public ::testing::Test {
 protected:
@@ -29,7 +25,7 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-size_t BoundedStringLength(const char *text, size_t capacity) {
+static size_t BoundedStringLength(const char *text, size_t capacity) {
     if (!text) {
         return 0;
     }
@@ -41,15 +37,15 @@ size_t BoundedStringLength(const char *text, size_t capacity) {
     return length;
 }
 
-std::string MakeUniqueName(const char *prefix) {
+static XString MakeUniqueName(const char *prefix) {
     static int counter = 0;
-    char buffer[128] = {};
     ++counter;
-    sprintf_s(buffer, "%s_%d", prefix, counter);
-    return std::string(buffer);
+    XString name;
+    name.Format("%s_%d", prefix, counter);
+    return name;
 }
 
-CKGUID MakeUniqueGuid() {
+static CKGUID MakeUniqueGuid() {
     static CKDWORD counter = 0;
     ++counter;
     return CKGUID(0x7C0FFEE0u, 0x42000000u + counter);
@@ -105,13 +101,11 @@ public:
     }
 };
 
-} // namespace
-
 TEST_F(CKRuntimeFixture, GetSecureNameRespectsCallerProvidedBufferSize) {
-    const std::string baseName = MakeUniqueName("SecureNameBoundaryObject");
+    const XString baseName = MakeUniqueName("SecureNameBoundaryObject");
     CKObject *existing = context_->CreateObject(
         CKCID_OBJECT,
-        baseName.c_str(),
+        baseName.CStr(),
         CK_OBJECTCREATION_NONAMECHECK);
     ASSERT_NE(nullptr, existing);
 
@@ -123,7 +117,7 @@ TEST_F(CKRuntimeFixture, GetSecureNameRespectsCallerProvidedBufferSize) {
     memset(&output, 'X', sizeof(output));
     memset(output.guard, 'G', sizeof(output.guard));
 
-    context_->GetSecureName(output.buffer, baseName.c_str(), CKCID_OBJECT, sizeof(output.buffer));
+    context_->GetSecureName(output.buffer, baseName.CStr(), CKCID_OBJECT, sizeof(output.buffer));
 
     EXPECT_LT(BoundedStringLength(output.buffer, sizeof(output.buffer)), sizeof(output.buffer));
     EXPECT_EQ('G', output.guard[0]);
@@ -140,10 +134,10 @@ TEST_F(CKRuntimeFixture, LoadVerifyObjectUnicityRenameHonorsBufferSizeParameter)
         CKLOAD_INVALID,
         CKLOAD_INVALID);
 
-    const std::string baseName = MakeUniqueName("LoadRenameBoundaryObject");
+    const XString baseName = MakeUniqueName("LoadRenameBoundaryObject");
     CKObject *existing = context_->CreateObject(
         CKCID_OBJECT,
-        baseName.c_str(),
+        baseName.CStr(),
         CK_OBJECTCREATION_NONAMECHECK);
     ASSERT_NE(nullptr, existing);
 
@@ -156,7 +150,7 @@ TEST_F(CKRuntimeFixture, LoadVerifyObjectUnicityRenameHonorsBufferSizeParameter)
 
     CKObject *resolvedObject = nullptr;
     const CK_LOADMODE mode = context_->LoadVerifyObjectUnicity(
-        baseName.c_str(),
+        baseName.CStr(),
         CKCID_OBJECT,
         output.buffer,
         &resolvedObject,
@@ -171,8 +165,8 @@ TEST_F(CKRuntimeFixture, LoadVerifyObjectUnicityRenameHonorsBufferSizeParameter)
 TEST_F(CKRuntimeFixture, ClearAllReactivatesInactiveManager) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
-    const std::string managerName = MakeUniqueName("ClearAllSingleManager");
-    CountingManager *manager = new CountingManager(context_, MakeUniqueGuid(), managerName.c_str());
+    const XString managerName = MakeUniqueName("ClearAllSingleManager");
+    CountingManager *manager = new CountingManager(context_, MakeUniqueGuid(), managerName.CStr());
     ASSERT_NE(nullptr, manager);
     ASSERT_EQ(CK_OK, context_->RegisterNewManager(manager));
     EXPECT_EQ(1, manager->on_init_calls);
@@ -190,15 +184,15 @@ TEST_F(CKRuntimeFixture, ClearAllReactivatesInactiveManager) {
 TEST_F(CKRuntimeFixture, ClearAllReactivatesAllInactiveManagers) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
-    std::vector<CountingManager *> managers;
     const int managerCount = 3;
+    CountingManager *managers[managerCount] = {};
     for (int i = 0; i < managerCount; ++i) {
-        const std::string managerName = MakeUniqueName("ClearAllMultiManager");
-        CountingManager *manager = new CountingManager(context_, MakeUniqueGuid(), managerName.c_str());
+        const XString managerName = MakeUniqueName("ClearAllMultiManager");
+        CountingManager *manager = new CountingManager(context_, MakeUniqueGuid(), managerName.CStr());
         ASSERT_NE(nullptr, manager);
         ASSERT_EQ(CK_OK, context_->RegisterNewManager(manager));
         context_->ActivateManager(manager, FALSE);
-        managers.push_back(manager);
+        managers[i] = manager;
     }
 
     EXPECT_EQ(managerCount, context_->GetInactiveManagerCount());
@@ -215,14 +209,14 @@ TEST_F(CKRuntimeFixture, ClearAllReactivatesAllInactiveManagers) {
 TEST_F(CKRuntimeFixture, RemoveSceneByIndexRejectsInvalidIndices) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
-    const std::string levelName = MakeUniqueName("RemoveSceneInvalidIndexLevel");
+    const XString levelName = MakeUniqueName("RemoveSceneInvalidIndexLevel");
     CKLevel *level = static_cast<CKLevel *>(
-        context_->CreateObject(CKCID_LEVEL, levelName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_LEVEL, levelName.CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, level);
 
-    const std::string sceneName = MakeUniqueName("RemoveSceneInvalidIndexScene");
+    const XString sceneName = MakeUniqueName("RemoveSceneInvalidIndexScene");
     CKScene *scene = static_cast<CKScene *>(
-        context_->CreateObject(CKCID_SCENE, sceneName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_SCENE, sceneName.CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, scene);
     ASSERT_EQ(CK_OK, level->AddScene(scene));
 
@@ -237,14 +231,14 @@ TEST_F(CKRuntimeFixture, RemoveSceneByIndexRejectsInvalidIndices) {
 TEST_F(CKRuntimeFixture, RemoveSceneByIndexClearsSceneLinks) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
-    const std::string levelName = MakeUniqueName("RemoveSceneByIndexLevel");
+    const XString levelName = MakeUniqueName("RemoveSceneByIndexLevel");
     CKLevel *level = static_cast<CKLevel *>(
-        context_->CreateObject(CKCID_LEVEL, levelName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_LEVEL, levelName.CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, level);
 
-    const std::string sceneName = MakeUniqueName("RemoveSceneByIndexScene");
+    const XString sceneName = MakeUniqueName("RemoveSceneByIndexScene");
     CKScene *scene = static_cast<CKScene *>(
-        context_->CreateObject(CKCID_SCENE, sceneName.c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_SCENE, sceneName.CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, scene);
     ASSERT_EQ(CK_OK, level->AddScene(scene));
     ASSERT_EQ(1, level->GetSceneCount());
@@ -261,7 +255,7 @@ TEST_F(CKRuntimeFixture, DependenciesContextRemapIdMappedToZeroClearsId) {
 
     CKObject *obj = context_->CreateObject(
         CKCID_OBJECT,
-        MakeUniqueName("DepsRemapIdZero").c_str(),
+        MakeUniqueName("DepsRemapIdZero").CStr(),
         CK_OBJECTCREATION_DYNAMIC);
     ASSERT_NE(nullptr, obj);
 
@@ -278,7 +272,7 @@ TEST_F(CKRuntimeFixture, DependenciesContextRemapMappedToZeroReturnsNull) {
 
     CKObject *obj = context_->CreateObject(
         CKCID_OBJECT,
-        MakeUniqueName("DepsRemapObjZero").c_str(),
+        MakeUniqueName("DepsRemapObjZero").CStr(),
         CK_OBJECTCREATION_DYNAMIC);
     ASSERT_NE(nullptr, obj);
 
@@ -292,7 +286,7 @@ TEST_F(CKRuntimeFixture, DataArrayRemapClearsMappedToZeroEntries) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKDataArray *array = static_cast<CKDataArray *>(
-        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("DepsRemapArray").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("DepsRemapArray").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, array);
 
     array->InsertColumn(-1, CKARRAYTYPE_OBJECT, "ObjCol");
@@ -301,7 +295,7 @@ TEST_F(CKRuntimeFixture, DataArrayRemapClearsMappedToZeroEntries) {
 
     CKObject *obj = context_->CreateObject(
         CKCID_OBJECT,
-        MakeUniqueName("DepsRemapArrayObj").c_str(),
+        MakeUniqueName("DepsRemapArrayObj").CStr(),
         CK_OBJECTCREATION_DYNAMIC);
     ASSERT_NE(nullptr, obj);
     ASSERT_TRUE(array->SetElementObject(0, 0, obj));
@@ -336,16 +330,16 @@ TEST_F(CKRuntimeFixture, BehaviorRemapClearsSceneLinksWhenOwnerMappedToZero) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKScene *scene = static_cast<CKScene *>(
-        context_->CreateObject(CKCID_SCENE, MakeUniqueName("BehaviorRemapScene").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_SCENE, MakeUniqueName("BehaviorRemapScene").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, scene);
 
     CKBeObject *owner = static_cast<CKBeObject *>(
-        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("BehaviorRemapOwner").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("BehaviorRemapOwner").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, owner);
     scene->AddObject(owner);
 
     CKBehavior *script = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, MakeUniqueName("BehaviorRemapScript").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_BEHAVIOR, MakeUniqueName("BehaviorRemapScript").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, script);
     script->SetType(CKBEHAVIORTYPE_SCRIPT);
     ASSERT_EQ(CK_OK, owner->AddScript(script));
@@ -364,12 +358,12 @@ TEST_F(CKRuntimeFixture, ParameterRemapClearsObjectValueWhenMappedToZero) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKParameter *param = static_cast<CKParameter *>(
-        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("ParamRemapObjectValue").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("ParamRemapObjectValue").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, param);
 
     CKObject *obj = context_->CreateObject(
         CKCID_OBJECT,
-        MakeUniqueName("ParamRemapTarget").c_str(),
+        MakeUniqueName("ParamRemapTarget").CStr(),
         CK_OBJECTCREATION_DYNAMIC);
     ASSERT_NE(nullptr, obj);
 
@@ -396,16 +390,16 @@ TEST_F(CKRuntimeFixture, GroupCopyReplacesMembershipLinks) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKGroup *srcGroup = static_cast<CKGroup *>(
-        context_->CreateObject(CKCID_GROUP, MakeUniqueName("SrcGroupCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_GROUP, MakeUniqueName("SrcGroupCopy").CStr(), CK_OBJECTCREATION_DYNAMIC));
     CKGroup *dstGroup = static_cast<CKGroup *>(
-        context_->CreateObject(CKCID_GROUP, MakeUniqueName("DstGroupCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_GROUP, MakeUniqueName("DstGroupCopy").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, srcGroup);
     ASSERT_NE(nullptr, dstGroup);
 
     CKBeObject *srcMember = static_cast<CKBeObject *>(
-        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("SrcGroupMember").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("SrcGroupMember").CStr(), CK_OBJECTCREATION_DYNAMIC));
     CKBeObject *dstMember = static_cast<CKBeObject *>(
-        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("DstGroupMember").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_BEOBJECT, MakeUniqueName("DstGroupMember").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, srcMember);
     ASSERT_NE(nullptr, dstMember);
 
@@ -427,9 +421,9 @@ TEST_F(CKRuntimeFixture, DataArrayCopyClearsDestinationBeforeClone) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKDataArray *src = static_cast<CKDataArray *>(
-        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("SrcArrayCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("SrcArrayCopy").CStr(), CK_OBJECTCREATION_DYNAMIC));
     CKDataArray *dst = static_cast<CKDataArray *>(
-        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("DstArrayCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_DATAARRAY, MakeUniqueName("DstArrayCopy").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, src);
     ASSERT_NE(nullptr, dst);
 
@@ -459,13 +453,13 @@ TEST_F(CKRuntimeFixture, ParameterOutCopyReplacesDestinationList) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKParameterOut *srcOut = static_cast<CKParameterOut *>(
-        context_->CreateObject(CKCID_PARAMETEROUT, MakeUniqueName("SrcParameterOutCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_PARAMETEROUT, MakeUniqueName("SrcParameterOutCopy").CStr(), CK_OBJECTCREATION_DYNAMIC));
     CKParameterOut *dstOut = static_cast<CKParameterOut *>(
-        context_->CreateObject(CKCID_PARAMETEROUT, MakeUniqueName("DstParameterOutCopy").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_PARAMETEROUT, MakeUniqueName("DstParameterOutCopy").CStr(), CK_OBJECTCREATION_DYNAMIC));
     CKParameter *srcDest = static_cast<CKParameter *>(
-        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("SrcParameterDest").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("SrcParameterDest").CStr(), CK_OBJECTCREATION_DYNAMIC));
     CKParameter *dstDest = static_cast<CKParameter *>(
-        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("DstParameterDest").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_PARAMETER, MakeUniqueName("DstParameterDest").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, srcOut);
     ASSERT_NE(nullptr, dstOut);
     ASSERT_NE(nullptr, srcDest);

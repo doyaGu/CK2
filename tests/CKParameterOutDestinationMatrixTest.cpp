@@ -4,14 +4,12 @@
 
 #include "CKAll.h"
 
-namespace {
-
 struct ParameterTypeCase {
     const char *name;
     CKGUID guid;
 };
 
-const ParameterTypeCase kPrimaryTypes[] = {
+static const ParameterTypeCase kPrimaryTypes[] = {
     {"int", CKPGUID_INT},
     {"float", CKPGUID_FLOAT},
     {"bool", CKPGUID_BOOL},
@@ -39,7 +37,7 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
+static void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
     if (guid == CKPGUID_INT) {
         int value = seed;
         ASSERT_EQ(CK_OK, param->SetValue(&value));
@@ -64,7 +62,7 @@ void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
     FAIL() << "Unsupported guid";
 }
 
-void AssertSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
+static void AssertSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
     if (guid == CKPGUID_INT) {
         int value = 0;
         ASSERT_EQ(CK_OK, param->GetValue(&value, FALSE));
@@ -93,8 +91,6 @@ void AssertSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) {
     }
     FAIL() << "Unsupported guid";
 }
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, DataChangedPropagatesAcrossPrimaryTypeMatrix) {
     for (int i = 0; i < static_cast<int>(sizeof(kPrimaryTypes) / sizeof(kPrimaryTypes[0])); ++i) {

@@ -1,10 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <memory>
-
 #include "CKAll.h"
-
-namespace {
 
 class CKRuntimeFixture : public ::testing::Test {
 protected:
@@ -27,46 +23,58 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-struct CKStateChunkDeleter {
-    void operator()(CKStateChunk *chunk) const {
-        if (chunk) {
-            DeleteCKStateChunk(chunk);
+class ScopedStateChunk {
+public:
+    explicit ScopedStateChunk(CKStateChunk *chunk) : chunk_(chunk) {}
+    ~ScopedStateChunk() {
+        if (chunk_) {
+            DeleteCKStateChunk(chunk_);
         }
     }
+
+    CKStateChunk *Get() const {
+        return chunk_;
+    }
+
+    CKStateChunk *operator->() const {
+        return chunk_;
+    }
+
+private:
+    ScopedStateChunk(const ScopedStateChunk &);
+    ScopedStateChunk &operator=(const ScopedStateChunk &);
+
+    CKStateChunk *chunk_;
 };
 
-using CKStateChunkPtr = std::unique_ptr<CKStateChunk, CKStateChunkDeleter>;
+static int gSourceACount = 0;
+static int gSourceBCount = 0;
+static int gDestinationCount = 0;
 
-int gSourceACount = 0;
-int gSourceBCount = 0;
-int gDestinationCount = 0;
-
-int SourceAActivateOutput(const CKBehaviorContext &context) {
+static int SourceAActivateOutput(const CKBehaviorContext &context) {
     ++gSourceACount;
     context.Behavior->ActivateOutput(0, TRUE);
     return CKBR_OK;
 }
 
-int SourceBActivateOutput(const CKBehaviorContext &context) {
+static int SourceBActivateOutput(const CKBehaviorContext &context) {
     ++gSourceBCount;
     context.Behavior->ActivateOutput(0, TRUE);
     return CKBR_OK;
 }
 
-int DestinationCounter(const CKBehaviorContext &) {
+static int DestinationCounter(const CKBehaviorContext &) {
     ++gDestinationCount;
     return CKBR_OK;
 }
 
-CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORFCT fct) {
+static CKBehavior *CreateFunctionBehavior(CKContext *ctx, const char *name, CKBEHAVIORFCT fct) {
     CKBehavior *behavior = static_cast<CKBehavior *>(ctx->CreateObject(CKCID_BEHAVIOR, const_cast<char *>(name), CK_OBJECTCREATION_DYNAMIC));
     if (behavior) {
         behavior->SetFunction(fct);
     }
     return behavior;
 }
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, SetInOutBehaviorIOGuardsNullAndAssignsPointers) {
     CKBehaviorLink *link = static_cast<CKBehaviorLink *>(
@@ -128,14 +136,14 @@ TEST_F(CKRuntimeFixture, SaveLoadNewDataRoundTrip) {
     saved->SetInitialActivationDelay(7);
     saved->SetActivationDelay(5);
 
-    CKStateChunkPtr chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
+    ASSERT_NE(nullptr, chunk.Get());
 
     CKBehaviorLink *loaded = static_cast<CKBehaviorLink *>(
         context_->CreateObject(CKCID_BEHAVIORLINK, "loadedLink", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_EQ(input, loaded->GetInBehaviorIO());
     EXPECT_EQ(output, loaded->GetOutBehaviorIO());
@@ -153,8 +161,8 @@ TEST_F(CKRuntimeFixture, LoadLegacyDataPathRoundTrip) {
     ASSERT_NE(nullptr, input);
     ASSERT_NE(nullptr, output);
 
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_BEHAV_LINK_CURDELAY);
@@ -170,7 +178,7 @@ TEST_F(CKRuntimeFixture, LoadLegacyDataPathRoundTrip) {
         context_->CreateObject(CKCID_BEHAVIORLINK, "legacyLoaded", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
     EXPECT_EQ(input, loaded->GetInBehaviorIO());
     EXPECT_EQ(output, loaded->GetOutBehaviorIO());
     EXPECT_EQ(11, loaded->GetActivationDelay());
@@ -211,8 +219,8 @@ TEST_F(CKRuntimeFixture, LoadRejectsNullChunk) {
 }
 
 TEST_F(CKRuntimeFixture, LoadLegacyCurrentDelayOnlyKeepsOtherDefaults) {
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_BEHAV_LINK_CURDELAY);
@@ -223,7 +231,7 @@ TEST_F(CKRuntimeFixture, LoadLegacyCurrentDelayOnlyKeepsOtherDefaults) {
         context_->CreateObject(CKCID_BEHAVIORLINK, "legacyCurDelayOnly", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
     EXPECT_EQ(23, loaded->GetActivationDelay());
     EXPECT_EQ(1, loaded->GetInitialActivationDelay());
     EXPECT_EQ(nullptr, loaded->GetInBehaviorIO());
@@ -231,8 +239,8 @@ TEST_F(CKRuntimeFixture, LoadLegacyCurrentDelayOnlyKeepsOtherDefaults) {
 }
 
 TEST_F(CKRuntimeFixture, LoadLegacyInitialDelayOnlyKeepsCurrentDefault) {
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_BEHAV_LINK_DELAY);
@@ -243,7 +251,7 @@ TEST_F(CKRuntimeFixture, LoadLegacyInitialDelayOnlyKeepsCurrentDefault) {
         context_->CreateObject(CKCID_BEHAVIORLINK, "legacyInitDelayOnly", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
     EXPECT_EQ(1, loaded->GetActivationDelay());
     EXPECT_EQ(29, loaded->GetInitialActivationDelay());
     EXPECT_EQ(nullptr, loaded->GetInBehaviorIO());
@@ -260,8 +268,8 @@ TEST_F(CKRuntimeFixture, LoadLegacyIoOnlyKeepsDelayDefaults) {
     ASSERT_NE(nullptr, input);
     ASSERT_NE(nullptr, output);
 
-    CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
+    ASSERT_NE(nullptr, chunk.Get());
 
     chunk->StartWrite();
     chunk->WriteIdentifier(CK_STATESAVE_BEHAV_LINK_IOS);
@@ -273,7 +281,7 @@ TEST_F(CKRuntimeFixture, LoadLegacyIoOnlyKeepsDelayDefaults) {
         context_->CreateObject(CKCID_BEHAVIORLINK, "legacyIoOnly", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
 
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
     EXPECT_EQ(1, loaded->GetActivationDelay());
     EXPECT_EQ(1, loaded->GetInitialActivationDelay());
     EXPECT_EQ(input, loaded->GetInBehaviorIO());
@@ -438,13 +446,13 @@ TEST_F(CKRuntimeFixture, LoadedLinkNeedsPostLoadToParticipateInOutputTraversal) 
     ASSERT_EQ(CK_OK, saved->SetInBehaviorIO(sourceOut));
     ASSERT_EQ(CK_OK, saved->SetOutBehaviorIO(destinationIn));
 
-    CKStateChunkPtr chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
+    ASSERT_NE(nullptr, chunk.Get());
 
     CKBehaviorLink *loaded = static_cast<CKBehaviorLink *>(
         context_->CreateObject(CKCID_BEHAVIORLINK, "postLoadLoaded", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     ASSERT_EQ(CK_OK, parent->AddSubBehavior(source));
     ASSERT_EQ(CK_OK, parent->AddSubBehavior(destination));
@@ -480,13 +488,13 @@ TEST_F(CKRuntimeFixture, NegativeDelayValuesRoundTripAsStoredState) {
     saved->SetActivationDelay(-3);
     saved->SetInitialActivationDelay(-7);
 
-    CKStateChunkPtr chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
-    ASSERT_NE(nullptr, chunk.get());
+    ScopedStateChunk chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
+    ASSERT_NE(nullptr, chunk.Get());
 
     CKBehaviorLink *loaded = static_cast<CKBehaviorLink *>(
         context_->CreateObject(CKCID_BEHAVIORLINK, "negativeLoaded", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, loaded);
-    ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+    ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
     EXPECT_EQ(-3, loaded->GetActivationDelay());
     EXPECT_EQ(-7, loaded->GetInitialActivationDelay());
@@ -515,13 +523,13 @@ TEST_F(CKRuntimeFixture, NewFormatSaveLoadStress100Rounds) {
         saved->SetActivationDelay(currentDelay);
         saved->SetInitialActivationDelay(initialDelay);
 
-        CKStateChunkPtr chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
-        ASSERT_NE(nullptr, chunk.get());
+        ScopedStateChunk chunk(saved->Save(nullptr, CK_STATESAVE_BEHAV_LINKONLY));
+        ASSERT_NE(nullptr, chunk.Get());
 
         CKBehaviorLink *loaded = static_cast<CKBehaviorLink *>(
             context_->CreateObject(CKCID_BEHAVIORLINK, "newFormatStressLoaded", CK_OBJECTCREATION_DYNAMIC));
         ASSERT_NE(nullptr, loaded);
-        ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+        ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
         EXPECT_EQ(currentDelay, loaded->GetActivationDelay()) << "round=" << round;
         EXPECT_EQ(initialDelay, loaded->GetInitialActivationDelay()) << "round=" << round;
@@ -545,8 +553,8 @@ TEST_F(CKRuntimeFixture, LegacyPartialLoadStress100Rounds) {
         const bool writeIoPair = (round % 3) != 0;
         const bool writeInitDelay = (round % 5) != 0;
 
-        CKStateChunkPtr chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
-        ASSERT_NE(nullptr, chunk.get());
+        ScopedStateChunk chunk(CreateCKStateChunk(CKCID_BEHAVIORLINK, nullptr));
+        ASSERT_NE(nullptr, chunk.Get());
         chunk->StartWrite();
 
         const int curDelay = round - 50;
@@ -571,7 +579,7 @@ TEST_F(CKRuntimeFixture, LegacyPartialLoadStress100Rounds) {
         CKBehaviorLink *loaded = static_cast<CKBehaviorLink *>(
             context_->CreateObject(CKCID_BEHAVIORLINK, "legacyStressLoaded", CK_OBJECTCREATION_DYNAMIC));
         ASSERT_NE(nullptr, loaded);
-        ASSERT_EQ(CK_OK, loaded->Load(chunk.get(), nullptr));
+        ASSERT_EQ(CK_OK, loaded->Load(chunk.Get(), nullptr));
 
         EXPECT_EQ(writeCurDelay ? curDelay : 1, loaded->GetActivationDelay()) << "round=" << round;
         EXPECT_EQ(writeInitDelay ? initDelay : 1, loaded->GetInitialActivationDelay()) << "round=" << round;

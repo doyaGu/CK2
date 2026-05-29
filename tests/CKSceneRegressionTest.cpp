@@ -1,10 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <string>
-
 #include "CKAll.h"
-
-namespace {
 
 class CKRuntimeFixture : public ::testing::Test {
 protected:
@@ -27,25 +23,23 @@ protected:
 
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
-std::string MakeUniqueName(const char *prefix) {
+static XString MakeUniqueName(const char *prefix) {
     static int counter = 0;
-    char buffer[128] = {};
     ++counter;
-    sprintf_s(buffer, "%s_%d", prefix, counter);
-    return std::string(buffer);
+    XString name;
+    name.Format("%s_%d", prefix, counter);
+    return name;
 }
-
-} // namespace
 
 TEST_F(CKRuntimeFixture, RemoveAllObjectsClearsSceneMembership) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKScene *scene = static_cast<CKScene *>(
-        context_->CreateObject(CKCID_SCENE, MakeUniqueName("SceneRemoveAll").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_SCENE, MakeUniqueName("SceneRemoveAll").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, scene);
 
     CKSceneObject *obj = static_cast<CKSceneObject *>(
-        context_->CreateObject(CKCID_SCENEOBJECT, MakeUniqueName("SceneObjectRemoveAll").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_SCENEOBJECT, MakeUniqueName("SceneObjectRemoveAll").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, obj);
 
     scene->AddObject(obj);
@@ -63,15 +57,15 @@ TEST_F(CKRuntimeFixture, AddObjectDescUsesOwnerLevelDefaultSceneForLevelScripts)
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKLevel *ownerLevel = static_cast<CKLevel *>(
-        context_->CreateObject(CKCID_LEVEL, MakeUniqueName("OwnerLevel").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_LEVEL, MakeUniqueName("OwnerLevel").CStr(), CK_OBJECTCREATION_DYNAMIC));
     CKLevel *currentLevel = static_cast<CKLevel *>(
-        context_->CreateObject(CKCID_LEVEL, MakeUniqueName("CurrentLevel").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_LEVEL, MakeUniqueName("CurrentLevel").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, ownerLevel);
     ASSERT_NE(nullptr, currentLevel);
     context_->SetCurrentLevel(currentLevel);
 
     CKBehavior *script = static_cast<CKBehavior *>(
-        context_->CreateObject(CKCID_BEHAVIOR, MakeUniqueName("LevelScript").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_BEHAVIOR, MakeUniqueName("LevelScript").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, script);
     script->SetType(CKBEHAVIORTYPE_SCRIPT);
     ASSERT_EQ(CK_OK, ownerLevel->AddScript(script));
@@ -88,11 +82,11 @@ TEST_F(CKRuntimeFixture, CopySelfKeepsSceneObjects) {
     ASSERT_EQ(CK_OK, context_->ClearAll());
 
     CKScene *scene = static_cast<CKScene *>(
-        context_->CreateObject(CKCID_SCENE, MakeUniqueName("SceneCopySelf").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_SCENE, MakeUniqueName("SceneCopySelf").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, scene);
 
     CKSceneObject *obj = static_cast<CKSceneObject *>(
-        context_->CreateObject(CKCID_SCENEOBJECT, MakeUniqueName("SceneObjectCopySelf").c_str(), CK_OBJECTCREATION_DYNAMIC));
+        context_->CreateObject(CKCID_SCENEOBJECT, MakeUniqueName("SceneObjectCopySelf").CStr(), CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, obj);
 
     scene->AddObject(obj);

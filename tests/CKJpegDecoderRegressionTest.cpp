@@ -4,18 +4,14 @@
 
 #include "CKJpegDecoder.h"
 
-namespace {
-
-void DeleteByteBuffer(CKBYTE *buffer) {
+static void DeleteByteBuffer(CKBYTE *buffer) {
     delete[] buffer;
 }
 
-int AbsoluteByteDifference(CKBYTE lhs, CKBYTE rhs) {
+static int AbsoluteByteDifference(CKBYTE lhs, CKBYTE rhs) {
     const int difference = static_cast<int>(lhs) - static_cast<int>(rhs);
     return difference < 0 ? -difference : difference;
 }
-
-} // namespace
 
 TEST(CKJpegDecoderRegressionTest, EncodeClampsQualityAndDecodePreservesPlaneShape) {
     const int width = 8;
