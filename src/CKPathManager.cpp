@@ -31,13 +31,13 @@ static XBOOL FindDirectoryEntryCallback(const VxDirectoryEntry *entry, void *use
     if (entry->IsDirectory != data->WantDirectory)
         return TRUE;
 
-    XString entryName = entry->Name;
+    XString entryName = entry->Name.CStr();
     XString requestedName = data->Name;
     if (entryName.Compare(requestedName) == 0) {
-        data->Match = entry->Name;
+        data->Match = entry->Name.CStr();
         data->Found = TRUE;
     } else if (!data->Found && entryName.ICompare(requestedName) == 0) {
-        data->Match = entry->Name;
+        data->Match = entry->Name.CStr();
         data->Found = TRUE;
     }
 
@@ -110,7 +110,7 @@ static CKBOOL ResolveCaseInsensitiveFilePathFromDirectory(const char *directory,
         if (!FindDirectoryEntry(current.CStr(), name, wantDirectory, match))
             return FALSE;
 
-        char next[_MAX_PATH];
+        XString next;
         if (!VxMakePath(next, current.CStr(), match.CStr()))
             return FALSE;
         current = next;
@@ -131,25 +131,6 @@ static CKBOOL ResolveCaseInsensitiveFilePath(const char *path, XString &resolved
 }
 #endif
 
-static CKBOOL MakeNativePathCandidate(XString &candidate, const char *directory, const char *file) {
-    char path[_MAX_PATH];
-    if (!VxMakePath(path, directory ? directory : "", file ? file : ""))
-        return FALSE;
-
-    candidate = path;
-    NormalizeNativePathSeparators(candidate);
-    return TRUE;
-}
-
-static CKBOOL MakeLogicalPathCandidate(XString &candidate, const char *directory, const char *file) {
-    char path[_MAX_PATH];
-    if (!VxMakePath(path, directory ? directory : "", file ? file : ""))
-        return FALSE;
-
-    candidate = path;
-    return TRUE;
-}
-
 static CKBOOL ResolveNativePathCandidate(XString &candidate, const char *directory, const char *file, XBOOL unescape) {
     XString base = directory ? directory : "";
     XString name = file ? file : "";
@@ -158,8 +139,9 @@ static CKBOOL ResolveNativePathCandidate(XString &candidate, const char *directo
         VxUnEscapeUrl(name);
     }
 
-    if (!MakeNativePathCandidate(candidate, base.CStr(), name.CStr()))
+    if (!VxMakePath(candidate, base.CStr(), name.CStr()))
         return FALSE;
+    NormalizeNativePathSeparators(candidate);
 
     if (VxFileExists(candidate.CStr()))
         return TRUE;
@@ -176,13 +158,13 @@ static CKBOOL ResolveNativePathCandidate(XString &candidate, const char *directo
 }
 
 XString CKGetTempPath() {
-    char buf[_MAX_PATH];
     char dir[64];
     snprintf(dir, sizeof(dir), "VTmp%d", rand());
 
     XString path = VxGetTempPath();
-    VxMakePath(buf, path.Str(), dir);
-    return XString(buf);
+    XString tempPath;
+    VxMakePath(tempPath, path.Str(), dir);
+    return tempPath;
 }
 
 CKPathManager::CKPathManager(CKContext *Context) : CKBaseManager(Context, PATH_MANAGER_GUID, "Path Manager") {
@@ -390,10 +372,10 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
         }
 
         // Check current working directory
-        char curDir[_MAX_PATH];
-        if (VxGetCurrentDirectory(curDir)) {
+        XString curDir = VxGetCurrentDirectory();
+        if (curDir.Length() > 0) {
             XString curPath;
-            if (ResolveNativePathCandidate(curPath, curDir, filesystemFile.Str(), FALSE)) {
+            if (ResolveNativePathCandidate(curPath, curDir.Str(), filesystemFile.Str(), FALSE)) {
                 file = curPath;
                 return CK_OK;
             }
@@ -440,7 +422,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
             }
         } else if (PathIsFile(pathEntry)) {
             XString path;
-            if (!MakeLogicalPathCandidate(path, pathEntry.Str(), searchName.Str()))
+            if (!VxMakePath(path, pathEntry.Str(), searchName.Str()))
                 continue;
             RemoveEscapedSpace(path.Str());
             XString fullPath = path;
@@ -450,7 +432,7 @@ CKERROR CKPathManager::ResolveFileName(XString &file, int catIdx, int startIdx) 
             }
         } else if (PathIsURL(pathEntry)) {
             XString path;
-            if (!MakeLogicalPathCandidate(path, pathEntry.Str(), searchName.Str()))
+            if (!VxMakePath(path, pathEntry.Str(), searchName.Str()))
                 continue;
             XString fullPath = path;
             AddEscapedSpace(fullPath);
