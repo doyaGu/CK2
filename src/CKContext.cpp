@@ -1760,8 +1760,8 @@ CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_Depe
     m_UserLoadCallBack = nullptr;
     m_UserLoadCallBackArgs = nullptr;
 
-    m_TempPathBuffer = new char[_MAX_PATH];
-    m_TempPathBufferAlt = new char[_MAX_PATH];
+    m_TempPathBuffer = nullptr;
+    m_TempPathBufferAlt = nullptr;
     m_GeneralRenameOption = 0;
     m_MatTexturesRenameOption = 0;
 

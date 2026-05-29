@@ -110,26 +110,27 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
     if (!Name) return FALSE;
 
     CKPathSplitter splitter(Name);
-    char extension[_MAX_PATH] = ".bmp";
+    XString extension = ".bmp";
     CKBitmapReader *reader = nullptr;
     CKBitmapProperties *saveProps = m_SaveProperties;
 
     if (CKUseFormat && saveProps) {
         reader = CKGetPluginManager()->GetBitmapReader(saveProps->m_Ext, &saveProps->m_ReaderGuid);
         if (reader) {
-            snprintf(extension, sizeof(extension), ".%s", saveProps->m_Ext.m_Data);
+            extension = ".";
+            extension << saveProps->m_Ext.m_Data;
         } else {
             saveProps = nullptr; // Fallback to default handling
         }
     } else {
         const char *ext = splitter.GetExtension();
         if (ext && *ext != '\0') {
-            snprintf(extension, sizeof(extension), "%s", ext);
+            extension = ext;
         }
     }
 
     if (!reader) {
-        CKFileExtension desiredExt(extension + 1); // Skip leading dot
+        CKFileExtension desiredExt(extension.CStr() + 1); // Skip leading dot
         reader = CKGetPluginManager()->GetBitmapReader(desiredExt, nullptr);
         if (reader) {
             reader->GetBitmapDefaultProperties(&saveProps);
@@ -149,7 +150,7 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
         return FALSE;
     }
 
-    CKPathMaker pathMaker(splitter.GetDrive(), splitter.GetDir(), splitter.GetName(), extension);
+    CKPathMaker pathMaker(splitter.GetDrive(), splitter.GetDir(), splitter.GetName(), extension.CStr());
     XString fullPath = pathMaker.GetFileName();
 
     VxImageDescEx imgDesc;
@@ -171,15 +172,15 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
         return FALSE;
 
     CKPathSplitter pathSplitter(Name);
-    char extension[_MAX_PATH] = ".bmp";
+    XString extension = ".bmp";
     CKBOOL result = FALSE;
 
     const char *fileExt = pathSplitter.GetExtension();
     if (fileExt && strlen(fileExt)) {
-        snprintf(extension, sizeof(extension), "%s", fileExt);
+        extension = fileExt;
     }
 
-    CKFileExtension desiredExt(extension + 1); // Skip leading dot
+    CKFileExtension desiredExt(extension.CStr() + 1); // Skip leading dot
     CKBitmapReader *reader = CKGetPluginManager()->GetBitmapReader(desiredExt, nullptr);
     if (!reader)
         return FALSE;
@@ -197,7 +198,7 @@ CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
         return FALSE;
     }
 
-    CKPathMaker pathMaker(pathSplitter.GetDrive(), pathSplitter.GetDir(), pathSplitter.GetName(), extension);
+    CKPathMaker pathMaker(pathSplitter.GetDrive(), pathSplitter.GetDir(), pathSplitter.GetName(), extension.CStr());
     GetImageDesc(saveProps->m_Format);
 
     const int pixelCount = m_Width * m_Height;

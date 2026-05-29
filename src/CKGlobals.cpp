@@ -52,17 +52,39 @@ CKBOOL WarningForOlderVersion = FALSE;
 typedef XHashTable<CKObjectDeclaration *, CKGUID> XObjDeclHashTable;
 XObjDeclHashTable g_PrototypeDeclarationList;
 
+static CKBOOL IsNativePathSeparator(char c) {
+    return (c == '\\' || c == '/') ? TRUE : FALSE;
+}
+
+static char NativePathSeparator() {
+#ifdef _WIN32
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
+static XString GetModuleFileNameString(INSTANCE_HANDLE module) {
+    return VxGetModuleFileName(module);
+}
+
+static XString MakeNativePath(const char *directory, const char *file) {
+    XString path = directory ? directory : "";
+    if (path.Length() > 0 && !IsNativePathSeparator(path[path.Length() - 1]))
+        path << NativePathSeparator();
+    path << (file ? file : "");
+    return path;
+}
+
 void CKInitStartPath() {
-    char buffer[_MAX_PATH];
-    if (VxGetModuleFileName(g_CKModule, buffer, _MAX_PATH) != 0) {
-        CKPathSplitter ps(buffer);
+    XString modulePath = GetModuleFileNameString(g_CKModule);
+    if (modulePath.Length() > 0) {
+        CKPathSplitter ps(modulePath.Str());
         g_StartPath = ps.GetDrive();
         g_StartPath << ps.GetDir();
         VxAddLibrarySearchPath(g_StartPath.Str());
 
-        char pluginsPath[_MAX_PATH];
-        VxMakePath(pluginsPath, g_StartPath.Str(), "Plugins");
-        g_PluginPath = pluginsPath;
+        g_PluginPath = MakeNativePath(g_StartPath.Str(), "Plugins");
     }
 }
 

@@ -8,6 +8,7 @@
 #include "CKBehavior.h"
 #include "CKBeObject.h"
 #include "CKInterfaceObjectManager.h"
+#include "VxWindowFunctions.h"
 
 #include <climits>
 
@@ -792,17 +793,27 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
         for (XClassArray<XString>::Iterator iit = m_IncludedFiles.Begin();
              iit != m_IncludedFiles.End(); ++iit) {
             const int fileNameLength = parser->ReadInt();
-            char fileName[_MAX_PATH] = {0};
+            XString fileName;
             if (fileNameLength < 0) {
                 if (parser && parser != *ParserPtr)
                     delete parser;
                 return CKERR_INVALIDFILE;
             }
-            if (fileNameLength > 0 && fileNameLength < _MAX_PATH) {
-                parser->Read(fileName, fileNameLength);
-                fileName[fileNameLength] = '\0';
-            } else if (fileNameLength > 0) {
-                parser->Skip(fileNameLength);
+            if (fileNameLength > 0) {
+                if (fileNameLength <= XString::MAX_LENGTH) {
+                    char *fileNameBuffer = new char[fileNameLength + 1];
+                    if (!parser->Read(fileNameBuffer, fileNameLength)) {
+                        delete[] fileNameBuffer;
+                        if (parser && parser != *ParserPtr)
+                            delete parser;
+                        return CKERR_INVALIDFILE;
+                    }
+                    fileNameBuffer[fileNameLength] = '\0';
+                    fileName = XString(fileNameBuffer, fileNameLength);
+                    delete[] fileNameBuffer;
+                } else {
+                    parser->Skip(fileNameLength);
+                }
             }
 
             const int fileSize = parser->ReadInt();
@@ -812,10 +823,17 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
                 return CKERR_INVALIDFILE;
             }
             if (fileSize > 0) {
-                XString temp = m_Context->GetPathManager()->GetVirtoolsTemporaryFolder();
-                CKPathMaker pm(nullptr, temp.Str(), fileName, nullptr);
-                const char *filePath = pm.GetFileName();
-                parser->ExtractFile(filePath, fileSize);
+                if (fileName.Length() > 0) {
+                    XString temp = m_Context->GetPathManager()->GetVirtoolsTemporaryFolder();
+                    const size_t filePathSize = (size_t)temp.Length() + (size_t)fileName.Length() + 2;
+                    char *filePath = new char[filePathSize];
+                    const XBOOL hasFilePath = VxMakePath(filePath, filePathSize, temp.Str(), fileName.Str());
+                    if (!hasFilePath || !parser->ExtractFile(filePath, fileSize))
+                        parser->Skip(fileSize);
+                    delete[] filePath;
+                } else {
+                    parser->Skip(fileSize);
+                }
             }
         }
     }
