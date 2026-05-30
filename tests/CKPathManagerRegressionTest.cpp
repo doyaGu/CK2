@@ -338,6 +338,43 @@ TEST_F(CKRuntimeFixture, ResolveFileNameMatchesCaseInsensitiveCategoryPath) {
     EXPECT_TRUE(VxDeleteDirectory(directoryPath.CStr()));
 }
 
+TEST_F(CKRuntimeFixture, ResolveFileNameMatchesCaseInsensitiveAbsoluteCategoryRoot) {
+    CKPathManager *pathManager = context_->GetPathManager();
+    ASSERT_NE(nullptr, pathManager);
+
+    const XString uniqueName = MakeUniqueName("CKPathManagerCaseInsensitiveRoot");
+    XString rootPath = MakeTestPath(VxGetTempPath().Str(), uniqueName.CStr());
+    ASSERT_FALSE(rootPath.IsEmpty());
+    ASSERT_TRUE(VxMakeDirectory(rootPath.CStr()));
+
+    XString levelPath = MakeTestPath(rootPath.CStr(), "Level");
+    ASSERT_FALSE(levelPath.IsEmpty());
+    ASSERT_TRUE(VxMakeDirectory(levelPath.CStr()));
+
+    XString absoluteFilePath = MakeTestPath(levelPath.CStr(), "Level_01.NMO");
+    ASSERT_FALSE(absoluteFilePath.IsEmpty());
+
+    WriteTestFile(absoluteFilePath.CStr());
+
+    XString categoryName = uniqueName + "Category";
+    const int categoryIdx = pathManager->AddCategory(categoryName);
+    ASSERT_GE(categoryIdx, 0);
+
+    XString categoryPath = rootPath;
+    categoryPath.ToLower();
+    ASSERT_GE(pathManager->AddPath(categoryIdx, categoryPath), 0);
+
+    XString resolvedFile = "level/level_01.nmo";
+    EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, categoryIdx, -1));
+    EXPECT_TRUE(resolvedFile == absoluteFilePath);
+    ExpectReadableFile(resolvedFile);
+
+    EXPECT_EQ(CK_OK, pathManager->RemoveCategory(categoryIdx));
+    EXPECT_EQ(0, remove(absoluteFilePath.CStr()));
+    EXPECT_TRUE(VxDeleteDirectory(levelPath.CStr()));
+    EXPECT_TRUE(VxDeleteDirectory(rootPath.CStr()));
+}
+
 TEST_F(CKRuntimeFixture, ResolveFileNameMatchesUppercaseLevelExtensionInSubdirectory) {
     CKPathManager *pathManager = context_->GetPathManager();
     ASSERT_NE(nullptr, pathManager);

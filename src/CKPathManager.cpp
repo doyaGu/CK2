@@ -36,6 +36,7 @@ static XBOOL FindDirectoryEntryCallback(const VxDirectoryEntry *entry, void *use
     if (entryName.Compare(requestedName) == 0) {
         data->Match = entry->Name.CStr();
         data->Found = TRUE;
+        return FALSE;
     } else if (!data->Found && entryName.ICompare(requestedName) == 0) {
         data->Match = entry->Name.CStr();
         data->Found = TRUE;
@@ -106,11 +107,20 @@ static CKBOOL ResolveCaseInsensitiveFilePathFromDirectory(const char *directory,
         }
 
         const XBOOL wantDirectory = (*part != '\0') ? TRUE : FALSE;
+        XString next;
+        if (!VxMakePath(next, current.CStr(), name.CStr()))
+            return FALSE;
+        NormalizeNativePathSeparators(next);
+
+        if ((wantDirectory && VxDirectoryExists(next.CStr())) || (!wantDirectory && VxFileExists(next.CStr()))) {
+            current = next;
+            continue;
+        }
+
         XString match;
         if (!FindDirectoryEntry(current.CStr(), name, wantDirectory, match))
             return FALSE;
 
-        XString next;
         if (!VxMakePath(next, current.CStr(), match.CStr()))
             return FALSE;
         current = next;
@@ -132,7 +142,10 @@ static CKBOOL ResolveCaseInsensitiveFilePath(const char *path, XString &resolved
 #endif
 
 static CKBOOL ResolveNativePathCandidate(XString &candidate, const char *directory, const char *file, XBOOL unescape) {
-    XString base = directory ? directory : "";
+    if (!directory || !*directory)
+        return FALSE;
+
+    XString base = directory;
     XString name = file ? file : "";
     if (unescape) {
         VxUnEscapeUrl(base);
@@ -148,7 +161,13 @@ static CKBOOL ResolveNativePathCandidate(XString &candidate, const char *directo
 
 #ifndef _WIN32
     XString resolved;
-    if (ResolveCaseInsensitiveFilePathFromDirectory(base.CStr(), name.CStr(), resolved)) {
+    const XBOOL baseExists = VxDirectoryExists(base.CStr());
+    if (baseExists && ResolveCaseInsensitiveFilePathFromDirectory(base.CStr(), name.CStr(), resolved)) {
+        candidate = resolved;
+        return TRUE;
+    }
+
+    if (!baseExists && ResolveCaseInsensitiveFilePath(candidate.CStr(), resolved)) {
         candidate = resolved;
         return TRUE;
     }
