@@ -30,7 +30,11 @@ method to easily access a structure members.
 is equivalent to declare
 
         #define  CKPGUID_MYSTRUCT CKGUID(0x4a893652,0x76e72d5c)
-        ParameterManager->RegisterNewStructure(CKPGUID_MYSTRUCT,"MyStructure","Priority,Position,Obstacle",CKPGUID_FLOAT,CKPGUID_VECTOR,CKPGUID_3DENTITY);
+        XArray<CKGUID> MyStructGuids;
+        MyStructGuids.PushBack(CKPGUID_FLOAT);
+        MyStructGuids.PushBack(CKPGUID_VECTOR);
+        MyStructGuids.PushBack(CKPGUID_3DENTITY);
+        ParameterManager->RegisterNewStructure(CKPGUID_MYSTRUCT,"MyStructure","Priority,Position,Obstacle",MyStructGuids);
 
 then the CKStructHelper can help to have a description of this structure later :
 
@@ -193,7 +197,6 @@ public:
     DLL_EXPORT CKERROR RegisterNewEnum(CKGUID EnumGuid, CKSTRING EnumName, CKSTRING EnumData);
     DLL_EXPORT CKERROR ChangeEnumDeclaration(CKGUID EnumGuid, CKSTRING EnumData);
     DLL_EXPORT CKERROR ChangeFlagsDeclaration(CKGUID FlagsGuid, CKSTRING FlagsData);
-    DLL_EXPORT CKERROR RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData, ...);
     DLL_EXPORT CKERROR RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData, XArray<CKGUID> &ListGuid);
 
     DLL_EXPORT int GetNbFlagDefined();

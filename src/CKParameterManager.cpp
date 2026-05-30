@@ -626,79 +626,8 @@ CKERROR CKParameterManager::ChangeFlagsDeclaration(CKGUID FlagsGuid, CKSTRING Fl
     return CK_OK;
 }
 
-CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData, ...) {
-    if (!StructName || !StructData)
-        return CKERR_INVALIDPARAMETER;
-
-    if (ParameterGuidToType(StructGuid) >= 0)
-        return CKERR_INVALIDGUID;
-
-    int memberCount = 1;
-    const char *ptr = StructData;
-    while ((ptr = strchr(ptr, ','))) {
-        memberCount++;
-        ptr++;
-    }
-
-    CKStructStruct structStruct;
-    structStruct.NbData = memberCount;
-    structStruct.Guids = new CKGUID[memberCount];
-    structStruct.Desc = new char*[memberCount];
-    for (int i = 0; i < memberCount; ++i) structStruct.Desc[i] = nullptr;
-
-    const char *currentPos = StructData;
-    for (int i = 0; i < memberCount; ++i) {
-        const char *end = strchr(currentPos, ',');
-        int len = end ? (int)(end - currentPos) : (int) strlen(currentPos);
-        structStruct.Desc[i] = new char[len + 1];
-        strncpy(structStruct.Desc[i], currentPos, len);
-        structStruct.Desc[i][len] = '\0';
-        currentPos = end ? end + 1 : currentPos + len;
-    }
-
-    va_list args;
-    va_start(args, StructData);
-    for (int i = 0; i < memberCount; ++i) {
-        structStruct.Guids[i] = va_arg(args, CKGUID);
-    }
-    va_end(args);
-
-    CKParameterTypeDesc structDesc;
-    structDesc.Guid = StructGuid;
-    structDesc.TypeName = StructName;
-    structDesc.DefaultSize = sizeof(CKDWORD) * memberCount;
-    structDesc.CreateDefaultFunction = CKStructCreator;
-    structDesc.DeleteFunction = CKStructDestructor;
-    structDesc.SaveLoadFunction = CKStructSaver;
-    structDesc.CopyFunction = CKStructCopier;
-    structDesc.StringFunction = CKStructStringFunc;
-    structDesc.UICreatorFunction = GetUICreatorFunction(m_Context, &structDesc);
-    structDesc.dwFlags = CKPARAMETERTYPE_STRUCT;
-    structDesc.dwParam = m_NbStructDefined;
-
-    CKERROR err = RegisterParameterType(&structDesc);
-    if (err != CK_OK) {
-        // Cleanup on failure
-        delete[] structStruct.Guids;
-        for (int i = 0; i < memberCount; ++i) delete[] structStruct.Desc[i];
-        delete[] structStruct.Desc;
-        return err;
-    }
-
-    CKStructStruct *newStructs = new CKStructStruct[m_NbStructDefined + 1];
-    if (m_Structs) {
-        memcpy(newStructs, m_Structs, sizeof(CKStructStruct) * m_NbStructDefined);
-        delete[] m_Structs;
-    }
-    m_Structs = newStructs;
-    m_Structs[m_NbStructDefined] = structStruct;
-    m_NbStructDefined++;
-
-    return CK_OK;
-}
-
 CKERROR CKParameterManager::RegisterNewStructure(CKGUID StructGuid, CKSTRING StructName, CKSTRING StructData, XArray<CKGUID> &ListGuid) {
-    if (!StructData || !StructName || !StructName[0])
+    if (!StructData || !StructName)
         return CKERR_INVALIDPARAMETER;
 
     if (ParameterGuidToType(StructGuid) >= 0)
