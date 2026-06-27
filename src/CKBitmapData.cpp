@@ -533,7 +533,7 @@ CKBOOL CKBitmapData::LoadSlotImage(XString Name, int Slot) {
     CKPathSplitter splitter(nameStr);
     const char *extStr = splitter.GetExtension();
 
-    CKFileExtension extension(extStr);
+    CKFileExtension extension(extStr && extStr[0] == '.' ? extStr + 1 : extStr);
     CKPluginManager *pm = CKGetPluginManager();
     CKBitmapReader *reader = pm->GetBitmapReader(extension);
     if (!reader)
