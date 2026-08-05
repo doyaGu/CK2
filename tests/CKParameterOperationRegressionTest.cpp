@@ -113,7 +113,7 @@ static void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) 
 
     if (guid == CKPGUID_STRING) {
         char text[64];
-        sprintf_s(text, "typed_value_%d", seed);
+        snprintf(text, sizeof(text), "typed_value_%d", seed);
         ASSERT_EQ(CK_OK, param->SetStringValue(text));
         return;
     }
@@ -147,7 +147,7 @@ static void AssertOutputEqualsSample(CKParameterOut *param, const CKGUID &guid, 
         char text[128] = {0};
         ASSERT_GT(param->GetStringValue(text, FALSE), 0);
         char expected[64];
-        sprintf_s(expected, "typed_value_%d", seed);
+        snprintf(expected, sizeof(expected), "typed_value_%d", seed);
         EXPECT_STREQ(expected, text);
         return;
     }
@@ -335,7 +335,7 @@ TEST_F(CKRuntimeFixture, DoOperationGuardsMissingInputSourceAcrossPrimaryTypes) 
         CKGUID opGuid(0x6E505F20u, 0x11B2A000u + i);
 
         char opName[64] = {0};
-        sprintf_s(opName, "GuardTypedSource_%s", tc.name);
+        snprintf(opName, sizeof(opName), "GuardTypedSource_%s", tc.name);
 
         pm->RegisterOperationType(opGuid, opName);
 

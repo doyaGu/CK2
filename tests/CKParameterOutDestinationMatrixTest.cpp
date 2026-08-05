@@ -55,7 +55,7 @@ static void SetSampleValue(CKParameterOut *param, const CKGUID &guid, int seed) 
     }
     if (guid == CKPGUID_STRING) {
         char text[64] = {0};
-        sprintf_s(text, "dest_value_%d", seed);
+        snprintf(text, sizeof(text), "dest_value_%d", seed);
         ASSERT_EQ(CK_OK, param->SetStringValue(text));
         return;
     }
@@ -85,7 +85,7 @@ static void AssertSampleValue(CKParameterOut *param, const CKGUID &guid, int see
         char text[128] = {0};
         ASSERT_GT(param->GetStringValue(text, FALSE), 0);
         char expected[64] = {0};
-        sprintf_s(expected, "dest_value_%d", seed);
+        snprintf(expected, sizeof(expected), "dest_value_%d", seed);
         EXPECT_STREQ(expected, text);
         return;
     }

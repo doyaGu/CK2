@@ -68,7 +68,7 @@ public:
 
             sum += (*it).time;
 
-            sprintf(buffer, "%s = %.3g", (*it).name, (*it).time);
+            snprintf(buffer, sizeof(buffer), "%s = %.3g", (*it).name, (*it).time);
             strcat(oBuffer, buffer);
 
             if (it != (m_Marks.End() - 1)) // we don't add the separator for the last mark
@@ -77,7 +77,7 @@ public:
 
         if (sum != 0.0f)
         {
-            sprintf(buffer, "=> %g ms", sum);
+            snprintf(buffer, sizeof(buffer), "=> %g ms", sum);
             strcat(oBuffer, buffer);
         }
     }

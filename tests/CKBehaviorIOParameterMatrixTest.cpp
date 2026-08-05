@@ -61,7 +61,7 @@ static void SetOutputSampleValue(CKBehavior *behavior, int index, const CKGUID &
 
     if (guid == CKPGUID_STRING) {
         char text[64] = {0};
-        sprintf_s(text, "behavior_value_%d", seed);
+        snprintf(text, sizeof(text), "behavior_value_%d", seed);
         ASSERT_EQ(CK_OK, out->SetStringValue(text));
         return;
     }
@@ -100,7 +100,7 @@ static void AssertInputSampleValue(CKBehavior *behavior, int index, const CKGUID
         char text[128] = {0};
         ASSERT_GT(src->GetStringValue(text, TRUE), 0);
         char expected[64] = {0};
-        sprintf_s(expected, "behavior_value_%d", seed);
+        snprintf(expected, sizeof(expected), "behavior_value_%d", seed);
         EXPECT_STREQ(expected, text);
         return;
     }
