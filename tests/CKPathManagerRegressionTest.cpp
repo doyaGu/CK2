@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 
 #include "CKAll.h"
 #include "VxWindowFunctions.h"
@@ -41,6 +42,12 @@ static void ExpectReadableFile(const XString &path) {
     FILE *file = fopen(path.CStr(), "rb");
     ASSERT_NE(nullptr, file);
     fclose(file);
+}
+
+static bool PathsReferToSameFile(const XString &left, const XString &right) {
+    std::error_code error;
+    const bool equivalent = std::filesystem::equivalent(left.CStr(), right.CStr(), error);
+    return !error && equivalent;
 }
 
 static void WriteTestFile(const char *path) {
@@ -196,7 +203,7 @@ TEST_F(CKRuntimeFixture, ResolveFileNameSearchesAbsoluteCategoryPath) {
 
     XString resolvedFile = fileName;
     EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, categoryIdx, -1));
-    EXPECT_TRUE(resolvedFile == absoluteFilePath);
+    EXPECT_TRUE(PathsReferToSameFile(resolvedFile, absoluteFilePath));
     ExpectReadableFile(resolvedFile);
 
     EXPECT_EQ(CK_OK, pathManager->RemoveCategory(categoryIdx));
@@ -366,7 +373,7 @@ TEST_F(CKRuntimeFixture, ResolveFileNameMatchesCaseInsensitiveAbsoluteCategoryRo
 
     XString resolvedFile = "level/level_01.nmo";
     EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, categoryIdx, -1));
-    EXPECT_TRUE(resolvedFile == absoluteFilePath);
+    EXPECT_TRUE(PathsReferToSameFile(resolvedFile, absoluteFilePath));
     ExpectReadableFile(resolvedFile);
 
     EXPECT_EQ(CK_OK, pathManager->RemoveCategory(categoryIdx));
@@ -438,7 +445,7 @@ TEST_F(CKRuntimeFixture, ResolveFileNameResolvesCaseFromFileSchemeCategoryPath) 
 
     XString resolvedFile = "level/level_01.nmo";
     EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, categoryIdx, -1));
-    EXPECT_TRUE(resolvedFile == absoluteFilePath);
+    EXPECT_TRUE(PathsReferToSameFile(resolvedFile, absoluteFilePath));
     ExpectReadableFile(resolvedFile);
 
     EXPECT_EQ(CK_OK, pathManager->RemoveCategory(categoryIdx));
@@ -525,7 +532,7 @@ TEST_F(CKRuntimeFixture, ResolveFileNameFindsFileInLongCurrentDirectory) {
     EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, DATA_PATH_IDX, -1));
     VxSetCurrentDirectory(previousDirectory.CStr());
 
-    EXPECT_TRUE(resolvedFile == filePath);
+    EXPECT_TRUE(PathsReferToSameFile(resolvedFile, filePath));
     ExpectReadableFile(resolvedFile);
 }
 
