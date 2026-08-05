@@ -44,7 +44,6 @@ CKAttributeType CKAttributeManager::RegisterNewAttributeType(CKSTRING Name, CKGU
     }
 
     CKAttributeDesc *desc = new CKAttributeDesc();
-    memset(desc, 0, sizeof(CKAttributeDesc));
 
     strncpy(desc->Name, secureName, sizeof(desc->Name) - 1);
     desc->Name[sizeof(desc->Name) - 1] = '\0';

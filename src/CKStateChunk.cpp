@@ -386,8 +386,8 @@ void CKStateChunk::AddChunkAndDelete(CKStateChunk *chunk) {
     } else {
         // IDA: Copy ChunkParser contents (not pointer), then zero source
         if (chunk->m_ChunkParser) {
-            memcpy(m_ChunkParser, chunk->m_ChunkParser, sizeof(ChunkParser));
-            memset(chunk->m_ChunkParser, 0, sizeof(ChunkParser));
+            *m_ChunkParser = *chunk->m_ChunkParser;
+            chunk->m_ChunkParser->Clear();
         }
         m_ChunkSize = chunk->m_ChunkSize;
         m_Data = chunk->m_Data;
@@ -2246,10 +2246,8 @@ void CKStateChunk::WriteBitmap(BITMAP_HANDLE bitmap, CKSTRING ext) {
     signature[0] = 'C';
     signature[1] = 'K';
     int sigLen = 2;
-    if (fileExt.m_Data) {
-        for (int i = 0; i < 3 && fileExt.m_Data[i] && sigLen < 5; ++i) {
-            signature[sigLen++] = fileExt.m_Data[i];
-        }
+    for (int i = 0; i < 3 && fileExt.m_Data[i] && sigLen < 5; ++i) {
+        signature[sigLen++] = fileExt.m_Data[i];
     }
     signature[sigLen] = '\0';
     for (int i = 0; signature[i] && i < 5; ++i) {
