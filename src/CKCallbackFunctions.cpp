@@ -1068,10 +1068,10 @@ int CKCollectionStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFro
 
     int formattedLength;
     if (ValueString) {
-        formattedLength = sprintf(ValueString, "%d Elements", objectArray->Size());
+        formattedLength = snprintf(ValueString, 40, "%d Elements", objectArray->Size());
     } else {
         char *stringBuffer = context->GetStringBuffer(40);
-        formattedLength = sprintf(stringBuffer, "%d Elements", objectArray->Size());
+        formattedLength = snprintf(stringBuffer, 40, "%d Elements", objectArray->Size());
     }
 
     return formattedLength + 1;
