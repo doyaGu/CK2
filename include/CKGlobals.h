@@ -61,7 +61,7 @@ Arguments:
 See Also:Main Steps of Building Block Creation
 *************************************************/
 #define RegisterBehavior(reg, fct) \
-    CKObjectDeclaration *fct();    \
+    CKObjectDeclaration *fct(void); \
     CKStoreDeclaration(reg, fct());
 
 //----------------------------------------------------------
