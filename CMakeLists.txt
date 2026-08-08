@@ -127,7 +127,7 @@ if (NOT TARGET VxMath)
     FetchContent_Declare(
             VxMath
             GIT_REPOSITORY https://github.com/doyaGu/VxMath
-            GIT_TAG main
+            GIT_TAG abbfb92b8a9fc6e041c8ea3734ddaede21ed2d65
     )
 
     if (COMMAND FetchContent_MakeAvailable)
