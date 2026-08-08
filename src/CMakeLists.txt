@@ -192,6 +192,8 @@ list(PREPEND CK2_SOURCES CK2Module.cpp)
 
 # Function to configure common target settings
 function(ck2_configure_target TARGET_NAME)
+    target_compile_features(${TARGET_NAME} PRIVATE cxx_std_11)
+
     target_include_directories(${TARGET_NAME}
             PUBLIC
             $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
