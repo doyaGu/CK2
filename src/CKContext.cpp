@@ -1593,7 +1593,7 @@ void CKContext::GetObjectSecureName(XString &secureName, CKSTRING name, CK_CLASS
     // Step 4: Constructing the final secure name.
     secureName = baseName;
     if (highestNumber != -1) {
-        char numBuffer[4];
+        char numBuffer[16];
         snprintf(numBuffer, sizeof(numBuffer), "%03d", highestNumber + 1);
         secureName << numBuffer;
     }

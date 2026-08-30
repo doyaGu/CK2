@@ -1538,7 +1538,7 @@ int CKBoxStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
     } else {
         param->GetValue(&bbox, FALSE);
 
-        char source[64];
+        char source[128];
         snprintf(source, sizeof(source), "(%g,%g,%g),(%g,%g,%g)",
                  bbox.Min.x, bbox.Min.y, bbox.Min.z,
                  bbox.Max.x, bbox.Max.y, bbox.Max.z);
