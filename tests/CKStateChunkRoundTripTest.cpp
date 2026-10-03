@@ -5,6 +5,35 @@
 
 #include "CKAll.h"
 
+TEST(CKStateChunkRoundTripTest, IntegerParameterRemappingPreservesBufferLength) {
+    int values[] = {-1, 0, 2, 3, 99};
+    int mapping[] = {0, 1, 4, 2, 3};
+    for (int i = 0; i < 5; ++i) {
+        CKStateChunk chunk(CKCID_PARAMETER, nullptr);
+        chunk.StartWrite();
+        chunk.WriteIdentifier(0x1234);
+        chunk.WriteInt(0x2468);
+        chunk.WriteIdentifier(CK_STATESAVE_PARAMETEROUT_VAL);
+        chunk.WriteGuid(CKPGUID_LAYERTYPE);
+        chunk.WriteInt(1);
+        chunk.WriteBuffer(sizeof(int), &values[i]);
+        chunk.WriteIdentifier(0x5678);
+        chunk.WriteInt(0x1357);
+        chunk.CloseChunk();
+        ASSERT_EQ(1, chunk.RemapParameterInt(CKPGUID_LAYERTYPE, mapping, 5));
+        chunk.StartRead();
+        ASSERT_TRUE(chunk.SeekIdentifier(CK_STATESAVE_PARAMETEROUT_VAL));
+        EXPECT_EQ(CKPGUID_LAYERTYPE, chunk.ReadGuid());
+        EXPECT_EQ(1, chunk.ReadInt());
+        EXPECT_EQ(sizeof(int), chunk.ReadDword());
+        EXPECT_EQ(values[i] >= 0 && values[i] < 5 ? mapping[values[i]] : 0, chunk.ReadInt());
+        ASSERT_TRUE(chunk.SeekIdentifier(0x1234));
+        EXPECT_EQ(0x2468, chunk.ReadInt());
+        ASSERT_TRUE(chunk.SeekIdentifier(0x5678));
+        EXPECT_EQ(0x1357, chunk.ReadInt());
+    }
+}
+
 class ScopedStateChunk {
 public:
     explicit ScopedStateChunk(CKStateChunk *chunk) : chunk_(chunk) {}
@@ -31,6 +60,61 @@ private:
 
 static ScopedStateChunk CreateEmptyChunk() {
     return ScopedStateChunk(CreateCKStateChunk(CKCID_OBJECT, nullptr));
+}
+
+TEST(CKStateChunkRoundTripTest, IntegerParameterRemappingTraversesNestedChunks) {
+    CKStateChunk parameter(CKCID_PARAMETER, nullptr), parent(CKCID_SCENE, nullptr);
+    int value = 2;
+    int mapping[] = {0, 1, 4, 2, 3};
+    parameter.StartWrite();
+    parameter.WriteIdentifier(CK_STATESAVE_PARAMETEROUT_VAL);
+    parameter.WriteGuid(CKPGUID_LAYERTYPE);
+    parameter.WriteInt(1);
+    parameter.WriteBuffer(sizeof(value), &value);
+    parameter.CloseChunk();
+    parent.StartWrite();
+    parent.WriteIdentifier(0x1234);
+    parent.WriteSubChunk(&parameter);
+    parent.WriteIdentifier(0x5678);
+    parent.StartSubChunkSequence(1);
+    parent.WriteSubChunkSequence(&parameter);
+    parent.CloseChunk();
+    ASSERT_EQ(2, parent.RemapParameterInt(CKPGUID_LAYERTYPE, mapping, 5));
+    parent.StartRead();
+    for (int i = 0; i < 2; ++i) {
+        ASSERT_TRUE(parent.SeekIdentifier(i ? 0x5678 : 0x1234));
+        if (i) ASSERT_EQ(1, parent.StartReadSequence());
+        ScopedStateChunk child(parent.ReadSubChunk());
+        ASSERT_NE(nullptr, child.Get());
+        child->StartRead();
+        ASSERT_TRUE(child->SeekIdentifier(CK_STATESAVE_PARAMETEROUT_VAL));
+        EXPECT_EQ(CKPGUID_LAYERTYPE, child->ReadGuid());
+        EXPECT_EQ(1, child->ReadInt());
+        EXPECT_EQ(sizeof(value), child->ReadDword());
+        EXPECT_EQ(4, child->ReadInt());
+    }
+}
+
+TEST(CKStateChunkRoundTripTest, IntegerParameterRemappingLeavesOtherRepresentationsUnchanged) {
+    int mapping[] = {0, 1, 4, 2, 3};
+    const int kinds[] = {0, 2, 3, 1};
+    for (int i = 0; i < 4; ++i) {
+        CKStateChunk chunk(CKCID_PARAMETER, nullptr);
+        int value = 2;
+        chunk.StartWrite();
+        chunk.WriteIdentifier(CK_STATESAVE_PARAMETEROUT_VAL);
+        chunk.WriteGuid(i == 3 ? CKPGUID_INT : CKPGUID_LAYERTYPE);
+        chunk.WriteInt(kinds[i]);
+        chunk.WriteBuffer(sizeof(value), &value);
+        chunk.CloseChunk();
+        char before[128], after[128];
+        const int size = chunk.ConvertToBuffer(nullptr);
+        ASSERT_LE(size, (int)sizeof(before));
+        chunk.ConvertToBuffer(before);
+        EXPECT_EQ(0, chunk.RemapParameterInt(CKPGUID_LAYERTYPE, mapping, 5));
+        chunk.ConvertToBuffer(after);
+        EXPECT_EQ(0, memcmp(before, after, size));
+    }
 }
 
 TEST(CKStateChunkRoundTripTest, GuidRoundTrip) {

@@ -2845,10 +2845,11 @@ int CKStateChunk::ParameterRemapper(ChunkIteratorData *it) {
     while (currentPos + 1 < it->ChunkSize) {
         if (it->Data[currentPos] == 0x40) {
             const int headerStart = currentPos + 2;
-            if (headerStart + 3 < it->ChunkSize) {
+            if (headerStart + 4 < it->ChunkSize) {
                 CKGUID storedGuid(it->Data[headerStart], it->Data[headerStart + 1]);
                 if (storedGuid == it->Guid && it->Data[headerStart + 2] == 1) {
-                    int &value = it->Data[headerStart + 3];
+                    // GUID, storage kind and buffer byte count precede the value.
+                    int &value = it->Data[headerStart + 4];
                     if (value >= 0 && value < it->NbEntries)
                         value = it->ConversionTable[value];
                     else
