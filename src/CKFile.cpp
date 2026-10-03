@@ -218,10 +218,9 @@ void CKBufferParser::InsertChunk(CKStateChunk *chunk) {
     if (!chunk)
         return;
 
-    int size = 0;
-    size = chunk->ConvertToBuffer(&m_Buffer[m_CursorPos]);
+    // Record framing belongs to the caller; object records already wrote it.
+    const int size = chunk->ConvertToBuffer(&m_Buffer[m_CursorPos]);
     m_CursorPos += size;
-    Write(&size, sizeof(int));
 }
 
 CKBufferParser *CKBufferParser::Pack(int Size, int CompressionLevel) {
@@ -921,6 +920,9 @@ void CKFile::SaveObject(CKObject *obj, CKDWORD flags) {
     if (m_AlreadyReferencedMask.IsSet(obj->GetID())) {
         m_ReferencedObjects.Remove(obj);
         m_AlreadyReferencedMask.Unset(obj->GetID());
+        const int index = SaveFindObjectIndex(obj->GetID());
+        if (index >= 0 && index < m_FileObjects.Size())
+            m_FileObjects[index].SaveFlags = flags;
     } else {
         CKFileObject fileObj;
         fileObj.Object = obj->GetID();
@@ -929,7 +931,7 @@ void CKFile::SaveObject(CKObject *obj, CKDWORD flags) {
         fileObj.SaveFlags = flags;
         fileObj.Name = CKStrdup(obj->GetName());
         m_FileObjects.PushBack(fileObj);
-        m_ObjectsHashTable.Insert(m_FileObjects.Size() - 1, obj->GetID());
+        m_ObjectsHashTable.Insert(obj->GetID(), m_FileObjects.Size() - 1);
         m_IndexByClassId[obj->GetClassID()].PushBack(m_FileObjects.Size() - 1);
     }
 
@@ -991,7 +993,7 @@ void CKFile::SaveObjectAsReference(CKObject *obj) {
     fileObj.SaveFlags = 0;
     fileObj.Name = CKStrdup(obj->GetName());
     m_FileObjects.PushBack(fileObj);
-    m_ObjectsHashTable.Insert(m_FileObjects.Size() - 1, obj->GetID());
+    m_ObjectsHashTable.Insert(obj->GetID(), m_FileObjects.Size() - 1);
     m_IndexByClassId[obj->GetClassID()].PushBack(m_FileObjects.Size() - 1);
 }
 
@@ -1062,7 +1064,8 @@ CKERROR CKFile::EndSave() {
         for (int i = 0; i < managerCount; ++i) {
             CKBaseManager *manager = m_Context->GetManager(i);
 
-            CKFileManagerData *managerData = &m_ManagersData[i];
+            // Managers may return no data; keep the saved records contiguous.
+            CKFileManagerData *managerData = &m_ManagersData[savedManagerCount];
             managerData->data = nullptr;
             managerData->Manager = manager->GetGuid();
 
@@ -1222,6 +1225,8 @@ CKERROR CKFile::EndSave() {
         for (int i = 0; i < savedManagerCount; ++i) {
             CKFileManagerData &managerData = m_ManagersData[i];
             parser->Write(&managerData.Manager, sizeof(CKGUID));
+            const int size = managerData.data ? managerData.data->ConvertToBuffer(nullptr) : 0;
+            parser->Write(&size, sizeof(size));
             parser->InsertChunk(managerData.data);
             delete managerData.data;
             managerData.data = nullptr;
@@ -1501,9 +1506,12 @@ void CKFile::FinishLoading(CKObjectArray *list, CKDWORD flags) {
             }
         }
 
-        if (hasGridManager) {
+        // Older files may have layers but no GridManager marker chunk.
+        // A manager already loaded above must not remap type parameters twice.
+        if (!hasGridManager) {
             CKBaseManager *manager = m_Context->GetManagerByGuid(GRID_MANAGER_GUID);
-            manager->LoadData(nullptr, this);
+            if (manager)
+                manager->LoadData(nullptr, this);
         }
 
         bool levelLoaded = false;
