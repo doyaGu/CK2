@@ -1180,8 +1180,16 @@ void CKStateChunk::ReadAndFillBuffer_LEndian(void *buffer) {
     }
 
     int size = m_Data[m_ChunkParser->CurrentPos];
-    int sz = (size + 3) / sizeof(int);
     ++m_ChunkParser->CurrentPos;
+    // The destination size is unknown here, but the stored size must stay
+    // within the chunk: the native copy reads past the data otherwise.
+    if (size < 0 || static_cast<size_t>(size) > static_cast<size_t>(m_ChunkSize - m_ChunkParser->CurrentPos) * sizeof(int)) {
+        if (m_File)
+            m_File->m_Context->OutputToConsole("Chunk Read error");
+        m_ChunkParser->CurrentPos = m_ChunkSize;
+        return;
+    }
+    const int sz = static_cast<int>((static_cast<size_t>(size) + sizeof(int) - 1) / sizeof(int));
     if (size > 0) {
         // IDA: only copy if buffer is not null
         if (buffer)

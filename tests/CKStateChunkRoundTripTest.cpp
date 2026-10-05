@@ -168,6 +168,30 @@ TEST(CKStateChunkRoundTripTest, NullBufferWriteDoesNotOverwriteTarget) {
     EXPECT_EQ(0, memcmp(original, target, sizeof(target)));
 }
 
+TEST(CKStateChunkRoundTripTest, UnsizedFillRejectsStoredSizePastChunkEnd) {
+    ScopedStateChunk chunk = CreateEmptyChunk();
+    ASSERT_NE(nullptr, chunk.Get());
+
+    for (const int storedSize : {64, -8}) {
+        CKBYTE target[] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
+        CKBYTE original[sizeof(target)];
+        memcpy(original, target, sizeof(target));
+
+        // A size prefix followed by fewer bytes than it declares.
+        chunk->StartWrite();
+        chunk->WriteInt(storedSize);
+        chunk->WriteDword(0x11111111u);
+        chunk->WriteDword(0x22222222u);
+        chunk->CloseChunk();
+
+        chunk->StartRead();
+        chunk->ReadAndFillBuffer_LEndian(target);
+
+        EXPECT_EQ(0, memcmp(original, target, sizeof(target))) << storedSize;
+        EXPECT_EQ(chunk->GetDataSize() / static_cast<int>(sizeof(int)), chunk->GetCurrentPos()) << storedSize;
+    }
+}
+
 TEST(CKStateChunkRoundTripTest, MixedPrimitiveRoundTrip) {
     ScopedStateChunk chunk = CreateEmptyChunk();
     ASSERT_NE(nullptr, chunk.Get());
