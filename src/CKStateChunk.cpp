@@ -1891,29 +1891,24 @@ void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *
 
     CKBYTE alphaHistogram[256];
     memset(alphaHistogram, 0, sizeof(alphaHistogram));
-
     CalculateMaskShifts(desc.RedMask, desc.GreenMask, desc.BlueMask, desc.AlphaMask);
-    const CKDWORD alphaMask = desc.AlphaMask;
-    const int bytesPerLine = desc.BytesPerLine;
-    int bytesPerPixel = desc.BitsPerPixel >> 3;
-    if (bytesPerPixel <= 0)
-        bytesPerPixel = 1;
-
-    int totalDwords = (desc.Height * bytesPerLine) >> 2;
-    CKBYTE *pixelCursor = desc.Image;
-    const int lutShift = static_cast<int>(g_AlphaShift_LSB) - static_cast<int>(g_AlphaQuantShift_MSB);
-    while (totalDwords-- > 0) {
-        CKDWORD packedPixel = *reinterpret_cast<const CKDWORD *>(pixelCursor);
-        CKBYTE histogramIndex = static_cast<CKBYTE>((packedPixel & alphaMask) >> lutShift);
-        alphaHistogram[histogramIndex] = 1;
-        pixelCursor += bytesPerPixel;
+    const int bytesPerPixel = desc.BitsPerPixel >> 3;
+    // Count actual pixels, excluding pitch padding, and expand the alpha
+    // component after shifting its mask to bit zero.
+    for (int y = 0; y < desc.Height; ++y) {
+        const CKBYTE *pixel = desc.Image + y * desc.BytesPerLine;
+        for (int x = 0; x < desc.Width; ++x) {
+            CKDWORD sample = 0;
+            memcpy(&sample, pixel, bytesPerPixel);
+            const CKBYTE alpha = static_cast<CKBYTE>(((sample & desc.AlphaMask) >> g_AlphaShift_LSB) << g_AlphaQuantShift_MSB);
+            alphaHistogram[alpha] = 1;
+            pixel += bytesPerPixel;
+        }
     }
-
     int distinctAlpha = 0;
     for (int i = 0; i < 256; ++i)
         distinctAlpha += alphaHistogram[i];
     WriteInt(distinctAlpha);
-
     if (distinctAlpha == 1) {
         for (int i = 0; i < 256; ++i) {
             if (alphaHistogram[i]) {
@@ -1921,42 +1916,21 @@ void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *
                 break;
             }
         }
-        reader->ReleaseMemory(savedBuffer);
-        return;
-    }
-
-    const size_t planeSize = static_cast<size_t>(desc.Width) * desc.Height;
-    CKBYTE *alphaPlane = (planeSize > 0) ? new CKBYTE[planeSize] : nullptr;
-    if (alphaPlane) {
-        if (desc.BitsPerPixel == 32) {
-            CKBYTE *srcRow = desc.Image;
-            for (int y = 0; y < desc.Height; ++y) {
-                CKBYTE *dst = alphaPlane + static_cast<size_t>(y) * desc.Width;
-                CKBYTE *src = srcRow + 3;
-                for (int x = 0; x < desc.Width; ++x) {
-                    dst[x] = *src;
-                    src += bytesPerPixel;
-                }
-                srcRow += desc.BytesPerLine;
-            }
-        } else {
-            CKBYTE *srcRow = desc.Image;
-            for (int y = 0; y < desc.Height; ++y) {
-                CKBYTE *dst = alphaPlane + static_cast<size_t>(y) * desc.Width;
-                CKBYTE *src = srcRow;
-                for (int x = 0; x < desc.Width; ++x) {
-                    CKDWORD packedPixel = 0;
-                    memcpy(&packedPixel, src, bytesPerPixel);
-                    dst[x] = static_cast<CKBYTE>(((packedPixel & alphaMask) >> g_AlphaShift_LSB) << g_AlphaQuantShift_MSB);
-                    src += bytesPerPixel;
-                }
-                srcRow -= desc.BytesPerLine;
+    } else {
+        const size_t planeSize = static_cast<size_t>(desc.Width) * desc.Height;
+        CKBYTE *alphaPlane = new CKBYTE[planeSize];
+        CKBYTE *alphaOut = alphaPlane;
+        for (int y = 0; y < desc.Height; ++y) {
+            const CKBYTE *pixel = desc.Image + y * desc.BytesPerLine;
+            for (int x = 0; x < desc.Width; ++x) {
+                CKDWORD sample = 0;
+                memcpy(&sample, pixel, bytesPerPixel);
+                *alphaOut++ = static_cast<CKBYTE>(((sample & desc.AlphaMask) >> g_AlphaShift_LSB) << g_AlphaQuantShift_MSB);
+                pixel += bytesPerPixel;
             }
         }
         WriteBuffer_LEndian(static_cast<int>(planeSize), alphaPlane);
         delete[] alphaPlane;
-    } else {
-        WriteBuffer_LEndian(0, nullptr);
     }
 
     reader->ReleaseMemory(savedBuffer);
@@ -1965,6 +1939,9 @@ void CKStateChunk::WriteReaderBitmap(const VxImageDescEx &desc, CKBitmapReader *
 CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
     CKDWORD formatType = ReadDword();
     if (formatType == 0 || !desc.Image)
+        return FALSE;
+
+    if (!m_ChunkParser || m_ChunkSize - m_ChunkParser->CurrentPos < 3)
         return FALSE;
 
     CKFileExtension ext;
@@ -1976,9 +1953,17 @@ CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
     if (!reader)
         return FALSE;
 
+    if (m_ChunkParser->CurrentPos >= m_ChunkSize) {
+        reader->Release();
+        return FALSE;
+    }
     CKBitmapProperties *props = nullptr;
     int size = ReadInt();
-    int dwordCount = (size + 3) / sizeof(int);
+    if (size < 0) {
+        reader->Release();
+        return FALSE;
+    }
+    int dwordCount = size / sizeof(int) + ((size & 3) != 0);
     if (!m_ChunkParser || m_ChunkParser->CurrentPos + dwordCount > m_ChunkSize) {
         reader->Release();
         return FALSE;
@@ -2003,16 +1988,29 @@ CKBOOL CKStateChunk::ReadReaderBitmap(const VxImageDescEx &desc) {
     Skip(dwordCount);
 
     if (formatType == 2) {
+        if (m_ChunkParser->CurrentPos >= m_ChunkSize) {
+            reader->Release();
+            return FALSE;
+        }
         int distinctAlphaCount = ReadInt();
         if (distinctAlphaCount == 1) {
+            if (m_ChunkParser->CurrentPos >= m_ChunkSize) {
+                reader->Release();
+                return FALSE;
+            }
             CKBYTE alpha = static_cast<CKBYTE>(ReadDword());
             VxDoAlphaBlit(desc, alpha);
         } else {
             void *buffer = nullptr;
-            if (ReadBuffer(&buffer) > 0 && buffer) {
-                VxDoAlphaBlit(desc, (CKBYTE *) buffer);
-                delete[] (CKBYTE *) buffer;
+            const int alphaSize = ReadBuffer(&buffer);
+            const size_t planeSize = static_cast<size_t>(desc.Width) * desc.Height;
+            if (!buffer || static_cast<size_t>(alphaSize) < planeSize) {
+                delete[] static_cast<CKBYTE *>(buffer);
+                reader->Release();
+                return FALSE;
             }
+            VxDoAlphaBlit(desc, static_cast<CKBYTE *>(buffer));
+            delete[] static_cast<CKBYTE *>(buffer);
         }
     }
 
@@ -2040,8 +2038,7 @@ void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
     WriteDword(desc.RedMask);
     WriteDword(desc.GreenMask);
     WriteDword(desc.BlueMask);
-    const int compressionFlagPos = m_ChunkParser->CurrentPos;
-    WriteDword(0); // Will be patched to 1 if JPEG compression succeeds
+    WriteDword(0); // Raw planes preserve the image without JPEG loss.
 
     const size_t planeSize = static_cast<size_t>(width) * static_cast<size_t>(height);
     CKBYTE *bluePlane = new CKBYTE[planeSize];
@@ -2068,119 +2065,26 @@ void CKStateChunk::WriteRawBitmap(const VxImageDescEx &desc) {
     CKBYTE *redOut = redPlane;
     CKBYTE *alphaOut = alphaPlane;
 
-    if (bitsPerPixel == 32) {
-        if (alphaPlane) {
-            for (int remaining = height; remaining > 0; --remaining) {
-                const CKBYTE *pixel = scanline;
-                for (int x = 0; x < width; ++x) {
-                    *blueOut++ = pixel[0];
-                    *greenOut++ = pixel[1];
-                    *redOut++ = pixel[2];
-                    *alphaOut++ = pixel[3];
-                    pixel += bytesPerPixel;
-                }
-                scanline -= desc.BytesPerLine;
-            }
-        } else {
-            for (int remaining = height; remaining > 0; --remaining) {
-                const CKBYTE *pixel = scanline;
-                for (int x = 0; x < width; ++x) {
-                    *blueOut++ = pixel[0];
-                    *greenOut++ = pixel[1];
-                    *redOut++ = pixel[2];
-                    pixel += bytesPerPixel;
-                }
-                scanline -= desc.BytesPerLine;
-            }
+    CalculateMaskShifts(desc.RedMask, desc.GreenMask, desc.BlueMask, desc.AlphaMask);
+    for (int y = 0; y < height; ++y) {
+        const CKBYTE *pixel = scanline;
+        for (int x = 0; x < width; ++x) {
+            CKDWORD sample = 0;
+            memcpy(&sample, pixel, bytesPerPixel);
+            *blueOut++ = static_cast<CKBYTE>(((sample & desc.BlueMask) >> g_BlueShift_LSB) << g_BlueQuantShift_MSB);
+            *greenOut++ = static_cast<CKBYTE>(((sample & desc.GreenMask) >> g_GreenShift_LSB) << g_GreenQuantShift_MSB);
+            *redOut++ = static_cast<CKBYTE>(((sample & desc.RedMask) >> g_RedShift_LSB) << g_RedQuantShift_MSB);
+            if (alphaOut)
+                *alphaOut++ = static_cast<CKBYTE>(((sample & desc.AlphaMask) >> g_AlphaShift_LSB) << g_AlphaQuantShift_MSB);
+            pixel += bytesPerPixel;
         }
-    } else if (bitsPerPixel < 24) {
-        CalculateMaskShifts(desc.RedMask, desc.GreenMask, desc.BlueMask, desc.AlphaMask);
-        const CKDWORD redLsb = g_RedShift_LSB;
-        const CKDWORD redQuant = g_RedQuantShift_MSB;
-        const CKDWORD greenLsb = g_GreenShift_LSB;
-        const CKDWORD greenQuant = g_GreenQuantShift_MSB;
-        const CKDWORD blueLsb = g_BlueShift_LSB;
-        const CKDWORD blueQuant = g_BlueQuantShift_MSB;
-        const CKDWORD alphaLsb = g_AlphaShift_LSB;
-        const CKDWORD alphaQuant = g_AlphaQuantShift_MSB;
-
-        for (int remaining = height; remaining > 0; --remaining) {
-            const CKBYTE *pixel = scanline;
-            for (int x = 0; x < width; ++x) {
-                CKDWORD sample = 0;
-                memcpy(&sample, pixel, bytesPerPixel);
-                *blueOut++ = static_cast<CKBYTE>(((sample & desc.BlueMask) >> blueLsb) << blueQuant);
-                *greenOut++ = static_cast<CKBYTE>(((sample & desc.GreenMask) >> greenLsb) << greenQuant);
-                *redOut++ = static_cast<CKBYTE>(((sample & desc.RedMask) >> redLsb) << redQuant);
-                if (alphaPlane)
-                    *alphaOut++ = static_cast<CKBYTE>(((sample & desc.AlphaMask) >> alphaLsb) << alphaQuant);
-                pixel += bytesPerPixel;
-            }
-            scanline -= desc.BytesPerLine;
-        }
-    } else {
-        for (int remaining = height; remaining > 0; --remaining) {
-            const CKBYTE *pixel = scanline;
-            for (int x = 0; x < width; ++x) {
-                *blueOut++ = pixel[0];
-                *greenOut++ = pixel[1];
-                *redOut++ = pixel[2];
-                pixel += bytesPerPixel;
-            }
-            scanline -= desc.BytesPerLine;
-        }
+        scanline -= desc.BytesPerLine;
     }
 
-    CKBYTE *encodedBlue = nullptr;
-    CKBYTE *encodedGreen = nullptr;
-    CKBYTE *encodedRed = nullptr;
-    int encodedBlueSize = 0;
-    int encodedGreenSize = 0;
-    int encodedRedSize = 0;
-    bool compressionUsed = false;
-
-    const bool canAttemptCompression = (planeSize > 0) &&
-                                       (planeSize <= static_cast<size_t>(INT_MAX)) &&
-                                       (width > 0 && height > 0);
-    if (canAttemptCompression) {
-        const int jpegQuality = 85;
-        bool encodeOk = CKJpegDecoder::EncodeGrayscalePlane(bluePlane, width, height, jpegQuality, &encodedBlue, encodedBlueSize);
-        if (encodeOk)
-            encodeOk = CKJpegDecoder::EncodeGrayscalePlane(greenPlane, width, height, jpegQuality, &encodedGreen, encodedGreenSize);
-        if (encodeOk)
-            encodeOk = CKJpegDecoder::EncodeGrayscalePlane(redPlane, width, height, jpegQuality, &encodedRed, encodedRedSize);
-
-        if (encodeOk) {
-            compressionUsed = true;
-        } else {
-            delete[] encodedBlue;
-            delete[] encodedGreen;
-            delete[] encodedRed;
-            encodedBlue = encodedGreen = encodedRed = nullptr;
-            encodedBlueSize = encodedGreenSize = encodedRedSize = 0;
-        }
-    }
-
-    if (compressionUsed) {
-        m_Data[compressionFlagPos] = 1;
-        WriteBuffer_LEndian(encodedBlueSize, encodedBlue);
-        WriteBuffer_LEndian(encodedGreenSize, encodedGreen);
-        WriteBuffer_LEndian(encodedRedSize, encodedRed);
-    } else {
-        WriteBuffer_LEndian(static_cast<int>(planeSize), bluePlane);
-        WriteBuffer_LEndian(static_cast<int>(planeSize), greenPlane);
-        WriteBuffer_LEndian(static_cast<int>(planeSize), redPlane);
-    }
-
-    if (alphaPlane) {
-        WriteBuffer_LEndian(static_cast<int>(planeSize), alphaPlane);
-    } else {
-        WriteBuffer_LEndian(0, nullptr);
-    }
-
-    delete[] encodedBlue;
-    delete[] encodedGreen;
-    delete[] encodedRed;
+    WriteBuffer_LEndian(static_cast<int>(planeSize), bluePlane);
+    WriteBuffer_LEndian(static_cast<int>(planeSize), greenPlane);
+    WriteBuffer_LEndian(static_cast<int>(planeSize), redPlane);
+    WriteBuffer_LEndian(alphaPlane ? static_cast<int>(planeSize) : 0, alphaPlane);
 
     delete[] bluePlane;
     delete[] greenPlane;
@@ -2196,12 +2100,18 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
     if (bitsPerPixel == 0)
         return nullptr;
 
+    if (m_ChunkSize - m_ChunkParser->CurrentPos < 7)
+        return nullptr;
+
     desc.Width = ReadInt();
     desc.Height = ReadInt();
     desc.AlphaMask = ReadDword();
     desc.RedMask = ReadDword();
     desc.GreenMask = ReadDword();
     desc.BlueMask = ReadDword();
+    if (desc.Width <= 0 || desc.Height <= 0 || desc.Width > INT_MAX / 4)
+        return nullptr;
+    const size_t planeSize = static_cast<size_t>(desc.Width) * desc.Height;
     desc.BytesPerLine = desc.Width * 4;
     desc.BitsPerPixel = 32;
 
@@ -2210,12 +2120,13 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
     void *redPlane = nullptr;
     void *alphaPlane = nullptr;
     bool alphaAlreadyRead = false;
+    int blueSize = 0, greenSize = 0, redSize = 0, alphaSize = 0;
 
     int compression = ReadDword() & 0xF;
     if (compression == 0) {
-        ReadBuffer(&bluePlane);
-        ReadBuffer(&greenPlane);
-        ReadBuffer(&redPlane);
+        blueSize = ReadBuffer(&bluePlane);
+        greenSize = ReadBuffer(&greenPlane);
+        redSize = ReadBuffer(&redPlane);
     } else if (compression == 1) {
         void *encodedBlue = nullptr;
         void *encodedGreen = nullptr;
@@ -2254,8 +2165,9 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
         bluePlane = decodedBlue;
         greenPlane = decodedGreen;
         redPlane = decodedRed;
+        blueSize = greenSize = redSize = static_cast<int>(planeSize);
 
-        ReadBuffer(&alphaPlane);
+        alphaSize = ReadBuffer(&alphaPlane);
         alphaAlreadyRead = true;
     } else {
         for (int plane = 0; plane < 3; ++plane) {
@@ -2270,9 +2182,21 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
     }
 
     if (!alphaAlreadyRead)
-        ReadBuffer(&alphaPlane);
+        alphaSize = ReadBuffer(&alphaPlane);
 
-    CKBYTE *output = new CKBYTE[desc.BytesPerLine * desc.Height];
+    if (!bluePlane || !greenPlane || !redPlane ||
+        static_cast<size_t>(blueSize) < planeSize ||
+        static_cast<size_t>(greenSize) < planeSize ||
+        static_cast<size_t>(redSize) < planeSize ||
+        (alphaPlane && static_cast<size_t>(alphaSize) < planeSize)) {
+        delete[] static_cast<CKBYTE *>(bluePlane);
+        delete[] static_cast<CKBYTE *>(greenPlane);
+        delete[] static_cast<CKBYTE *>(redPlane);
+        delete[] static_cast<CKBYTE *>(alphaPlane);
+        return nullptr;
+    }
+
+    CKBYTE *output = new CKBYTE[planeSize * 4];
     if (!output) {
         delete[] static_cast<CKBYTE *>(bluePlane);
         delete[] static_cast<CKBYTE *>(greenPlane);
@@ -2312,6 +2236,9 @@ CKBYTE *CKStateChunk::ReadRawBitmap(VxImageDescEx &desc) {
         }
     }
 
+    desc.RedMask = R_MASK;
+    desc.GreenMask = G_MASK;
+    desc.BlueMask = B_MASK;
     desc.AlphaMask = A_MASK;
 
     delete[] static_cast<CKBYTE *>(bluePlane);

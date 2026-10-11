@@ -264,6 +264,20 @@ add_ck2_test(CKStateChunkAncillaryTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkBitmapTest
+        SOURCES
+        CKStateChunkBitmapTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
+add_ck2_test(CKStateChunkHelperTest
+        SOURCES
+        CKStateChunkHelperTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 if (TARGET CK2Static)
     add_ck2_test(CKStateChunkOwnershipTest
             SOURCES
