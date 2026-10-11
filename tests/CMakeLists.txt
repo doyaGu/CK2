@@ -236,6 +236,13 @@ add_ck2_test(CKStateChunkPackedCloneTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkPrimitiveTest
+        SOURCES
+        CKStateChunkPrimitiveTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 add_ck2_test(CKStateChunkObjectSequenceTest
         SOURCES
         CKStateChunkObjectSequenceTest.cpp

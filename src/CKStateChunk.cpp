@@ -1167,7 +1167,7 @@ void CKStateChunk::WriteGuid(CKGUID data) {
 
 CKGUID CKStateChunk::ReadGuid() {
     CKGUID guid;
-    if (m_ChunkParser->CurrentPos + 2 > m_ChunkSize)
+    if (!m_ChunkParser || m_ChunkParser->CurrentPos + 2 > m_ChunkSize)
         return guid;
     guid.d1 = m_Data[m_ChunkParser->CurrentPos++];
     guid.d2 = m_Data[m_ChunkParser->CurrentPos++];
