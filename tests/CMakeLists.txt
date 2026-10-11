@@ -306,3 +306,17 @@ if (TARGET CK2Static)
             CK2Static VxMath miniz
     )
 endif ()
+
+add_ck2_test(CKFileSaveLifecycleTest
+        SOURCES
+        CKFileSaveLifecycleTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
+add_ck2_test(CKFileLoadLifecycleTest
+        SOURCES
+        CKFileLoadLifecycleTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
