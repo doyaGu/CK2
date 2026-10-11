@@ -236,6 +236,13 @@ add_ck2_test(CKPluginManagerPlatformTest
         CK2 VxMath
 )
 
+add_ck2_test(CKFileCRCTest
+        SOURCES
+        CKFileCRCTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 add_ck2_test(CKStateChunkWriterCloneTest
         SOURCES
         CKStateChunkWriterCloneTest.cpp
