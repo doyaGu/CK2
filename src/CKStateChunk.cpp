@@ -18,7 +18,7 @@ CKStateChunk *CreateCKStateChunk(CK_CLASSID id, CKFile *file) {
 }
 
 CKStateChunk *CreateCKStateChunk(CKStateChunk *chunk) {
-    return new CKStateChunk(*chunk);
+    return new CKStateChunk(chunk);
 }
 
 void DeleteCKStateChunk(CKStateChunk *chunk) {
@@ -79,7 +79,7 @@ void CKStateChunk::Clear() {
 }
 
 void CKStateChunk::Clone(CKStateChunk *chunk) {
-    if (!chunk)
+    if (!chunk || chunk == this)
         return;
 
     Clear();
@@ -102,10 +102,15 @@ void CKStateChunk::Clone(CKStateChunk *chunk) {
         m_Managers = new IntListStruct(*chunk->m_Managers);
 
     if (chunk->m_Data) {
-        m_Data = new int[m_ChunkSize];
-        memcpy(m_Data, chunk->m_Data, m_ChunkSize * sizeof(int));
+        // An open writer may have pending data beyond its published extent,
+        // including data after a cursor moved backward for a fixup.
+        int dataSize = m_ChunkSize;
+        if (chunk->m_ChunkParser && chunk->m_ChunkParser->DataSize > dataSize)
+            dataSize = chunk->m_ChunkParser->DataSize;
+        m_Data = new int[dataSize];
+        memcpy(m_Data, chunk->m_Data, dataSize * sizeof(int));
         if (m_ChunkParser)
-            m_ChunkParser->DataSize = m_ChunkSize;
+            m_ChunkParser->DataSize = dataSize;
     }
     m_File = chunk->m_File;
     // IDA: m_Dynamic is NOT copied in Clone
@@ -165,14 +170,15 @@ void CKStateChunk::CheckSize(int size) {
     if (!m_ChunkParser)
         return;
 
-    int sz = size / sizeof(int);
+    int sz = size / static_cast<int>(sizeof(int));
     if (sz + m_ChunkParser->CurrentPos > m_ChunkParser->DataSize) {
         if (sz < 500)
             sz = 500;
         int newSize = m_ChunkParser->DataSize + sz;
         int *data = new int[newSize];
         if (m_Data) {
-            memcpy(data, m_Data, m_ChunkParser->CurrentPos * sizeof(int));
+            // Preserve existing storage when reserving after a backward fixup.
+            memcpy(data, m_Data, m_ChunkParser->DataSize * sizeof(int));
             delete[] m_Data;
         }
         m_Data = data;

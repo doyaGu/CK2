@@ -95,6 +95,13 @@ add_ck2_test(CKStateChunkLifecycleTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkCloneTest
+        SOURCES
+        CKStateChunkCloneTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 add_ck2_test(CKJpegDecoderRegressionTest
         SOURCES
         CKJpegDecoderRegressionTest.cpp
@@ -193,3 +200,26 @@ add_ck2_test(CKPluginManagerPlatformTest
         DEPENDENCIES
         CK2 VxMath
 )
+
+add_ck2_test(CKStateChunkWriterCloneTest
+        SOURCES
+        CKStateChunkWriterCloneTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
+add_ck2_test(CKStateChunkPackedCloneTest
+        SOURCES
+        CKStateChunkPackedCloneTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
+if (TARGET CK2Static)
+    add_ck2_test(CKStateChunkOwnershipTest
+            SOURCES
+            CKStateChunkOwnershipTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath
+    )
+endif ()
