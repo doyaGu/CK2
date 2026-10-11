@@ -61,8 +61,8 @@ CK_CLASSID CKSceneObject::GetClassID() {
 }
 
 int CKSceneObject::GetMemoryOccupation() {
-    // Object itself + XBitArray header + owned bit-buffer.
-    return CKObject::GetMemoryOccupation() + (int) (sizeof(XBitArray) - sizeof(CKObject)) + m_Scenes.GetMemoryOccupation();
+    // Base object, the derived object fields, and the owned scene-bit buffer.
+    return CKObject::GetMemoryOccupation() + static_cast<int>(sizeof(CKSceneObject) - sizeof(CKObject)) + m_Scenes.GetMemoryOccupation();
 }
 
 CKSTRING CKSceneObject::GetClassName() {
