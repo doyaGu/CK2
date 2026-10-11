@@ -7,6 +7,10 @@
 #include "CKAttributeManager.h"
 #include "CKBehavior.h"
 #include "CKBeObject.h"
+#include "CKObjectAnimation.h"
+#include "CKBodyPart.h"
+#include "CKCharacter.h"
+#include "CKAnimation.h"
 #include "CKInterfaceObjectManager.h"
 #include "VxWindowFunctions.h"
 
@@ -922,6 +926,51 @@ CKERROR CKFile::Load(void *MemoryBuffer, int BufferSize, CKObjectArray *list, CK
 }
 
 void CKFile::UpdateAndApplyAnimationsTo(CKCharacter *character) {
+    XIntArray &objectAnimations = m_IndexByClassId[CKCID_OBJECTANIMATION];
+    if ((m_Flags & CK_LOAD_ANIMATION) && character) {
+        for (int pass = 0; pass < 2; ++pass) {
+            for (int i = 0; i < objectAnimations.Size(); ++i) {
+                CKObjectAnimation *animation = (CKObjectAnimation *)m_FileObjects[objectAnimations[i]].ObjPtr;
+                if (!animation || animation->Get3dEntity() || !animation->GetName())
+                    continue;
+                const char *name = animation->GetName();
+                const size_t length = strlen(name);
+                for (int p = 0; p < character->GetBodyPartCount(); ++p) {
+                    CKBodyPart *part = character->GetBodyPart(p);
+                    if (!part || !part->GetName())
+                        continue;
+                    const char *partName = part->GetName();
+                    const size_t partLength = strlen(partName);
+                    CKBOOL matches = FALSE;
+                    if (pass == 0) {
+                        matches = partLength == length && strcmp(partName, name) == 0;
+                    } else if (partLength == length + 3 && strncmp(partName, name, length) == 0) {
+                        matches = partName[length] >= '0' && partName[length] <= '9' &&
+                                  partName[length + 1] >= '0' && partName[length + 1] <= '9' &&
+                                  partName[length + 2] >= '0' && partName[length + 2] <= '9';
+                    }
+                    if (matches) {
+                        animation->Set3dEntity(part);
+                    }
+                }
+            }
+        }
+        XIntArray &keyedAnimations = m_IndexByClassId[CKCID_KEYEDANIMATION];
+        for (int i = 0; i < keyedAnimations.Size(); ++i) {
+            CKAnimation *animation = (CKAnimation *)m_FileObjects[keyedAnimations[i]].ObjPtr;
+            if (animation)
+                character->AddAnimation(animation);
+        }
+    }
+    for (int i = 0; i < objectAnimations.Size(); ++i) {
+        CKObjectAnimation *animation = (CKObjectAnimation *)m_FileObjects[objectAnimations[i]].ObjPtr;
+        if (!animation || animation->Get3dEntity() || !animation->GetName())
+            continue;
+        CK3dEntity *entity = (CK3dEntity *)m_Context->GetObjectByNameAndParentClass(animation->GetName(), CKCID_3DENTITY, nullptr);
+        if (entity) {
+            animation->Set3dEntity(entity);
+        }
+    }
 }
 
 CKERROR CKFile::StartSave(CKSTRING filename, CKDWORD Flags) {
