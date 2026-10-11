@@ -144,6 +144,13 @@ void CKStateChunk::StartRead() {
 void CKStateChunk::StartWrite() {
     delete[] m_Data;
     m_Data = nullptr;
+    m_ChunkSize = 0;
+    delete m_Ids;
+    delete m_Chunks;
+    delete m_Managers;
+    m_Ids = nullptr;
+    m_Chunks = nullptr;
+    m_Managers = nullptr;
     m_ChunkVersion = CHUNK_VERSION4;
     if (m_ChunkParser) {
         m_ChunkParser->CurrentPos = 0;
