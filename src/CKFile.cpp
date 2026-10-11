@@ -1294,7 +1294,8 @@ CKERROR CKFile::EndSave() {
     if (fwrite(&header.Part0, sizeof(CKFileHeaderPart0), 1, fp) == 1 &&
         fwrite(&header.Part1, sizeof(CKFileHeaderPart1), 1, fp) == 1 &&
         fwrite(&hdr1BufferParser->m_Buffer[hdr1BufferParser->CursorPos()], hdr1BufferParser->Size(), 1, fp) == 1 &&
-        fwrite(&dataBufferParser->m_Buffer[dataBufferParser->CursorPos()], dataBufferParser->Size(), 1, fp) == 1) {
+        (dataBufferParser->Size() == 0 ||
+         fwrite(&dataBufferParser->m_Buffer[dataBufferParser->CursorPos()], dataBufferParser->Size(), 1, fp) == 1)) {
         int includeFileCount = m_IncludedFiles.Size();
         for (int i = 0; i < includeFileCount; ++i) {
             XString &filename = m_IncludedFiles[i];
@@ -1337,6 +1338,10 @@ CKBOOL CKFile::IncludeFile(CKSTRING FileName, int SearchPathCategory) {
 
     XString filename = FileName;
     if (SearchPathCategory <= -1 || m_Context->GetPathManager()->ResolveFileName(filename, SearchPathCategory) == CK_OK) {
+        for (int i = 0; i < m_IncludedFiles.Size(); ++i) {
+            if (filename.ICompare(m_IncludedFiles[i]) == 0)
+                return FALSE;
+        }
         m_IncludedFiles.PushBack(filename);
         return TRUE;
     }
