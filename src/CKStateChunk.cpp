@@ -516,19 +516,22 @@ int CKStateChunk::ReadManagerInt(CKGUID *guid) {
 int CKStateChunk::ReadArray_LEndian(void **array) {
     ChunkParser *parser = m_ChunkParser;
     if (parser && parser->CurrentPos < m_ChunkSize) {
+        if (m_ChunkSize - parser->CurrentPos < 2) {
+            *array = nullptr;
+            parser->CurrentPos = m_ChunkSize;
+            return 0;
+        }
         // Read array metadata
         const int dataSizeBytes = m_Data[parser->CurrentPos++];
         const int elementCount = m_Data[parser->CurrentPos++];
 
         if (dataSizeBytes > 0 && elementCount > 0) {
-            // Calculate needed dwords (4-byte chunks)
-            const int dwordCount = (dataSizeBytes + 3) / 4;
-
             // Bounds check before allocation
-            if (parser->CurrentPos + dwordCount > m_ChunkSize) {
+            if (static_cast<size_t>(dataSizeBytes) > static_cast<size_t>(m_ChunkSize - parser->CurrentPos) * sizeof(int)) {
                 *array = nullptr;
                 return 0;
             }
+            const int dwordCount = static_cast<int>((static_cast<size_t>(dataSizeBytes) + sizeof(int) - 1) / sizeof(int));
 
             // Allocate and check allocation success
             void *arrayData = new CKBYTE[dataSizeBytes];
@@ -1190,9 +1193,9 @@ int CKStateChunk::ReadBuffer(void **buffer) {
 
     CKBYTE *buf = nullptr;
     int size = m_Data[m_ChunkParser->CurrentPos];
-    int sz = (size + 3) / sizeof(int);
     ++m_ChunkParser->CurrentPos;
-    if (sz + m_ChunkParser->CurrentPos <= m_ChunkSize) {
+    if (size >= 0 && static_cast<size_t>(size) <= static_cast<size_t>(m_ChunkSize - m_ChunkParser->CurrentPos) * sizeof(int)) {
+        const int sz = static_cast<int>((static_cast<size_t>(size) + sizeof(int) - 1) / sizeof(int));
         if (size > 0) {
             buf = new CKBYTE[size];
             if (!buf) {
@@ -1305,9 +1308,9 @@ int CKStateChunk::ReadString(char **str) {
 
     char *s = nullptr;
     int size = m_Data[m_ChunkParser->CurrentPos];
-    int sz = (size + 3) / sizeof(int);
     ++m_ChunkParser->CurrentPos;
-    if (sz + m_ChunkParser->CurrentPos <= m_ChunkSize) {
+    if (size >= 0 && static_cast<size_t>(size) <= static_cast<size_t>(m_ChunkSize - m_ChunkParser->CurrentPos) * sizeof(int)) {
+        const int sz = static_cast<int>((static_cast<size_t>(size) + sizeof(int) - 1) / sizeof(int));
         if (size > 0) {
             s = new char[size];
             if (!s) {
@@ -1331,11 +1334,8 @@ void CKStateChunk::ReadString(XString &str) {
         return;
     }
 
-    CKDWORD length = m_Data[m_ChunkParser->CurrentPos++];
-
-    CKDWORD dwordCount = (length + 3) >> 2; // (length+3)/4
-
-    if ((m_ChunkParser->CurrentPos + (int) dwordCount) > m_ChunkSize) {
+    const int length = m_Data[m_ChunkParser->CurrentPos++];
+    if (length < 0 || static_cast<size_t>(length) > static_cast<size_t>(m_ChunkSize - m_ChunkParser->CurrentPos) * sizeof(int)) {
         str = "";
         return;
     }
@@ -1345,7 +1345,13 @@ void CKStateChunk::ReadString(XString &str) {
         return;
     }
 
-    str = (char *) &m_Data[m_ChunkParser->CurrentPos];
+    const char *text = reinterpret_cast<const char *>(&m_Data[m_ChunkParser->CurrentPos]);
+    if (!memchr(text, 0, static_cast<size_t>(length))) {
+        str = "";
+        return;
+    }
+    const int dwordCount = static_cast<int>((static_cast<size_t>(length) + sizeof(int) - 1) / sizeof(int));
+    str = text;
     m_ChunkParser->CurrentPos += dwordCount;
 }
 

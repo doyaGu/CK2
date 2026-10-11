@@ -102,6 +102,20 @@ add_ck2_test(CKStateChunkCloneTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkBufferTest
+        SOURCES
+        CKStateChunkBufferTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
+add_ck2_test(CKStateChunkCursorTest
+        SOURCES
+        CKStateChunkCursorTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 add_ck2_test(CKJpegDecoderRegressionTest
         SOURCES
         CKJpegDecoderRegressionTest.cpp
