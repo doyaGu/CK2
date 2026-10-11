@@ -2464,6 +2464,9 @@ CKDWORD CKStateChunk::ComputeCRC(CKDWORD adler) {
 void CKStateChunk::Pack(int CompressionLevel) {
     if (!m_Data || m_ChunkSize <= 0)
         return;
+    // miniz clamps levels that the original zlib interface rejects.
+    if (CompressionLevel < -1 || CompressionLevel > 9)
+        return;
 
     uLongf srcSize = m_ChunkSize * sizeof(int);
     uLongf destSize = srcSize;
@@ -2471,14 +2474,18 @@ void CKStateChunk::Pack(int CompressionLevel) {
     if (!buf) return;
 
     if (compress2(buf, &destSize, (const Bytef *) m_Data, srcSize, CompressionLevel) == Z_OK) {
-        // Allocate exact size for compressed data
-        Bytef *data = new Bytef[destSize];
+        // Packed size is a byte count, but Clone/CRC/export expose that field
+        // as a DWORD extent. Back the whole existing view with owned storage.
+        int *data = new int[destSize];
         if (data) {
+            memset(data, 0, destSize * sizeof(int));
             memcpy(data, buf, destSize);
             delete[] m_Data;
-            m_Data = (int *) data;
+            m_Data = data;
             // IDA stores raw byte size, not DWORD count
             m_ChunkSize = destSize;
+            if (m_ChunkParser)
+                m_ChunkParser->DataSize = m_ChunkSize;
         }
     }
     delete[] buf;
@@ -2487,7 +2494,7 @@ void CKStateChunk::Pack(int CompressionLevel) {
 CKBOOL CKStateChunk::UnPack(int DestSize) {
     if (!m_Data || m_ChunkSize <= 0)
         return FALSE;
-    if (DestSize <= 0 || (DestSize & 3) != 0)
+    if (DestSize <= 0)
         return FALSE;
 
     uLongf size = DestSize;
@@ -2496,23 +2503,26 @@ CKBOOL CKStateChunk::UnPack(int DestSize) {
 
     // Pass raw m_ChunkSize as compressed byte count (from Pack)
     int err = uncompress(buf, &size, (const Bytef *) m_Data, m_ChunkSize);
-    if (err != Z_OK || size != (uLongf) DestSize) {
+    // DestSize is a capacity; only the actual decoded payload counts as data.
+    if (err != Z_OK || (size & (sizeof(int) - 1)) != 0) {
         delete[] buf;
         return FALSE;
     }
 
     // Store as DWORD count after decompression
-    const int newChunkSize = DestSize >> 2;
+    const int newChunkSize = static_cast<int>(size / sizeof(int));
     int *data = new int[newChunkSize];
     if (!data) {
         delete[] buf;
         return FALSE;
     }
 
-    memcpy(data, buf, DestSize);
+    memcpy(data, buf, size);
     delete[] m_Data;
     m_Data = data;
     m_ChunkSize = newChunkSize;
+    if (m_ChunkParser)
+        m_ChunkParser->DataSize = newChunkSize;
 
     delete[] buf;
     return TRUE;
