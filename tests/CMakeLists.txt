@@ -81,6 +81,13 @@ add_ck2_test(CKStateChunkSubChunkTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkRemapTest
+        SOURCES
+        CKStateChunkRemapTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 add_ck2_test(CKJpegDecoderRegressionTest
         SOURCES
         CKJpegDecoderRegressionTest.cpp
