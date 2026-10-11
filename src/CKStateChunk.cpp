@@ -2632,10 +2632,9 @@ void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int
         return;
 
     const int sequenceCount = StartReadSequence();
-    const int attributeSectionStart = GetCurrentPos();
     Skip(sequenceCount);
 
-    if (!preserveData && sequenceCount > 0) {
+    if (!preserveData) {
         StartReadSequence();
         int remaining = sequenceCount;
         while (remaining-- > 0) {
@@ -2646,7 +2645,7 @@ void CKStateChunk::AttributePatch(CKBOOL preserveData, int *ConversionTable, int
     }
 
     m_Managers = new IntListStruct();
-    m_Managers->AddEntries(attributeSectionStart);
+    m_Managers->AddEntries(GetCurrentPos());
 
     Skip(3); // Skip attribute header (GUID + count)
 

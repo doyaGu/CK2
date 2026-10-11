@@ -257,6 +257,13 @@ add_ck2_test(CKStateChunkManagerSequenceTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkAncillaryTest
+        SOURCES
+        CKStateChunkAncillaryTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 if (TARGET CK2Static)
     add_ck2_test(CKStateChunkOwnershipTest
             SOURCES
