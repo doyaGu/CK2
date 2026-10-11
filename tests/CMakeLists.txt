@@ -67,6 +67,13 @@ add_ck2_test(CKStateChunkRoundTripTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkIdentifierTest
+        SOURCES
+        CKStateChunkIdentifierTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 add_ck2_test(CKStateChunkObjectReadTest
         SOURCES
         CKStateChunkObjectReadTest.cpp
@@ -91,6 +98,13 @@ add_ck2_test(CKStateChunkSubChunkTest
 add_ck2_test(CKStateChunkRemapTest
         SOURCES
         CKStateChunkRemapTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
+add_ck2_test(CKStateChunkAppendTest
+        SOURCES
+        CKStateChunkAppendTest.cpp
         DEPENDENCIES
         CK2 VxMath
 )
