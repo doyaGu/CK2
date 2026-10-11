@@ -862,7 +862,8 @@ void CKStateChunk::WriteSubChunk(CKStateChunk *sub) {
             m_Chunks = new IntListStruct;
         m_Chunks->AddEntry(m_ChunkParser->CurrentPos - 1);
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkClassID;
-        m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion | sub->m_ChunkVersion << 16;
+        m_Data[m_ChunkParser->CurrentPos++] = static_cast<unsigned short>(sub->m_DataVersion) |
+                                             (static_cast<unsigned int>(static_cast<unsigned short>(sub->m_ChunkVersion)) << 16);
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkSize;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != nullptr;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Ids) ? sub->m_Ids->Size : 0;
@@ -912,7 +913,8 @@ void CKStateChunk::WriteSubChunkSequence(CKStateChunk *sub) {
     m_Data[m_ChunkParser->CurrentPos++] = size / sizeof(int) - 1;
     if (sub) {
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkClassID;
-        m_Data[m_ChunkParser->CurrentPos++] = sub->m_DataVersion | sub->m_ChunkVersion << 16;
+        m_Data[m_ChunkParser->CurrentPos++] = static_cast<unsigned short>(sub->m_DataVersion) |
+                                             (static_cast<unsigned int>(static_cast<unsigned short>(sub->m_ChunkVersion)) << 16);
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_ChunkSize;
         m_Data[m_ChunkParser->CurrentPos++] = sub->m_File != nullptr;
         m_Data[m_ChunkParser->CurrentPos++] = (sub->m_Ids) ? sub->m_Ids->Size : 0;
@@ -937,13 +939,26 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
     }
 
     int size = m_Data[m_ChunkParser->CurrentPos++];
-    if (size <= 0 || size + m_ChunkParser->CurrentPos > m_ChunkSize)
+    if (size <= 0 || size > m_ChunkSize - m_ChunkParser->CurrentPos)
         return nullptr;
+
+    const int endPos = m_ChunkParser->CurrentPos + size;
+    if (size < 3) {
+        m_ChunkParser->CurrentPos = endPos;
+        return nullptr;
+    }
+    // Older embedded records can appear inside a newer parent chunk.
+    const bool modernHeader = m_ChunkVersion >= CHUNK_VERSION1 &&
+                              m_Data[m_ChunkParser->CurrentPos + 1] != size - 4;
+    if (modernHeader && size < (m_ChunkVersion > CHUNK_VERSION1 ? 7 : 6)) {
+        m_ChunkParser->CurrentPos = endPos;
+        return nullptr;
+    }
 
     int classID = m_Data[m_ChunkParser->CurrentPos++];
     CKStateChunk *sub = CreateCKStateChunk(classID, nullptr);
 
-    if (m_ChunkVersion >= CHUNK_VERSION1) {
+    if (modernHeader) {
         int version = m_Data[m_ChunkParser->CurrentPos++];
         sub->m_DataVersion = (short int) (version & 0x0000FFFF);
         sub->m_ChunkVersion = (short int) ((version & 0xFFFF0000) >> 16);
@@ -954,6 +969,15 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
         int managerCount = 0;
         if (m_ChunkVersion > 4)
             managerCount = m_Data[m_ChunkParser->CurrentPos++];
+        const int remaining = endPos - m_ChunkParser->CurrentPos;
+        if (sub->m_ChunkSize < 0 || idCount < 0 || chunkCount < 0 || managerCount < 0 ||
+            sub->m_ChunkSize > remaining || idCount > remaining - sub->m_ChunkSize ||
+            chunkCount > remaining - sub->m_ChunkSize - idCount ||
+            managerCount > remaining - sub->m_ChunkSize - idCount - chunkCount) {
+            delete sub;
+            m_ChunkParser->CurrentPos = endPos;
+            return nullptr;
+        }
         if (sub->m_ChunkSize != 0) {
             sub->m_Data = new int[sub->m_ChunkSize];
             if (!sub->m_Data) {
@@ -999,13 +1023,18 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
             ReadAndFillBuffer(managerCount * sizeof(int), sub->m_Managers->Data);
         }
 
-        if (hasFile && m_File)
+        if (hasFile == 1 && m_File)
             sub->m_File = m_File;
 
         return sub;
     } else {
         sub->m_ChunkSize = m_Data[m_ChunkParser->CurrentPos++];
         ++m_ChunkParser->CurrentPos;
+        if (sub->m_ChunkSize < 0 || sub->m_ChunkSize > endPos - m_ChunkParser->CurrentPos) {
+            delete sub;
+            m_ChunkParser->CurrentPos = endPos;
+            return nullptr;
+        }
         if (sub->m_ChunkSize == 0)
             return sub;
         sub->m_Data = new int[sub->m_ChunkSize];
