@@ -136,13 +136,12 @@ void CKBufferParser::Seek(int Pos) {
 }
 
 void CKBufferParser::Skip(int Offset) {
-    int newPos = m_CursorPos + Offset;
-    if (newPos < 0)
+    if (Offset < -m_CursorPos)
         m_CursorPos = 0;
-    else if (newPos > m_Size)
+    else if (Offset > m_Size - m_CursorPos)
         m_CursorPos = m_Size;
     else
-        m_CursorPos = newPos;
+        m_CursorPos += Offset;
 }
 
 CKBOOL CKBufferParser::IsValid() {
@@ -175,7 +174,7 @@ CKDWORD CKBufferParser::ComputeCRC(int Size, CKDWORD PrevCRC) {
 }
 
 CKBufferParser *CKBufferParser::Extract(int Size) {
-    if (Size < 0 || m_CursorPos + Size > m_Size)
+    if (Size <= 0 || Size > m_Size - m_CursorPos)
         return nullptr;
 
     auto *buffer = new char[Size];
@@ -184,7 +183,8 @@ CKBufferParser *CKBufferParser::Extract(int Size) {
 
     auto *parser = new CKBufferParser(buffer, Size);
     parser->m_Valid = TRUE;
-    parser->Write(&m_Buffer[m_CursorPos], Size);
+    memcpy(buffer, &m_Buffer[m_CursorPos], Size);
+    m_CursorPos += Size;
     return parser;
 }
 
@@ -224,7 +224,7 @@ void CKBufferParser::InsertChunk(CKStateChunk *chunk) {
 }
 
 CKBufferParser *CKBufferParser::Pack(int Size, int CompressionLevel) {
-    if (Size <= 0)
+    if (Size <= 0 || CompressionLevel < -1 || CompressionLevel > 9)
         return nullptr;
 
     int newSize = 0;

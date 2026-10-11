@@ -299,4 +299,10 @@ if (TARGET CK2Static)
             DEPENDENCIES
             CK2Static VxMath
     )
+    add_ck2_test(CKBufferParserTest
+            SOURCES
+            CKBufferParserTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath miniz
+    )
 endif ()
