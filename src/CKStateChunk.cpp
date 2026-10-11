@@ -656,7 +656,7 @@ CKObject *CKStateChunk::ReadObject(CKContext *context) {
 
 void CKStateChunk::WriteObjectArray(CKObjectArray *array, CKContext *context) {
     int objectCount = (array) ? array->GetCount() : 0;
-    CheckSize(objectCount * sizeof(int));
+    CheckSize((objectCount + 1) * sizeof(int));
     StartObjectIDSequence(objectCount);
     if (array) {
         array->Reset();
@@ -698,8 +698,21 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
     }
 
     if (m_ChunkVersion < CHUNK_VERSION1) {
+        if (m_ChunkSize - m_ChunkParser->CurrentPos < 5) {
+            m_ChunkParser->CurrentPos = m_ChunkSize;
+            if (array)
+                array->Clear();
+            return;
+        }
         m_ChunkParser->CurrentPos += 4;
         count = m_Data[m_ChunkParser->CurrentPos++];
+    }
+
+    if (count < 0 || count > m_ChunkSize - m_ChunkParser->CurrentPos) {
+        m_ChunkParser->CurrentPos = m_ChunkSize;
+        if (array)
+            array->Clear();
+        return;
     }
 
     if (!array) {
@@ -727,7 +740,7 @@ void CKStateChunk::ReadObjectArray(CKObjectArray *array) {
 }
 
 const XObjectArray &CKStateChunk::ReadXObjectArray() {
-    m_TempXOPA.Resize(0);
+    m_TempXOA.Resize(0);
 
     if (!m_ChunkParser || m_ChunkParser->CurrentPos >= m_ChunkSize) {
         if (m_File)
@@ -738,8 +751,18 @@ const XObjectArray &CKStateChunk::ReadXObjectArray() {
     int count = StartReadSequence();
     if (count != 0) {
         if (m_ChunkVersion < CHUNK_VERSION1) {
+            if (m_ChunkSize - m_ChunkParser->CurrentPos < 5) {
+                m_ChunkParser->CurrentPos = m_ChunkSize;
+                return m_TempXOA;
+            }
             m_ChunkParser->CurrentPos += 4;
             count = ReadInt();
+        }
+        if (count < 0 || count > m_ChunkSize - m_ChunkParser->CurrentPos) {
+            m_ChunkParser->CurrentPos = m_ChunkSize;
+            return m_TempXOA;
+        }
+        if (m_ChunkVersion < CHUNK_VERSION1) {
             m_TempXOA.Resize(count);
             for (int i = 0; i < count; ++i)
                 m_TempXOA[i] = m_Data[m_ChunkParser->CurrentPos++];
@@ -776,8 +799,18 @@ const XObjectPointerArray &CKStateChunk::ReadXObjectArray(CKContext *context) {
     int count = StartReadSequence();
     if (count != 0) {
         if (m_ChunkVersion < CHUNK_VERSION1) {
+            if (m_ChunkSize - m_ChunkParser->CurrentPos < 5) {
+                m_ChunkParser->CurrentPos = m_ChunkSize;
+                return m_TempXOPA;
+            }
             m_ChunkParser->CurrentPos += 4;
             count = ReadInt();
+        }
+        if (count < 0 || count > m_ChunkSize - m_ChunkParser->CurrentPos) {
+            m_ChunkParser->CurrentPos = m_ChunkSize;
+            return m_TempXOPA;
+        }
+        if (m_ChunkVersion < CHUNK_VERSION1) {
             m_TempXOPA.Reserve(count);
             for (int i = 0; i < count; ++i) {
                 CK_ID id = m_Data[m_ChunkParser->CurrentPos++];
@@ -825,10 +858,19 @@ CKObjectArray *CKStateChunk::ReadObjectArray() {
         return nullptr;
 
     if (m_ChunkVersion < CHUNK_VERSION1) {
+        if (m_ChunkSize - m_ChunkParser->CurrentPos < 5) {
+            m_ChunkParser->CurrentPos = m_ChunkSize;
+            return nullptr;
+        }
         m_ChunkParser->CurrentPos += 4;
         count = m_Data[m_ChunkParser->CurrentPos++];
         if (count == 0)
             return nullptr;
+    }
+
+    if (count < 0 || count > m_ChunkSize - m_ChunkParser->CurrentPos) {
+        m_ChunkParser->CurrentPos = m_ChunkSize;
+        return nullptr;
     }
 
     CKObjectArray *array = nullptr;
