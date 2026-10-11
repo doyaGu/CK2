@@ -1354,21 +1354,23 @@ void CKStateChunk::ReadMatrix(VxMatrix &mat) {
 }
 
 int CKStateChunk::ConvertToBuffer(void *buffer) {
-    // Base size: header (2 DWORDs) + data
-    int size = 2 * sizeof(int) + m_ChunkSize * sizeof(int);
+    const bool legacy = m_ChunkVersion <= CHUNK_VERSION2;
+    const int headerWords = legacy ? (m_ChunkVersion == CHUNK_VERSION2 ? 7 : 6) : 2;
+    const bool hasManagers = m_Managers && (!legacy || m_ChunkVersion == CHUNK_VERSION2);
+    int size = (headerWords + m_ChunkSize) * sizeof(int);
     CKBYTE chunkOptions = 0;
 
-    // Each list adds: size count (1 DWORD) + list data
+    // Legacy counts belong to the fixed header; modern counts precede each list.
     if (m_Ids) {
-        size += sizeof(int) + m_Ids->Size * sizeof(int);  // +4 for count
+        size += (m_Ids->Size + (legacy ? 0 : 1)) * sizeof(int);
         chunkOptions |= CHNK_OPTION_IDS;
     }
     if (m_Chunks) {
-        size += sizeof(int) + m_Chunks->Size * sizeof(int);  // +4 for count
+        size += (m_Chunks->Size + (legacy ? 0 : 1)) * sizeof(int);
         chunkOptions |= CHNK_OPTION_CHN;
     }
-    if (m_Managers) {
-        size += sizeof(int) + m_Managers->Size * sizeof(int);  // +4 for count
+    if (hasManagers) {
+        size += (m_Managers->Size + (legacy ? 0 : 1)) * sizeof(int);
         chunkOptions |= CHNK_OPTION_MAN;
     }
     if (m_File) {
@@ -1378,41 +1380,47 @@ int CKStateChunk::ConvertToBuffer(void *buffer) {
     if (buffer) {
         int *buf = (int *) buffer;
 
-        // Temporarily OR options/classID into version fields for serialization
-        short savedChunkVersion = m_ChunkVersion;
-        short savedDataVersion = m_DataVersion;
-        m_ChunkVersion |= (chunkOptions << 8);
-        m_DataVersion |= (m_ChunkClassID << 8);
-
-        // Write header: [DataVersion | ChunkVersion<<16]
-        *(short *)buf = m_DataVersion;
-        *((short *)buf + 1) = m_ChunkVersion;
-        buf[1] = m_ChunkSize;
+        if (legacy) {
+            // Keep the envelope consistent with its version and payload layout.
+            buf[0] = static_cast<int>(static_cast<CKWORD>(m_DataVersion) |
+                                      (static_cast<CKDWORD>(static_cast<CKWORD>(m_ChunkVersion)) << 16));
+            buf[1] = m_ChunkClassID;
+            buf[2] = m_ChunkSize;
+            buf[3] = 0;
+            buf[4] = m_Ids ? m_Ids->Size : 0;
+            buf[5] = m_Chunks ? m_Chunks->Size : 0;
+            if (m_ChunkVersion == CHUNK_VERSION2)
+                buf[6] = hasManagers ? m_Managers->Size : 0;
+        } else {
+            const CKWORD dataVersion = static_cast<CKWORD>(m_DataVersion) |
+                                       (static_cast<CKBYTE>(m_ChunkClassID) << 8);
+            const CKWORD chunkVersion = static_cast<CKWORD>(m_ChunkVersion) | (chunkOptions << 8);
+            buf[0] = static_cast<int>(dataVersion | (static_cast<CKDWORD>(chunkVersion) << 16));
+            buf[1] = m_ChunkSize;
+        }
 
         // Copy main data
-        memcpy(&buf[2], m_Data, m_ChunkSize * sizeof(int));
-        int *pos = &buf[m_ChunkSize + 2];
+        memcpy(&buf[headerWords], m_Data, m_ChunkSize * sizeof(int));
+        int *pos = &buf[m_ChunkSize + headerWords];
 
-        // Write lists with size prefix
         if (m_Ids) {
-            *pos++ = m_Ids->Size;
+            if (!legacy)
+                *pos++ = m_Ids->Size;
             memcpy(pos, m_Ids->Data, m_Ids->Size * sizeof(int));
             pos += m_Ids->Size;
         }
         if (m_Chunks) {
-            *pos++ = m_Chunks->Size;
+            if (!legacy)
+                *pos++ = m_Chunks->Size;
             memcpy(pos, m_Chunks->Data, m_Chunks->Size * sizeof(int));
             pos += m_Chunks->Size;
         }
-        if (m_Managers) {
-            *pos++ = m_Managers->Size;
+        if (hasManagers) {
+            if (!legacy)
+                *pos++ = m_Managers->Size;
             memcpy(pos, m_Managers->Data, m_Managers->Size * sizeof(int));
             pos += m_Managers->Size;
         }
-
-        // Restore original version fields
-        m_ChunkVersion = savedChunkVersion;
-        m_DataVersion = savedDataVersion;
     }
 
     return size;
@@ -1549,7 +1557,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
 
         if ((chunkOptions & CHNK_OPTION_IDS) != 0) {
             int idCount = buf[pos++];
-            if (idCount > 0) {
+            if (idCount >= 0) {
                 m_Ids = new IntListStruct;
                 m_Ids->AllocatedSize = idCount;
                 m_Ids->Size = idCount;
@@ -1563,7 +1571,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
 
         if ((chunkOptions & CHNK_OPTION_CHN) != 0) {
             int chunkCount = buf[pos++];
-            if (chunkCount > 0) {
+            if (chunkCount >= 0) {
                 m_Chunks = new IntListStruct;
                 m_Chunks->AllocatedSize = chunkCount;
                 m_Chunks->Size = chunkCount;
@@ -1577,7 +1585,7 @@ CKBOOL CKStateChunk::ConvertFromBuffer(void *buffer) {
 
         if ((chunkOptions & CHNK_OPTION_MAN) != 0) {
             int managerCount = buf[pos++];
-            if (managerCount > 0) {
+            if (managerCount >= 0) {
                 m_Managers = new IntListStruct;
                 m_Managers->AllocatedSize = managerCount;
                 m_Managers->Size = managerCount;
