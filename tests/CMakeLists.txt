@@ -340,6 +340,15 @@ add_ck2_test(CKFileLoadLifecycleTest
         CK2 VxMath
 )
 
+add_ck2_test(CKFileReuseLifecycleTest
+        SOURCES
+        CKFileReuseLifecycleTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+target_compile_features(CKFileReuseLifecycleTest PRIVATE cxx_std_17)
+
+
 
 
 
@@ -351,9 +360,23 @@ add_ck2_test(CKFilePluginDependenciesTest
 )
 target_compile_features(CKFilePluginDependenciesTest PRIVATE cxx_std_17)
 
+add_ck2_test(CKFileLayoutStateTest
+        SOURCES
+        CKFileLayoutStateTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+target_compile_features(CKFileLayoutStateTest PRIVATE cxx_std_17)
 
 
 
+add_ck2_test(CKFileSessionContractTest
+        SOURCES
+        CKFileSessionContractTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+target_compile_features(CKFileSessionContractTest PRIVATE cxx_std_17)
 
 add_ck2_test(CKFileDependencyContractTest
         SOURCES

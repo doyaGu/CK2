@@ -284,16 +284,24 @@ CKERROR CKFile::OpenFile(CKSTRING filename, CK_LOAD_FLAGS Flags) {
 }
 
 CKERROR CKFile::OpenMemory(void *MemoryBuffer, int BufferSize, CK_LOAD_FLAGS Flags) {
-    // If the file wasn't opened via OpenFile (mapped file), make sure we start from a clean state.
-    if (!m_MappedFile) {
-        ClearData();
+    // OpenFile lends its mapping to this call; every other input starts a new session.
+    VxMemoryMappedFile *mapping = nullptr;
+    char *filename = nullptr;
+    if (m_MappedFile && MemoryBuffer == m_MappedFile->GetBase()) {
+        mapping = m_MappedFile;
+        filename = m_FileName;
+        m_MappedFile = nullptr;
+        m_FileName = nullptr;
     }
+    ClearData();
+    m_MappedFile = mapping;
+    m_FileName = filename;
 
     if (!MemoryBuffer) {
         return CKERR_INVALIDPARAMETER;
     }
 
-    if (BufferSize < sizeof(CKFileHeaderPart0) || memcmp(MemoryBuffer, "Nemo", 4) != 0) {
+    if (BufferSize < static_cast<int>(sizeof(CKFileHeaderPart0)) || memcmp(MemoryBuffer, "Nemo", 4) != 0) {
         return CKERR_INVALIDFILE;
     }
 
