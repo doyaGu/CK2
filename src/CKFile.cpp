@@ -801,34 +801,35 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
             const int fileObjectCount = m_FileObjects.Size();
             for (int o = 0; o < fileObjectCount; ++o) {
                 CKFileObject *obj = &m_FileObjects[o];
+                if (parser->Size() - parser->CursorPos() < 8)
+                    return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
                 obj->Object = parser->ReadInt();
                 const int fileObjectUnPackSize = parser->ReadInt();
+                if (fileObjectUnPackSize < 0 || (fileObjectUnPackSize & 3) != 0)
+                    return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
                 if (fileObjectUnPackSize > 0) {
                     WarningForOlderVersion = TRUE;
+                    if (parser->Size() - parser->CursorPos() < 12)
+                        return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
                     const int chunkCid = parser->ReadInt();
-                    obj->Data = CreateCKStateChunk(chunkCid, this);
+                    if (chunkCid == 0)
+                        return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+                    obj->Data = CreateCKStateChunk(chunkCid, nullptr);
                     obj->SaveFlags = parser->ReadInt();
                     const int dataSize = parser->ReadInt();
-                    if (m_FileInfo.FileWriteMode & CKFILE_CHUNKCOMPRESSED_OLD) {
-                        obj->Data->m_ChunkSize = dataSize;
-                    } else {
-                        obj->Data->m_ChunkSize = dataSize >> 2;
-                    }
-
-                    if (dataSize == fileObjectUnPackSize) {
-                        obj->Data->m_ChunkSize = dataSize >> 2;
-                    }
-
-                    obj->Data->m_Data = new int[dataSize];
+                    const CKBOOL chunkCompressed = dataSize != fileObjectUnPackSize &&
+                        (m_FileInfo.FileWriteMode & CKFILE_CHUNKCOMPRESSED_OLD);
+                    if (dataSize < 0 || dataSize > parser->Size() - parser->CursorPos() ||
+                        (!chunkCompressed && (dataSize & 3) != 0))
+                        return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
+                    obj->Data->m_ChunkSize = chunkCompressed ? dataSize : dataSize / sizeof(int);
+                    obj->Data->m_Data = new int[dataSize / sizeof(int) + (dataSize % sizeof(int) != 0)];
                     parser->Read(obj->Data->m_Data, dataSize);
-                    if (dataSize != fileObjectUnPackSize &&
-                        (m_FileInfo.FileWriteMode & CKFILE_CHUNKCOMPRESSED_OLD) &&
-                        !obj->Data->UnPack(fileObjectUnPackSize)) {
-                        if (obj->Data) {
-                            delete obj->Data;
-                            obj->Data = nullptr;
-                        }
+                    if (chunkCompressed && !obj->Data->UnPack(fileObjectUnPackSize)) {
+                        delete obj->Data;
+                        obj->Data = nullptr;
                         m_Context->OutputToConsoleEx("Crc Error While Unpacking : Object=>%d \n", o);
+                        return ReturnWithParserCleanup(parser, ParserPtr, CKERR_INVALIDFILE);
                     }
                 }
             }

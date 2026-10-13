@@ -348,9 +348,20 @@ add_ck2_test(CKFileReuseLifecycleTest
 )
 target_compile_features(CKFileReuseLifecycleTest PRIVATE cxx_std_17)
 
+add_ck2_test(CKFileLegacyFormatTest
+        SOURCES
+        CKFileLegacyFormatTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
 
-
-
+add_ck2_test(CKFileLegacyRemainingTest
+        SOURCES
+        CKFileLegacyRemainingTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+target_compile_features(CKFileLegacyRemainingTest PRIVATE cxx_std_17)
 
 add_ck2_test(CKFilePluginDependenciesTest
         SOURCES
