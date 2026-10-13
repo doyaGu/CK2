@@ -312,18 +312,46 @@ if (TARGET CK2Static)
             DEPENDENCIES
             CK2Static VxMath miniz
     )
-
+    add_ck2_test(CKBufferParserRemainingTest
+            SOURCES
+            CKBufferParserRemainingTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath
+    )
     add_ck2_test(CKFileRecordTypesTest
             SOURCES
             CKFileRecordTypesTest.cpp
             DEPENDENCIES
             CK2Static VxMath
     )
-
-
-
-
-
+    add_ck2_test(CKBufferParserContractTest
+            SOURCES
+            CKBufferParserContractTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath
+    )
+    target_compile_features(CKBufferParserContractTest PRIVATE cxx_std_17)
+    add_ck2_test(CKBufferParserEncodeContractTest
+            SOURCES
+            CKBufferParserEncodeContractTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath
+    )
+    add_ck2_test(CKBufferParserDecodedContractTest
+            SOURCES
+            CKBufferParserDecodedContractTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath
+    )
+    add_ck2_test(CKBufferParserChunkOutputTest
+            SOURCES
+            CKBufferParserChunkOutputTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath
+    )
+    target_compile_features(CKBufferParserEncodeContractTest PRIVATE cxx_std_17)
+    target_compile_features(CKBufferParserDecodedContractTest PRIVATE cxx_std_17)
+    target_compile_features(CKBufferParserChunkOutputTest PRIVATE cxx_std_17)
 endif ()
 
 add_ck2_test(CKFileSaveLifecycleTest

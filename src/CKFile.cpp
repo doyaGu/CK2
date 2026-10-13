@@ -171,6 +171,15 @@ CKStateChunk *CKBufferParser::ExtractChunk(int Size, CKFile *f) {
 }
 
 void CKBufferParser::ExtractChunk(int Size, CKFile *f, CKFileChunk *chunk) {
+    CKStateChunk extracted(0, f);
+    if (extracted.ConvertFromBuffer(&m_Buffer[m_CursorPos])) {
+        chunk->chunk.Clone(&extracted);
+    } else {
+        CKStateChunk empty(0, f);
+        chunk->chunk.Clone(&empty);
+    }
+    // The portable chunk owns its reader; the aggregate's parser stays independent.
+    m_CursorPos += Size;
 }
 
 CKDWORD CKBufferParser::ComputeCRC(int Size, CKDWORD PrevCRC) {
@@ -207,7 +216,11 @@ CKBOOL CKBufferParser::ExtractFile(CKSTRING Filename, int Size) {
     return TRUE;
 }
 
-CKBufferParser *CKBufferParser::ExtractDecoded(int Size, CKDWORD *Key) { return nullptr; }
+CKBufferParser *CKBufferParser::ExtractDecoded(int Size, CKDWORD *Key) {
+    // This runtime has no built-in keyed codec. Report unsupported without
+    // consuming the source or presenting an ordinary copy as decoded data.
+    return nullptr;
+}
 
 CKBufferParser *CKBufferParser::UnPack(int UnpackSize, int PackSize) {
     char *buffer = CKUnPackData(UnpackSize, &m_Buffer[m_CursorPos], PackSize);
@@ -245,6 +258,9 @@ CKBufferParser *CKBufferParser::Pack(int Size, int CompressionLevel) {
 }
 
 void CKBufferParser::Encode(int Size, CKDWORD *Key) {
+    // The built-in parser does not implement the legacy keyed codec. This
+    // compatibility entry leaves the buffer, key, cursor and ownership intact;
+    // calling it does not turn plain data into an encoded payload.
 }
 
 CKDWORD GetCurrentFileLoadOption() {
