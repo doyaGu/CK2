@@ -379,7 +379,13 @@ add_ck2_test(CKFileLayoutStateTest
 )
 target_compile_features(CKFileLayoutStateTest PRIVATE cxx_std_17)
 
-
+add_ck2_test(CKFileIoCompletionTest
+        SOURCES
+        CKFileIoCompletionTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+target_compile_features(CKFileIoCompletionTest PRIVATE cxx_std_17)
 
 add_ck2_test(CKFileSessionContractTest
         SOURCES

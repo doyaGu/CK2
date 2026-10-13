@@ -199,8 +199,10 @@ CKBOOL CKBufferParser::ExtractFile(CKSTRING Filename, int Size) {
     FILE *fp = fopen(Filename, "wb");
     if (!fp)
         return FALSE;
-    fwrite(&m_Buffer[m_CursorPos], sizeof(char), Size, fp);
-    fclose(fp);
+    const size_t written = fwrite(&m_Buffer[m_CursorPos], sizeof(char), Size, fp);
+    const int closeResult = fclose(fp);
+    if (written != static_cast<size_t>(Size) || closeResult != 0)
+        return FALSE;
     m_CursorPos += Size;
     return TRUE;
 }
@@ -1421,18 +1423,25 @@ CKERROR CKFile::EndSave() {
 
             XString name(CKJustFile(filename.Str()));
             int length = name.Length();
-            fwrite(&length, sizeof(int), 1, fp);
-            if (length != 0) {
-                fwrite(name.Str(), length, 1, fp);
+            if (fwrite(&length, sizeof(int), 1, fp) != 1 ||
+                (length != 0 && fwrite(name.Str(), length, 1, fp) != 1)) {
+                err = CKERR_NOTENOUGHDISKPLACE;
+                break;
             }
 
             if (mmf.GetErrorType() == VxMMF_NoError) {
                 CKDWORD size = (CKDWORD)mmf.GetFileSize();
-                fwrite(&size, sizeof(CKDWORD), 1, fp);
-                fwrite(mmf.GetBase(), size, 1, fp);
+                if (fwrite(&size, sizeof(CKDWORD), 1, fp) != 1 ||
+                    (size != 0 && fwrite(mmf.GetBase(), size, 1, fp) != 1)) {
+                    err = CKERR_NOTENOUGHDISKPLACE;
+                    break;
+                }
             } else {
                 CKDWORD stub = 0;
-                fwrite(&stub, sizeof(CKDWORD), 1, fp);
+                if (fwrite(&stub, sizeof(CKDWORD), 1, fp) != 1) {
+                    err = CKERR_NOTENOUGHDISKPLACE;
+                    break;
+                }
             }
         }
         m_IncludedFiles.Clear();
@@ -1443,7 +1452,8 @@ CKERROR CKFile::EndSave() {
     delete hdr1BufferParser;
     delete dataBufferParser;
 
-    fclose(fp);
+    if (fclose(fp) != 0)
+        err = CKERR_NOTENOUGHDISKPLACE;
 
     FinalizeSaveState();
 
