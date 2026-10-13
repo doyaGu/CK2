@@ -312,6 +312,13 @@ if (TARGET CK2Static)
             DEPENDENCIES
             CK2Static VxMath miniz
     )
+
+
+
+
+
+
+
 endif ()
 
 add_ck2_test(CKFileSaveLifecycleTest
@@ -327,3 +334,26 @@ add_ck2_test(CKFileLoadLifecycleTest
         DEPENDENCIES
         CK2 VxMath
 )
+
+
+
+
+add_ck2_test(CKFilePluginDependenciesTest
+        SOURCES
+        CKFilePluginDependenciesTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+target_compile_features(CKFilePluginDependenciesTest PRIVATE cxx_std_17)
+
+
+
+
+
+add_ck2_test(CKFileDependencyContractTest
+        SOURCES
+        CKFileDependencyContractTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+target_compile_features(CKFileDependencyContractTest PRIVATE cxx_std_17)
