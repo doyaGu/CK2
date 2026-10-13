@@ -313,7 +313,12 @@ if (TARGET CK2Static)
             CK2Static VxMath miniz
     )
 
-
+    add_ck2_test(CKFileRecordTypesTest
+            SOURCES
+            CKFileRecordTypesTest.cpp
+            DEPENDENCIES
+            CK2Static VxMath
+    )
 
 
 
