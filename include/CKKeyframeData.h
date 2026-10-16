@@ -274,6 +274,9 @@ public:
     {
         if (XFabs(TimeStep - key.TimeStep) > Threshold)
             return FALSE;
+        if ((PosArray != nullptr) != (key.PosArray != nullptr) ||
+            (NormArray != nullptr) != (key.NormArray != nullptr))
+            return FALSE;
         if (PosArray)
         {
             if (!key.PosArray)
