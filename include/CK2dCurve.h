@@ -134,6 +134,27 @@ protected:
             return m_ControlPoints.Size() - 1;
         return index;
     }
+
+public:
+    // A copied point belongs to the destination, even when its stored caches are copied unchanged.
+    CK2dCurve(const CK2dCurve &other)
+        : m_ControlPoints(other.m_ControlPoints), m_Length(other.m_Length), FittingCoef(other.FittingCoef)
+    {
+        for (int i = 0; i < m_ControlPoints.Size(); ++i)
+            m_ControlPoints[i].m_Curve = this;
+    }
+
+    CK2dCurve &operator=(const CK2dCurve &other)
+    {
+        if (this != &other) {
+            m_ControlPoints = other.m_ControlPoints;
+            m_Length = other.m_Length;
+            FittingCoef = other.FittingCoef;
+            for (int i = 0; i < m_ControlPoints.Size(); ++i)
+                m_ControlPoints[i].m_Curve = this;
+        }
+        return *this;
+    }
 };
 
 #endif // CK2DCURVE_H
