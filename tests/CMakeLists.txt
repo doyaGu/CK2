@@ -68,6 +68,10 @@ add_ck2_test(CK2dCurveTangentsTest
         SOURCES CK2dCurveTangentsTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CK2dCurveLifecycleTest
+        SOURCES CK2dCurveLifecycleTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 set(_ck2_ansi_test_target CK2)
 if (TARGET CK2Static)
     set(_ck2_ansi_test_target CK2Static)

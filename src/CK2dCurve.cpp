@@ -149,12 +149,12 @@ void CK2dCurve::Update() {
     UpdatePointsAndTangents();
 
     const int pointCount = m_ControlPoints.Size();
+    m_Length = 0.0f;
+    if (pointCount == 0)
+        return;
+    m_ControlPoints[0].m_Length = 0.0f;
     if (pointCount < 2)
         return;
-
-    // Initialize length tracking
-    m_Length = 0.0f;
-    m_ControlPoints[0].m_Length = 0.0f;
 
     // Calculate length for each curve segment
     for (int i = 0; i < pointCount - 1; ++i) {
