@@ -9,21 +9,19 @@
 #include <windows.h>
 #endif
 
-namespace {
-
-struct TemporaryFile {
+struct CKTestTemporaryFile {
     char Name[160];
-    TemporaryFile() {
+    CKTestTemporaryFile() {
         std::snprintf(Name, sizeof(Name), "CKBufferParser-pass36-%p.tmp", static_cast<void *>(this));
     }
-    ~TemporaryFile() { std::remove(Name); }
+    ~CKTestTemporaryFile() { std::remove(Name); }
 };
 
 TEST(CKBufferParserRemainingTest, ExtractFilePreservesBinarySliceAndFollowingSourceBytes) {
     unsigned char bytes[] = {0xaa, 0x00, 0xff, 0x1a, 0x0a, 0x0d, 0x55};
     CKBufferParser parser(bytes, sizeof(bytes));
     parser.Seek(1);
-    TemporaryFile output;
+    CKTestTemporaryFile output;
     ASSERT_TRUE(parser.ExtractFile(output.Name, 5));
     EXPECT_EQ(6, parser.CursorPos());
     EXPECT_EQ(0x55, bytes[6]);
@@ -40,7 +38,7 @@ TEST(CKBufferParserRemainingTest, ExtractFileZeroLengthCreatesEmptyFileWithoutCo
     char bytes[] = "abc";
     CKBufferParser parser(bytes, sizeof(bytes));
     parser.Seek(2);
-    TemporaryFile output;
+    CKTestTemporaryFile output;
     ASSERT_TRUE(parser.ExtractFile(output.Name, 0));
     EXPECT_EQ(2, parser.CursorPos());
     FILE *file = std::fopen(output.Name, "rb");
@@ -56,27 +54,27 @@ TEST(CKBufferParserRemainingTest, ExtractFileOpenFailurePreservesSourceForRetry)
     char missing[] = "CKBufferParser-pass36-missing-directory/output.bin";
     ASSERT_FALSE(parser.ExtractFile(missing, 5));
     EXPECT_EQ(1, parser.CursorPos());
-    TemporaryFile output;
+    CKTestTemporaryFile output;
     EXPECT_TRUE(parser.ExtractFile(output.Name, 5));
     EXPECT_EQ(6, parser.CursorPos());
 }
 
 #ifdef _WIN32
-struct ClosedPipe {
+struct CKTestClosedPipe {
     HANDLE Pipe;
     HANDLE Thread;
     char Name[160];
     bool Connected;
 
     static DWORD WINAPI CloseAfterConnection(void *data) {
-        ClosedPipe *pipe = static_cast<ClosedPipe *>(data);
+        CKTestClosedPipe *pipe = static_cast<CKTestClosedPipe *>(data);
         pipe->Connected = ConnectNamedPipe(pipe->Pipe, nullptr) != FALSE
             || GetLastError() == ERROR_PIPE_CONNECTED;
         CloseHandle(pipe->Pipe);
         return 0;
     }
 
-    ClosedPipe() : Pipe(INVALID_HANDLE_VALUE), Thread(nullptr), Connected(false) {
+    CKTestClosedPipe() : Pipe(INVALID_HANDLE_VALUE), Thread(nullptr), Connected(false) {
         std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\BallancedPass36Parser-%lu-%p",
             GetCurrentProcessId(), static_cast<void *>(this));
         Pipe = CreateNamedPipeA(Name, PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE | PIPE_WAIT,
@@ -85,7 +83,7 @@ struct ClosedPipe {
             Thread = CreateThread(nullptr, 0, CloseAfterConnection, this, 0, nullptr);
     }
 
-    ~ClosedPipe() {
+    ~CKTestClosedPipe() {
         if (Thread) {
             // Also releases the server when a failed assertion prevented a client connection.
             if (WaitForSingleObject(Thread, 0) == WAIT_TIMEOUT) {
@@ -110,7 +108,7 @@ TEST_P(CKBufferParserPipeFailureTest, ExtractFileReportsRealBrokenPipeAndKeepsSl
     CKBufferParser parser(bytes, count + 2);
     parser.Seek(1);
     {
-        ClosedPipe pipe;
+        CKTestClosedPipe pipe;
         ASSERT_NE(INVALID_HANDLE_VALUE, pipe.Pipe);
         ASSERT_NE(nullptr, pipe.Thread);
         // The peer never reads and closes after connecting. This exceeds the pipe
@@ -120,7 +118,7 @@ TEST_P(CKBufferParserPipeFailureTest, ExtractFileReportsRealBrokenPipeAndKeepsSl
         ASSERT_EQ(WAIT_OBJECT_0, WaitForSingleObject(pipe.Thread, 5000));
         EXPECT_TRUE(pipe.Connected); // fopen succeeded; the failure happened during I/O.
     }
-    TemporaryFile retry;
+    CKTestTemporaryFile retry;
     ASSERT_TRUE(parser.ExtractFile(retry.Name, count));
     EXPECT_EQ(count + 1, parser.CursorPos());
     FILE *file = std::fopen(retry.Name, "rb");
@@ -137,5 +135,3 @@ TEST_P(CKBufferParserPipeFailureTest, ExtractFileReportsRealBrokenPipeAndKeepsSl
 INSTANTIATE_TEST_SUITE_P(ActualPipeWrites, CKBufferParserPipeFailureTest,
     ::testing::Values(65536, 262144, 1048576));
 #endif
-
-} // namespace

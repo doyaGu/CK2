@@ -3,14 +3,12 @@
 #include <cstring>
 #include "CKAll.h"
 
-namespace {
-
-void FillNativeProbeBytes(unsigned char *bytes) {
+static void FillNativeProbeBytes(unsigned char *bytes) {
     // Independent sentinels used by the actual shipping 2.5 parser probe.
     for (int i = 0; i < 32; ++i) bytes[i] = static_cast<unsigned char>(i * 7 + 5);
 }
 
-void FillNativeProbeKey(CKDWORD *key, int scenario) {
+static void FillNativeProbeKey(CKDWORD *key, int scenario) {
     if (scenario == 0) {
         key[0] = 0x01234567u; key[1] = 0x89ABCDEFu;
         key[2] = 0xFEDCBA98u; key[3] = 0x76543210u;
@@ -100,5 +98,3 @@ TEST(CKBufferParserDecodedContractTest, UnsupportedDecodedOwnedSlicePreservesOwn
     EXPECT_EQ(32, borrowed.CursorPos());
     for (int i = 0; i < 32; ++i) EXPECT_EQ(0xA5, bytes[i]);
 }
-
-} // namespace

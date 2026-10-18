@@ -8,25 +8,23 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-namespace {
-
 // The peer connects but never reads. This small write remains in the CRT
 // buffer: an independent control below proves the error occurs at fclose.
-struct DisconnectedOutputPipe {
+struct CKTestDisconnectedOutputPipe {
     HANDLE Pipe;
     HANDLE Thread;
     char Name[160];
     bool Connected;
 
     static DWORD WINAPI Disconnect(void *data) {
-        DisconnectedOutputPipe *pipe = static_cast<DisconnectedOutputPipe *>(data);
+        CKTestDisconnectedOutputPipe *pipe = static_cast<CKTestDisconnectedOutputPipe *>(data);
         pipe->Connected = ConnectNamedPipe(pipe->Pipe, nullptr) != FALSE
             || GetLastError() == ERROR_PIPE_CONNECTED;
         CloseHandle(pipe->Pipe);
         return 0;
     }
 
-    DisconnectedOutputPipe() : Pipe(INVALID_HANDLE_VALUE), Thread(nullptr), Connected(false) {
+    CKTestDisconnectedOutputPipe() : Pipe(INVALID_HANDLE_VALUE), Thread(nullptr), Connected(false) {
         std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\BallancedPass38Parser-%lu-%p",
             GetCurrentProcessId(), static_cast<void *>(this));
         Pipe = CreateNamedPipeA(Name, PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE | PIPE_WAIT,
@@ -35,7 +33,7 @@ struct DisconnectedOutputPipe {
             Thread = CreateThread(nullptr, 0, Disconnect, this, 0, nullptr);
     }
 
-    ~DisconnectedOutputPipe() {
+    ~CKTestDisconnectedOutputPipe() {
         if (Thread) {
             if (WaitForSingleObject(Thread, 0) == WAIT_TIMEOUT) {
                 HANDLE client = CreateFileA(Name, GENERIC_WRITE, 0, nullptr,
@@ -50,16 +48,16 @@ struct DisconnectedOutputPipe {
     }
 };
 
-struct RetryFile {
+struct CKTestRetryFile {
     char Name[MAX_PATH];
-    RetryFile() {
+    CKTestRetryFile() {
         char directory[MAX_PATH];
         const DWORD length = GetTempPathA(MAX_PATH, directory);
         Name[0] = '\0';
         if (length && length < MAX_PATH)
             GetTempFileNameA(directory, "p38", 0, Name);
     }
-    ~RetryFile() { if (Name[0]) std::remove(Name); }
+    ~CKTestRetryFile() { if (Name[0]) std::remove(Name); }
 };
 
 TEST(CKBufferParserContractTest, ExtractFileReportsBufferedCloseFailureAndRetainsSliceForRetry) {
@@ -69,7 +67,7 @@ TEST(CKBufferParserContractTest, ExtractFileReportsBufferedCloseFailureAndRetain
     source[257] = 0xb9;
     const unsigned char firstPayloadByte = source[1];
     {
-        DisconnectedOutputPipe control;
+        CKTestDisconnectedOutputPipe control;
         ASSERT_NE(INVALID_HANDLE_VALUE, control.Pipe);
         ASSERT_NE(nullptr, control.Thread);
         FILE *stream = std::fopen(control.Name, "wb");
@@ -86,7 +84,7 @@ TEST(CKBufferParserContractTest, ExtractFileReportsBufferedCloseFailureAndRetain
     CKBufferParser parser(source, sizeof(source));
     parser.Seek(1);
     {
-        DisconnectedOutputPipe pipe;
+        CKTestDisconnectedOutputPipe pipe;
         ASSERT_NE(INVALID_HANDLE_VALUE, pipe.Pipe);
         ASSERT_NE(nullptr, pipe.Thread);
         EXPECT_FALSE(parser.ExtractFile(pipe.Name, 256));
@@ -94,7 +92,7 @@ TEST(CKBufferParserContractTest, ExtractFileReportsBufferedCloseFailureAndRetain
         ASSERT_EQ(WAIT_OBJECT_0, WaitForSingleObject(pipe.Thread, 5000));
         EXPECT_TRUE(pipe.Connected);
     }
-    RetryFile retry;
+    CKTestRetryFile retry;
     ASSERT_NE('\0', retry.Name[0]);
     ASSERT_TRUE(parser.ExtractFile(retry.Name, 256));
     EXPECT_EQ(257, parser.CursorPos());
@@ -113,5 +111,4 @@ TEST(CKBufferParserContractTest, ExtractFileReportsBufferedCloseFailureAndRetain
     EXPECT_EQ(0xb9, next);
 }
 
-} // namespace
 #endif

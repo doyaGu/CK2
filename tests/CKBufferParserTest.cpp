@@ -11,29 +11,27 @@
 
 #include "CKAll.h"
 
-namespace {
-
 // This target links CK2Static: these replacements observe the real parser
 // allocation calls, rather than an unrelated executable allocator beside CK2.dll.
-struct Allocation {
+struct CKTestAllocation {
     void *Address;
     int Frees;
 };
-Allocation Ledger[64];
-int AllocationCount = 0;
-bool Tracking = false;
-bool LedgerOverflow = false;
-void *Borrowed = nullptr;
-int BorrowedFrees = 0;
+static CKTestAllocation Ledger[64];
+static int AllocationCount = 0;
+static bool Tracking = false;
+static bool LedgerOverflow = false;
+static void *Borrowed = nullptr;
+static int BorrowedFrees = 0;
 
-void RecordAllocation(void *address) {
+static void RecordAllocation(void *address) {
     if (!Tracking) return;
     if (AllocationCount == 64) { LedgerOverflow = true; return; }
     Ledger[AllocationCount].Address = address;
     Ledger[AllocationCount++].Frees = 0;
 }
 
-void RecordFree(void *address) {
+static void RecordFree(void *address) {
     if (!Tracking || !address) return;
     if (address == Borrowed) ++BorrowedFrees;
     for (int i = AllocationCount - 1; i >= 0; --i) {
@@ -44,12 +42,12 @@ void RecordFree(void *address) {
     }
 }
 
-void StartTracking(void *borrowed) {
+static void StartTracking(void *borrowed) {
     AllocationCount = 0; LedgerOverflow = false;
     Borrowed = borrowed; BorrowedFrees = 0; Tracking = true;
 }
 
-void ExpectReleased(int count) {
+static void ExpectReleased(int count) {
     ASSERT_FALSE(Tracking);
     ASSERT_FALSE(LedgerOverflow);
     EXPECT_EQ(count, AllocationCount);
@@ -57,15 +55,15 @@ void ExpectReleased(int count) {
     for (int i = 0; i < AllocationCount; ++i) EXPECT_EQ(1, Ledger[i].Frees) << i;
 }
 
-const unsigned char PackedText[] = {
+static const unsigned char PackedText[] = {
     // Python zlib.compress(b"parser literal bytes", 6), generated independently.
     0x78, 0x9c, 0x2b, 0x48, 0x2c, 0x2a, 0x4e, 0x2d, 0x52, 0xc8, 0xc9,
     0x2c, 0x49, 0x2d, 0x4a, 0xcc, 0x51, 0x48, 0xaa, 0x2c, 0x49, 0x2d,
     0x06, 0x00, 0x52, 0xe7, 0x07, 0xe2
 };
-const char LiteralText[] = "parser literal bytes";
+static const char LiteralText[] = "parser literal bytes";
 
-CKDWORD IndependentAdler(const unsigned char *data, int count, CKDWORD seed) {
+static CKDWORD IndependentAdler(const unsigned char *data, int count, CKDWORD seed) {
     unsigned int a = seed & 0xffffu, b = seed >> 16;
     for (int i = 0; i < count; ++i) {
         a = (a + data[i]) % 65521u;
@@ -73,8 +71,6 @@ CKDWORD IndependentAdler(const unsigned char *data, int count, CKDWORD seed) {
     }
     return (b << 16) | a;
 }
-
-} // namespace
 
 void *operator new(std::size_t size) {
     void *address = std::malloc(size ? size : 1);
@@ -90,8 +86,6 @@ void operator delete(void *address) noexcept { RecordFree(address); std::free(ad
 void operator delete[](void *address) noexcept { RecordFree(address); std::free(address); }
 void operator delete(void *address, std::size_t) noexcept { RecordFree(address); std::free(address); }
 void operator delete[](void *address, std::size_t) noexcept { RecordFree(address); std::free(address); }
-
-namespace {
 
 TEST(CKBufferParserTest, ConstructorBorrowsBufferAndInitializesCursorAndOwnership) {
     char bytes[] = {11, 22, 33};
@@ -371,5 +365,3 @@ TEST(CKBufferParserTest, ExtractFileOpenAndSliceFailuresDoNotConsumeInput) {
     EXPECT_FALSE(parser.ExtractFile(path, -1)); EXPECT_FALSE(parser.ExtractFile(path, 3));
     EXPECT_EQ(1, parser.CursorPos());
 }
-
-} // namespace

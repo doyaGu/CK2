@@ -8,36 +8,34 @@
 
 #include "CKAll.h"
 
-namespace {
-
 // Link CK2Static so the ledger observes the real chunk payload/list/parser owners.
-struct Allocation {
+struct CKTestAllocation {
     std::uintptr_t Address;
     int Frees;
     bool Array;
     bool ArrayFree;
 };
 
-Allocation Ledger[128];
-int AllocationCount = 0;
-bool Tracking = false;
-bool LedgerOverflow = false;
+static CKTestAllocation Ledger[128];
+static int AllocationCount = 0;
+static bool Tracking = false;
+static bool LedgerOverflow = false;
 
-void Allocated(void *pointer, bool array) {
+static void Allocated(void *pointer, bool array) {
     if (!Tracking)
         return;
     if (AllocationCount == 128) {
         LedgerOverflow = true;
         return;
     }
-    Allocation &entry = Ledger[AllocationCount++];
+    CKTestAllocation &entry = Ledger[AllocationCount++];
     entry.Address = reinterpret_cast<std::uintptr_t>(pointer);
     entry.Frees = 0;
     entry.Array = array;
     entry.ArrayFree = false;
 }
 
-void Released(void *pointer, bool array) {
+static void Released(void *pointer, bool array) {
     if (!Tracking || !pointer)
         return;
     const std::uintptr_t address = reinterpret_cast<std::uintptr_t>(pointer);
@@ -50,24 +48,24 @@ void Released(void *pointer, bool array) {
     }
 }
 
-int ModernHeader(int cid, int dataVersion, unsigned int options = 0) {
+static int ModernHeader(int cid, int dataVersion, unsigned int options = 0) {
     return static_cast<int>((options << 24) | (CHUNK_VERSION4 << 16) |
                             (static_cast<unsigned int>(cid) << 8) | dataVersion);
 }
 
-void SetEmbeddedParser(CKFileChunk &output) {
+static void SetEmbeddedParser(CKFileChunk &output) {
     output.parser.CurrentPos = 7;
     output.parser.DataSize = 19;
     output.parser.PrevIdentifierPos = 3;
 }
 
-void ExpectEmbeddedParser(const CKFileChunk &output) {
+static void ExpectEmbeddedParser(const CKFileChunk &output) {
     EXPECT_EQ(7, output.parser.CurrentPos);
     EXPECT_EQ(19, output.parser.DataSize);
     EXPECT_EQ(3, output.parser.PrevIdentifierPos);
 }
 
-void ExpectOneEntry(const IntListStruct *list, int expected) {
+static void ExpectOneEntry(const IntListStruct *list, int expected) {
     ASSERT_NE(nullptr, list);
     ASSERT_EQ(1, list->Size);
     ASSERT_NE(nullptr, list->Data);
@@ -90,8 +88,6 @@ protected:
     }
 };
 
-} // namespace
-
 void *operator new(std::size_t bytes) {
     void *pointer = std::malloc(bytes ? bytes : 1);
     if (!pointer)
@@ -112,8 +108,6 @@ void operator delete(void *pointer) noexcept { Released(pointer, false); std::fr
 void operator delete[](void *pointer) noexcept { Released(pointer, true); std::free(pointer); }
 void operator delete(void *pointer, std::size_t) noexcept { Released(pointer, false); std::free(pointer); }
 void operator delete[](void *pointer, std::size_t) noexcept { Released(pointer, true); std::free(pointer); }
-
-namespace {
 
 TEST(CKBufferParserChunkOutputTest, ModernFrameLoadsOwnedPayloadAndConsumesPadding) {
     int words[] = {0x71717171, ModernHeader(CKCID_OBJECT, 9), 2, 41, 43,
@@ -366,5 +360,3 @@ TEST(CKBufferParserChunkOutputTest, AllTemporaryAndDestinationAllocationsAreRele
         EXPECT_EQ(Ledger[i].Array, Ledger[i].ArrayFree) << "allocation kind " << i;
     }
 }
-
-} // namespace

@@ -4,19 +4,15 @@
 
 #include "CKFile.h"
 
-namespace {
-
 // Original CK2 2.5.0.48 memory/file parser probes leave this literal unchanged
 // after Encode(17, key), at cursors 3 and 7 with two nonzero keys. This is the
 // unsupported legacy codec contract, not proof of successful 2.1 encryption.
-const unsigned char PlainBytes[32] = {
+static const unsigned char PlainBytes[32] = {
     0x05, 0x0c, 0x13, 0x1a, 0x21, 0x28, 0x2f, 0x36,
     0x3d, 0x44, 0x4b, 0x52, 0x59, 0x60, 0x67, 0x6e,
     0x75, 0x7c, 0x83, 0x8a, 0x91, 0x98, 0x9f, 0xa6,
     0xad, 0xb4, 0xbb, 0xc2, 0xc9, 0xd0, 0xd7, 0xde,
 };
-
-} // namespace
 
 TEST(CKBufferParserEncodeContractTest, BorrowedLegacyEncodePreservesLiteralSpanAndFollowingRead) {
     unsigned char bytes[32];
