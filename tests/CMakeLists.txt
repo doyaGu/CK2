@@ -117,6 +117,13 @@ add_ck2_test(CKDeclarationLookupTest
         DEPENDENCIES CK2 VxMath
 )
 
+add_ck2_test(CKBitmapDataStateTest
+        SOURCES
+        CKBitmapDataStateTest.cpp
+        DEPENDENCIES
+        CK2 VxMath
+)
+
 add_ck2_test(CKParameterStringValueTest
         SOURCES CKParameterStringValueTest.cpp
         DEPENDENCIES CK2 VxMath
