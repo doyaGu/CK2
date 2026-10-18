@@ -88,6 +88,10 @@ add_ck2_test(CKBitmapDataTransparencyTest
         SOURCES CKBitmapDataTransparencyTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKBitmapDataSlotsTest
+        SOURCES CKBitmapDataSlotsTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 set(_ck2_ansi_test_target CK2)
 if (TARGET CK2Static)
     set(_ck2_ansi_test_target CK2Static)
