@@ -331,14 +331,14 @@ void CK2dCurve::UpdatePointsAndTangents() {
     float deltaX = secondPt.m_Position.x - firstPt.m_Position.x;
     float deltaY = secondPt.m_Position.y - firstPt.m_Position.y;
 
-    if (!firstPt.IsTCB()) {
+    if (firstPt.IsTCB()) {
         // Calculate tangents using TCB parameters
         float t = 1.0f - firstPt.m_Tension;
-        float c = 1.0f - firstPt.m_Continuity;
+        float c = firstPt.m_Continuity;
         float b = 1.0f - firstPt.m_Bias;
 
         // Out tangent calculation
-        float outFactor = c * t * b;
+        float outFactor = (1.0f - c) * t * b;
         firstPt.m_OutTang.x = (deltaX * outFactor) * 0.5f;
         firstPt.m_OutTang.y = (deltaY * outFactor) * 0.5f;
 
@@ -348,13 +348,14 @@ void CK2dCurve::UpdatePointsAndTangents() {
         firstPt.m_InTang.y = (deltaY * inFactor) * 0.5f;
     }
 
-    // Prevent division by zero
-    if (fabs(firstPt.m_InTang.x) < EPSILON) {
-        float scale = EPSILON / firstPt.m_InTang.x;
+    // Normalize nonvertical tangents to the native endpoint/chord X widths.
+    if (deltaX == 0.0f) deltaX = 0.0001f;
+    if (firstPt.m_InTang.x != 0.0f) {
+        float scale = 0.0001f / firstPt.m_InTang.x;
         firstPt.m_InTang *= scale;
     }
 
-    if (fabs(firstPt.m_OutTang.x) < EPSILON) {
+    if (firstPt.m_OutTang.x != 0.0f) {
         float scale = deltaX / firstPt.m_OutTang.x;
         firstPt.m_OutTang *= scale;
     }
@@ -376,32 +377,32 @@ void CK2dCurve::UpdatePointsAndTangents() {
         float nextDeltaX = nextPt.m_Position.x - currPt.m_Position.x;
         float nextDeltaY = nextPt.m_Position.y - currPt.m_Position.y;
 
-        if (!currPt.IsTCB()) {
+        if (currPt.IsTCB()) {
             // TCB calculations
             float t = 1.0f - currPt.m_Tension;
-            float c = 1.0f - currPt.m_Continuity;
-            float b = 1.0f - currPt.m_Bias;
+            float c = currPt.m_Continuity;
+            float b = currPt.m_Bias;
 
             // Out tangent
-            float outFactor = c * t * (b + 1.0f);
-            currPt.m_OutTang.x = (nextDeltaX * outFactor + prevDeltaX * c * t * b) * 0.5f;
-            currPt.m_OutTang.y = (nextDeltaY * outFactor + prevDeltaY * c * t * b) * 0.5f;
+            float outFactor = (1.0f + c) * t * (1.0f + b);
+            currPt.m_OutTang.x = (prevDeltaX * outFactor + nextDeltaX * (1.0f - c) * t * (1.0f - b)) * 0.5f;
+            currPt.m_OutTang.y = (prevDeltaY * outFactor + nextDeltaY * (1.0f - c) * t * (1.0f - b)) * 0.5f;
 
             // In tangent
-            float inFactor = (c + 1.0f) * t * b;
-            currPt.m_InTang.x = (prevDeltaX * inFactor + nextDeltaX * (c + 1.0f) * t * (b + 1.0f)) * 0.5f;
-            currPt.m_InTang.y = (prevDeltaY * inFactor + nextDeltaY * (c + 1.0f) * t * (b + 1.0f)) * 0.5f;
+            float inFactor = (1.0f - c) * t * (1.0f + b);
+            currPt.m_InTang.x = (prevDeltaX * inFactor + nextDeltaX * (1.0f + c) * t * (1.0f - b)) * 0.5f;
+            currPt.m_InTang.y = (prevDeltaY * inFactor + nextDeltaY * (1.0f + c) * t * (1.0f - b)) * 0.5f;
         }
 
         // Normalize tangents
-        if (fabs(prevDeltaX) < EPSILON) prevDeltaX = EPSILON;
-        if (fabs(currPt.m_InTang.x) < EPSILON) {
+        if (prevDeltaX == 0.0f) prevDeltaX = 0.0001f;
+        if (currPt.m_InTang.x != 0.0f) {
             float scale = prevDeltaX / currPt.m_InTang.x;
             currPt.m_InTang *= scale;
         }
 
-        if (fabs(nextDeltaX) < EPSILON) nextDeltaX = EPSILON;
-        if (fabs(currPt.m_OutTang.x) < EPSILON) {
+        if (nextDeltaX == 0.0f) nextDeltaX = 0.0001f;
+        if (currPt.m_OutTang.x != 0.0f) {
             float scale = nextDeltaX / currPt.m_OutTang.x;
             currPt.m_OutTang *= scale;
         }
@@ -420,27 +421,31 @@ void CK2dCurve::UpdatePointsAndTangents() {
     float lastDeltaX = lastPt.m_Position.x - prevLastPt.m_Position.x;
     float lastDeltaY = lastPt.m_Position.y - prevLastPt.m_Position.y;
 
-    if (!lastPt.IsTCB()) {
+    if (lastPt.IsTCB()) {
         float t = 1.0f - lastPt.m_Tension;
-        float c = 1.0f - lastPt.m_Continuity;
-        float b = 1.0f - lastPt.m_Bias;
+        float c = lastPt.m_Continuity;
+        float b = 1.0f + lastPt.m_Bias;
 
         // In tangent calculation
-        float inFactor = (c + 1.0f) * t * (b + 1.0f);
+        float inFactor = (1.0f - c) * t * b;
         lastPt.m_InTang.x = (lastDeltaX * inFactor) * 0.5f;
         lastPt.m_InTang.y = (lastDeltaY * inFactor) * 0.5f;
 
         // Out tangent calculation
-        float outFactor = c * t * b;
+        float outFactor = (1.0f + c) * t * b;
         lastPt.m_OutTang.x = (lastDeltaX * outFactor) * 0.5f;
         lastPt.m_OutTang.y = (lastDeltaY * outFactor) * 0.5f;
     }
 
     // Normalize last point tangents
-    if (fabs(lastDeltaX) < EPSILON) lastDeltaX = EPSILON;
-    if (fabs(lastPt.m_InTang.x) < EPSILON) {
+    if (lastDeltaX == 0.0f) lastDeltaX = 0.0001f;
+    if (lastPt.m_InTang.x != 0.0f) {
         float scale = lastDeltaX / lastPt.m_InTang.x;
         lastPt.m_InTang *= scale;
+    }
+    if (lastPt.m_OutTang.x != 0.0f) {
+        float scale = 0.001f / lastPt.m_OutTang.x;
+        lastPt.m_OutTang *= scale;
     }
 
     // Calculate final fitted position
