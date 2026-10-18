@@ -358,12 +358,13 @@ XObjDeclHashTableIt CKGetPrototypeDeclarationEndIterator() {
 }
 
 CKObjectDeclaration *CKGetObjectDeclarationFromGuid(CKGUID guid) {
-    return g_PrototypeDeclarationList[guid];
+    XObjDeclHashTableIt it = g_PrototypeDeclarationList.Find(guid);
+    return it == g_PrototypeDeclarationList.End() ? nullptr : *it;
 }
 
 CKBehaviorPrototype *CKGetPrototypeFromGuid(CKGUID guid) {
     XObjDeclHashTableIt it = g_PrototypeDeclarationList.Find(guid);
-    if (it == g_PrototypeDeclarationList.End())
+    if (it == g_PrototypeDeclarationList.End() || !*it)
         return nullptr;
 
     CKBehaviorPrototype *proto = (*it)->m_Proto;
