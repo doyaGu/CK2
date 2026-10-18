@@ -704,30 +704,30 @@ CKBitmapData::~CKBitmapData() {
 }
 
 void CKBitmapData::SetAlphaForTransparentColor(const VxImageDescEx &desc) {
-    // Extract RGB components from transparency color (ignore alpha)
+    // Keep the native color-key comparison and RGB quantization.
     const CKDWORD transRGB = m_TransColor & 0x00FEFEFE;
 
-    // Get raw pixel data pointer (assuming 32bpp ARGB format)
-    CKDWORD *pixels = (CKDWORD *)desc.Image;
-    if (!pixels || desc.Width <= 0 || desc.Height <= 0)
+    CKBYTE *row = desc.Image;
+    if (!row || desc.Width <= 0 || desc.Height <= 0 || desc.BytesPerLine < 4)
         return;
 
-    // Calculate total pixels
-    const int pixelCount = desc.Width * desc.Height;
+    // The descriptor may contain padding after the visible pixels.
+    // Process each row independently instead of including that padding.
+    for (int y = 0; y < desc.Height; ++y) {
+        CKDWORD *pixels = (CKDWORD *)row;
+        for (int x = 0; x < desc.Width; ++x) {
+            const CKDWORD pixelRGB = pixels[x] & 0x00FEFEFE;
 
-    // Process each pixel
-    for (int i = 0; i < pixelCount; ++i) {
-        // Preserve RGB components while ignoring LSBs
-        const CKDWORD pixelRGB = pixels[i] & 0x00FEFEFE;
-
-        // Compare with transparency color (RGB only)
-        if (pixelRGB == transRGB) {
-            // Match: Set alpha to 0 (transparent) | keep RGB
-            pixels[i] = pixelRGB;
-        } else {
-            // No match: Set alpha to 255 (opaque) | keep RGB
-            pixels[i] = pixelRGB | 0xFF000000;
+            // Existing alpha is replaced by the color-key result.
+            if (pixelRGB == transRGB) {
+                pixels[x] = pixelRGB;
+            } else {
+                pixels[x] = pixelRGB | 0xFF000000;
+            }
         }
+
+        // Keep caller-owned row padding intact.
+        row += desc.BytesPerLine;
     }
 }
 
@@ -743,7 +743,7 @@ void CKBitmapData::SetBorderColorForClamp(const VxImageDescEx &desc) {
 
     // First loop: clear alpha on left (first pixel) and right (last pixel) of each row
     CKBYTE *leftPtr = Image;
-    CKDWORD *rightPtr = (CKDWORD *)(Image + BytesPerLine - 4);
+    CKDWORD *rightPtr = (CKDWORD *)(Image + (Width - 1) * sizeof(CKDWORD));
     do {
         CKDWORD rightVal = *rightPtr & 0x00FFFFFF;
         *(CKDWORD *)leftPtr &= 0x00FFFFFF;
