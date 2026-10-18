@@ -15,6 +15,7 @@ void CK2dCurvePoint::NotifyUpdate() {
 
 void CK2dCurvePoint::Read(CKStateChunk *chunk) {
     if (!chunk) return;
+    bool changed = false;
 
     if (chunk->SeekIdentifier(CK_STATESAVE_2DCURVEPOINTDEFAULTDATA)) {
         chunk->ReadObjectID();
@@ -26,18 +27,23 @@ void CK2dCurvePoint::Read(CKStateChunk *chunk) {
             m_Flags |= CK2DCURVEPOINT_LINEAR;
         else
             m_Flags &= ~CK2DCURVEPOINT_LINEAR;
-        NotifyUpdate();
         chunk->ReadAndFillBuffer_LEndian(8, &m_Position);
+        changed = true;
     }
 
     if (chunk->SeekIdentifier(CK_STATESAVE_2DCURVEPOINTTCB)) {
         m_Tension = chunk->ReadFloat();
         m_Continuity = chunk->ReadFloat();
         m_Bias = chunk->ReadFloat();
+        changed = true;
     }
 
     if (chunk->SeekIdentifier(CK_STATESAVE_2DCURVEPOINTTANGENTS)) {
         chunk->ReadAndFillBuffer_LEndian(8, &m_InTang);
         chunk->ReadAndFillBuffer_LEndian(8, &m_OutTang);
+        changed = true;
     }
+    // Updating may sort this point into another slot; publish only after all reads are complete.
+    if (changed)
+        NotifyUpdate();
 }

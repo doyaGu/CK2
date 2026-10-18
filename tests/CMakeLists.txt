@@ -80,6 +80,10 @@ add_ck2_test(CK2dCurveLayoutTest
         SOURCES CK2dCurveLayoutTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CK2dCurvePointTest
+        SOURCES CK2dCurvePointTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 set(_ck2_ansi_test_target CK2)
 if (TARGET CK2Static)
     set(_ck2_ansi_test_target CK2Static)
