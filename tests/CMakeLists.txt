@@ -60,7 +60,13 @@ add_ck2_test(CKGuidComparisonTest
         CK2 VxMath
 )
 
+set(_ck2_ansi_test_target CK2)
+if (TARGET CK2Static)
+    set(_ck2_ansi_test_target CK2Static)
+endif ()
+add_ck2_test(CKFileAnsiPathTest SOURCES CKFileAnsiPathTest.cpp DEPENDENCIES ${_ck2_ansi_test_target} VxMath)
 add_ck2_test(CKDataArrayAnsiPathTest SOURCES CKDataArrayAnsiPathTest.cpp DEPENDENCIES CK2 VxMath)
+add_ck2_test(CKPathManagerAnsiPathTest SOURCES CKPathManagerAnsiPathTest.cpp DEPENDENCIES CK2 VxMath)
 
 add_ck2_test(CKDeclarationLookupTest
         SOURCES CKDeclarationLookupTest.cpp

@@ -109,7 +109,7 @@ set(CK2_PUBLIC_HEADERS
 )
 
 set(CK2_PRIVATE_HEADERS
-
+        CKFilePathEncoding.h
 )
 
 set(CK2_SOURCES

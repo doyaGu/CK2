@@ -1,17 +1,18 @@
 #include "CKPathManager.h"
+#include "CKFilePathEncoding.h"
 
 #include "VxWindowFunctions.h"
 #include "CKGlobals.h"
 #include "CKContext.h"
 
 static void NormalizeNativePathSeparators(XString &path) {
-    for (int i = 0; i < path.Length(); ++i) {
+    for (char *p = path.Str(); *p; p = (char *)CKNextFilePathCharacter(p)) {
 #ifdef _WIN32
-        if (path[i] == '/')
-            path[i] = '\\';
+        if (*p == '/')
+            *p = '\\';
 #else
-        if (path[i] == '\\')
-            path[i] = '/';
+        if (*p == '\\')
+            *p = '/';
 #endif
     }
 }
@@ -37,7 +38,7 @@ static XBOOL FindDirectoryEntryCallback(const VxDirectoryEntry *entry, void *use
         data->Match = entry->Name.CStr();
         data->Found = TRUE;
         return FALSE;
-    } else if (!data->Found && entryName.ICompare(requestedName) == 0) {
+    } else if (!data->Found && CKFilePathICompare(entryName.CStr(), requestedName.CStr()) == 0) {
         data->Match = entry->Name.CStr();
         data->Found = TRUE;
     }
@@ -182,7 +183,8 @@ XString CKGetTempPath() {
 
     XString path = VxGetTempPath();
     XString tempPath;
-    VxMakePath(tempPath, path.Str(), dir);
+    if (path.Empty() || !VxMakePath(tempPath, path.Str(), dir))
+        return "";
     return tempPath;
 }
 
@@ -524,7 +526,8 @@ void CKPathManager::AddEscapedSpace(XString &str) {
 
 XString CKPathManager::GetVirtoolsTemporaryFolder() {
     if (!m_TemporaryFolderExist) {
-        VxMakeDirectory(m_TemporaryFolder.Str());
+        if (m_TemporaryFolder.Empty() || !VxMakeDirectory(m_TemporaryFolder.Str()))
+            return "";
         m_TemporaryFolderExist = TRUE;
     }
     return m_TemporaryFolder;

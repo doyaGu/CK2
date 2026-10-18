@@ -52,27 +52,13 @@ CKBOOL WarningForOlderVersion = FALSE;
 typedef XHashTable<CKObjectDeclaration *, CKGUID> XObjDeclHashTable;
 XObjDeclHashTable g_PrototypeDeclarationList;
 
-static CKBOOL IsNativePathSeparator(char c) {
-    return (c == '\\' || c == '/') ? TRUE : FALSE;
-}
-
-static char NativePathSeparator() {
-#ifdef _WIN32
-    return '\\';
-#else
-    return '/';
-#endif
-}
-
 static XString GetModuleFileNameString(INSTANCE_HANDLE module) {
     return VxGetModuleFileName(module);
 }
 
 static XString MakeNativePath(const char *directory, const char *file) {
-    XString path = directory ? directory : "";
-    if (path.Length() > 0 && !IsNativePathSeparator(path[path.Length() - 1]))
-        path << NativePathSeparator();
-    path << (file ? file : "");
+    XString path;
+    VxMakePath(path, directory ? directory : "", file ? file : "");
     return path;
 }
 

@@ -1,4 +1,5 @@
 #include "CKFile.h"
+#include "CKFilePathEncoding.h"
 
 #include "CKPluginManager.h"
 #include "CKPathManager.h"
@@ -915,6 +916,11 @@ CKERROR CKFile::ReadFileData(CKBufferParser **ParserPtr) {
             if (fileSize > 0) {
                 if (fileName.Length() > 0) {
                     XString temp = m_Context->GetPathManager()->GetVirtoolsTemporaryFolder();
+                    if (temp.Empty()) {
+                        m_Context->OutputToConsole("CKFile: Temporary folder unavailable; included file was not extracted.");
+                        tail->Skip(fileSize);
+                        continue;
+                    }
                     const size_t filePathSize = (size_t)temp.Length() + (size_t)fileName.Length() + 2;
                     char *filePath = new char[filePathSize];
                     const XBOOL hasFilePath = VxMakePath(filePath, filePathSize, temp.Str(), fileName.Str());
@@ -1483,7 +1489,7 @@ CKBOOL CKFile::IncludeFile(CKSTRING FileName, int SearchPathCategory) {
     XString filename = FileName;
     if (SearchPathCategory <= -1 || m_Context->GetPathManager()->ResolveFileName(filename, SearchPathCategory) == CK_OK) {
         for (int i = 0; i < m_IncludedFiles.Size(); ++i) {
-            if (filename.ICompare(m_IncludedFiles[i]) == 0)
+            if (CKFilePathICompare(filename.CStr(), m_IncludedFiles[i].CStr()) == 0)
                 return FALSE;
         }
         m_IncludedFiles.PushBack(filename);

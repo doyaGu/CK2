@@ -51,13 +51,9 @@ CKBOOL CKPluginManager::IsPluginLibraryFileName(const char *filename) {
     if (!filename || !*filename)
         return FALSE;
 
-    const char *lastSlash = strrchr(filename, '/');
-    const char *lastBackslash = strrchr(filename, '\\');
-    const char *basename = lastSlash > lastBackslash ? lastSlash : lastBackslash;
-    basename = basename ? basename + 1 : filename;
-
-    const char *extension = strrchr(basename, '.');
-    if (!extension || extension == basename)
+    CKPathSplitter splitter(filename);
+    const char *extension = splitter.GetExtension();
+    if (!*extension)
         return FALSE;
 
 #if defined(_WIN32)
