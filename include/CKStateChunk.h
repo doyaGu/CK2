@@ -377,6 +377,10 @@ public:
     ////               Private Part
 
     explicit CKStateChunk(CKStateChunk *chunk);
+    // Chunks own their buffers. Use CreateCKStateChunk(chunk) / Clone for a
+    // deep copy; an implicit C++ copy would share and double-delete them.
+    CKStateChunk(const CKStateChunk &) = delete;
+    CKStateChunk &operator=(const CKStateChunk &) = delete;
     CKStateChunk(CK_CLASSID Cid, CKFile *f);
 
     ~CKStateChunk();

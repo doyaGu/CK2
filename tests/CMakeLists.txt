@@ -60,6 +60,11 @@ add_ck2_test(CKGuidComparisonTest
         CK2 VxMath
 )
 
+add_ck2_test(CKStateChunkCopyUseTest
+        SOURCES CKStateChunkCopyUseTest.cpp
+        DEPENDENCIES CK2 VxMath
+)
+
 add_ck2_test(CKStateChunkRoundTripTest
         SOURCES
         CKStateChunkRoundTripTest.cpp

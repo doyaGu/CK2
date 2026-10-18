@@ -925,7 +925,7 @@ CKERROR CKMoveScript(CKBeObject *Src, CKBeObject *Dest, CKBehavior *Beh) {
         desc.m_InitialValue = nullptr;
         desc.m_Flags = sceneDesc->m_Flags;
         if (sceneDesc->m_InitialValue) {
-            desc.m_InitialValue = new CKStateChunk(*sceneDesc->m_InitialValue);
+            desc.m_InitialValue = CreateCKStateChunk(sceneDesc->m_InitialValue);
         }
 
         if (isLevelOperation && targetLevelScene && currentScene == sourceLevelScene) {

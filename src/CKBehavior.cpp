@@ -2165,7 +2165,7 @@ CKERROR CKBehavior::Copy(CKObject &o, CKDependenciesContext &context) {
         m_InterfaceChunk = nullptr;
     }
     if (src->m_InterfaceChunk)
-        m_InterfaceChunk = new CKStateChunk(*src->m_InterfaceChunk);
+        m_InterfaceChunk = CreateCKStateChunk(src->m_InterfaceChunk);
 
     return CK_OK;
 }

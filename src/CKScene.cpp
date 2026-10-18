@@ -1071,7 +1071,7 @@ CKERROR CKScene::Copy(CKObject &o, CKDependenciesContext &context) {
             CKSceneObjectDesc copiedDesc;
             copiedDesc.m_Object = srcDesc.m_Object;
             copiedDesc.m_Flags = srcDesc.m_Flags;
-            copiedDesc.m_InitialValue = srcDesc.m_InitialValue ? new CKStateChunk(*srcDesc.m_InitialValue) : nullptr;
+            copiedDesc.m_InitialValue = srcDesc.m_InitialValue ? CreateCKStateChunk(srcDesc.m_InitialValue) : nullptr;
 
             m_SceneObjects.InsertUnique(copiedDesc.m_Object, copiedDesc);
         }
