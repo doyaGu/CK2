@@ -883,12 +883,10 @@ CKBOOL CKDataArray::LoadElements(CKSTRING filename, CKBOOL append, int column) {
         char line[2048];
         const size_t copyLen = XMin(lineLen, sizeof(line) - 1);
         memcpy(line, buffer + offset, copyLen);
-        if (offset + lineLen == readSize) {
-            line[copyLen] = '\0';
-        } else if (copyLen > 0) {
+        if (offset + lineLen < readSize && copyLen > 0 && line[copyLen - 1] == '\r') {
             line[copyLen - 1] = '\0';
         } else {
-            line[0] = '\0';
+            line[copyLen] = '\0';
         }
 
         if (line[0]) {

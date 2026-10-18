@@ -60,6 +60,8 @@ add_ck2_test(CKGuidComparisonTest
         CK2 VxMath
 )
 
+add_ck2_test(CKDataArrayAnsiPathTest SOURCES CKDataArrayAnsiPathTest.cpp DEPENDENCIES CK2 VxMath)
+
 add_ck2_test(CKDeclarationLookupTest
         SOURCES CKDeclarationLookupTest.cpp
         DEPENDENCIES CK2 VxMath
