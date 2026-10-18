@@ -11,7 +11,7 @@ CKERROR CK2dCurve::GetPos(float step, Vx2DVector *pos) {
 
     // Find the segment containing the target length
     int segmentIndex = 0;
-    for (; segmentIndex < m_ControlPoints.Size() - 1; ++segmentIndex) {
+    for (; segmentIndex < m_ControlPoints.Size() - 2; ++segmentIndex) {
         if (m_ControlPoints[segmentIndex + 1].m_Length > targetLength) {
             break;
         }
@@ -61,12 +61,10 @@ float CK2dCurve::GetY(float x) {
     if (m_ControlPoints.Size() < 2)
         return 0.0f;
 
-    // Clamp input to valid range [0, 1]
     x = (x > 1.0f) ? 1.0f : (x < 0.0f) ? 0.0f : x;
 
-    // Find containing segment
     int segment = 0;
-    for (; segment < m_ControlPoints.Size() - 1; ++segment) {
+    for (; segment < m_ControlPoints.Size() - 2; ++segment) {
         if (m_ControlPoints[segment + 1].m_Position.x >= x) {
             break;
         }
@@ -75,14 +73,16 @@ float CK2dCurve::GetY(float x) {
     const CK2dCurvePoint &start = m_ControlPoints[segment];
     const CK2dCurvePoint &end = m_ControlPoints[segment + 1];
 
-    // Handle exact point matches
-    if (x == start.m_Position.x) return start.m_Position.y;
-    if (x == end.m_Position.x) return end.m_Position.y;
+    if (x > end.m_Position.x) return 0.0f;
+    if (x <= start.m_Position.x)
+        return (start.m_Position.y > 1.0f) ? 1.0f : (start.m_Position.y < 0.0f) ? 0.0f : start.m_Position.y;
+    if (x == end.m_Position.x)
+        return (end.m_Position.y > 1.0f) ? 1.0f : (end.m_Position.y < 0.0f) ? 0.0f : end.m_Position.y;
 
-    // Linear segment calculation
     if (start.IsLinear()) {
         float t = (x - start.m_Position.x) / (end.m_Position.x - start.m_Position.x);
-        return start.m_Position.y + t * (end.m_Position.y - start.m_Position.y);
+        float y = start.m_Position.y + t * (end.m_Position.y - start.m_Position.y);
+        return (y > 1.0f) ? 1.0f : (y < 0.0f) ? 0.0f : y;
     }
 
     // Cubic spline parameter estimation using bisection method
