@@ -4,9 +4,7 @@
 
 #include "CKAll.h"
 
-namespace {
-
-CKDWORD OracleAdler(const unsigned char *bytes, int count, CKDWORD seed = 0) {
+static CKDWORD OracleAdler(const unsigned char *bytes, int count, CKDWORD seed = 0) {
     unsigned int first = seed & 0xFFFFu;
     unsigned int second = seed >> 16;
     for (int i = 0; i < count; ++i) {
@@ -16,23 +14,23 @@ CKDWORD OracleAdler(const unsigned char *bytes, int count, CKDWORD seed = 0) {
     return (second << 16) | first;
 }
 
-void PutWord(unsigned char *bytes, int offset, CKDWORD value) {
+static void PutWord(unsigned char *bytes, int offset, CKDWORD value) {
     for (int i = 0; i < 4; ++i) bytes[offset + i] = static_cast<unsigned char>(value >> (8 * i));
 }
 
-CKDWORD GetWord(const unsigned char *bytes, int offset) {
+static CKDWORD GetWord(const unsigned char *bytes, int offset) {
     CKDWORD value = 0;
     for (int i = 0; i < 4; ++i) value |= static_cast<CKDWORD>(bytes[offset + i]) << (8 * i);
     return value;
 }
 
-struct LiteralFrame {
+struct CKTestLiteralFrame {
     unsigned char Bytes[160];
     int Size;
     int HeaderBytes;
     int DataBytes;
 
-    explicit LiteralFrame(bool compressed) : Size(0), HeaderBytes(0), DataBytes(0) {
+    explicit CKTestLiteralFrame(bool compressed) : Size(0), HeaderBytes(0), DataBytes(0) {
         std::memset(Bytes, 0, sizeof(Bytes));
         // Independent v8 format: no objects; one manager record with a valid
         // 16-byte StateChunk carrying two known integers. No unused fake data.
@@ -72,9 +70,9 @@ struct LiteralFrame {
     }
 };
 
-class CRCFile : public CKFile {
+class CKTestCRCFile : public CKFile {
 public:
-    explicit CRCFile(CKContext *context) : CKFile(context) {}
+    explicit CKTestCRCFile(CKContext *context) : CKFile(context) {}
     CKERROR ReadOpenedData() { return ReadFileData(&m_Parser); }
 };
 
@@ -86,7 +84,7 @@ protected:
     }
     static void TearDownTestSuite() { if (Context) CKCloseContext(Context); Context = nullptr; CKShutdown(); }
 
-    void ExpectParsedManager(CRCFile &file) {
+    void ExpectParsedManager(CKTestCRCFile &file) {
         ASSERT_EQ(1, file.m_ManagersData.Size());
         EXPECT_EQ(CKGUID(0x11223344, 0x55667788), file.m_ManagersData[0].Manager);
         CKStateChunk *chunk = file.m_ManagersData[0].data;
@@ -152,108 +150,106 @@ TEST(CKDataCRCTest, LongInputCrossesAdlerReductionBoundaries) {
 }
 
 TEST_F(CKFileCRCTest, PlainLiteralFramePassesChecksumAndParsesActualManagerChunk) {
-    LiteralFrame frame(false); EXPECT_EQ(0x60440767u, GetWord(frame.Bytes, 8));
-    CRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(false); EXPECT_EQ(0x60440767u, GetWord(frame.Bytes, 8));
+    CKTestCRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_NE(nullptr, file.m_Parser); EXPECT_EQ(76, file.m_Parser->m_CursorPos);
     ASSERT_EQ(CK_OK, file.ReadOpenedData()); ExpectParsedManager(file);
     EXPECT_EQ(frame.Size, file.m_Parser->m_CursorPos);
 }
 
 TEST_F(CKFileCRCTest, PackedLiteralFramePassesChecksumAndParsesActualManagerChunk) {
-    LiteralFrame frame(true); EXPECT_EQ(0xD7DB145Bu, GetWord(frame.Bytes, 8));
-    CRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(true); EXPECT_EQ(0xD7DB145Bu, GetWord(frame.Bytes, 8));
+    CKTestCRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_NE(nullptr, file.m_Parser); EXPECT_EQ(79, file.m_Parser->m_CursorPos);
     ASSERT_EQ(CK_OK, file.ReadOpenedData()); ExpectParsedManager(file);
     EXPECT_EQ(frame.Size, file.m_Parser->m_CursorPos);
 }
 
 TEST_F(CKFileCRCTest, ViewerFlagTwelveToEightCannotKeepTheOriginalChecksum) {
-    LiteralFrame frame(true); ASSERT_EQ(12u, GetWord(frame.Bytes, 24));
+    CKTestLiteralFrame frame(true); ASSERT_EQ(12u, GetWord(frame.Bytes, 24));
     const CKDWORD original = GetWord(frame.Bytes, 8); PutWord(frame.Bytes, 24, 8);
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(original, GetWord(frame.Bytes, 8)); EXPECT_EQ(8u, GetWord(frame.Bytes, 24));
 }
 
 TEST_F(CKFileCRCTest, PartZeroVersionMutationIsCovered) {
-    LiteralFrame frame(false); frame.Bytes[12] ^= 1;
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(false); frame.Bytes[12] ^= 1;
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, PartOneProductBuildMutationIsCovered) {
-    LiteralFrame frame(false); frame.Bytes[56] ^= 1;
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(false); frame.Bytes[56] ^= 1;
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, PackedHeaderPayloadMutationIsRejectedBeforeDecompression) {
-    LiteralFrame frame(true); frame.Bytes[64] ^= 1;
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(true); frame.Bytes[64] ^= 1;
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, PackedDataPayloadMutationIsRejectedBeforeDecompression) {
-    LiteralFrame frame(true); frame.Bytes[64 + frame.HeaderBytes] ^= 1;
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(true); frame.Bytes[64 + frame.HeaderBytes] ^= 1;
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, PlainHeaderPayloadMutationIsCovered) {
-    LiteralFrame frame(false); frame.Bytes[68] ^= 1;
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(false); frame.Bytes[68] ^= 1;
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, PlainDataPayloadMutationIsCovered) {
-    LiteralFrame frame(false); frame.Bytes[64 + frame.HeaderBytes + 20] ^= 1;
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(false); frame.Bytes[64 + frame.HeaderBytes + 20] ^= 1;
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, ZeroStoredChecksumIsRejected) {
-    LiteralFrame frame(false); PutWord(frame.Bytes, 8, 0);
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(false); PutWord(frame.Bytes, 8, 0);
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, CorruptedNonzeroStoredChecksumIsRejected) {
-    LiteralFrame frame(true); frame.Bytes[8] ^= 1;
+    CKTestLiteralFrame frame(true); frame.Bytes[8] ^= 1;
     ASSERT_NE(0u, GetWord(frame.Bytes, 8));
-    CRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestCRCFile file(Context); EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(frame.Bytes, frame.Size));
 }
 
 TEST_F(CKFileCRCTest, DeclaredRegionsExcludeTrailingBytesFromChecksum) {
     for (int compressed = 0; compressed < 2; ++compressed) {
-        LiteralFrame frame(compressed != 0); const int coveredSize = frame.Size;
+        CKTestLiteralFrame frame(compressed != 0); const int coveredSize = frame.Size;
         for (int i = 0; i < 8; ++i) frame.Bytes[frame.Size++] = static_cast<unsigned char>(0xA0 + i);
-        CRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
+        CKTestCRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
         ASSERT_EQ(CK_OK, file.ReadOpenedData()); ExpectParsedManager(file);
         EXPECT_EQ(coveredSize, file.m_Parser->m_CursorPos);
     }
 }
 
 TEST_F(CKFileCRCTest, LegitimatelyRecomputedViewerFlagChangeStillLoads) {
-    LiteralFrame frame(true); PutWord(frame.Bytes, 24, 8); frame.UpdateChecksum();
+    CKTestLiteralFrame frame(true); PutWord(frame.Bytes, 24, 8); frame.UpdateChecksum();
     ASSERT_NE(0xD7DB145Bu, GetWord(frame.Bytes, 8));
-    CRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestCRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(8u, file.m_FileInfo.FileWriteMode);
     ASSERT_EQ(CK_OK, file.ReadOpenedData()); ExpectParsedManager(file);
 }
 
 TEST_F(CKFileCRCTest, HeaderVerificationDoesNotMutateCallerMemory) {
-    LiteralFrame frame(true); unsigned char original[160]; std::memcpy(original, frame.Bytes, sizeof(original));
-    CRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(true); unsigned char original[160]; std::memcpy(original, frame.Bytes, sizeof(original));
+    CKTestCRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_EQ(CK_OK, file.ReadOpenedData()); ExpectParsedManager(file);
     EXPECT_EQ(0, std::memcmp(original, frame.Bytes, sizeof(original)));
 }
 
 TEST_F(CKFileCRCTest, ReopeningAfterCrcFailureRevalidatesEveryInput) {
-    LiteralFrame valid(false), corrupt(false); corrupt.Bytes[56] ^= 1;
-    CRCFile file(Context); ASSERT_EQ(CKERR_FILECRCERROR, file.OpenMemory(corrupt.Bytes, corrupt.Size));
+    CKTestLiteralFrame valid(false), corrupt(false); corrupt.Bytes[56] ^= 1;
+    CKTestCRCFile file(Context); ASSERT_EQ(CKERR_FILECRCERROR, file.OpenMemory(corrupt.Bytes, corrupt.Size));
     ASSERT_EQ(CK_OK, file.OpenMemory(valid.Bytes, valid.Size));
     ASSERT_EQ(CK_OK, file.ReadOpenedData()); ExpectParsedManager(file);
     EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(corrupt.Bytes, corrupt.Size));
 }
 
 TEST_F(CKFileCRCTest, ProductCompatibilityNormalizationDoesNotRewriteRawChecksumCoverage) {
-    LiteralFrame frame(false); PutWord(frame.Bytes, 52, 12); PutWord(frame.Bytes, 56, 0x12345678); frame.UpdateChecksum();
-    CRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
+    CKTestLiteralFrame frame(false); PutWord(frame.Bytes, 52, 12); PutWord(frame.Bytes, 56, 0x12345678); frame.UpdateChecksum();
+    CKTestCRCFile file(Context); ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(0u, file.m_FileInfo.ProductVersion); EXPECT_EQ(0x01010000u, file.m_FileInfo.ProductBuild);
     EXPECT_EQ(12u, GetWord(frame.Bytes, 52)); EXPECT_EQ(0x12345678u, GetWord(frame.Bytes, 56));
     ASSERT_EQ(CK_OK, file.ReadOpenedData()); ExpectParsedManager(file);
 }
-
-} // namespace

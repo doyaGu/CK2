@@ -6,30 +6,28 @@
 #include <new>
 #include "CKAll.h"
 
-namespace {
-
 // Link CK2Static: these replacements must observe CK2's real chunk allocation
 // and deletion calls, including their scalar/array kind. No mock chunks are used.
-struct Allocation {
+struct CKTestAllocation {
     std::uintptr_t Address;
     int Frees;
     bool Array;
     bool ArrayFree;
 };
-Allocation Ledger[64];
-int AllocationCount = 0;
-bool Tracking = false;
-bool Overflow = false;
+static CKTestAllocation Ledger[64];
+static int AllocationCount = 0;
+static bool Tracking = false;
+static bool Overflow = false;
 
-void Allocated(void *pointer, bool array) {
+static void Allocated(void *pointer, bool array) {
     if (!Tracking) return;
     if (AllocationCount == 64) { Overflow = true; return; }
-    Allocation &entry = Ledger[AllocationCount++];
+    CKTestAllocation &entry = Ledger[AllocationCount++];
     entry.Address = reinterpret_cast<std::uintptr_t>(pointer);
     entry.Frees = 0; entry.Array = array; entry.ArrayFree = false;
 }
 
-void Released(void *pointer, bool array) {
+static void Released(void *pointer, bool array) {
     if (!Tracking || !pointer) return;
     const std::uintptr_t address = reinterpret_cast<std::uintptr_t>(pointer);
     for (int i = AllocationCount - 1; i >= 0; --i) {
@@ -39,9 +37,9 @@ void Released(void *pointer, bool array) {
     }
 }
 
-void StartTracking() { AllocationCount = 0; Overflow = false; Tracking = true; }
+static void StartTracking() { AllocationCount = 0; Overflow = false; Tracking = true; }
 
-void ExpectAllReleasedAndRecoverFailedBaseline() {
+static void ExpectAllReleasedAndRecoverFailedBaseline() {
     ASSERT_FALSE(Tracking);
     EXPECT_FALSE(Overflow);
     EXPECT_GE(AllocationCount, 3) << "CK2Static allocation observation is required";
@@ -54,14 +52,14 @@ void ExpectAllReleasedAndRecoverFailedBaseline() {
     }
 }
 
-void Word(unsigned char *bytes, int offset, unsigned int value) {
+static void Word(unsigned char *bytes, int offset, unsigned int value) {
     for (int i = 0; i < 4; ++i) bytes[offset+i] = static_cast<unsigned char>(value >> (i*8));
 }
 
 // The offsets and bytes are format expectations, not a copied production struct.
-struct LiteralFile {
+struct CKTestLiteralFile {
     unsigned char Bytes[122];
-    LiteralFile() {
+    CKTestLiteralFile() {
         std::memset(Bytes, 0, sizeof(Bytes));
         std::memcpy(Bytes, "Nemo Fi", 7);
         Word(Bytes, 12, 0x13022002); Word(Bytes, 16, 8); Word(Bytes, 24, 4);
@@ -84,9 +82,9 @@ struct LiteralFile {
     }
 };
 
-class RecordFile : public CKFile {
+class CKTestRecordFile : public CKFile {
 public:
-    explicit RecordFile(CKContext *context) : CKFile(context) {}
+    explicit CKTestRecordFile(CKContext *context) : CKFile(context) {}
     CKERROR ReadData() { return ReadFileData(&m_Parser); }
     void Reset() { ClearData(); }
 };
@@ -105,8 +103,6 @@ protected:
     }
 };
 
-} // namespace
-
 void *operator new(std::size_t bytes) {
     void *pointer = std::malloc(bytes ? bytes : 1);
     if (!pointer) throw std::bad_alloc();
@@ -121,8 +117,6 @@ void operator delete(void *pointer) noexcept { Released(pointer, false); std::fr
 void operator delete[](void *pointer) noexcept { Released(pointer, true); std::free(pointer); }
 void operator delete(void *pointer, std::size_t) noexcept { Released(pointer, false); std::free(pointer); }
 void operator delete[](void *pointer, std::size_t) noexcept { Released(pointer, true); std::free(pointer); }
-
-namespace {
 
 TEST_F(CKFileRecordTypesTest, ConstructorInitializesEveryDeclaredFieldAndRecordByte) {
     alignas(CKFileObject) unsigned char storage[sizeof(CKFileObject)];
@@ -225,7 +219,7 @@ TEST_F(CKFileRecordTypesTest, ManagerRecordHasExpectedPlatformGuidAndPointerLayo
 }
 
 TEST_F(CKFileRecordTypesTest, ClearDataReleasesBothRecordChunkKindsAndKeepsContextObjectAlive) {
-    RecordFile file(Context); CKObject object(Context, "borrowed"); const CK_ID id=object.GetID();
+    CKTestRecordFile file(Context); CKObject object(Context, "borrowed"); const CK_ID id=object.GetID();
     file.m_FileObjects.Resize(1); file.m_FileObjects[0].ObjPtr=&object;
     file.m_ManagersData.Resize(1); file.m_ManagersData[0].Manager=CKGUID(11,22);
     StartTracking();
@@ -240,7 +234,7 @@ TEST_F(CKFileRecordTypesTest, ClearDataReleasesBothRecordChunkKindsAndKeepsConte
 }
 
 TEST_F(CKFileRecordTypesTest, LiteralHeaderProjectsAllSupportedPartZeroAndPartOneFields) {
-    LiteralFile wire; RecordFile file(Context);
+    CKTestLiteralFile wire; CKTestRecordFile file(Context);
     ASSERT_EQ(CK_OK,file.OpenMemory(wire.Bytes,sizeof(wire.Bytes),CK_LOAD_DEFAULT));
     const CKFileInfo &info=file.m_FileInfo;
     EXPECT_EQ(0x13022002u,info.CKVersion); EXPECT_EQ(8u,info.FileVersion); EXPECT_EQ(4u,info.FileWriteMode);
@@ -255,7 +249,7 @@ TEST_F(CKFileRecordTypesTest, LiteralHeaderProjectsAllSupportedPartZeroAndPartOn
 }
 
 TEST_F(CKFileRecordTypesTest, LiteralObjectAndManagerRecordsPreserveWireIdentityAndOwnedData) {
-    LiteralFile wire; RecordFile file(Context);
+    CKTestLiteralFile wire; CKTestRecordFile file(Context);
     ASSERT_EQ(CK_OK,file.OpenMemory(wire.Bytes,sizeof(wire.Bytes),CK_LOAD_DEFAULT));
     ASSERT_EQ(1,file.m_FileObjects.Size()); CKFileObject &record=file.m_FileObjects[0];
     EXPECT_EQ(0x1234u,record.Object); EXPECT_EQ(CKCID_OBJECT,record.ObjectCid); EXPECT_EQ(12,record.FileIndex);
@@ -268,14 +262,12 @@ TEST_F(CKFileRecordTypesTest, LiteralObjectAndManagerRecordsPreserveWireIdentity
 }
 
 TEST_F(CKFileRecordTypesTest, SignatureIsCheckedAtTheFirstFourWireBytes) {
-    LiteralFile wire; RecordFile file(Context); wire.Bytes[0]='X'; wire.Refresh();
+    CKTestLiteralFile wire; CKTestRecordFile file(Context); wire.Bytes[0]='X'; wire.Refresh();
     EXPECT_EQ(CKERR_INVALIDFILE,file.OpenMemory(wire.Bytes,sizeof(wire.Bytes)));
     EXPECT_EQ(nullptr,file.m_Parser);
 }
 
 TEST_F(CKFileRecordTypesTest, HeaderCrcRejectsAChangedPartOneField) {
-    LiteralFile wire; RecordFile file(Context); wire.Bytes[56]^=1;
+    CKTestLiteralFile wire; CKTestRecordFile file(Context); wire.Bytes[56]^=1;
     EXPECT_EQ(CKERR_FILECRCERROR,file.OpenMemory(wire.Bytes,sizeof(wire.Bytes)));
 }
-
-} // namespace

@@ -5,13 +5,12 @@
 #include <string>
 #include "CKAll.h"
 
-namespace {
-const CKGUID SessionGuid(0x38112233, 0x38445566);
+static const CKGUID SessionGuid(0x38112233, 0x38445566);
 
-void Put(unsigned char *bytes, int offset, unsigned int value) {
+static void Put(unsigned char *bytes, int offset, unsigned int value) {
     for (int i = 0; i < 4; ++i) bytes[offset + i] = static_cast<unsigned char>(value >> (8 * i));
 }
-unsigned int Get(const unsigned char *bytes, int offset) {
+static unsigned int Get(const unsigned char *bytes, int offset) {
     unsigned int value = 0;
     for (int i = 0; i < 4; ++i) value |= unsigned(bytes[offset + i]) << (8 * i);
     return value;
@@ -19,10 +18,10 @@ unsigned int Get(const unsigned char *bytes, int offset) {
 
 // Independent format-8 input: one named BeObject and optional real manager data.
 // Format version is a wire discriminator, not an assertion about its producer.
-struct SessionFrame {
+struct CKTestSessionFrame {
     unsigned char Bytes[256];
     int Size;
-    explicit SessionFrame(bool manager = false, unsigned int mode = CKFILE_UNCOMPRESSED) {
+    explicit CKTestSessionFrame(bool manager = false, unsigned int mode = CKFILE_UNCOMPRESSED) {
         std::memset(Bytes, 0, sizeof(Bytes));
         std::memcpy(Bytes, "Nemo Fi", 7);
         Put(Bytes, 12, 0x13022002); Put(Bytes, 16, 8); Put(Bytes, 24, mode);
@@ -49,14 +48,14 @@ struct SessionFrame {
     }
 };
 
-struct ChoiceProbe {
+struct CKTestChoiceProbe {
     CKContext *Context;
     CKObject *Existing;
     CK_LOADMODE Choice;
     int Calls = 0;
 };
-CK_LOADMODE Choose(CK_CLASSID cid, CKSTRING oldName, CKSTRING newName, CKObject **object, void *data) {
-    ChoiceProbe *probe = static_cast<ChoiceProbe *>(data);
+static CK_LOADMODE Choose(CK_CLASSID cid, CKSTRING oldName, CKSTRING newName, CKObject **object, void *data) {
+    CKTestChoiceProbe *probe = static_cast<CKTestChoiceProbe *>(data);
     ++probe->Calls;
     EXPECT_EQ(CKCID_BEOBJECT, cid); EXPECT_STREQ("Session", oldName);
     EXPECT_NE(nullptr, object);
@@ -68,13 +67,13 @@ CK_LOADMODE Choose(CK_CLASSID cid, CKSTRING oldName, CKSTRING newName, CKObject 
     return probe->Choice;
 }
 
-struct UIProbe {
+struct CKTestUIProbe {
     CKContext *Context;
     int LoadCount = 0, SaveCount = 0, InterfaceCount = 0;
     int Loaded[8] = {}, Totals[8] = {};
 };
-CKERROR ObserveUI(CKUICallbackStruct &event, void *data) {
-    UIProbe *probe = static_cast<UIProbe *>(data);
+static CKERROR ObserveUI(CKUICallbackStruct &event, void *data) {
+    CKTestUIProbe *probe = static_cast<CKTestUIProbe *>(data);
     if (event.Reason == CKUIM_CREATEINTERFACECHUNK) {
         ++probe->InterfaceCount;
         EXPECT_TRUE(probe->Context->m_Saving); EXPECT_NE(nullptr, event.Objects);
@@ -92,9 +91,9 @@ CKERROR ObserveUI(CKUICallbackStruct &event, void *data) {
     return CK_OK;
 }
 
-class SessionManager : public CKBaseManager {
+class CKTestSessionManager : public CKBaseManager {
 public:
-    explicit SessionManager(CKContext *context)
+    explicit CKTestSessionManager(CKContext *context)
         : CKBaseManager(context, SessionGuid, const_cast<char *>("Pass38 sessions")) {}
     CKDWORD GetValidFunctionsMask() override {
         return CKMANAGER_FUNC_PreLoad | CKMANAGER_FUNC_PostLoad | CKMANAGER_FUNC_PreSave | CKMANAGER_FUNC_PostSave;
@@ -142,12 +141,12 @@ protected:
         std::error_code ignored; std::filesystem::remove_all(Directory, ignored);
     }
     CKObject *Existing() { return Context->CreateObject(CKCID_BEOBJECT, const_cast<char *>("Session")); }
-    SessionManager *Manager() {
-        SessionManager *manager = new SessionManager(Context);
+    CKTestSessionManager *Manager() {
+        CKTestSessionManager *manager = new CKTestSessionManager(Context);
         EXPECT_EQ(CK_OK, Context->RegisterNewManager(manager)); return manager;
     }
     std::string Path(const char *name) { return (Directory / name).string(); }
-    void Write(const std::string &path, const SessionFrame &frame) {
+    void Write(const std::string &path, const CKTestSessionFrame &frame) {
         FILE *stream = std::fopen(path.c_str(), "wb"); ASSERT_NE(nullptr, stream);
         EXPECT_EQ(static_cast<size_t>(frame.Size), std::fwrite(frame.Bytes, 1, frame.Size, stream));
         EXPECT_EQ(0, std::fclose(stream));
@@ -162,8 +161,8 @@ protected:
 
 TEST_F(CKFileSessionContractTest, TwoStageLoadKeepsChoiceCallbackUntilItCreatesTheObject) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
-    ChoiceProbe choice{Context, existing, CKLOAD_RENAME}; Context->SetUserLoadCallback(Choose, &choice);
-    SessionFrame frame; CKFile file(Context); CKObjectArray objects;
+    CKTestChoiceProbe choice{Context, existing, CKLOAD_RENAME}; Context->SetUserLoadCallback(Choose, &choice);
+    CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size, CK_LOAD_CHECKDUPLICATES));
     EXPECT_EQ(0, choice.Calls); EXPECT_EQ(Choose, Context->m_UserLoadCallBack);
     ASSERT_EQ(CK_OK, file.LoadFileData(&objects)); ASSERT_EQ(1, choice.Calls);
@@ -176,9 +175,9 @@ TEST_F(CKFileSessionContractTest, UseCurrentRegistersExistingObjectWithoutReload
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     existing->ModifyObjectFlags(CK_OBJECT_HIERACHICALHIDE, CK_OBJECT_VISIBLE);
     const CKDWORD oldFlags = existing->GetObjectFlags(); const int oldCount = Context->GetObjectCount();
-    ChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
-    UIProbe ui{Context}; Context->SetInterfaceMode(TRUE, ObserveUI, &ui);
-    SessionFrame frame; CKFile file(Context); CKObjectArray objects;
+    CKTestChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
+    CKTestUIProbe ui{Context}; Context->SetInterfaceMode(TRUE, ObserveUI, &ui);
+    CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
     ASSERT_EQ(CK_OK, file.Load(frame.Bytes, frame.Size, &objects,
         static_cast<CK_LOAD_FLAGS>(CK_LOAD_CHECKDUPLICATES | CK_LOAD_AS_DYNAMIC_OBJECT)));
     EXPECT_EQ(1, choice.Calls); EXPECT_EQ(oldCount, Context->GetObjectCount());
@@ -190,8 +189,8 @@ TEST_F(CKFileSessionContractTest, UseCurrentRegistersExistingObjectWithoutReload
 
 TEST_F(CKFileSessionContractTest, DefaultLoadCreatesDuplicatesWithoutInvokingTheChoiceCallback) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
-    ChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
-    SessionFrame frame; CKFile file(Context); CKObjectArray objects;
+    CKTestChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
+    CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
     ASSERT_EQ(CK_OK, file.Load(frame.Bytes, frame.Size, &objects, CK_LOAD_DEFAULT));
     EXPECT_EQ(0, choice.Calls); EXPECT_NE(existing, file.m_FileObjects[0].ObjPtr);
     EXPECT_STREQ("Session", file.m_FileObjects[0].ObjPtr->GetName()); EXPECT_EQ(1, objects.GetCount());
@@ -201,7 +200,7 @@ TEST_F(CKFileSessionContractTest, DefaultLoadCreatesDuplicatesWithoutInvokingThe
 TEST_F(CKFileSessionContractTest, AutomaticRenameCreatesAUniqueNameAndReturnsTheNewObject) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     Context->SetAutomaticLoadMode(CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME);
-    SessionFrame frame; CKFile file(Context); CKObjectArray objects;
+    CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
     ASSERT_EQ(CK_OK, file.Load(frame.Bytes, frame.Size, &objects, CK_LOAD_AUTOMATICMODE));
     CKObject *created = file.m_FileObjects[0].ObjPtr; ASSERT_NE(nullptr, created); EXPECT_NE(existing, created);
     EXPECT_STRNE("Session", created->GetName()); EXPECT_EQ(created->GetID(), objects.GetDataId());
@@ -211,8 +210,8 @@ TEST_F(CKFileSessionContractTest, AutomaticRenameCreatesAUniqueNameAndReturnsThe
 TEST_F(CKFileSessionContractTest, UserChoiceTakesPrecedenceOverAutomaticRename) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     Context->SetAutomaticLoadMode(CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME);
-    ChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
-    SessionFrame frame; CKFile file(Context); CKObjectArray objects;
+    CKTestChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
+    CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
     ASSERT_EQ(CK_OK, file.Load(frame.Bytes, frame.Size, &objects, CK_LOAD_AUTOMATICMODE));
     EXPECT_EQ(1, choice.Calls); EXPECT_EQ(existing, file.m_FileObjects[0].ObjPtr);
     EXPECT_EQ(0, objects.GetCount()); ExpectChoiceCleared();
@@ -220,8 +219,8 @@ TEST_F(CKFileSessionContractTest, UserChoiceTakesPrecedenceOverAutomaticRename) 
 
 TEST_F(CKFileSessionContractTest, RepeatedLoadRearmsCallbacksAndAppendsOnlyNewlyLoadedObjects) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
-    ChoiceProbe first{Context, existing, CKLOAD_USECURRENT}, second{Context, existing, CKLOAD_RENAME};
-    SessionFrame frame; CKFile file(Context); CKObjectArray objects; objects.InsertRear(existing);
+    CKTestChoiceProbe first{Context, existing, CKLOAD_USECURRENT}, second{Context, existing, CKLOAD_RENAME};
+    CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects; objects.InsertRear(existing);
     Context->SetUserLoadCallback(Choose, &first);
     ASSERT_EQ(CK_OK, file.Load(frame.Bytes, frame.Size, &objects, CK_LOAD_CHECKDUPLICATES));
     EXPECT_EQ(1, objects.GetCount()); ExpectChoiceCleared();
@@ -234,8 +233,8 @@ TEST_F(CKFileSessionContractTest, RepeatedLoadRearmsCallbacksAndAppendsOnlyNewly
 }
 
 TEST_F(CKFileSessionContractTest, ManagerPayloadAndProgressRepeatAcrossMappedAndMemoryLoads) {
-    SessionManager *manager = Manager(); UIProbe ui{Context}; Context->SetInterfaceMode(TRUE, ObserveUI, &ui);
-    SessionFrame frame(true); std::string input = Path("source.cmo"); Write(input, frame);
+    CKTestSessionManager *manager = Manager(); CKTestUIProbe ui{Context}; Context->SetInterfaceMode(TRUE, ObserveUI, &ui);
+    CKTestSessionFrame frame(true); std::string input = Path("source.cmo"); Write(input, frame);
     CKFile file(Context); CKObjectArray objects;
     ASSERT_EQ(CK_OK, file.Load(input.data(), &objects)); ASSERT_EQ(CK_OK, file.Load(frame.Bytes, frame.Size, &objects));
     EXPECT_EQ(2, manager->PreLoads); EXPECT_EQ(2, manager->PostLoads); EXPECT_EQ(2, manager->DataLoads);
@@ -246,7 +245,7 @@ TEST_F(CKFileSessionContractTest, ManagerPayloadAndProgressRepeatAcrossMappedAnd
 }
 
 TEST_F(CKFileSessionContractTest, ConsecutiveSaveSessionsResetObjectMasksFlagsAndOutputSummary) {
-    SessionManager *manager = Manager(); CKObject *object = Existing(); ASSERT_NE(nullptr, object);
+    CKTestSessionManager *manager = Manager(); CKObject *object = Existing(); ASSERT_NE(nullptr, object);
     std::string first = Path("first.cmo"), second = Path("second.cmo"); CKFile file(Context);
     ASSERT_EQ(CK_OK, file.StartSave(first.data(), 0x3811)); file.SaveObject(object); ASSERT_EQ(CK_OK, file.EndSave());
     EXPECT_EQ(0x3811u, manager->SaveFlags); EXPECT_EQ(1u, file.m_FileInfo.ObjectCount);
@@ -260,7 +259,7 @@ TEST_F(CKFileSessionContractTest, ConsecutiveSaveSessionsResetObjectMasksFlagsAn
 }
 
 TEST_F(CKFileSessionContractTest, LoadAndSaveUsesSourceWriteModeAndConversionFlagsDuringRealManagerSave) {
-    SessionManager *manager = Manager(); SessionFrame frame(true, CKFILE_WHOLECOMPRESSED);
+    CKTestSessionManager *manager = Manager(); CKTestSessionFrame frame(true, CKFILE_WHOLECOMPRESSED);
     std::string input = Path("source.cmo"), output = Path("converted.cmo"); Write(input, frame);
     CKFile file(Context); file.LoadAndSave(input.data(), output.data());
     EXPECT_EQ(1, manager->DataLoads); EXPECT_EQ(1, manager->DataSaves); EXPECT_EQ(0u, manager->SaveFlags);
@@ -274,7 +273,7 @@ TEST_F(CKFileSessionContractTest, LoadAndSaveUsesSourceWriteModeAndConversionFla
 }
 
 TEST_F(CKFileSessionContractTest, LoadAndSaveSamePathReleasesMappingBeforeReplacingTheInput) {
-    SessionManager *manager = Manager(); SessionFrame frame(true); std::string path = Path("in-place.cmo"); Write(path, frame);
+    CKTestSessionManager *manager = Manager(); CKTestSessionFrame frame(true); std::string path = Path("in-place.cmo"); Write(path, frame);
     CKFile file(Context); file.LoadAndSave(path.data(), path.data());
     EXPECT_EQ(1, manager->DataSaves); EXPECT_FALSE(Context->m_Saving); EXPECT_EQ(nullptr, file.m_MappedFile);
     EXPECT_EQ(nullptr, file.m_Parser); ASSERT_EQ(CK_OK, file.Load(path.data(), nullptr)); EXPECT_EQ(2, manager->DataLoads);
@@ -282,7 +281,7 @@ TEST_F(CKFileSessionContractTest, LoadAndSaveSamePathReleasesMappingBeforeReplac
 }
 
 TEST_F(CKFileSessionContractTest, ConsecutiveConversionsDoNotLeakPreviousWriteModesOrObjectQueues) {
-    SessionManager *manager = Manager(); SessionFrame plain(true), packed(true, CKFILE_WHOLECOMPRESSED);
+    CKTestSessionManager *manager = Manager(); CKTestSessionFrame plain(true), packed(true, CKFILE_WHOLECOMPRESSED);
     std::string source1 = Path("plain.cmo"), source2 = Path("packed.cmo"), output1 = Path("out1.cmo"), output2 = Path("out2.cmo");
     Write(source1, plain); Write(source2, packed); CKFile file(Context);
     file.LoadAndSave(source2.data(), output2.data()); file.LoadAndSave(source1.data(), output1.data());
@@ -292,5 +291,3 @@ TEST_F(CKFileSessionContractTest, ConsecutiveConversionsDoNotLeakPreviousWriteMo
     CKObjectArray objects; ASSERT_EQ(CK_OK, file.Load(output1.data(), &objects)); EXPECT_EQ(1, objects.GetCount());
     EXPECT_EQ(3, manager->DataLoads); EXPECT_EQ(0, Context->GetAttributeManager()->m_Saving); ExpectChoiceCleared();
 }
-
-} // namespace

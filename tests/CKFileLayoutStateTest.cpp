@@ -4,11 +4,9 @@
 #include <cstring>
 #include "CKAll.h"
 
-namespace {
-
-class LayoutFile : public CKFile {
+class CKTestLayoutFile : public CKFile {
 public:
-    explicit LayoutFile(CKContext *context) : CKFile(context) {}
+    explicit CKTestLayoutFile(CKContext *context) : CKFile(context) {}
     void Reset() { ClearData(); }
 };
 
@@ -29,7 +27,7 @@ protected:
 };
 
 TEST_F(CKFileLayoutStateTest, PublicLayoutMatchesWin32SdkAndExplicitPortableX64Layout) {
-    LayoutFile file(Context);
+    CKTestLayoutFile file(Context);
     const CKFile &base = file;
     const char *start = reinterpret_cast<const char *>(&base);
     // Independent SDK/native Win32 offsets; x64 adapts host pointer widths.
@@ -57,7 +55,7 @@ TEST_F(CKFileLayoutStateTest, PublicLayoutMatchesWin32SdkAndExplicitPortableX64L
 }
 
 TEST_F(CKFileLayoutStateTest, ConstructorInitializesSessionMembersWithoutClaimingHeaderSummaryValues) {
-    LayoutFile file(Context);
+    CKTestLayoutFile file(Context);
     EXPECT_EQ(Context, file.m_Context);
     EXPECT_EQ(0u, file.m_SaveIDMax);
     EXPECT_EQ(0u, file.m_Flags);
@@ -78,7 +76,7 @@ TEST_F(CKFileLayoutStateTest, ConstructorInitializesSessionMembersWithoutClaimin
     // m_FileInfo is an uninitialized POD in the original constructor as well.
 }
 
-void PutWord(unsigned char *bytes, int offset, unsigned int value) {
+static void PutWord(unsigned char *bytes, int offset, unsigned int value) {
     for (int i = 0; i < 4; ++i)
         bytes[offset + i] = static_cast<unsigned char>(value >> (i * 8));
 }
@@ -100,7 +98,7 @@ TEST_F(CKFileLayoutStateTest, IndependentHeaderPublishesSummaryAndResetPreserves
         b = (b + a) % 65521;
     }
     PutWord(bytes, 8, a | (b << 16));
-    LayoutFile file(Context);
+    CKTestLayoutFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(bytes, sizeof(bytes), CK_LOAD_AS_DYNAMIC_OBJECT));
     EXPECT_EQ(73u, file.m_SaveIDMax);
     EXPECT_EQ(CK_LOAD_AS_DYNAMIC_OBJECT, file.m_Flags);
@@ -137,7 +135,7 @@ TEST_F(CKFileLayoutStateTest, IndependentHeaderPublishesSummaryAndResetPreserves
 }
 
 TEST_F(CKFileLayoutStateTest, ReferencePromotionKeepsHashAndClassIndexConsistentWithSaveQueue) {
-    LayoutFile file(Context);
+    CKTestLayoutFile file(Context);
     ASSERT_EQ(CK_OK, file.StartSave(Output, 0x1234));
     EXPECT_STREQ(Output, file.m_FileName);
     EXPECT_NE(static_cast<void *>(Output), static_cast<void *>(file.m_FileName));
@@ -175,7 +173,7 @@ TEST_F(CKFileLayoutStateTest, ReferencePromotionKeepsHashAndClassIndexConsistent
 }
 
 TEST_F(CKFileLayoutStateTest, ActualSceneSaveMarksSceneStateAndFinalizationClearsTheSession) {
-    LayoutFile file(Context);
+    CKTestLayoutFile file(Context);
     ASSERT_EQ(CK_OK, file.StartSave(Output, 0x5678));
     CKObject *scene = Context->CreateObject(CKCID_SCENE, "layout-scene");
     ASSERT_NE(nullptr, scene);
@@ -196,5 +194,3 @@ TEST_F(CKFileLayoutStateTest, ActualSceneSaveMarksSceneStateAndFinalizationClear
     EXPECT_EQ(0u, file.m_SaveIDMax);
     EXPECT_EQ(0, file.m_IndexByClassId.Size());
 }
-
-} // namespace

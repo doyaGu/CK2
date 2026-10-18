@@ -8,8 +8,6 @@
 #include <windows.h>
 #endif
 
-namespace {
-
 class CKFileIoCompletionTest : public ::testing::Test {
 protected:
     static void SetUpTestSuite() { ASSERT_EQ(CK_OK, CKStartUp()); }
@@ -56,7 +54,7 @@ TEST_F(CKFileIoCompletionTest, EmptySavePublishesActualBytesAndCompletesSession)
 #ifdef _WIN32
 // StartSave first opens and closes the destination without writing. EndSave
 // reconnects for the actual output; this peer disconnects without reading it.
-struct SavePipe {
+struct CKTestSavePipe {
     char Name[128];
     HANDLE Pipe = INVALID_HANDLE_VALUE;
     HANDLE Thread = nullptr;
@@ -64,7 +62,7 @@ struct SavePipe {
     int Connections = 0;
 
     static DWORD WINAPI Serve(void *data) {
-        SavePipe *pipe = static_cast<SavePipe *>(data);
+        CKTestSavePipe *pipe = static_cast<CKTestSavePipe *>(data);
         const BOOL firstConnected = ConnectNamedPipe(pipe->Pipe, nullptr);
         const DWORD firstError = firstConnected ? ERROR_SUCCESS : GetLastError();
         // The first client can finish its zero-byte open/close before this
@@ -89,7 +87,7 @@ struct SavePipe {
         CloseHandle(pipe->Pipe);
         return 0;
     }
-    SavePipe() {
+    CKTestSavePipe() {
         std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\BallancedPass37Save-%lu-%p",
             GetCurrentProcessId(), static_cast<void *>(this));
         Ready = CreateEventA(nullptr, TRUE, FALSE, nullptr);
@@ -98,7 +96,7 @@ struct SavePipe {
         if (Ready && Pipe != INVALID_HANDLE_VALUE)
             Thread = CreateThread(nullptr, 0, Serve, this, 0, nullptr);
     }
-    ~SavePipe() {
+    ~CKTestSavePipe() {
         if (Thread) {
             for (int i = 0; i < 2 && WaitForSingleObject(Thread, 0) == WAIT_TIMEOUT; ++i) {
                 HANDLE client = CreateFileA(Name, GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
@@ -118,7 +116,7 @@ TEST_F(CKFileIoCompletionTest, FinalFlushFailureIsReportedAndSaveSessionCanBeReu
     // Independent CRT control distinguishes a buffered close failure from an
     // open error or a short fwrite. No runtime stream or CRT function is mocked.
     {
-        SavePipe control;
+        CKTestSavePipe control;
         ASSERT_NE(nullptr, control.Thread);
         FILE *first = std::fopen(control.Name, "ab");
         ASSERT_NE(nullptr, first);
@@ -134,7 +132,7 @@ TEST_F(CKFileIoCompletionTest, FinalFlushFailureIsReportedAndSaveSessionCanBeReu
     }
     CKFile file(Context);
     {
-        SavePipe pipe;
+        CKTestSavePipe pipe;
         ASSERT_NE(INVALID_HANDLE_VALUE, pipe.Pipe);
         ASSERT_NE(nullptr, pipe.Thread);
         ASSERT_EQ(CK_OK, file.StartSave(pipe.Name, 0));
@@ -163,7 +161,7 @@ TEST_F(CKFileIoCompletionTest, IncludedResourceWriteFailureIsReportedAndSessionC
         ASSERT_EQ(sizeof(block), std::fwrite(block, 1, sizeof(block), stream));
     ASSERT_EQ(0, std::fclose(stream));
     CKFile file(Context);
-    SavePipe pipe;
+    CKTestSavePipe pipe;
     ASSERT_NE(INVALID_HANDLE_VALUE, pipe.Pipe);
     ASSERT_NE(nullptr, pipe.Thread);
     ASSERT_EQ(CK_OK, file.StartSave(pipe.Name, 0));
@@ -175,5 +173,3 @@ TEST_F(CKFileIoCompletionTest, IncludedResourceWriteFailureIsReportedAndSessionC
     ExpectClosed(file);
 }
 #endif
-
-} // namespace

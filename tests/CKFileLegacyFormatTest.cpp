@@ -2,14 +2,12 @@
 #include <cstring>
 #include "CKAll.h"
 
-namespace {
-
-void PutLegacyWord(unsigned char *data, int offset, unsigned int value) {
+static void PutLegacyWord(unsigned char *data, int offset, unsigned int value) {
     for (int i = 0; i < 4; ++i)
         data[offset + i] = static_cast<unsigned char>(value >> (8 * i));
 }
 
-unsigned int LegacyAdler(const unsigned char *data, int size) {
+static unsigned int LegacyAdler(const unsigned char *data, int size) {
     unsigned int a = 0, b = 0;
     for (int i = 0; i < size; ++i) {
         a = (a + data[i]) % 65521;
@@ -20,10 +18,10 @@ unsigned int LegacyAdler(const unsigned char *data, int size) {
 
 // Independently authored wire data. File format versions are distinct from
 // the authoring product: the reference consumer is Virtools 2.1.0.14.
-struct LegacyFrame {
+struct CKTestLegacyFrame {
     unsigned char Bytes[256];
     int Version, HeaderSize, DataSize, Size;
-    explicit LegacyFrame(int version, bool object = true)
+    explicit CKTestLegacyFrame(int version, bool object = true)
         : Version(version), HeaderSize(version < 5 ? 32 : 64), DataSize(8), Size(0) {
         std::memset(Bytes, 0, sizeof(Bytes));
         std::memcpy(Bytes, "Nemo Fi", 7);
@@ -65,9 +63,9 @@ struct LegacyFrame {
     }
 };
 
-class LegacyFile : public CKFile {
+class CKTestLegacyFile : public CKFile {
 public:
-    explicit LegacyFile(CKContext *context) : CKFile(context) {}
+    explicit CKTestLegacyFile(CKContext *context) : CKFile(context) {}
     CKERROR ReadData() { return ReadFileData(&m_Parser); }
 };
 
@@ -89,8 +87,8 @@ class CKFileLegacyVersionsTest : public CKFileLegacyFormatTest,
     public ::testing::WithParamInterface<int> {};
 
 TEST_P(CKFileLegacyVersionsTest, LiteralRecordRestoresSourceIdClassNameAndPayload) {
-    LegacyFrame frame(GetParam());
-    LegacyFile file(Context);
+    CKTestLegacyFrame frame(GetParam());
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_NE(nullptr, file.m_Parser);
     EXPECT_EQ(frame.HeaderSize, file.m_Parser->m_CursorPos);
@@ -115,8 +113,8 @@ TEST_P(CKFileLegacyVersionsTest, LiteralRecordRestoresSourceIdClassNameAndPayloa
 }
 
 TEST_P(CKFileLegacyVersionsTest, EmptyFileUsesDataPreambleWithoutObjectHeaders) {
-    LegacyFrame frame(GetParam(), false);
-    LegacyFile file(Context);
+    CKTestLegacyFrame frame(GetParam(), false);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_EQ(CK_OK, file.ReadData());
     EXPECT_EQ(73u, file.m_SaveIDMax);
@@ -125,8 +123,8 @@ TEST_P(CKFileLegacyVersionsTest, EmptyFileUsesDataPreambleWithoutObjectHeaders) 
 }
 
 TEST_P(CKFileLegacyVersionsTest, DependencyPreloadConsumesLegacyDataAndPreservesRecords) {
-    LegacyFrame frame(GetParam());
-    LegacyFile file(Context);
+    CKTestLegacyFrame frame(GetParam());
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size, CK_LOAD_CHECKDEPENDENCIES));
     EXPECT_TRUE(file.m_ReadFileDataDone);
     EXPECT_EQ(nullptr, file.m_Parser);
@@ -143,9 +141,9 @@ INSTANTIATE_TEST_SUITE_P(FileFormatsZeroThroughSix, CKFileLegacyVersionsTest,
 TEST_F(CKFileLegacyFormatTest, VersionsTwoThroughSixRejectPayloadCrcMismatch) {
     for (int version = 2; version <= 6; ++version) {
         SCOPED_TRACE(version);
-        LegacyFrame frame(version);
+        CKTestLegacyFrame frame(version);
         frame.Bytes[frame.Size - 2] ^= 1;
-        LegacyFile file(Context);
+        CKTestLegacyFile file(Context);
         ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
         EXPECT_EQ(CKERR_FILECRCERROR, file.ReadData());
         EXPECT_EQ(0, file.m_FileObjects.Size());
@@ -153,10 +151,10 @@ TEST_F(CKFileLegacyFormatTest, VersionsTwoThroughSixRejectPayloadCrcMismatch) {
 }
 
 TEST_F(CKFileLegacyFormatTest, RawRecordRequiresNonzeroClassId) {
-    LegacyFrame frame(3);
+    CKTestLegacyFrame frame(3);
     PutLegacyWord(frame.Bytes, frame.HeaderSize + 16, 0);
     frame.Refresh();
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(CKERR_INVALIDFILE, file.ReadData());
 }
@@ -165,42 +163,42 @@ TEST_F(CKFileLegacyFormatTest, RawRecordRejectsMissingMetadataAndPayload) {
     const int sizes[] = {16, 20, 24, 28, 32, 36, 40};
     for (int size : sizes) {
         SCOPED_TRACE(size);
-        LegacyFrame frame(3);
+        CKTestLegacyFrame frame(3);
         frame.DataSize = size;
         frame.Refresh();
-        LegacyFile file(Context);
+        CKTestLegacyFile file(Context);
         ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
         EXPECT_EQ(CKERR_INVALIDFILE, file.ReadData());
     }
 }
 
 TEST_F(CKFileLegacyFormatTest, RawRecordRejectsNegativeStoredSize) {
-    LegacyFrame frame(3);
+    CKTestLegacyFrame frame(3);
     PutLegacyWord(frame.Bytes, frame.HeaderSize + 24, 0xffffffffu);
     frame.Refresh();
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(CKERR_INVALIDFILE, file.ReadData());
 }
 
 TEST_F(CKFileLegacyFormatTest, RawRecordRejectsMisalignedDecodedPayload) {
-    LegacyFrame frame(3);
+    CKTestLegacyFrame frame(3);
     PutLegacyWord(frame.Bytes, frame.HeaderSize + 12, 15);
     PutLegacyWord(frame.Bytes, frame.HeaderSize + 24, 15);
     frame.DataSize = 43;
     frame.Refresh();
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(CKERR_INVALIDFILE, file.ReadData());
 }
 
 TEST_F(CKFileLegacyFormatTest, FailedChunkDecompressionDoesNotReportSuccessfulDataLoad) {
-    LegacyFrame frame(3);
+    CKTestLegacyFrame frame(3);
     PutLegacyWord(frame.Bytes, 24, CKFILE_CHUNKCOMPRESSED_OLD);
     PutLegacyWord(frame.Bytes, frame.HeaderSize + 24, 12);
     frame.DataSize = 40;
     frame.Refresh();
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(CKERR_INVALIDFILE, file.ReadData());
     ASSERT_EQ(1, file.m_FileObjects.Size());
@@ -208,9 +206,9 @@ TEST_F(CKFileLegacyFormatTest, FailedChunkDecompressionDoesNotReportSuccessfulDa
 }
 
 TEST_F(CKFileLegacyFormatTest, LegacyChunkCompressionFlagStillAllowsUncompressedRawRecord) {
-    LegacyFrame frame(3);
+    CKTestLegacyFrame frame(3);
     PutLegacyWord(frame.Bytes, 24, CKFILE_CHUNKCOMPRESSED_OLD);
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_EQ(CK_OK, file.ReadData());
     ASSERT_EQ(1, file.m_FileObjects.Size());
@@ -221,13 +219,13 @@ TEST_F(CKFileLegacyFormatTest, RawChunkDecompressionRestoresDecodedNameAndWordCo
     // Standard zlib stream for the independently authored 16-byte raw payload.
     const unsigned char packed[] = {0x78,0x9c,0x63,0x64,0x80,0x00,0x16,0x20,
         0x2e,0x4a,0x2c,0x67,0x00,0x00,0x04,0x19,0x01,0x50};
-    LegacyFrame frame(3);
+    CKTestLegacyFrame frame(3);
     PutLegacyWord(frame.Bytes, 24, CKFILE_CHUNKCOMPRESSED_OLD);
     PutLegacyWord(frame.Bytes, frame.HeaderSize + 24, sizeof(packed));
     std::memcpy(frame.Bytes + frame.HeaderSize + 28, packed, sizeof(packed));
     frame.DataSize = 28 + sizeof(packed);
     frame.Refresh();
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_EQ(CK_OK, file.ReadData());
     ASSERT_EQ(1, file.m_FileObjects.Size());
@@ -238,12 +236,12 @@ TEST_F(CKFileLegacyFormatTest, RawChunkDecompressionRestoresDecodedNameAndWordCo
 
 TEST_F(CKFileLegacyFormatTest, WholeCompressedVersionFiveChecksDecodedPayloadCrc) {
     const unsigned char packed[] = {0x78,0x9c,0xf3,0x64,0x80,0x00,0x00,0x02,0x50,0x00,0x4a};
-    LegacyFrame frame(5, false);
+    CKTestLegacyFrame frame(5, false);
     PutLegacyWord(frame.Bytes, 24, CKFILE_WHOLECOMPRESSED);
     PutLegacyWord(frame.Bytes, 32, sizeof(packed));
     std::memcpy(frame.Bytes + 64, packed, sizeof(packed));
     frame.Size = 64 + sizeof(packed);
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_EQ(CK_OK, file.ReadData());
     EXPECT_EQ(73u, file.m_SaveIDMax);
@@ -251,10 +249,10 @@ TEST_F(CKFileLegacyFormatTest, WholeCompressedVersionFiveChecksDecodedPayloadCrc
 }
 
 TEST_F(CKFileLegacyFormatTest, ExtendedHeaderCarriesProductMetadataWithoutAuthoringVersionInference) {
-    LegacyFrame frame(5, false);
+    CKTestLegacyFrame frame(5, false);
     PutLegacyWord(frame.Bytes, 52, 11);
     PutLegacyWord(frame.Bytes, 56, 0x02050030);
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(5u, file.m_FileInfo.FileVersion);
     EXPECT_EQ(11u, file.m_FileInfo.ProductVersion);
@@ -263,14 +261,12 @@ TEST_F(CKFileLegacyFormatTest, ExtendedHeaderCarriesProductMetadataWithoutAuthor
 }
 
 TEST_F(CKFileLegacyFormatTest, LegacyVersion2MarkerSelectsVersionZeroHeader) {
-    LegacyFrame frame(0, false);
+    CKTestLegacyFrame frame(0, false);
     PutLegacyWord(frame.Bytes, 16, 9);
     PutLegacyWord(frame.Bytes, 20, 1);
-    LegacyFile file(Context);
+    CKTestLegacyFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     EXPECT_EQ(0u, file.m_FileInfo.FileVersion);
     EXPECT_EQ(32, file.m_Parser->m_CursorPos);
     ASSERT_EQ(CK_OK, file.ReadData());
 }
-
-} // namespace

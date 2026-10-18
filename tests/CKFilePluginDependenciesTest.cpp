@@ -4,10 +4,8 @@
 #include <type_traits>
 #include "CKAll.h"
 
-namespace {
-
-const CKGUID KnownGuid(0x37a10101, 0x37b20202);
-const CKGUID MissingGuid(0x37c30303, 0x37d40404);
+static const CKGUID KnownGuid(0x37a10101, 0x37b20202);
+static const CKGUID MissingGuid(0x37c30303, 0x37d40404);
 
 TEST(CKFilePluginDependenciesTest, PortableLayoutPreservesTheThreeNativeFieldPositions) {
     EXPECT_TRUE(std::is_standard_layout<CKFilePluginDependencies>::value);
@@ -27,7 +25,7 @@ TEST(CKFilePluginDependenciesTest, DefaultConstructionCreatesEmptyGuidsAndClearV
     // The native constructor does not initialize m_PluginCategory.
 }
 
-void Populate(CKFilePluginDependencies &dependency, int count = 2) {
+static void Populate(CKFilePluginDependencies &dependency, int count = 2) {
     dependency.m_PluginCategory = CKPLUGIN_MANAGER_DLL;
     for (int i = 0; i < count; ++i)
         dependency.m_Guids.PushBack(CKGUID(0x37000001, i + 1));
@@ -85,15 +83,15 @@ TEST(CKFilePluginDependenciesTest, ProductionPushBackKeepsDifferentGuidRecordsWh
     }
 }
 
-void PutWord(unsigned char *bytes, int offset, unsigned int value) {
+static void PutWord(unsigned char *bytes, int offset, unsigned int value) {
     for (int i = 0; i < 4; ++i)
         bytes[offset + i] = static_cast<unsigned char>(value >> (8 * i));
 }
 
-struct DependencyFrame {
+struct CKTestDependencyFrame {
     unsigned char Bytes[512];
     int Size;
-    DependencyFrame(int category, const CKGUID *guids, int count) : Size(80 + count * 8) {
+    CKTestDependencyFrame(int category, const CKGUID *guids, int count) : Size(80 + count * 8) {
         std::memset(Bytes, 0, sizeof(Bytes));
         std::memcpy(Bytes, "Nemo Fi", 7);
         PutWord(Bytes, 12, 0x13022002);
@@ -118,9 +116,9 @@ struct DependencyFrame {
     }
 };
 
-CKPluginInfo PluginInfo;
-int PluginCount() { return 1; }
-CKPluginInfo *PluginDetails(int index) { return index == 0 ? &PluginInfo : nullptr; }
+static CKPluginInfo PluginInfo;
+static int PluginCount() { return 1; }
+static CKPluginInfo *PluginDetails(int index) { return index == 0 ? &PluginInfo : nullptr; }
 
 class CKFilePluginDependencyLoadTest : public ::testing::Test {
 protected:
@@ -139,7 +137,7 @@ protected:
 
 TEST_F(CKFilePluginDependencyLoadTest, MissingPluginListPreservesCategoryOrderAndEveryGuid) {
     const CKGUID guids[] = {MissingGuid, KnownGuid, CKGUID(0x37e50505, 0x37f60606)};
-    DependencyFrame frame(CKPLUGIN_MANAGER_DLL, guids, 3);
+    CKTestDependencyFrame frame(CKPLUGIN_MANAGER_DLL, guids, 3);
     CKFile file(Context);
     ASSERT_EQ(CKERR_PLUGINSMISSING, file.OpenMemory(frame.Bytes, frame.Size, CK_LOAD_CHECKDEPENDENCIES));
     XClassArray<CKFilePluginDependencies> *list = file.GetMissingPlugins();
@@ -155,7 +153,7 @@ TEST_F(CKFilePluginDependencyLoadTest, MissingPluginListPreservesCategoryOrderAn
 }
 
 TEST_F(CKFilePluginDependencyLoadTest, ValidityIsComputedOnlyWhenDependencyCheckWasRequested) {
-    DependencyFrame frame(CKPLUGIN_MANAGER_DLL, &KnownGuid, 1);
+    CKTestDependencyFrame frame(CKPLUGIN_MANAGER_DLL, &KnownGuid, 1);
     CKFile file(Context);
     ASSERT_EQ(CK_OK, file.OpenMemory(frame.Bytes, frame.Size));
     ASSERT_EQ(1, file.GetMissingPlugins()->Size());
@@ -166,7 +164,7 @@ TEST_F(CKFilePluginDependencyLoadTest, ValidityIsComputedOnlyWhenDependencyCheck
 }
 
 TEST_F(CKFilePluginDependencyLoadTest, CategoryScopesThePluginLookupEvenWhenGuidIsRegistered) {
-    DependencyFrame frame(CKPLUGIN_BITMAP_READER, &KnownGuid, 1);
+    CKTestDependencyFrame frame(CKPLUGIN_BITMAP_READER, &KnownGuid, 1);
     CKFile file(Context);
     ASSERT_EQ(CKERR_PLUGINSMISSING, file.OpenMemory(frame.Bytes, frame.Size, CK_LOAD_CHECKDEPENDENCIES));
     ASSERT_EQ(1, file.GetMissingPlugins()->Size());
@@ -178,7 +176,7 @@ TEST_F(CKFilePluginDependencyLoadTest, GuidCountAndBitStorageCapacityRemainDisti
     CKGUID guids[40];
     for (int i = 0; i < 40; ++i) guids[i] = CKGUID(0x37f70000, i + 1);
     guids[35] = KnownGuid;
-    DependencyFrame frame(CKPLUGIN_MANAGER_DLL, guids, 40);
+    CKTestDependencyFrame frame(CKPLUGIN_MANAGER_DLL, guids, 40);
     CKFile file(Context);
     ASSERT_EQ(CKERR_PLUGINSMISSING, file.OpenMemory(frame.Bytes, frame.Size, CK_LOAD_CHECKDEPENDENCIES));
     ASSERT_EQ(1, file.GetMissingPlugins()->Size());
@@ -189,5 +187,3 @@ TEST_F(CKFilePluginDependencyLoadTest, GuidCountAndBitStorageCapacityRemainDisti
     EXPECT_FALSE(dependency.ValidGuids.IsSet(34));
     EXPECT_FALSE(dependency.ValidGuids.IsSet(39));
 }
-
-} // namespace

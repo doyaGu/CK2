@@ -4,17 +4,15 @@
 #include <filesystem>
 #include "CKAll.h"
 
-namespace {
-
-void PutWord(unsigned char *bytes, int offset, unsigned int value) {
+static void PutWord(unsigned char *bytes, int offset, unsigned int value) {
     for (int i = 0; i < 4; ++i)
         bytes[offset + i] = static_cast<unsigned char>(value >> (i * 8));
 }
 
 // An independently authored empty format-8 file, not CKFile::EndSave output.
-struct EmptyFrame {
+struct CKTestEmptyFrame {
     unsigned char Bytes[72];
-    explicit EmptyFrame(unsigned int mode = 0) {
+    explicit CKTestEmptyFrame(unsigned int mode = 0) {
         std::memset(Bytes, 0, sizeof(Bytes));
         std::memcpy(Bytes, "Nemo Fi", 7);
         PutWord(Bytes, 12, 0x13022002);
@@ -32,9 +30,9 @@ struct EmptyFrame {
     }
 };
 
-class ReuseFile : public CKFile {
+class CKTestReuseFile : public CKFile {
 public:
-    explicit ReuseFile(CKContext *context) : CKFile(context) {}
+    explicit CKTestReuseFile(CKContext *context) : CKFile(context) {}
     void Reset() { ClearData(); }
 };
 
@@ -58,14 +56,14 @@ protected:
         if (Context) CKCloseContext(Context);
         CKShutdown();
     }
-    void WriteInput(const EmptyFrame &frame) {
+    void WriteInput(const CKTestEmptyFrame &frame) {
         FILE *file = std::fopen(Input.string().c_str(), "wb");
         ASSERT_NE(nullptr, file);
         EXPECT_EQ(sizeof(frame.Bytes), std::fwrite(frame.Bytes, 1, sizeof(frame.Bytes), file));
         EXPECT_EQ(0, std::fclose(file));
     }
-    void OpenMapped(ReuseFile &file) {
-        EmptyFrame frame;
+    void OpenMapped(CKTestReuseFile &file) {
+        CKTestEmptyFrame frame;
         WriteInput(frame);
         std::string path = Input.string();
         ASSERT_EQ(CK_OK, file.OpenFile(path.data()));
@@ -83,7 +81,7 @@ protected:
 };
 
 TEST_F(CKFileReuseLifecycleTest, MappedFileToExternalMemoryReleasesTheMappedSession) {
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     // Record portable layout evidence without asserting original Win32 byte equality.
     RecordProperty("sizeof_CKFile", static_cast<int>(sizeof(CKFile)));
     RecordProperty("alignof_CKFile", static_cast<int>(alignof(CKFile)));
@@ -93,7 +91,7 @@ TEST_F(CKFileReuseLifecycleTest, MappedFileToExternalMemoryReleasesTheMappedSess
     RecordProperty("offset_MappedFile", static_cast<int>(reinterpret_cast<const char *>(&file.m_MappedFile) - start));
     RecordProperty("offset_ReadFileDataDone", static_cast<int>(reinterpret_cast<const char *>(&file.m_ReadFileDataDone) - start));
     OpenMapped(file);
-    EmptyFrame memory(4);
+    CKTestEmptyFrame memory(4);
     ASSERT_EQ(CK_OK, file.OpenMemory(memory.Bytes, sizeof(memory.Bytes)));
     EXPECT_EQ(nullptr, file.m_MappedFile);
     EXPECT_EQ(nullptr, file.m_FileName);
@@ -105,7 +103,7 @@ TEST_F(CKFileReuseLifecycleTest, MappedFileToExternalMemoryReleasesTheMappedSess
 }
 
 TEST_F(CKFileReuseLifecycleTest, ReopeningTheMappedBaseKeepsItsBackingStorageAlive) {
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     OpenMapped(file);
     VxMemoryMappedFile *mapping = file.m_MappedFile;
     void *base = mapping->GetBase();
@@ -117,17 +115,17 @@ TEST_F(CKFileReuseLifecycleTest, ReopeningTheMappedBaseKeepsItsBackingStorageAli
 }
 
 TEST_F(CKFileReuseLifecycleTest, NullMemoryReopenCancelsThePreviousMappedLoad) {
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     OpenMapped(file);
     EXPECT_EQ(CKERR_INVALIDPARAMETER, file.OpenMemory(nullptr, 0));
     ExpectNoInputSession(file);
     EXPECT_EQ(CKERR_INVALIDFILE, file.LoadFileData(nullptr));
-    EmptyFrame good;
+    CKTestEmptyFrame good;
     EXPECT_EQ(CK_OK, file.Load(good.Bytes, sizeof(good.Bytes), nullptr));
 }
 
 TEST_F(CKFileReuseLifecycleTest, ShortMemoryReopenCancelsThePreviousMappedLoad) {
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     OpenMapped(file);
     unsigned char shortFrame[12] = {};
     EXPECT_EQ(CKERR_INVALIDFILE, file.OpenMemory(shortFrame, sizeof(shortFrame)));
@@ -136,9 +134,9 @@ TEST_F(CKFileReuseLifecycleTest, ShortMemoryReopenCancelsThePreviousMappedLoad) 
 }
 
 TEST_F(CKFileReuseLifecycleTest, CrcFailureAfterMappedOpenCanBeReplacedByValidMemory) {
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     OpenMapped(file);
-    EmptyFrame bad, good;
+    CKTestEmptyFrame bad, good;
     bad.Bytes[56] ^= 1;
     EXPECT_EQ(CKERR_FILECRCERROR, file.OpenMemory(bad.Bytes, sizeof(bad.Bytes)));
     EXPECT_EQ(nullptr, file.m_MappedFile);
@@ -148,23 +146,23 @@ TEST_F(CKFileReuseLifecycleTest, CrcFailureAfterMappedOpenCanBeReplacedByValidMe
 }
 
 TEST_F(CKFileReuseLifecycleTest, MissingFileAfterMappedOpenCanBeReplacedByValidMemory) {
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     OpenMapped(file);
     std::string missing = Output.string();
     EXPECT_EQ(CKERR_INVALIDFILE, file.OpenFile(missing.data()));
     ExpectNoInputSession(file);
-    EmptyFrame memory;
+    CKTestEmptyFrame memory;
     EXPECT_EQ(CK_OK, file.Load(memory.Bytes, sizeof(memory.Bytes), nullptr));
 }
 
 TEST_F(CKFileReuseLifecycleTest, BadMappedHeaderCanBeReplacedByExternalMemory) {
-    EmptyFrame bad;
+    CKTestEmptyFrame bad;
     bad.Bytes[56] ^= 1;
     WriteInput(bad);
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     std::string path = Input.string();
     EXPECT_EQ(CKERR_FILECRCERROR, file.OpenFile(path.data()));
-    EmptyFrame memory;
+    CKTestEmptyFrame memory;
     ASSERT_EQ(CK_OK, file.OpenMemory(memory.Bytes, sizeof(memory.Bytes)));
     EXPECT_EQ(nullptr, file.m_MappedFile);
     EXPECT_EQ(nullptr, file.m_FileName);
@@ -172,7 +170,7 @@ TEST_F(CKFileReuseLifecycleTest, BadMappedHeaderCanBeReplacedByExternalMemory) {
 }
 
 TEST_F(CKFileReuseLifecycleTest, ResetReleasesOwnedRecordsAndPreservesBorrowedObjects) {
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     OpenMapped(file);
     CKObject object(Context, "borrowed");
     const CK_ID id = object.GetID();
@@ -201,8 +199,8 @@ TEST_F(CKFileReuseLifecycleTest, ResetReleasesOwnedRecordsAndPreservesBorrowedOb
 }
 
 TEST_F(CKFileReuseLifecycleTest, LoadedMemorySessionCanBeReplacedByActualMappedFile) {
-    ReuseFile file(Context);
-    EmptyFrame memory(4);
+    CKTestReuseFile file(Context);
+    CKTestEmptyFrame memory(4);
     ASSERT_EQ(CK_OK, file.Load(memory.Bytes, sizeof(memory.Bytes), nullptr));
     OpenMapped(file);
     EXPECT_FALSE(file.m_ReadFileDataDone);
@@ -211,10 +209,10 @@ TEST_F(CKFileReuseLifecycleTest, LoadedMemorySessionCanBeReplacedByActualMappedF
 }
 
 TEST_F(CKFileReuseLifecycleTest, LoadAndSaveCreatesAValidIndependentOutputFile) {
-    EmptyFrame frame(4);
+    CKTestEmptyFrame frame(4);
     WriteInput(frame);
     std::string input = Input.string(), output = Output.string();
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     file.LoadAndSave(input.data(), output.data());
     ASSERT_TRUE(std::filesystem::exists(Output));
     EXPECT_EQ(0, Context->GetAttributeManager()->m_Saving);
@@ -226,25 +224,23 @@ TEST_F(CKFileReuseLifecycleTest, LoadAndSaveCreatesAValidIndependentOutputFile) 
 
 TEST_F(CKFileReuseLifecycleTest, LoadAndSaveFailedInputDoesNotCreateOutputAndAllowsReuse) {
     std::string missing = Input.string(), output = Output.string();
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     file.LoadAndSave(missing.data(), output.data());
     EXPECT_FALSE(std::filesystem::exists(Output));
     EXPECT_EQ(0, Context->GetAttributeManager()->m_Saving);
     EXPECT_FALSE(Context->m_Saving);
-    EmptyFrame good;
+    CKTestEmptyFrame good;
     EXPECT_EQ(CK_OK, file.Load(good.Bytes, sizeof(good.Bytes), nullptr));
 }
 
 TEST_F(CKFileReuseLifecycleTest, LoadAndSaveFailedOutputRestoresAttributeSaveModeAndAllowsReuse) {
-    EmptyFrame frame;
+    CKTestEmptyFrame frame;
     WriteInput(frame);
     std::string input = Input.string();
     std::string directory = std::filesystem::temp_directory_path().string();
-    ReuseFile file(Context);
+    CKTestReuseFile file(Context);
     file.LoadAndSave(input.data(), directory.data());
     EXPECT_EQ(0, Context->GetAttributeManager()->m_Saving);
     EXPECT_FALSE(Context->m_Saving);
     EXPECT_EQ(CK_OK, file.Load(frame.Bytes, sizeof(frame.Bytes), nullptr));
 }
-
-} // namespace
