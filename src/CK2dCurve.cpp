@@ -251,18 +251,18 @@ CKERROR CK2dCurve::Read(CKStateChunk *chunk) {
             FittingCoef = chunk->ReadFloat();
         }
 
-        // Read control points array
         if (chunk->SeekIdentifier(CK_STATESAVE_2DCURVESAVEPOINTS)) {
             const int pointCount = chunk->ReadInt();
             m_ControlPoints.Resize(pointCount);
 
             for (int i = 0; i < pointCount; ++i) {
-                // Read control point data
                 chunk->ReadObjectID(); // Legacy object ID (ignored)
                 CKStateChunk *subChunk = chunk->ReadSubChunk();
 
-                m_ControlPoints[i].m_Curve = this;
-                m_ControlPoints[i].Read(subChunk);
+                CK2dCurvePoint point;
+                point.Read(subChunk);
+                point.m_Length = 0.0f; point.m_Curve = this;
+                m_ControlPoints[i] = point;
 
                 if (subChunk) {
                     delete subChunk;
@@ -278,12 +278,12 @@ CKERROR CK2dCurve::Read(CKStateChunk *chunk) {
         int pointCount = objArray.Size();
         m_ControlPoints.Resize(pointCount);
 
-        // Read curve parameters
+        int loadedPointCount = 0;
         FittingCoef = chunk->ReadFloat();
 
         // Read control point data
         for (int i = 0; i < pointCount; ++i) {
-            CK2dCurvePoint &point = m_ControlPoints[i];
+            CK2dCurvePoint &point = m_ControlPoints[loadedPointCount];
             point.m_Curve = this;
 
             // Read point flags
@@ -304,16 +304,16 @@ CKERROR CK2dCurve::Read(CKStateChunk *chunk) {
                 chunk->ReadFloat(); // Was m_Length
                 chunk->ReadFloat(); // Was m_Time
 
-                // Read tangent vectors
                 point.m_InTang.x = chunk->ReadFloat();
                 point.m_InTang.y = chunk->ReadFloat();
                 point.m_OutTang.x = chunk->ReadFloat();
                 point.m_OutTang.y = chunk->ReadFloat();
+                ++loadedPointCount;
             }
         }
+        m_ControlPoints.Resize(loadedPointCount);
     }
 
-    // Update curve calculations
     Update();
     return CK_OK;
 }
