@@ -391,6 +391,15 @@ public:
     virtual VXCURSOR_POINTER GetSystemCursor() = 0;
 
     virtual void SetSystemCursor(VXCURSOR_POINTER cursor) = 0;
+
+    // Route window-local input through a displayed viewport. The window is
+    // borrowed until the next call; callers must clear it before destroying
+    // the window. Rect is in client coordinates; mouse positions/deltas are
+    // scaled to Width/Height. NULL restores the player render window mapping.
+    // Call on the main thread, outside Process(). Unsupported managers return
+    // FALSE without changing input. Existing absolute screen coordinates stay
+    // unchanged. A window change clears held keyboard/mouse input.
+    virtual CKBOOL SetInputViewport(WIN_HANDLE Window, const VxRect &Rect, int Width, int Height) { return FALSE; }
 };
 
 #endif // CKINPUTMANAGER_H
