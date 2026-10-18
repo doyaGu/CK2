@@ -676,7 +676,7 @@ CKMovieInfo *CKBitmapData::CreateMovieInfo(XString s, CKMovieProperties **mp) {
 }
 
 void CKBitmapData::SetMovieInfo(CKMovieInfo *mi) {
-    if (m_MovieInfo)
+    if (m_MovieInfo && m_MovieInfo != mi)
         delete m_MovieInfo;
     m_MovieInfo = mi;
 }
