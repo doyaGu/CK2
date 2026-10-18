@@ -1451,20 +1451,19 @@ int CKEulerStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromStri
 int CK2DVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
     if (!param) return 0;
 
-    float x = 0.0f;
-    float y = 0.0f;
+    float value[2] = {};
 
     if (ReadFromString) {
         if (ValueString) {
-            sscanf(ValueString, "%f,%f", &x, &y);
-            param->SetValue(&x, 0);
+            sscanf(ValueString, "%f,%f", &value[0], &value[1]);
+            param->SetValue(value, sizeof(value));
         }
         return 0;
     } else {
-        param->GetValue(&x, FALSE);
+        if (param->GetDataSize() != sizeof(value) || param->GetValue(value, FALSE) != CK_OK) return 0;
 
         char source[64];
-        snprintf(source, sizeof(source), "%g,%g", x, y);
+        snprintf(source, sizeof(source), "%g,%g", value[0], value[1]);
 
         if (ValueString)
             strcpy(ValueString, source);
@@ -1476,19 +1475,19 @@ int CK2DVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromS
 int CKVectorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
     if (!param) return 0;
 
-    float x = 0.0f, y = 0.0f, z = 0.0f;
+    float value[3] = {};
 
     if (ReadFromString) {
         if (ValueString) {
-            sscanf(ValueString, "%f,%f,%f", &x, &y, &z);
-            param->SetValue(&x, 0);
+            sscanf(ValueString, "%f,%f,%f", &value[0], &value[1], &value[2]);
+            param->SetValue(value, sizeof(value));
         }
         return 0;
     } else {
-        param->GetValue(&x, FALSE);
+        if (param->GetDataSize() != sizeof(value) || param->GetValue(value, FALSE) != CK_OK) return 0;
 
         char source[64];
-        snprintf(source, sizeof(source), "%g,%g,%g", x, y, z);
+        snprintf(source, sizeof(source), "%g,%g,%g", value[0], value[1], value[2]);
 
         if (ValueString)
             strcpy(ValueString, source);
@@ -1553,31 +1552,31 @@ int CKBoxStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString
 int CKColorStringFunc(CKParameter *param, char *ValueString, CKBOOL ReadFromString) {
     if (!param) return 0;
 
-    float r = 0.0f, g = 0.0f, b = 0.0f, a = 0.0f;
+    float value[4] = {};
 
     if (ReadFromString) {
         if (ValueString) {
-            int r255, g255, b255, a255;
+            int r255 = 0, g255 = 0, b255 = 0, a255 = 0;
             sscanf(ValueString, "%d,%d,%d,%d", &r255, &g255, &b255, &a255);
 
             // Use CK2.dll constant 0.0039215689 = 1/255
-            r = (float) r255 * 0.0039215689f;
-            g = (float) g255 * 0.0039215689f;
-            b = (float) b255 * 0.0039215689f;
-            a = (float) a255 * 0.0039215689f;
+            value[0] = (float) r255 * 0.0039215689f;
+            value[1] = (float) g255 * 0.0039215689f;
+            value[2] = (float) b255 * 0.0039215689f;
+            value[3] = (float) a255 * 0.0039215689f;
 
-            param->SetValue(&r, 0);
+            param->SetValue(value, sizeof(value));
         }
         return 0;
     } else {
-        param->GetValue(&r, FALSE);
+        if (param->GetDataSize() != sizeof(value) || param->GetValue(value, FALSE) != CK_OK) return 0;
 
         char source[64];
         snprintf(source, sizeof(source), "%d,%d,%d,%d",
-                 (unsigned int) (int) (r * 255.0f),
-                 (unsigned int) (int) (g * 255.0f),
-                 (unsigned int) (int) (b * 255.0f),
-                 (unsigned int) (int) (a * 255.0f));
+                 (int) (value[0] * 255.0f),
+                 (int) (value[1] * 255.0f),
+                 (int) (value[2] * 255.0f),
+                 (int) (value[3] * 255.0f));
 
         if (ValueString)
             strcpy(ValueString, source);
