@@ -100,6 +100,10 @@ add_ck2_test(CKBitmapDataMovieTest
         SOURCES CKBitmapDataMovieTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKBitmapDataChunkTest
+        SOURCES CKBitmapDataChunkTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 set(_ck2_ansi_test_target CK2)
 if (TARGET CK2Static)
     set(_ck2_ansi_test_target CK2Static)

@@ -476,8 +476,17 @@ void CKBitmapData::SetTransparent(CKBOOL Transparency) {
 }
 
 void CKBitmapData::SetSaveFormat(CKBitmapProperties *format) {
+    CKBitmapProperties *copy = CKCopyBitmapProperties(format);
+    if (copy && copy->m_Size >= sizeof(CKBitmapProperties)) {
+        // Saving options do not own a reader's temporary image or palette.
+        copy->m_Data = nullptr;
+        copy->m_Format.Image = nullptr;
+        copy->m_Format.ColorMap = nullptr;
+        copy->m_Format.ColorMapEntries = 0;
+        copy->m_Format.BytesPerColorEntry = 0;
+    }
     delete[] reinterpret_cast<CKBYTE *>(m_SaveProperties);
-    m_SaveProperties = CKCopyBitmapProperties(format);
+    m_SaveProperties = copy;
 }
 
 CKBOOL CKBitmapData::ResizeImages(int Width, int Height) {
@@ -888,6 +897,8 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
                 chnk->WriteInt(imageDescForSaving.Height);
                 chnk->WriteInt(imageDescForSaving.BitsPerPixel); // BPP of the source data
 
+                const VxImageDescEx savedFormat = propertiesForImageFormat->m_Format;
+                void *const savedData = propertiesForImageFormat->m_Data;
                 for (int i = 0; i < slotCount; ++i) {
                     // Prepare a temporary VxImageDescEx for this slot's data
                     VxImageDescEx currentSlotDesc = imageDescForSaving; // Copy general desc
@@ -905,6 +916,8 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
                         chnk->WriteReaderBitmap(currentSlotDesc, reader, propertiesForImageFormat); // Pass NULL image
                     }
                 }
+                propertiesForImageFormat->m_Format = savedFormat;
+                propertiesForImageFormat->m_Data = savedData;
                 reader->Release();
                 savedViaImageFormat = true;
             } else {
