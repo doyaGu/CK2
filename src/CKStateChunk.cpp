@@ -1204,6 +1204,7 @@ void CKStateChunk::WriteBuffer_LEndian(int size, void *buf) {
         int sz = (size + 3) / sizeof(int);
         CheckSize((sz + 1) * sizeof(int));
         m_Data[m_ChunkParser->CurrentPos++] = size;
+        if (sz > 0) m_Data[m_ChunkParser->CurrentPos + sz - 1] = 0;
         memcpy(&m_Data[m_ChunkParser->CurrentPos], buf, size);
         m_ChunkParser->CurrentPos += sz;
     }
@@ -1221,6 +1222,7 @@ void CKStateChunk::WriteBufferNoSize_LEndian(int size, void *buf) {
     if (buf) {
         int sz = (size + 3) / sizeof(int);
         CheckSize(sz * sizeof(int));
+        if (sz > 0) m_Data[m_ChunkParser->CurrentPos + sz - 1] = 0;
         memcpy(&m_Data[m_ChunkParser->CurrentPos], buf, size);
         m_ChunkParser->CurrentPos += sz;
     }
@@ -1339,6 +1341,7 @@ void CKStateChunk::WriteString(CKSTRING str) {
         CheckSize((dwords + 1) * sizeof(int));
         m_Data[m_ChunkParser->CurrentPos++] = size;
         if (size > 0) {
+            m_Data[m_ChunkParser->CurrentPos + dwords - 1] = 0;
             memcpy(&m_Data[m_ChunkParser->CurrentPos], str, size);
             m_ChunkParser->CurrentPos += dwords;
         }

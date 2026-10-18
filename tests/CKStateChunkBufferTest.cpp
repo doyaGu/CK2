@@ -366,3 +366,44 @@ TEST(CKStateChunkBufferTest, XStringRejectsShortDeclaredFrameEvenWithEarlyNull) 
     CKStateChunk chunk(CKCID_OBJECT, nullptr); LoadBufferWords(chunk, words, 2);
     XString text("old"); chunk.ReadString(text); EXPECT_EQ(0, text.Length()); EXPECT_EQ(1, chunk.GetCurrentPos());
 }
+
+TEST(CKStateChunkBufferTest, BufferWritersClearOnlyAlignmentPaddingInReusedStorage) {
+    unsigned char bytes[] = {0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
+    for (int sized = 0; sized < 2; ++sized) {
+        for (int alias = 0; alias < 3; ++alias) {
+            for (int size = 1; size <= 8; ++size) {
+                CKStateChunk chunk(CKCID_OBJECT, nullptr); chunk.StartWrite();
+                void *storage = chunk.LockWriteBuffer(16); ASSERT_NE(nullptr, storage);
+                std::memset(storage, 0xA5, 64);
+                (chunk.*(sized ? SizedWriters[alias] : RawWriters[alias]))(size, bytes);
+                chunk.WriteInt(Sentinel); chunk.CloseChunk();
+                int wire[64] = {}; ASSERT_GT(chunk.ConvertToBuffer(wire), 0);
+                const unsigned char *payload = reinterpret_cast<unsigned char *>(wire + 2 + sized);
+                EXPECT_EQ(0, std::memcmp(bytes, payload, size));
+                const int padded = ((size + 3) / 4) * 4;
+                for (int i = size; i < padded; ++i) EXPECT_EQ(0, payload[i]);
+                EXPECT_EQ(Sentinel, wire[2 + sized + padded / 4]);
+            }
+        }
+    }
+}
+
+TEST(CKStateChunkBufferTest, StringWriterPreservesAnsiBytesAndClearsAlignmentPadding) {
+    const char bytes[] = {'A', char(0xD6), char(0xD0), char(0xE9), char(0x81), 'B', 'C'};
+    for (int length = 0; length <= 7; ++length) {
+        char text[8] = {}; std::memcpy(text, bytes, length);
+        CKStateChunk chunk(CKCID_OBJECT, nullptr); chunk.StartWrite();
+        void *storage = chunk.LockWriteBuffer(16); ASSERT_NE(nullptr, storage);
+        std::memset(storage, 0xA5, 64);
+        chunk.WriteString(text); chunk.WriteInt(Sentinel); chunk.CloseChunk();
+        int wire[64] = {}; ASSERT_GT(chunk.ConvertToBuffer(wire), 0);
+        const unsigned char *payload = reinterpret_cast<unsigned char *>(wire + 3);
+        EXPECT_EQ(length + 1, wire[2]);
+        EXPECT_EQ(0, std::memcmp(text, payload, length + 1));
+        for (int i = length + 1; i < ((length + 4) / 4) * 4; ++i) EXPECT_EQ(0, payload[i]);
+        chunk.StartRead(); char *loaded = nullptr;
+        ASSERT_EQ(length + 1, chunk.ReadString(&loaded)); ASSERT_NE(nullptr, loaded);
+        EXPECT_EQ(0, std::memcmp(text, loaded, length + 1)); CKDeletePointer(loaded);
+        EXPECT_EQ(Sentinel, chunk.ReadInt());
+    }
+}
