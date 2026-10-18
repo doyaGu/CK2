@@ -845,9 +845,8 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
                 // Slot has a filename
                 externalOrIncludedSlots.Set(i);
             } else {
-                // If any slot is external but has no filename, the whole operation must fallback
+                // Embed unnamed slots while keeping named slots external.
                 effectiveSaveOptions = CKTEXTURE_RAWDATA;
-                break; // No need to check further slots for this option
             }
         }
     }
@@ -868,14 +867,12 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
                 if (f->IncludeFile(slotFileName, BITMAP_PATH_IDX)) {
                     externalOrIncludedSlots.Set(i); // Mark as "included"
                 } else {
-                    // If couldn't include, fallback for all
+                    // Embed this slot, but continue including later files.
                     effectiveSaveOptions = CKTEXTURE_RAWDATA;
-                    break;
                 }
             } else {
-                // If file should be included but has no name, fallback for all
+                // A slot without a filename must be embedded.
                 effectiveSaveOptions = CKTEXTURE_RAWDATA;
-                break;
             }
         }
     }
@@ -903,18 +900,7 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
                     // Prepare a temporary VxImageDescEx for this slot's data
                     VxImageDescEx currentSlotDesc = imageDescForSaving; // Copy general desc
                     currentSlotDesc.Image = LockSurfacePtr(i);
-                    if (currentSlotDesc.Image) {
-                        // WriteReaderBitmap needs to know the format of propertiesForImageFormat.m_Data
-                        // but it receives the actual image data via currentSlotDesc.Image.
-                        // The propertiesForImageFormat provides the TARGET format info.
-                        chnk->WriteReaderBitmap(currentSlotDesc, reader, propertiesForImageFormat);
-                        // Assuming LockSurfacePtr/WriteReaderBitmap handles release or next Lock will
-                    } else {
-                        // Handle LockSurfacePtr failure for a slot if necessary,
-                        // e.g., write an empty placeholder or error out.
-                        // For now, assume WriteReaderBitmap handles NULL image if that's a valid case for it.
-                        chnk->WriteReaderBitmap(currentSlotDesc, reader, propertiesForImageFormat); // Pass NULL image
-                    }
+                    chnk->WriteReaderBitmap(currentSlotDesc, reader, propertiesForImageFormat);
                 }
                 propertiesForImageFormat->m_Format = savedFormat;
                 propertiesForImageFormat->m_Data = savedData;
@@ -930,8 +916,8 @@ CKBOOL CKBitmapData::DumpToChunk(CKStateChunk *chnk, CKContext *ctx, CKFile *f, 
         }
     }
 
-    // Fallback or direct save as RAWDATA (also used for EXTERNAL/INCLUDE)
-    if (!savedViaImageFormat) {
+    // External/included slots need raw placeholders only when another slot is embedded.
+    if (!savedViaImageFormat && effectiveSaveOptions == CKTEXTURE_RAWDATA) {
         chnk->WriteIdentifier(Identifiers[2]); // RAWDATA_CHUNK_ID
         chnk->WriteInt(slotCount);
 
