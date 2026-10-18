@@ -164,7 +164,7 @@ CKBOOL CKBitmapData::SaveImage(CKSTRING Name, int Slot, CKBOOL CKUseFormat) {
     saveProps->m_Data = nullptr;
     reader->Release();
 
-    return result;
+    return result != 0;
 }
 
 CKBOOL CKBitmapData::SaveImageAlpha(CKSTRING Name, int Slot) {
