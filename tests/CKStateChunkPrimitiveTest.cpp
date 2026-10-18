@@ -5,9 +5,7 @@
 
 #include "CKAll.h"
 
-namespace {
-
-void LoadPrimitiveWords(CKStateChunk &chunk, const CKDWORD *words, int count) {
+static void LoadPrimitiveWords(CKStateChunk &chunk, const CKDWORD *words, int count) {
     CKDWORD wire[40] = {};
     ASSERT_LE(count, 38);
     wire[0] = (CHUNK_VERSION4 << 16) | (CKCID_OBJECT << 8);
@@ -17,7 +15,7 @@ void LoadPrimitiveWords(CKStateChunk &chunk, const CKDWORD *words, int count) {
     chunk.StartRead();
 }
 
-void ExpectPrimitiveWire(CKStateChunk &chunk, const CKDWORD *words, int count) {
+static void ExpectPrimitiveWire(CKStateChunk &chunk, const CKDWORD *words, int count) {
     ASSERT_EQ(count * 4, chunk.GetDataSize());
     ASSERT_EQ((count + 2) * 4, chunk.ConvertToBuffer(nullptr));
     CKDWORD wire[40] = {};
@@ -28,47 +26,45 @@ void ExpectPrimitiveWire(CKStateChunk &chunk, const CKDWORD *words, int count) {
     for (int i = 0; i < count; ++i) EXPECT_EQ(words[i], wire[i + 2]) << i;
 }
 
-CKDWORD FloatBits(float value) {
+static CKDWORD FloatBits(float value) {
     CKDWORD bits;
     std::memcpy(&bits, &value, sizeof(bits));
     return bits;
 }
 
-const CKDWORD FloatWire[] = {0, 0x80000000u, 0x3f800000u, 0xc0200000u,
+static const CKDWORD FloatWire[] = {0, 0x80000000u, 0x3f800000u, 0xc0200000u,
     0x7f800000u, 0xff800000u, 0x7fc12345u, 0x00000001u, 0x00800000u};
-const CKDWORD VectorWire[] = {0x3f800000u, 0xc0200000u, 0x80000000u};
-const CKDWORD MatrixWire[] = {
+static const CKDWORD VectorWire[] = {0x3f800000u, 0xc0200000u, 0x80000000u};
+static const CKDWORD MatrixWire[] = {
     0x3f800000u, 0x40000000u, 0x40400000u, 0x40800000u,
     0x40a00000u, 0x40c00000u, 0x40e00000u, 0x41000000u,
     0x41100000u, 0x41200000u, 0x41300000u, 0x41400000u,
     0x41500000u, 0x41600000u, 0x41700000u, 0x41800000u
 };
 
-void FillVector(VxVector &value, const CKDWORD *words) {
+static void FillVector(VxVector &value, const CKDWORD *words) {
     ASSERT_EQ(12u, sizeof(value));
     std::memcpy(&value, words, sizeof(value));
 }
 
-void ExpectVectorWords(const VxVector &value, const CKDWORD *expected) {
+static void ExpectVectorWords(const VxVector &value, const CKDWORD *expected) {
     CKDWORD words[3] = {};
     ASSERT_EQ(sizeof(words), sizeof(value));
     std::memcpy(words, &value, sizeof(words));
     for (int i = 0; i < 3; ++i) EXPECT_EQ(expected[i], words[i]) << i;
 }
 
-void FillMatrix(VxMatrix &value) {
+static void FillMatrix(VxMatrix &value) {
     ASSERT_EQ(sizeof(MatrixWire), sizeof(value));
     std::memcpy(&value, MatrixWire, sizeof(MatrixWire));
 }
 
-void ExpectMatrixWords(const VxMatrix &value) {
+static void ExpectMatrixWords(const VxMatrix &value) {
     CKDWORD words[16] = {};
     ASSERT_EQ(sizeof(words), sizeof(value));
     std::memcpy(words, &value, sizeof(words));
     for (int i = 0; i < 16; ++i) EXPECT_EQ(MatrixWire[i], words[i]) << i;
 }
-
-} // namespace
 
 TEST(CKStateChunkPrimitiveTest, ByteWriterSignExtendsOneCharIntoEachDword) {
     CKStateChunk chunk(CKCID_OBJECT, nullptr); chunk.StartWrite();

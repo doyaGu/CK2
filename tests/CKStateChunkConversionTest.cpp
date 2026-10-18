@@ -5,26 +5,24 @@
 
 #include "CKAll.h"
 
-namespace {
-
-int ModernHeader(int version, int dataVersion, int classId, int options) {
+static int ModernHeader(int version, int dataVersion, int classId, int options) {
     return static_cast<int>((static_cast<unsigned int>(version | (options << 8)) << 16) |
                             static_cast<unsigned int>((classId << 8) | dataVersion));
 }
 
-void ExpectList(IntListStruct *list, const int *values, int count) {
+static void ExpectList(IntListStruct *list, const int *values, int count) {
     ASSERT_NE(nullptr, list);
     ASSERT_EQ(count, list->Size);
     for (int i = 0; i < count; ++i) EXPECT_EQ(values[i], list->Data[i]);
 }
 
-void ExpectWords(CKStateChunk &chunk, const int *values, int count) {
+static void ExpectWords(CKStateChunk &chunk, const int *values, int count) {
     ASSERT_EQ(count * static_cast<int>(sizeof(int)), chunk.GetDataSize());
     chunk.StartRead();
     for (int i = 0; i < count; ++i) EXPECT_EQ(values[i], chunk.ReadInt());
 }
 
-void LoadCompressibleWords(CKStateChunk &chunk) {
+static void LoadCompressibleWords(CKStateChunk &chunk) {
     int wire[66] = {};
     wire[0] = ModernHeader(CHUNK_VERSION4, 3, CKCID_OBJECT, 0);
     wire[1] = 64;
@@ -32,7 +30,7 @@ void LoadCompressibleWords(CKStateChunk &chunk) {
     ASSERT_TRUE(chunk.ConvertFromBuffer(wire));
 }
 
-void LoadPackedLiteral(CKStateChunk &chunk, const unsigned char *bytes, int byteCount) {
+static void LoadPackedLiteral(CKStateChunk &chunk, const unsigned char *bytes, int byteCount) {
     // Pack's state stores a BYTE count in the same size field that ordinarily
     // counts DWORDs. A padded literal import builds that state without using
     // Pack; UnPack sees exactly byteCount bytes, independently of its encoder.
@@ -44,7 +42,7 @@ void LoadPackedLiteral(CKStateChunk &chunk, const unsigned char *bytes, int byte
     ASSERT_TRUE(chunk.ConvertFromBuffer(wire));
 }
 
-void ExpectCompressedStream(CKStateChunk &chunk) {
+static void ExpectCompressedStream(CKStateChunk &chunk) {
     const int compressedBytes = chunk.GetDataSize() / static_cast<int>(sizeof(int));
     ASSERT_GT(compressedBytes, 0);
     ASSERT_LT(compressedBytes, 256);
@@ -304,5 +302,3 @@ TEST_F(CKStateChunkFileConversionTest, LegacyImportClearsFileAssociation) {
     chunk.StartRead(); EXPECT_EQ(0u, chunk.ReadObjectID());
     int output[8] = {}; ASSERT_EQ(sizeof(wire), chunk.ConvertToBuffer(output)); EXPECT_EQ(0, std::memcmp(wire, output, sizeof(wire)));
 }
-
-} // namespace

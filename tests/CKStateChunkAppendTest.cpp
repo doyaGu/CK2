@@ -4,11 +4,9 @@
 
 #include "CKAll.h"
 
-namespace {
-
 // Literal v7 input: two identifier blocks, single/sequence ID entries, an
 // embedded child and single/sequence manager entries. Offsets are DWORDs.
-const int kSource[] = {
+static const int kSource[] = {
     0x07073923, 27,
     0x1111, 4, 41, 0x5555,
     0x2222, 0, 2, 41, 42,
@@ -20,20 +18,18 @@ const int kSource[] = {
     3, 19, -1, 22
 };
 
-void ExpectWire(CKStateChunk &chunk, const int *expected, int words) {
+static void ExpectWire(CKStateChunk &chunk, const int *expected, int words) {
     int actual[96] = {};
     ASSERT_EQ(words * static_cast<int>(sizeof(int)), chunk.ConvertToBuffer(nullptr));
     ASSERT_EQ(words * static_cast<int>(sizeof(int)), chunk.ConvertToBuffer(actual));
     for (int i = 0; i < words; ++i) EXPECT_EQ(expected[i], actual[i]) << "word " << i;
 }
 
-void LoadSource(CKStateChunk &chunk) {
+static void LoadSource(CKStateChunk &chunk) {
     int input[sizeof(kSource) / sizeof(kSource[0])];
     std::memcpy(input, kSource, sizeof(input));
     ASSERT_TRUE(chunk.ConvertFromBuffer(input));
 }
-
-} // namespace
 
 TEST(CKStateChunkAppendTest, AppendRelocatesIdentifierLinksAndAllThreeLists) {
     CKStateChunk source(57, nullptr), destination(31, nullptr);

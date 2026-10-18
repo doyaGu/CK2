@@ -7,11 +7,9 @@
 
 #include "CKAll.h"
 
-namespace {
-
 // Independent ABI description; inspect object bytes without redefining access
 // control, modifying private state, or pretending Win64 has Win32 pointer widths.
-struct ChunkLayout {
+struct CKTestChunkLayout {
     int ClassId;
     int PublishedWords;
     int *Data;
@@ -25,14 +23,14 @@ struct ChunkLayout {
     CKBOOL Dynamic;
 };
 
-ChunkLayout Describe(const CKStateChunk &chunk) {
-    ChunkLayout description = {};
-    static_assert(sizeof(ChunkLayout) == sizeof(CKStateChunk), "chunk ABI description size");
+static CKTestChunkLayout Describe(const CKStateChunk &chunk) {
+    CKTestChunkLayout description = {};
+    static_assert(sizeof(CKTestChunkLayout) == sizeof(CKStateChunk), "chunk ABI description size");
     std::memcpy(&description, &chunk, sizeof(description));
     return description;
 }
 
-void LoadOwnedLiteral(CKStateChunk &chunk) {
+static void LoadOwnedLiteral(CKStateChunk &chunk) {
     int wire[] = {(7 << 24) | (CHUNK_VERSION4 << 16) | (CKCID_PARAMETER << 8) | 0x5A,
                   6, 0x1122, 3, 41, 0x3344, 0, 43, 2, 2, 5, 1, 4, 1, 2};
     ASSERT_TRUE(chunk.ConvertFromBuffer(wire));
@@ -181,18 +179,18 @@ TEST(CKStateChunkHelperTest, ChunkPlatformLayoutAndEmptyPrivateRepresentation) {
     ASSERT_TRUE(std::is_standard_layout<CKStateChunk>::value);
     const bool wide = sizeof(void *) == 8;
     EXPECT_EQ(wide ? 72u : 40u, sizeof(CKStateChunk)); EXPECT_EQ(alignof(void *), alignof(CKStateChunk));
-    EXPECT_EQ(0u, offsetof(ChunkLayout, ClassId)); EXPECT_EQ(4u, offsetof(ChunkLayout, PublishedWords));
-    EXPECT_EQ(8u, offsetof(ChunkLayout, Data));
-    EXPECT_EQ(wide ? 16u : 12u, offsetof(ChunkLayout, DataVersion));
-    EXPECT_EQ(wide ? 18u : 14u, offsetof(ChunkLayout, ChunkVersion));
-    EXPECT_EQ(wide ? 24u : 16u, offsetof(ChunkLayout, Parser));
-    EXPECT_EQ(wide ? 32u : 20u, offsetof(ChunkLayout, Ids));
-    EXPECT_EQ(wide ? 40u : 24u, offsetof(ChunkLayout, Chunks));
-    EXPECT_EQ(wide ? 48u : 28u, offsetof(ChunkLayout, Managers));
-    EXPECT_EQ(wide ? 56u : 32u, offsetof(ChunkLayout, File));
-    EXPECT_EQ(wide ? 64u : 36u, offsetof(ChunkLayout, Dynamic));
+    EXPECT_EQ(0u, offsetof(CKTestChunkLayout, ClassId)); EXPECT_EQ(4u, offsetof(CKTestChunkLayout, PublishedWords));
+    EXPECT_EQ(8u, offsetof(CKTestChunkLayout, Data));
+    EXPECT_EQ(wide ? 16u : 12u, offsetof(CKTestChunkLayout, DataVersion));
+    EXPECT_EQ(wide ? 18u : 14u, offsetof(CKTestChunkLayout, ChunkVersion));
+    EXPECT_EQ(wide ? 24u : 16u, offsetof(CKTestChunkLayout, Parser));
+    EXPECT_EQ(wide ? 32u : 20u, offsetof(CKTestChunkLayout, Ids));
+    EXPECT_EQ(wide ? 40u : 24u, offsetof(CKTestChunkLayout, Chunks));
+    EXPECT_EQ(wide ? 48u : 28u, offsetof(CKTestChunkLayout, Managers));
+    EXPECT_EQ(wide ? 56u : 32u, offsetof(CKTestChunkLayout, File));
+    EXPECT_EQ(wide ? 64u : 36u, offsetof(CKTestChunkLayout, Dynamic));
     CKStateChunk chunk(CKCID_PARAMETER, nullptr);
-    const ChunkLayout layout = Describe(chunk);
+    const CKTestChunkLayout layout = Describe(chunk);
     EXPECT_EQ(CKCID_PARAMETER, layout.ClassId); EXPECT_EQ(0, layout.PublishedWords);
     EXPECT_EQ(nullptr, layout.Data); EXPECT_EQ(0, layout.DataVersion); EXPECT_EQ(0, layout.ChunkVersion);
     EXPECT_EQ(nullptr, layout.Parser); EXPECT_EQ(nullptr, layout.Ids); EXPECT_EQ(nullptr, layout.Chunks);
@@ -201,7 +199,7 @@ TEST(CKStateChunkHelperTest, ChunkPlatformLayoutAndEmptyPrivateRepresentation) {
 
 TEST(CKStateChunkHelperTest, ChunkPrivateOffsetsMatchActualPayloadListsAndParser) {
     CKStateChunk chunk(CKCID_OBJECT, nullptr); LoadOwnedLiteral(chunk); chunk.StartRead();
-    const ChunkLayout layout = Describe(chunk);
+    const CKTestChunkLayout layout = Describe(chunk);
     EXPECT_EQ(CKCID_PARAMETER, layout.ClassId); EXPECT_EQ(6, layout.PublishedWords);
     EXPECT_EQ(0x5A, layout.DataVersion); EXPECT_EQ(CHUNK_VERSION4, layout.ChunkVersion);
     EXPECT_EQ(chunk.LockReadBuffer(), layout.Data);
@@ -217,7 +215,7 @@ TEST(CKStateChunkHelperTest, ChunkPrivateOffsetsMatchActualPayloadListsAndParser
 TEST(CKStateChunkHelperTest, WriterCapacityIsSeparateFromPublishedWords) {
     CKStateChunk chunk(CKCID_OBJECT, nullptr);
     chunk.StartWrite(); chunk.WriteInt(79);
-    ChunkLayout layout = Describe(chunk);
+    CKTestChunkLayout layout = Describe(chunk);
     ASSERT_NE(nullptr, layout.Parser); EXPECT_EQ(0, layout.PublishedWords);
     EXPECT_EQ(1, layout.Parser->CurrentPos); EXPECT_GE(layout.Parser->DataSize, 1);
     chunk.UpdateDataSize(); EXPECT_EQ(1, Describe(chunk).PublishedWords);
@@ -255,5 +253,3 @@ TEST(CKStateChunkHelperTest, ExplicitPointerCloneSurvivesAllSourceOwnerDestructi
     copy->GetIds()->AddEntry(83); EXPECT_EQ(83, copy->GetIds()->Data[2]);
     DeleteCKStateChunk(copy);
 }
-
-} // namespace

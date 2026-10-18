@@ -2,19 +2,17 @@
 
 #include "CKAll.h"
 
-namespace {
-
-const int GuidA1 = 0x12345678;
-const int GuidA2 = 0x23456789;
-const int GuidB1 = 0x3456789A;
-const int GuidB2 = 0x456789AB;
-const CKGUID GuidA(GuidA1, GuidA2);
-const CKGUID GuidB(GuidB1, GuidB2);
-const CKGUID UntouchedGuid(0x11223344, 0x22334455);
+static const int GuidA1 = 0x12345678;
+static const int GuidA2 = 0x23456789;
+static const int GuidB1 = 0x3456789A;
+static const int GuidB2 = 0x456789AB;
+static const CKGUID GuidA(GuidA1, GuidA2);
+static const CKGUID GuidB(GuidB1, GuidB2);
+static const CKGUID UntouchedGuid(0x11223344, 0x22334455);
 
 // Literal modern envelopes have no manager relocation list. Reader fixtures
 // therefore do not depend on any manager writer or on self-roundtrip output.
-void LoadManagerWords(CKStateChunk &chunk, const int *words, int count) {
+static void LoadManagerWords(CKStateChunk &chunk, const int *words, int count) {
     int wire[32] = {};
     ASSERT_LE(count, 30);
     wire[0] = (CHUNK_VERSION4 << 16) | (CKCID_OBJECT << 8);
@@ -24,7 +22,7 @@ void LoadManagerWords(CKStateChunk &chunk, const int *words, int count) {
     chunk.StartRead();
 }
 
-void ExpectManagerWire(CKStateChunk &chunk, const int *words, int count,
+static void ExpectManagerWire(CKStateChunk &chunk, const int *words, int count,
                        const int *offsets, int offsetCount) {
     int wire[1024] = {};
     ASSERT_LE(count + offsetCount + 3, 1024);
@@ -213,5 +211,3 @@ TEST(CKStateChunkManagerSequenceTest, MetadataGrowthRetainsAlternatingSingleAndS
     }
     chunk.CloseChunk(); ExpectManagerWire(chunk, words, 210, offsets, 105);
 }
-
-} // namespace

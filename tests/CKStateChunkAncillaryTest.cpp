@@ -4,9 +4,7 @@
 
 #include "CKAll.h"
 
-namespace {
-
-void LoadAncillaryWords(CKStateChunk &chunk, const int *words, int count) {
+static void LoadAncillaryWords(CKStateChunk &chunk, const int *words, int count) {
     int wire[128] = {};
     wire[0] = CHUNK_VERSION2 << 16;
     wire[1] = CKCID_BEOBJECT;
@@ -17,14 +15,14 @@ void LoadAncillaryWords(CKStateChunk &chunk, const int *words, int count) {
     chunk.StartRead();
 }
 
-void ExpectAncillaryWords(CKStateChunk &chunk, const int *words, int count) {
+static void ExpectAncillaryWords(CKStateChunk &chunk, const int *words, int count) {
     ASSERT_EQ(count * static_cast<int>(sizeof(int)), chunk.GetDataSize());
     chunk.StartRead();
     const int *actual = static_cast<const int *>(chunk.LockReadBuffer());
     for (int i = 0; i < count; ++i) EXPECT_EQ(words[i], actual[i]) << "word " << i;
 }
 
-void ExpectAttributeDescriptor(CKStateChunk &chunk, int position) {
+static void ExpectAttributeDescriptor(CKStateChunk &chunk, int position) {
     ASSERT_NE(nullptr, chunk.GetManagers());
     ASSERT_EQ(2, chunk.GetManagers()->Size);
     EXPECT_EQ(-1, chunk.GetManagers()->Data[0]);
@@ -234,5 +232,3 @@ TEST_F(CKStateChunkAncillaryContextTest, SetDynamicFalseDoesNotOverrideUnrestric
     CKStateChunk chunk(-1, nullptr); chunk.SetDynamic(FALSE); chunk.StartWrite(); chunk.WriteObject(&dynamic); chunk.CloseChunk();
     const int expected[] = {static_cast<int>(dynamic.GetID())}; ExpectAncillaryWords(chunk, expected, 1);
 }
-
-} // namespace

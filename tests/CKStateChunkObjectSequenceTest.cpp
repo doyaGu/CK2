@@ -12,15 +12,13 @@
 #include <unistd.h>
 #endif
 
-namespace {
-
 // StartSave initializes the class-index table required by SaveObject. Keep
 // the native save session balanced even when an assertion ends a test early.
-class ObjectSequenceSaveFile : public CKFile {
+class CKTestObjectSequenceSaveFile : public CKFile {
 public:
-    explicit ObjectSequenceSaveFile(CKContext *context)
+    explicit CKTestObjectSequenceSaveFile(CKContext *context)
         : CKFile(context), Started(false) { Path[0] = 0; }
-    ~ObjectSequenceSaveFile() {
+    ~CKTestObjectSequenceSaveFile() {
         if (Started) FinalizeSaveState();
         if (Path[0]) std::remove(Path);
     }
@@ -39,13 +37,13 @@ public:
         return Started;
     }
 private:
-    ObjectSequenceSaveFile(const ObjectSequenceSaveFile &);
-    ObjectSequenceSaveFile &operator=(const ObjectSequenceSaveFile &);
+    CKTestObjectSequenceSaveFile(const CKTestObjectSequenceSaveFile &);
+    CKTestObjectSequenceSaveFile &operator=(const CKTestObjectSequenceSaveFile &);
     char Path[1024];
     bool Started;
 };
 
-void ExpectObjectWire(CKStateChunk &chunk, const int *words, int count,
+static void ExpectObjectWire(CKStateChunk &chunk, const int *words, int count,
                       const int *ids = nullptr, int idCount = 0, bool file = false) {
     ASSERT_LE(count + idCount + 3, 1100);
     chunk.CloseChunk();
@@ -65,7 +63,7 @@ void ExpectObjectWire(CKStateChunk &chunk, const int *words, int count,
     } else EXPECT_EQ(nullptr, chunk.GetIds());
 }
 
-void LoadLiteralWords(CKStateChunk &chunk, const int *words, int count, bool file = false) {
+static void LoadLiteralWords(CKStateChunk &chunk, const int *words, int count, bool file = false) {
     int wire[40] = {};
     ASSERT_LE(count + 2, 40);
     wire[0] = static_cast<int>((7u << 16) | (file ? 8u << 24 : 0u) | (CKCID_OBJECT << 8));
@@ -205,7 +203,7 @@ TEST_F(CKStateChunkObjectSequenceTest, NullAndEmptyArraysWriteZeroCountsAndDoNot
 
 TEST_F(CKStateChunkObjectSequenceTest, FileSingleAndSequenceIdsUseSaveObjectIndicesAndMissingSentinels) {
     CKObject first(context, "SavedFirst"), second(context, "SavedSecond"), absent(context, "NotSaved");
-    ObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin());
+    CKTestObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin());
     file.SaveObject(&second); file.SaveObject(&first);
     ASSERT_EQ(2, file.m_FileObjects.Size());
     EXPECT_EQ(second.GetID(), file.m_FileObjects[0].Object); EXPECT_EQ(first.GetID(), file.m_FileObjects[1].Object);
@@ -218,7 +216,7 @@ TEST_F(CKStateChunkObjectSequenceTest, FileSingleAndSequenceIdsUseSaveObjectIndi
 
 TEST_F(CKStateChunkObjectSequenceTest, FileRawObjectArrayMapsEverySlotWithoutAddingRelocations) {
     CKObject first(context, "RawSavedFirst"), second(context, "RawSavedSecond"), absent(context, "RawAbsent");
-    ObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin());
+    CKTestObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin());
     file.SaveObject(&second); file.SaveObject(&first);
     CKObjectArray array; array.InsertRear(&first); array.InsertRear(static_cast<CK_ID>(0));
     array.InsertRear(&absent); array.InsertRear(&second); array.InsertRear(&first);
@@ -229,7 +227,7 @@ TEST_F(CKStateChunkObjectSequenceTest, FileRawObjectArrayMapsEverySlotWithoutAdd
 TEST_F(CKStateChunkObjectSequenceTest, FileContextObjectArrayFiltersBeforeMappingIncludingSyntheticZeroKey) {
     CKObject fixed(context, "FileFixed"), dynamic(context, "FileDynamic"), absent(context, "FileAbsent");
     dynamic.ModifyObjectFlags(CK_OBJECT_DYNAMIC, 0);
-    ObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin()); file.SaveObject(&fixed);
+    CKTestObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin()); file.SaveObject(&fixed);
     // Explicit zero-key mapping distinguishes filtering then lookup from an
     // unconditional -1 write, and records the exact native lookup contract.
     file.m_ObjectsHashTable.Insert(0, 7); file.m_ObjectsHashTable.Insert(dynamic.GetID(), 9);
@@ -258,9 +256,9 @@ TEST_F(CKStateChunkObjectSequenceTest, LiteralSequenceNullOutputSkipsWholeSpanAn
     EXPECT_EQ(0, chunk.StartReadSequence()); EXPECT_EQ(6, chunk.GetCurrentPos());
 }
 
-void CheckArrayCapacityBoundary(int count, CKContext *context, bool fileMode, bool contextMode) {
+static void CheckArrayCapacityBoundary(int count, CKContext *context, bool fileMode, bool contextMode) {
     CKObject first(context, "BoundaryFirst"), saved(context, "BoundaryObject");
-    ObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin());
+    CKTestObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin());
     file.SaveObject(&first); file.SaveObject(&saved);
     CKObjectArray array; for (int i = 0; i < count; ++i) array.InsertRear(saved.GetID());
     CKStateChunk chunk(CKCID_OBJECT, fileMode ? &file : nullptr); chunk.StartWrite();
@@ -278,5 +276,3 @@ TEST_F(CKStateChunkObjectSequenceTest, RawArrayCount500ReservesTheCountHeaderAnd
 TEST_F(CKStateChunkObjectSequenceTest, ContextArrayCount1000ReservesTheCountHeaderAndLastId) { CheckArrayCapacityBoundary(1000, context, false, true); }
 TEST_F(CKStateChunkObjectSequenceTest, FileRawArrayCount500ReservesTheCountHeaderAndLastIndex) { CheckArrayCapacityBoundary(500, context, true, false); }
 TEST_F(CKStateChunkObjectSequenceTest, FileContextArrayCount1000ReservesTheCountHeaderAndLastIndex) { CheckArrayCapacityBoundary(1000, context, true, true); }
-
-} // namespace

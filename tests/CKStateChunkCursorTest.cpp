@@ -4,20 +4,16 @@
 
 #include "CKAll.h"
 
-namespace {
-
-void LoadCursorPayload(CKStateChunk &chunk) {
+static void LoadCursorPayload(CKStateChunk &chunk) {
     int wire[] = {0x00070103, 6, 11, 22, 33, 44, 55, 66};
     ASSERT_TRUE(chunk.ConvertFromBuffer(wire));
 }
 
-void ExpectCursorPayload(CKStateChunk &chunk, const int *expected, int count) {
+static void ExpectCursorPayload(CKStateChunk &chunk, const int *expected, int count) {
     ASSERT_EQ(count * static_cast<int>(sizeof(int)), chunk.GetDataSize());
     chunk.StartRead();
     for (int i = 0; i < count; ++i) EXPECT_EQ(expected[i], chunk.ReadInt());
 }
-
-} // namespace
 
 TEST(CKStateChunkCursorTest, NoParserOperationsDoNotCreateStorageOrMovePosition) {
     CKStateChunk chunk(CKCID_OBJECT, nullptr);

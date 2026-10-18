@@ -4,24 +4,22 @@
 
 #include "CKAll.h"
 
-namespace {
-
-class PackedOwner {
+class CKTestPackedOwner {
 public:
-    explicit PackedOwner(CKStateChunk *chunk) : Chunk(chunk) {}
-    ~PackedOwner() { DeleteCKStateChunk(Chunk); }
+    explicit CKTestPackedOwner(CKStateChunk *chunk) : Chunk(chunk) {}
+    ~CKTestPackedOwner() { DeleteCKStateChunk(Chunk); }
     CKStateChunk *operator->() const { return Chunk; }
     CKStateChunk *Get() const { return Chunk; }
 private:
-    PackedOwner(const PackedOwner &);
-    PackedOwner &operator=(const PackedOwner &);
+    CKTestPackedOwner(const CKTestPackedOwner &);
+    CKTestPackedOwner &operator=(const CKTestPackedOwner &);
     CKStateChunk *Chunk;
 };
 
-const int WordCount = 64;
-const int RepeatWord = 0x11223344;
+static const int WordCount = 64;
+static const int RepeatWord = 0x11223344;
 
-void LoadWords(CKStateChunk &chunk, bool mixed = false) {
+static void LoadWords(CKStateChunk &chunk, bool mixed = false) {
     int envelope[66] = {};
     envelope[0] = (7 << 16) | (CKCID_PARAMETER << 8) | 9;
     envelope[1] = WordCount;
@@ -35,14 +33,14 @@ void LoadWords(CKStateChunk &chunk, bool mixed = false) {
     ASSERT_TRUE(chunk.ConvertFromBuffer(envelope));
 }
 
-void ExpectRepeatedWords(CKStateChunk &chunk) {
+static void ExpectRepeatedWords(CKStateChunk &chunk) {
     EXPECT_EQ(CKCID_PARAMETER, chunk.GetChunkClassID()); EXPECT_EQ(9, chunk.GetDataVersion());
     EXPECT_EQ(7, chunk.GetChunkVersion()); EXPECT_EQ(WordCount * 4, chunk.GetDataSize());
     chunk.StartRead();
     for (int i = 0; i < WordCount; ++i) EXPECT_EQ(RepeatWord, chunk.ReadInt());
 }
 
-unsigned int OracleAdler(const unsigned char *bytes, int size, unsigned int seed) {
+static unsigned int OracleAdler(const unsigned char *bytes, int size, unsigned int seed) {
     unsigned int first = seed & 0xFFFFu, second = seed >> 16;
     for (int i = 0; i < size; ++i) {
         first = (first + bytes[i]) % 65521u;
@@ -51,7 +49,7 @@ unsigned int OracleAdler(const unsigned char *bytes, int size, unsigned int seed
     return (second << 16) | first;
 }
 
-void ExpectPackedView(CKStateChunk &chunk) {
+static void ExpectPackedView(CKStateChunk &chunk) {
     const int bytes = chunk.GetDataSize();
     const int compressedBytes = bytes / 4;
     ASSERT_GT(compressedBytes, 0); ASSERT_LT(compressedBytes, WordCount * 4);
@@ -66,7 +64,7 @@ void ExpectPackedView(CKStateChunk &chunk) {
     EXPECT_EQ(0, chunk.GetCurrentPos());
 }
 
-CKStateChunk *CopyByEntry(CKStateChunk *source, int entry) {
+static CKStateChunk *CopyByEntry(CKStateChunk *source, int entry) {
     if (entry == 0) return new CKStateChunk(source);
     if (entry == 1) return CreateCKStateChunk(source);
     CKStateChunk *copy = CreateCKStateChunk(CKCID_OBJECT, nullptr);
@@ -74,11 +72,11 @@ CKStateChunk *CopyByEntry(CKStateChunk *source, int entry) {
     return copy;
 }
 
-void CheckDeletedSourceCopy(int entry) {
+static void CheckDeletedSourceCopy(int entry) {
     CKStateChunk *source = CreateCKStateChunk(CKCID_OBJECT, nullptr);
     ASSERT_NE(nullptr, source); LoadWords(*source); source->Pack(6);
     const int packedSize = source->GetDataSize(); ASSERT_LT(packedSize / 4, WordCount * 4);
-    PackedOwner copy(CopyByEntry(source, entry)); ASSERT_NE(nullptr, copy.Get());
+    CKTestPackedOwner copy(CopyByEntry(source, entry)); ASSERT_NE(nullptr, copy.Get());
     EXPECT_EQ(packedSize, copy->GetDataSize()); DeleteCKStateChunk(source);
     ASSERT_TRUE(copy->UnPack(WordCount * 4)); ExpectRepeatedWords(*copy.Get());
 }
@@ -182,7 +180,7 @@ TEST(CKStateChunkPackedCloneTest, UnpublishedWriterRelocationMetadataStillDescri
     EXPECT_NE(source.GetManagers(), copy.GetManagers()); source.Clear(); copy.CloseChunk();
     ASSERT_EQ(1, copy.RemapObject(41, 43)); copy.StartRead(); EXPECT_EQ(43u, copy.ReadObjectID());
     CKGUID guid; EXPECT_EQ(3, copy.ReadManagerInt(&guid)); EXPECT_EQ(CKGUID(1, 2), guid);
-    PackedOwner loaded(copy.ReadSubChunk()); ASSERT_NE(nullptr, loaded.Get());
+    CKTestPackedOwner loaded(copy.ReadSubChunk()); ASSERT_NE(nullptr, loaded.Get());
     EXPECT_EQ(CKCID_PARAMETER, loaded->GetChunkClassID()); EXPECT_EQ(9, loaded->GetDataVersion());
     loaded->StartRead(); EXPECT_EQ(47, loaded->ReadInt());
 }
@@ -198,5 +196,3 @@ TEST(CKStateChunkPackedCloneTest, PackAndUnpackPreservePreviousIdentifierWhenCon
     chunk.StartRead(); ASSERT_TRUE(chunk.SeekIdentifier(0x2222)); ASSERT_TRUE(chunk.SeekIdentifier(0x3333));
     EXPECT_EQ(47, chunk.ReadInt());
 }
-
-} // namespace

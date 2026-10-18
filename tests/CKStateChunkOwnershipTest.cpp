@@ -7,35 +7,33 @@
 
 #include "CKAll.h"
 
-namespace {
-
 // This executable links CK2Static. Unlike an EXE allocator override next to a
 // separate DLL, these replacements observe the actual CK2 allocation calls.
 // The fixed ledger never allocates. GTest assertions run after tracking stops.
-struct Allocation {
+struct CKTestAllocation {
     std::uintptr_t Address;
     std::size_t Bytes;
     int Frees;
     bool Array;
 };
-const int LedgerCapacity = 512;
-Allocation Ledger[LedgerCapacity];
-int AllocationCount = 0;
-bool Tracking = false;
-bool Overflow = false;
-int UnmatchedRepeatedFrees = 0;
-std::uintptr_t BorrowedAddress = 0;
-int BorrowedFrees = 0;
+static const int LedgerCapacity = 512;
+static CKTestAllocation Ledger[LedgerCapacity];
+static int AllocationCount = 0;
+static bool Tracking = false;
+static bool Overflow = false;
+static int UnmatchedRepeatedFrees = 0;
+static std::uintptr_t BorrowedAddress = 0;
+static int BorrowedFrees = 0;
 
-void RecordAllocation(void *address, std::size_t bytes, bool array) {
+static void RecordAllocation(void *address, std::size_t bytes, bool array) {
     if (!Tracking) return;
     if (AllocationCount == LedgerCapacity) { Overflow = true; return; }
-    Allocation &record = Ledger[AllocationCount++];
+    CKTestAllocation &record = Ledger[AllocationCount++];
     record.Address = reinterpret_cast<std::uintptr_t>(address);
     record.Bytes = bytes; record.Frees = 0; record.Array = array;
 }
 
-void RecordFree(void *address) {
+static void RecordFree(void *address) {
     if (!Tracking || !address) return;
     const std::uintptr_t value = reinterpret_cast<std::uintptr_t>(address);
     if (BorrowedAddress && value == BorrowedAddress) ++BorrowedFrees;
@@ -47,34 +45,32 @@ void RecordFree(void *address) {
     }
 }
 
-class TrackingWindow {
+class CKTestTrackingWindow {
 public:
-    explicit TrackingWindow(void *borrowed = nullptr) {
+    explicit CKTestTrackingWindow(void *borrowed = nullptr) {
         AllocationCount = 0; Overflow = false; UnmatchedRepeatedFrees = 0;
         BorrowedAddress = reinterpret_cast<std::uintptr_t>(borrowed); BorrowedFrees = 0;
         Tracking = true;
     }
-    ~TrackingWindow() { Tracking = false; }
+    ~CKTestTrackingWindow() { Tracking = false; }
     void Stop() { Tracking = false; }
 private:
-    TrackingWindow(const TrackingWindow &);
-    TrackingWindow &operator=(const TrackingWindow &);
+    CKTestTrackingWindow(const CKTestTrackingWindow &);
+    CKTestTrackingWindow &operator=(const CKTestTrackingWindow &);
 };
 
-void ExpectEveryAllocationReleased(int count = -1) {
+static void ExpectEveryAllocationReleased(int count = -1) {
     ASSERT_FALSE(Tracking); ASSERT_FALSE(Overflow); EXPECT_EQ(0, UnmatchedRepeatedFrees);
     if (count >= 0) EXPECT_EQ(count, AllocationCount);
     for (int i = 0; i < AllocationCount; ++i) EXPECT_EQ(1, Ledger[i].Frees) << "allocation " << i << ", bytes " << Ledger[i].Bytes;
 }
 
-void LoadLiteral(CKStateChunk &chunk) {
+static void LoadLiteral(CKStateChunk &chunk) {
     int wire[] = {(7 << 24) | (CHUNK_VERSION4 << 16) | (CKCID_PARAMETER << 8) | 0x5A,
                   6, 0x1122, 3, 41, 0x3344, 0, 43, 2, 2, 5, 1, 4, 1, 2};
     chunk.ConvertFromBuffer(wire);
     chunk.StartRead();
 }
-
-} // namespace
 
 void *operator new(std::size_t bytes) {
     void *address = std::malloc(bytes ? bytes : 1);
@@ -93,10 +89,8 @@ void operator delete[](void *address) noexcept { RecordFree(address); std::free(
 void operator delete(void *address, std::size_t) noexcept { RecordFree(address); std::free(address); }
 void operator delete[](void *address, std::size_t) noexcept { RecordFree(address); std::free(address); }
 
-namespace {
-
 TEST(CKStateChunkOwnershipTest, FactoryOwnerReleasesObjectPayloadParserAndThreeLists) {
-    TrackingWindow window;
+    CKTestTrackingWindow window;
     CKStateChunk *chunk = CreateCKStateChunk(CKCID_OBJECT, nullptr);
     LoadLiteral(*chunk);
     const bool ownersPresent = chunk->GetIds() && chunk->GetChunks() && chunk->GetManagers();
@@ -119,7 +113,7 @@ TEST(CKStateChunkOwnershipTest, FactoryOwnerReleasesObjectPayloadParserAndThreeL
 }
 
 TEST(CKStateChunkOwnershipTest, StackOwnerReleasesAllEightInternalAllocations) {
-    TrackingWindow window;
+    CKTestTrackingWindow window;
     {
         CKStateChunk chunk(CKCID_OBJECT, nullptr); LoadLiteral(chunk);
     }
@@ -127,7 +121,7 @@ TEST(CKStateChunkOwnershipTest, StackOwnerReleasesAllEightInternalAllocations) {
 }
 
 TEST(CKStateChunkOwnershipTest, FactoryDeepCloneReleasesEighteenIndependentAllocations) {
-    TrackingWindow window;
+    CKTestTrackingWindow window;
     CKStateChunk *source = CreateCKStateChunk(CKCID_OBJECT, nullptr); LoadLiteral(*source);
     CKStateChunk *copy = CreateCKStateChunk(source);
     const bool distinct = source != copy && source->GetIds() != copy->GetIds()
@@ -144,7 +138,7 @@ TEST(CKStateChunkOwnershipTest, FactoryDeepCloneReleasesEighteenIndependentAlloc
 }
 
 TEST(CKStateChunkOwnershipTest, RepeatedStartWriteAndClearReleaseOldOwnersExactlyOnce) {
-    TrackingWindow window;
+    CKTestTrackingWindow window;
     CKStateChunk *chunk = CreateCKStateChunk(CKCID_OBJECT, nullptr);
     for (int i = 0; i < 20; ++i) {
         LoadLiteral(*chunk);
@@ -157,7 +151,7 @@ TEST(CKStateChunkOwnershipTest, RepeatedStartWriteAndClearReleaseOldOwnersExactl
 
 TEST(CKStateChunkOwnershipTest, EmptyPlacementOwnerDoesNotAllocateOrFreeCallerStorage) {
     alignas(CKStateChunk) unsigned char storage[sizeof(CKStateChunk)];
-    TrackingWindow window(storage);
+    CKTestTrackingWindow window(storage);
     CKStateChunk *chunk = new (storage) CKStateChunk(CKCID_OBJECT, nullptr);
     chunk->~CKStateChunk();
     window.Stop(); EXPECT_EQ(0, BorrowedFrees); ExpectEveryAllocationReleased(0);
@@ -166,7 +160,7 @@ TEST(CKStateChunkOwnershipTest, EmptyPlacementOwnerDoesNotAllocateOrFreeCallerSt
 TEST(CKStateChunkOwnershipTest, ParserAndIteratorLifetimesDoNotAllocateOrFreePlacementStorage) {
     alignas(ChunkParser) unsigned char parserStorage[sizeof(ChunkParser)];
     alignas(ChunkIteratorData) unsigned char iteratorStorage[sizeof(ChunkIteratorData)];
-    TrackingWindow window(parserStorage);
+    CKTestTrackingWindow window(parserStorage);
     ChunkParser *parser = new (parserStorage) ChunkParser;
     parser->~ChunkParser();
     ChunkIteratorData *iterator = new (iteratorStorage) ChunkIteratorData;
@@ -175,7 +169,7 @@ TEST(CKStateChunkOwnershipTest, ParserAndIteratorLifetimesDoNotAllocateOrFreePla
 }
 
 TEST(CKStateChunkOwnershipTest, ListGrowthReleasesEveryReplacedBufferAndFinalBuffer) {
-    TrackingWindow window;
+    CKTestTrackingWindow window;
     int last = 0; int finalCount = 0;
     {
         IntListStruct list;
@@ -187,7 +181,7 @@ TEST(CKStateChunkOwnershipTest, ListGrowthReleasesEveryReplacedBufferAndFinalBuf
 }
 
 TEST(CKStateChunkOwnershipTest, CompactListCopyReleasesSourceAndCopySeparately) {
-    TrackingWindow window;
+    CKTestTrackingWindow window;
     bool distinct = false; int copied = 0;
     {
         IntListStruct source; source.AddEntry(31); source.AddEntries(37);
@@ -198,7 +192,7 @@ TEST(CKStateChunkOwnershipTest, CompactListCopyReleasesSourceAndCopySeparately) 
 }
 
 TEST(CKStateChunkOwnershipTest, EmptyListAndZeroLengthCopyBalanceTheirOwnAllocations) {
-    TrackingWindow window;
+    CKTestTrackingWindow window;
     {
         IntListStruct source;
         IntListStruct copy(source);
@@ -221,7 +215,7 @@ CKContext *CKStateChunkBorrowedOwnershipTest::Context = nullptr;
 TEST_F(CKStateChunkBorrowedOwnershipTest, ChunkDestructionNeverReleasesBorrowedFile) {
     CKFile *file = new CKFile(Context);
     file->m_FileObjects.Resize(1); file->m_FileObjects[0].CreatedObject = 43;
-    TrackingWindow window(file);
+    CKTestTrackingWindow window(file);
     CKStateChunk *chunk = CreateCKStateChunk(CKCID_OBJECT, file);
     int wire[] = {(CHNK_OPTION_FILE << 24) | (CHUNK_VERSION4 << 16) | (CKCID_OBJECT << 8), 1, 0};
     chunk->ConvertFromBuffer(wire); chunk->StartRead();
@@ -231,5 +225,3 @@ TEST_F(CKStateChunkBorrowedOwnershipTest, ChunkDestructionNeverReleasesBorrowedF
     EXPECT_EQ(1, file->m_FileObjects.Size()); EXPECT_EQ(43u, file->m_FileObjects[0].CreatedObject);
     delete file;
 }
-
-} // namespace

@@ -2,19 +2,17 @@
 
 #include "CKAll.h"
 
-namespace {
-
-const CKDWORD IdentifierA = 0x10010001u;
-const CKDWORD IdentifierB = 0x10010002u;
-const CKDWORD IdentifierC = 0x10010003u;
-const CKDWORD IdentifierD = 0x10010004u;
-const CKDWORD MissingIdentifier = 0x100100ffu;
+static const CKDWORD IdentifierA = 0x10010001u;
+static const CKDWORD IdentifierB = 0x10010002u;
+static const CKDWORD IdentifierC = 0x10010003u;
+static const CKDWORD IdentifierD = 0x10010004u;
+static const CKDWORD MissingIdentifier = 0x100100ffu;
 
 // Independent original linked identifier wire. Offsets are in dwords:
 // A@0 -> B@5 -> A@8 -> D@12 -> C@14 -> end.
 // A payload deliberately contains B's identifier value; lookup must follow
 // header links, rather than scan raw values. D and terminal C have no payload.
-const CKDWORD IdentifierWire[] = {
+static const CKDWORD IdentifierWire[] = {
     IdentifierA, 5, 11, IdentifierB, 22,
     IdentifierB, 8, 33,
     IdentifierA, 12, 44, 55,
@@ -22,13 +20,11 @@ const CKDWORD IdentifierWire[] = {
     IdentifierC, 0
 };
 
-void LoadIdentifierWire(CKStateChunk &chunk) {
+static void LoadIdentifierWire(CKStateChunk &chunk) {
     chunk.StartWrite();
     chunk.WriteBufferNoSize_LEndian(sizeof(IdentifierWire), const_cast<CKDWORD *>(IdentifierWire));
     chunk.CloseChunk();
 }
-
-} // namespace
 
 TEST(CKStateChunkIdentifierTest, RawWireReadsHeadersAndPayloadSequentially) {
     CKStateChunk chunk(CKCID_OBJECT, nullptr);

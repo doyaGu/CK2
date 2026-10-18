@@ -4,12 +4,10 @@
 
 #include "CKAll.h"
 
-namespace {
+static const CKDWORD LifecycleIdentifier = 0x10203040u;
+static const CKGUID LifecycleManager(0x12345678u, 0x23456789u);
 
-const CKDWORD LifecycleIdentifier = 0x10203040u;
-const CKGUID LifecycleManager(0x12345678u, 0x23456789u);
-
-void WriteRichState(CKStateChunk &chunk) {
+static void WriteRichState(CKStateChunk &chunk) {
     CKStateChunk child(CKCID_PARAMETER, nullptr);
     child.StartWrite();
     child.WriteInt(73);
@@ -23,7 +21,7 @@ void WriteRichState(CKStateChunk &chunk) {
     chunk.CloseChunk();
 }
 
-void ExpectSingleWordWire(CKStateChunk &chunk, int value, unsigned int options = 0) {
+static void ExpectSingleWordWire(CKStateChunk &chunk, int value, unsigned int options = 0) {
     ASSERT_EQ(4, chunk.GetDataSize());
     ASSERT_EQ(12, chunk.ConvertToBuffer(nullptr));
     int wire[3] = {};
@@ -35,8 +33,6 @@ void ExpectSingleWordWire(CKStateChunk &chunk, int value, unsigned int options =
     EXPECT_EQ(1, wire[1]);
     EXPECT_EQ(value, wire[2]);
 }
-
-} // namespace
 
 TEST(CKStateChunkLifecycleTest, ClassConstructorInitializesEmptyStateAndVersions) {
     CKStateChunk chunk(CKCID_MATERIAL, nullptr);

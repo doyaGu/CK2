@@ -4,11 +4,9 @@
 
 #include "CKAll.h"
 
-namespace {
+static const int Sentinel = 0x13572468;
 
-const int Sentinel = 0x13572468;
-
-void LoadBufferWords(CKStateChunk &chunk, const int *words, int count) {
+static void LoadBufferWords(CKStateChunk &chunk, const int *words, int count) {
     int envelope[64] = {};
     envelope[0] = (CHUNK_VERSION4 << 16) | (CKCID_OBJECT << 8);
     envelope[1] = count;
@@ -23,30 +21,28 @@ typedef void (CKStateChunk::*StoredFill)(void *);
 typedef void (CKStateChunk::*ExplicitFill)(int, void *);
 typedef int (CKStateChunk::*ArrayReader)(void **);
 
-const BufferWriter SizedWriters[] = {
+static const BufferWriter SizedWriters[] = {
     &CKStateChunk::WriteBuffer, &CKStateChunk::WriteBuffer_LEndian, &CKStateChunk::WriteBuffer_LEndian16
 };
-const BufferWriter RawWriters[] = {
+static const BufferWriter RawWriters[] = {
     &CKStateChunk::WriteBufferNoSize, &CKStateChunk::WriteBufferNoSize_LEndian, &CKStateChunk::WriteBufferNoSize_LEndian16
 };
-const StoredFill StoredReaders[] = {
+static const StoredFill StoredReaders[] = {
     static_cast<StoredFill>(&CKStateChunk::ReadAndFillBuffer),
     static_cast<StoredFill>(&CKStateChunk::ReadAndFillBuffer_LEndian),
     static_cast<StoredFill>(&CKStateChunk::ReadAndFillBuffer_LEndian16)
 };
-const ExplicitFill ExplicitReaders[] = {
+static const ExplicitFill ExplicitReaders[] = {
     static_cast<ExplicitFill>(&CKStateChunk::ReadAndFillBuffer),
     static_cast<ExplicitFill>(&CKStateChunk::ReadAndFillBuffer_LEndian),
     static_cast<ExplicitFill>(&CKStateChunk::ReadAndFillBuffer_LEndian16)
 };
-const ArrayReader ArrayReaders[] = {&CKStateChunk::ReadArray_LEndian, &CKStateChunk::ReadArray_LEndian16};
+static const ArrayReader ArrayReaders[] = {&CKStateChunk::ReadArray_LEndian, &CKStateChunk::ReadArray_LEndian16};
 
-void ExpectPayload(const unsigned char *actual) {
+static void ExpectPayload(const unsigned char *actual) {
     const unsigned char expected[] = {0x12, 0x34, 0x56, 0x78, 0x9A};
     EXPECT_EQ(0, std::memcmp(actual, expected, sizeof(expected)));
 }
-
-} // namespace
 
 TEST(CKStateChunkBufferTest, SizedWriterAliasesEmitLengthBytesAndRoundedCursor) {
     unsigned char bytes[] = {0x12, 0x34, 0x56, 0x78, 0x9A};

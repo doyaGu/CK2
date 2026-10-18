@@ -6,13 +6,11 @@
 #include "CKPluginManager.h"
 #include "VxWindowFunctions.h"
 
-namespace {
+static const CKBYTE DecodedPixels[] = {1,2,3,255, 4,5,6,255, 7,8,9,255, 10,11,12,255};
+static const CKBYTE EncodedBytes[] = {0x31,0x32,0x33,0x34,0x35};
+static const int Sentinel = 0x13572468;
 
-const CKBYTE DecodedPixels[] = {1,2,3,255, 4,5,6,255, 7,8,9,255, 10,11,12,255};
-const CKBYTE EncodedBytes[] = {0x31,0x32,0x33,0x34,0x35};
-const int Sentinel = 0x13572468;
-
-VxImageDescEx ImageDesc(CKBYTE *pixels, int width = 2, int height = 2, int pitch = 8) {
+static VxImageDescEx ImageDesc(CKBYTE *pixels, int width = 2, int height = 2, int pitch = 8) {
     VxImageDescEx desc;
     desc.Width = width; desc.Height = height; desc.BytesPerLine = pitch;
     desc.BitsPerPixel = 32; desc.RedMask = R_MASK; desc.GreenMask = G_MASK;
@@ -21,9 +19,9 @@ VxImageDescEx ImageDesc(CKBYTE *pixels, int width = 2, int height = 2, int pitch
 }
 
 // Independent wire construction; no CKStateChunk writers manufacture inputs.
-struct BitmapWire {
+struct CKTestBitmapWire {
     int Words[4096]; unsigned int Masks[4096]; int Count;
-    BitmapWire() : Count(0) { std::memset(Words, 0, sizeof(Words)); std::memset(Masks, 0, sizeof(Masks)); }
+    CKTestBitmapWire() : Count(0) { std::memset(Words, 0, sizeof(Words)); std::memset(Masks, 0, sizeof(Masks)); }
     void Int(int value) { Words[Count] = value; Masks[Count++] = 0xFFFFFFFFu; }
     void Bytes(const void *bytes, int count) {
         std::memcpy(Words + Count, bytes, count);
@@ -47,7 +45,7 @@ struct BitmapWire {
     }
 };
 
-struct ReaderProbe {
+static struct CKTestReaderProbe {
     bool AlphaSaved, FailSave, FailRead, Palette, Unavailable;
     int Created, Released, Saves, Reads, MemoryReleases, PixelReleases, PaletteReleases, SaveReleases;
     int LastReader, LastSize; CKBYTE LastBytes[80], SavedPixels[80]; VxImageDescEx SavedDesc;
@@ -56,11 +54,11 @@ struct ReaderProbe {
         LastReader = LastSize = -1; std::memset(LastBytes, 0, sizeof(LastBytes)); std::memset(SavedPixels, 0, sizeof(SavedPixels)); }
 } Probe;
 
-CKPluginInfo ReaderInfos[7];
+static CKPluginInfo ReaderInfos[7];
 
-class BitmapTestReader : public CKBitmapReader {
+class CKTestBitmapReader : public CKBitmapReader {
 public:
-    explicit BitmapTestReader(int index = 6) : Index(index), Saved(nullptr) { ++Probe.Created; }
+    explicit CKTestBitmapReader(int index = 6) : Index(index), Saved(nullptr) { ++Probe.Created; }
     void Release() override { ++Probe.Released; delete this; }
     CKPluginInfo *GetReaderInfo() override { return &ReaderInfos[Index]; }
     int GetOptionsCount() override { return 0; }
@@ -105,9 +103,9 @@ private:
     int Index; CKBitmapProperties Props; void *Saved;
 };
 
-int ReaderCount() { return 7; }
-CKPluginInfo *ReaderInfo(int index) { return index >= 0 && index < 7 ? &ReaderInfos[index] : nullptr; }
-CKDataReader *CreateReader(int index) { return Probe.Unavailable ? nullptr : new BitmapTestReader(index); }
+static int ReaderCount() { return 7; }
+static CKPluginInfo *ReaderInfo(int index) { return index >= 0 && index < 7 ? &ReaderInfos[index] : nullptr; }
+static CKDataReader *CreateReader(int index) { return Probe.Unavailable ? nullptr : new CKTestBitmapReader(index); }
 
 class CKStateChunkBitmapTest : public ::testing::Test {
 protected:
@@ -125,19 +123,19 @@ protected:
     void SetUp() override { Probe.Reset(); }
 };
 
-void ReaderHeader(BitmapWire &wire, int type = 1, int size = 5, int guidIndex = 7) {
+static void ReaderHeader(CKTestBitmapWire &wire, int type = 1, int size = 5, int guidIndex = 7) {
     wire.Int(type); wire.Int(0x00716B63); wire.Int(0x34340001); wire.Int(guidIndex); wire.Int(size);
     if (size > 0) wire.Bytes(EncodedBytes, size);
 }
 
-void LegacyFrame(BitmapWire &wire, const char *signature, bool custom = true) {
+static void LegacyFrame(CKTestBitmapWire &wire, const char *signature, bool custom = true) {
     CKBYTE bytes[10]; int size = 5;
     if (custom) { std::memcpy(bytes, signature, 5); std::memcpy(bytes + 5, EncodedBytes, 5); size = 10; }
     else std::memcpy(bytes, EncodedBytes, 5);
     wire.Int(size); wire.Buffer(bytes, size);
 }
 
-void RawFrame(BitmapWire &wire, int bits = 32, bool alpha = true) {
+static void RawFrame(CKTestBitmapWire &wire, int bits = 32, bool alpha = true) {
     wire.Int(bits); wire.Int(2); wire.Int(2); wire.Int(alpha ? static_cast<int>(A_MASK) : 0);
     wire.Int(bits == 16 ? 0xF800 : R_MASK); wire.Int(bits == 16 ? 0x07E0 : G_MASK);
     wire.Int(bits == 16 ? 0x001F : B_MASK); wire.Int(0);
@@ -147,13 +145,13 @@ void RawFrame(BitmapWire &wire, int bits = 32, bool alpha = true) {
 
 TEST_F(CKStateChunkBitmapTest, RawEmptyWriterAndLiteralReaderUseOneWordSentinel) {
     VxImageDescEx desc; CKStateChunk written(CKCID_TEXTURE, nullptr); written.StartWrite(); written.WriteRawBitmap(desc);
-    BitmapWire wire; wire.Int(0); wire.ExpectWritten(written); wire.Int(Sentinel);
+    CKTestBitmapWire wire; wire.Int(0); wire.ExpectWritten(written); wire.Int(Sentinel);
     CKStateChunk read(CKCID_TEXTURE, nullptr); wire.Load(read); desc.Width = 77;
     EXPECT_EQ(nullptr, read.ReadRawBitmap(desc)); EXPECT_EQ(77, desc.Width); EXPECT_EQ(Sentinel, read.ReadInt());
 }
 
 TEST_F(CKStateChunkBitmapTest, RawLiteralPlanarPixelsAndDescriptorAreCanonicalBgra) {
-    BitmapWire wire; RawFrame(wire); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; RawFrame(wire); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     VxImageDescEx desc; CKBYTE *pixels = chunk.ReadRawBitmap(desc); ASSERT_NE(nullptr, pixels);
     const CKBYTE expected[] = {9,10,11,12,13,14,15,16,1,2,3,4,5,6,7,8};
     EXPECT_EQ(0, std::memcmp(pixels, expected, 16)); EXPECT_EQ(2, desc.Width); EXPECT_EQ(2, desc.Height);
@@ -163,14 +161,14 @@ TEST_F(CKStateChunkBitmapTest, RawLiteralPlanarPixelsAndDescriptorAreCanonicalBg
 }
 
 TEST_F(CKStateChunkBitmapTest, RawLiteralWithoutAlphaDefaultsEveryPixelToOpaque) {
-    BitmapWire wire; RawFrame(wire, 24, false); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; RawFrame(wire, 24, false); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     VxImageDescEx desc; CKBYTE *pixels = chunk.ReadRawBitmap(desc); ASSERT_NE(nullptr, pixels);
     const CKBYTE expected[] = {9,10,11,255,13,14,15,255,1,2,3,255,5,6,7,255};
     EXPECT_EQ(0, std::memcmp(pixels, expected, 16)); delete[] pixels;
 }
 
 TEST_F(CKStateChunkBitmapTest, RawLiteral565DescriptorFeedsRealUpsideDownBlitWithoutColorCorruption) {
-    BitmapWire wire; RawFrame(wire, 16, false); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; RawFrame(wire, 16, false); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     VxImageDescEx decoded; CKBYTE *pixels = chunk.ReadRawBitmap(decoded); ASSERT_NE(nullptr, pixels);
     decoded.Image = pixels; CKBYTE output[16] = {}; VxImageDescEx target = ImageDesc(output);
     VxDoBlitUpsideDown(decoded, target);
@@ -181,26 +179,26 @@ TEST_F(CKStateChunkBitmapTest, RawLiteral565DescriptorFeedsRealUpsideDownBlitWit
 }
 
 TEST_F(CKStateChunkBitmapTest, RawShortPlaneReturnsFailureRatherThanReadingNeighborStorage) {
-    BitmapWire wire; RawFrame(wire); wire.Words[8] = 1; // B length claims only one byte for four pixels.
+    CKTestBitmapWire wire; RawFrame(wire); wire.Words[8] = 1; // B length claims only one byte for four pixels.
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); VxImageDescEx desc;
     CKBYTE *pixels = chunk.ReadRawBitmap(desc); EXPECT_EQ(nullptr, pixels); delete[] pixels;
 }
 
 TEST_F(CKStateChunkBitmapTest, RawMissingColorPlaneReturnsFailureInsteadOfUninitializedImage) {
-    BitmapWire wire; RawFrame(wire); wire.Count = 8;
+    CKTestBitmapWire wire; RawFrame(wire); wire.Count = 8;
     wire.Int(0); wire.Int(0); wire.Int(0); wire.Int(0);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); VxImageDescEx desc;
     CKBYTE *pixels = chunk.ReadRawBitmap(desc); EXPECT_EQ(nullptr, pixels); delete[] pixels;
 }
 
 TEST_F(CKStateChunkBitmapTest, RawIncompleteHeaderCannotPublishAnImage) {
-    BitmapWire wire; wire.Int(32); wire.Int(2); wire.Int(2);
+    CKTestBitmapWire wire; wire.Int(32); wire.Int(2); wire.Int(2);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); VxImageDescEx desc;
     CKBYTE *pixels = chunk.ReadRawBitmap(desc); EXPECT_EQ(nullptr, pixels); delete[] pixels;
 }
 
 TEST_F(CKStateChunkBitmapTest, RawUnknownCompressionConsumesItsPlanesAndLeavesNextRecord) {
-    BitmapWire wire; RawFrame(wire); wire.Words[7] = 3; wire.Int(Sentinel);
+    CKTestBitmapWire wire; RawFrame(wire); wire.Words[7] = 3; wire.Int(Sentinel);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); VxImageDescEx desc;
     EXPECT_EQ(nullptr, chunk.ReadRawBitmap(desc)); EXPECT_EQ(Sentinel, chunk.ReadInt());
 }
@@ -209,14 +207,14 @@ TEST_F(CKStateChunkBitmapTest, RawWriter32PaddedRowsMatchIndependentLosslessBott
     CKBYTE source[] = {1,2,3,4,5,6,7,8,99,99,99,99,9,10,11,12,13,14,15,16,99,99,99,99};
     VxImageDescEx desc = ImageDesc(source, 2, 2, 12);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteRawBitmap(desc);
-    BitmapWire wire; RawFrame(wire); wire.ExpectWritten(chunk);
+    CKTestBitmapWire wire; RawFrame(wire); wire.ExpectWritten(chunk);
 }
 
 TEST_F(CKStateChunkBitmapTest, RawWriter24PaddedRowsMatchIndependentLosslessOpaquePlaneFrame) {
     CKBYTE source[] = {1,2,3,5,6,7,99,99,9,10,11,13,14,15,99,99};
     VxImageDescEx desc = ImageDesc(source, 2, 2, 8); desc.BitsPerPixel = 24; desc.AlphaMask = 0;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteRawBitmap(desc);
-    BitmapWire wire; RawFrame(wire, 24, false); wire.ExpectWritten(chunk);
+    CKTestBitmapWire wire; RawFrame(wire, 24, false); wire.ExpectWritten(chunk);
 }
 
 TEST_F(CKStateChunkBitmapTest, RawWriter565PreservesCorrectBlueGreenRedPlaneOrder) {
@@ -224,7 +222,7 @@ TEST_F(CKStateChunkBitmapTest, RawWriter565PreservesCorrectBlueGreenRedPlaneOrde
     VxImageDescEx desc = ImageDesc(reinterpret_cast<CKBYTE *>(source), 2, 2, 4);
     desc.BitsPerPixel = 16; desc.RedMask = 0xF800; desc.GreenMask = 0x07E0; desc.BlueMask = 0x001F; desc.AlphaMask = 0;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteRawBitmap(desc);
-    BitmapWire wire; wire.Int(16); wire.Int(2); wire.Int(2); wire.Int(0);
+    CKTestBitmapWire wire; wire.Int(16); wire.Int(2); wire.Int(2); wire.Int(0);
     wire.Int(0xF800); wire.Int(0x07E0); wire.Int(0x001F); wire.Int(0);
     const CKBYTE blue[] = {248,248,0,0}, green[] = {0,252,0,252}, red[] = {0,248,248,0};
     wire.Buffer(blue, 4); wire.Buffer(green, 4); wire.Buffer(red, 4); wire.Buffer(nullptr, 0); wire.ExpectWritten(chunk);
@@ -234,86 +232,86 @@ TEST_F(CKStateChunkBitmapTest, RawWriterCustom32MasksExtractChannelsFromDescript
     CKBYTE source[] = {1,2,3,4}; VxImageDescEx desc = ImageDesc(source, 1, 1, 4);
     desc.RedMask = 0x000000FF; desc.BlueMask = 0x00FF0000;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteRawBitmap(desc);
-    BitmapWire wire; wire.Int(32); wire.Int(1); wire.Int(1); wire.Int(static_cast<int>(A_MASK));
+    CKTestBitmapWire wire; wire.Int(32); wire.Int(1); wire.Int(1); wire.Int(static_cast<int>(A_MASK));
     wire.Int(0x000000FF); wire.Int(G_MASK); wire.Int(0x00FF0000); wire.Int(0);
     wire.Buffer(source + 2, 1); wire.Buffer(source + 1, 1); wire.Buffer(source, 1); wire.Buffer(source + 3, 1);
     wire.ExpectWritten(chunk);
 }
 
-CKBitmapProperties WriterProperties() {
+static CKBitmapProperties WriterProperties() {
     CKBitmapProperties props; props.m_Ext = CKFileExtension("ckq"); props.m_ReaderGuid = CKGUID(0x34340001, 7); return props;
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriterAlphaSavedUsesExactHeaderAndPluginSaveReleaseContract) {
-    BitmapTestReader reader; CKBitmapProperties props = WriterProperties();
+    CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels));
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
-    BitmapWire wire; ReaderHeader(wire); wire.ExpectWritten(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire); wire.ExpectWritten(chunk);
     EXPECT_EQ(1, Probe.Saves); EXPECT_EQ(1, Probe.SaveReleases); EXPECT_EQ(0, Probe.Released);
     EXPECT_EQ(0, std::memcmp(Probe.SavedPixels, DecodedPixels, 16));
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriterNoAlphaMaskNeedsNoSeparatePlane) {
-    Probe.AlphaSaved = false; BitmapTestReader reader; CKBitmapProperties props = WriterProperties();
+    Probe.AlphaSaved = false; CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels)); desc.AlphaMask = 0;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
-    BitmapWire wire; ReaderHeader(wire); wire.ExpectWritten(chunk); EXPECT_EQ(1, Probe.SaveReleases);
+    CKTestBitmapWire wire; ReaderHeader(wire); wire.ExpectWritten(chunk); EXPECT_EQ(1, Probe.SaveReleases);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriterNullInputsAndSaveFailureEmitOneZeroWithoutTakingReaderOwnership) {
-    BitmapTestReader reader; CKBitmapProperties props = WriterProperties(); VxImageDescEx empty;
+    CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties(); VxImageDescEx empty;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(empty, &reader, &props);
     VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels)); Probe.FailSave = true;
     chunk.WriteReaderBitmap(desc, &reader, &props); chunk.WriteReaderBitmap(desc, nullptr, &props);
-    chunk.WriteReaderBitmap(desc, &reader, nullptr); BitmapWire wire; for (int i = 0; i < 4; ++i) wire.Int(0);
+    chunk.WriteReaderBitmap(desc, &reader, nullptr); CKTestBitmapWire wire; for (int i = 0; i < 4; ++i) wire.Int(0);
     wire.ExpectWritten(chunk); EXPECT_EQ(1, Probe.Saves); EXPECT_EQ(0, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriterConstantAlphaIgnoresRowPadding) {
-    Probe.AlphaSaved = false; BitmapTestReader reader; CKBitmapProperties props = WriterProperties();
+    Probe.AlphaSaved = false; CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     CKBYTE source[] = {1,2,3,47,4,5,6,47,99,99,99,99}; VxImageDescEx desc = ImageDesc(source, 2, 1, 12);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(1); wire.Int(47); wire.ExpectWritten(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(1); wire.Int(47); wire.ExpectWritten(chunk);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriterVariableAlphaCountsPixelsInsteadOfPaddedDwords) {
-    Probe.AlphaSaved = false; BitmapTestReader reader; CKBitmapProperties props = WriterProperties();
+    Probe.AlphaSaved = false; CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     CKBYTE source[] = {1,2,3,4,5,6,7,8,99,99,99,99,9,10,11,12,13,14,15,16,99,99,99,99};
     VxImageDescEx desc = ImageDesc(source, 2, 2, 12); CKStateChunk chunk(CKCID_TEXTURE, nullptr);
     chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {4,8,12,16};
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {4,8,12,16};
     wire.Buffer(alpha, 4); wire.ExpectWritten(chunk);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriter4444AlphaTraversesTwoRowsForwardWithTheirPitch) {
-    Probe.AlphaSaved = false; BitmapTestReader reader; CKBitmapProperties props = WriterProperties();
+    Probe.AlphaSaved = false; CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     CKWORD storage[16]; for (int i = 0; i < 16; ++i) storage[i] = 0xDDDD;
     storage[4] = 0xF123; storage[5] = 0x1456; storage[8] = 0x2789; storage[9] = 0x3ABC;
     VxImageDescEx desc = ImageDesc(reinterpret_cast<CKBYTE *>(storage + 4), 2, 2, 8);
     desc.BitsPerPixel = 16; desc.AlphaMask = 0xF000; desc.RedMask = 0x0F00; desc.GreenMask = 0x00F0; desc.BlueMask = 0x000F;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {240,16,32,48};
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {240,16,32,48};
     wire.Buffer(alpha, 4); wire.ExpectWritten(chunk); EXPECT_EQ(32, Probe.SavedDesc.BitsPerPixel);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriterLowFourBitAlphaUsesExpansionWithoutNegativeShift) {
-    Probe.AlphaSaved = false; BitmapTestReader reader; CKBitmapProperties props = WriterProperties();
+    Probe.AlphaSaved = false; CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     CKWORD source[] = {0x123F,0x4561}; VxImageDescEx desc = ImageDesc(reinterpret_cast<CKBYTE *>(source), 2, 1, 4);
     desc.BitsPerPixel = 16; desc.AlphaMask = 0x000F; desc.RedMask = 0xF000; desc.GreenMask = 0x0F00; desc.BlueMask = 0x00F0;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(2); const CKBYTE alpha[] = {240,16}; wire.Buffer(alpha, 2); wire.ExpectWritten(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(2); const CKBYTE alpha[] = {240,16}; wire.Buffer(alpha, 2); wire.ExpectWritten(chunk);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriter32CustomAlphaMaskReadsTheSpecifiedChannel) {
-    Probe.AlphaSaved = false; BitmapTestReader reader; CKBitmapProperties props = WriterProperties();
+    Probe.AlphaSaved = false; CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     CKBYTE source[] = {47,1,2,3,59,4,5,6}; VxImageDescEx desc = ImageDesc(source, 2, 1, 8);
     desc.AlphaMask = 0x000000FF; desc.RedMask = 0xFF000000; desc.GreenMask = 0x00FF0000; desc.BlueMask = 0x0000FF00;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(2); const CKBYTE alpha[] = {47,59}; wire.Buffer(alpha, 2); wire.ExpectWritten(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(2); const CKBYTE alpha[] = {47,59}; wire.Buffer(alpha, 2); wire.ExpectWritten(chunk);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderWriter24InputIsConvertedToCanonical32BeforeSaveMemory) {
-    BitmapTestReader reader; CKBitmapProperties props = WriterProperties(); CKBYTE source[] = {1,2,3,4,5,6,99,99};
+    CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties(); CKBYTE source[] = {1,2,3,4,5,6,99,99};
     VxImageDescEx desc = ImageDesc(source, 2, 1, 8); desc.BitsPerPixel = 24; desc.AlphaMask = 0;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);
     const CKBYTE expected[] = {1,2,3,255,4,5,6,255}; EXPECT_EQ(0, std::memcmp(Probe.SavedPixels, expected, 8));
@@ -321,7 +319,7 @@ TEST_F(CKStateChunkBitmapTest, ReaderWriter24InputIsConvertedToCanonical32Before
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderLiteralPluginHeaderBlitsPixelsAndBalancesMemoryAndReader) {
-    BitmapWire wire; ReaderHeader(wire); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output); ASSERT_TRUE(chunk.ReadReaderBitmap(desc));
     EXPECT_EQ(0, std::memcmp(output, DecodedPixels, 16)); EXPECT_EQ(6, Probe.LastReader);
     EXPECT_EQ(5, Probe.LastSize); EXPECT_EQ(0, std::memcmp(Probe.LastBytes, EncodedBytes, 5));
@@ -329,65 +327,65 @@ TEST_F(CKStateChunkBitmapTest, ReaderLiteralPluginHeaderBlitsPixelsAndBalancesMe
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderLiteralConstantAlphaOverridesEveryDestinationPixel) {
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(1); wire.Int(47); wire.Int(Sentinel);
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(1); wire.Int(47); wire.Int(Sentinel);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     ASSERT_TRUE(chunk.ReadReaderBitmap(desc)); for (int i = 0; i < 4; ++i) EXPECT_EQ(47, output[4*i+3]);
     EXPECT_EQ(1, Probe.Released); EXPECT_EQ(Sentinel, chunk.ReadInt());
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderLiteralAlphaPlaneOverridesInForwardRowOrder) {
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {17,31,47,59}; wire.Buffer(alpha, 4);
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {17,31,47,59}; wire.Buffer(alpha, 4);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     ASSERT_TRUE(chunk.ReadReaderBitmap(desc)); for (int i = 0; i < 4; ++i) EXPECT_EQ(alpha[i], output[4*i+3]);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderDecodeFailureReleasesPluginWithoutAdvancingPayload) {
-    Probe.FailRead = true; BitmapWire wire; ReaderHeader(wire); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    Probe.FailRead = true; CKTestBitmapWire wire; ReaderHeader(wire); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16]; std::memset(output, 77, sizeof(output)); VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(5, chunk.GetCurrentPos()); EXPECT_EQ(1, Probe.Released);
     for (int i = 0; i < 16; ++i) EXPECT_EQ(77, output[i]);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderNegativePayloadLengthIsFailureAndNeverMovesCursorBackward) {
-    BitmapWire wire; ReaderHeader(wire, 1, -8); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire, 1, -8); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(5, chunk.GetCurrentPos());
     EXPECT_EQ(0, Probe.Reads); EXPECT_EQ(1, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderMissingSizeFieldDoesNotTreatEofAsValidEmptyPayload) {
-    BitmapWire wire; ReaderHeader(wire, 1, 0); --wire.Count;
+    CKTestBitmapWire wire; ReaderHeader(wire, 1, 0); --wire.Count;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(4, chunk.GetCurrentPos()); EXPECT_EQ(1, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderTruncatedPayloadReturnsFailureAndBalancesReader) {
-    BitmapWire wire; ReaderHeader(wire); wire.Words[4] = 12; CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire); wire.Words[4] = 12; CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(0, Probe.Reads); EXPECT_EQ(1, Probe.Released); EXPECT_EQ(5, chunk.GetCurrentPos());
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderMissingAlphaPlaneCannotReportACompleteImage) {
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); wire.Buffer(nullptr, 0);
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); wire.Buffer(nullptr, 0);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(1, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderShortAlphaPlaneCannotBorrowNeighborBytes) {
-    BitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {47}; wire.Buffer(alpha, 1);
+    CKTestBitmapWire wire; ReaderHeader(wire, 2); wire.Int(4); const CKBYTE alpha[] = {47}; wire.Buffer(alpha, 1);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(1, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderZeroAndMissingDestinationStopAfterTheTypeWord) {
-    BitmapWire wire; wire.Int(0); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; wire.Int(0); wire.Int(Sentinel); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output); EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(Sentinel, chunk.ReadInt());
-    BitmapWire noDestination; ReaderHeader(noDestination); noDestination.Load(chunk); desc.Image = nullptr;
+    CKTestBitmapWire noDestination; ReaderHeader(noDestination); noDestination.Load(chunk); desc.Image = nullptr;
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(1, chunk.GetCurrentPos()); EXPECT_EQ(0, Probe.Created);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderUnknownPreferredGuidFallsBackToTheDeclaredExtension) {
-    BitmapWire wire; ReaderHeader(wire, 1, 5, 99); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; ReaderHeader(wire, 1, 5, 99); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output); EXPECT_TRUE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(6, Probe.LastReader);
 }
 
@@ -395,7 +393,7 @@ TEST_F(CKStateChunkBitmapTest, Bitmap2KnownLegacySignaturesSelectReaderAndTransf
     const char *signatures[] = {"CKBMP","CKDIB","CKTGA","CKJPG","CKTIF","CKGIF","CKPCX"};
     const int indices[] = {0,0,1,2,3,4,5};
     for (int i = 0; i < 7; ++i) {
-        Probe.Reset(); BitmapWire wire; LegacyFrame(wire, signatures[i]); wire.Int(Sentinel);
+        Probe.Reset(); CKTestBitmapWire wire; LegacyFrame(wire, signatures[i]); wire.Int(Sentinel);
         CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); VxImageDescEx desc;
         CKBYTE *pixels = chunk.ReadBitmap2(desc); ASSERT_NE(nullptr, pixels);
         EXPECT_EQ(0, std::memcmp(pixels, DecodedPixels, 16)); EXPECT_EQ(2, desc.Width); EXPECT_EQ(32, desc.BitsPerPixel);
@@ -405,18 +403,18 @@ TEST_F(CKStateChunkBitmapTest, Bitmap2KnownLegacySignaturesSelectReaderAndTransf
 }
 
 TEST_F(CKStateChunkBitmapTest, Bitmap2RawLegacyPayloadFallsBackToTgaWithoutStrippingBytes) {
-    BitmapWire wire; LegacyFrame(wire, nullptr, false); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    CKTestBitmapWire wire; LegacyFrame(wire, nullptr, false); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     VxImageDescEx desc; CKBYTE *pixels = chunk.ReadBitmap2(desc); ASSERT_NE(nullptr, pixels);
     EXPECT_EQ(1, Probe.LastReader); EXPECT_EQ(5, Probe.LastSize); EXPECT_EQ(0, std::memcmp(Probe.LastBytes, EncodedBytes, 5)); delete[] pixels;
 }
 
 TEST_F(CKStateChunkBitmapTest, Bitmap2DecodeFailureLeavesCallerDescriptorAndBalancesReader) {
-    Probe.FailRead = true; BitmapWire wire; LegacyFrame(wire, "CKBMP"); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    Probe.FailRead = true; CKTestBitmapWire wire; LegacyFrame(wire, "CKBMP"); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     VxImageDescEx desc; desc.Width = 77; EXPECT_EQ(nullptr, chunk.ReadBitmap2(desc)); EXPECT_EQ(77, desc.Width); EXPECT_EQ(1, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, LegacyShortPayloadIsConsumedWithoutReadingFiveByteHeaderOrCallingPlugin) {
-    BitmapWire wire; wire.Int(3); const CKBYTE bytes[] = {1,2,3}; wire.Buffer(bytes, 3); wire.Int(Sentinel);
+    CKTestBitmapWire wire; wire.Int(3); const CKBYTE bytes[] = {1,2,3}; wire.Buffer(bytes, 3); wire.Int(Sentinel);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); VxImageDescEx desc;
     EXPECT_EQ(nullptr, chunk.ReadBitmap2(desc)); EXPECT_EQ(Sentinel, chunk.ReadInt());
     wire.Load(chunk); EXPECT_EQ(nullptr, chunk.ReadBitmap()); EXPECT_EQ(Sentinel, chunk.ReadInt()); EXPECT_EQ(0, Probe.Created);
@@ -426,7 +424,7 @@ TEST_F(CKStateChunkBitmapTest, BitmapHandleDecodeProducesActualPixelsAndReleases
 #ifndef _WIN32
     GTEST_SKIP() << "Handle pixel contract gate is Win32/x64; non-Windows surface implementation remains separate.";
 #else
-    Probe.Palette = true; BitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.Int(Sentinel);
+    Probe.Palette = true; CKTestBitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.Int(Sentinel);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); BITMAP_HANDLE bitmap = chunk.ReadBitmap(); ASSERT_NE(nullptr, bitmap);
     VxImageDescEx desc; CKBYTE *pixels = VxConvertBitmap(bitmap, desc); ASSERT_NE(nullptr, pixels);
     EXPECT_EQ(0, std::memcmp(pixels, DecodedPixels, 16)); EXPECT_EQ(1, Probe.PixelReleases); EXPECT_EQ(1, Probe.PaletteReleases);
@@ -435,7 +433,7 @@ TEST_F(CKStateChunkBitmapTest, BitmapHandleDecodeProducesActualPixelsAndReleases
 }
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleDecodeFailureReleasesReaderAndReturnsNull) {
-    Probe.FailRead = true; BitmapWire wire; LegacyFrame(wire, "CKBMP"); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    Probe.FailRead = true; CKTestBitmapWire wire; LegacyFrame(wire, "CKBMP"); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     EXPECT_EQ(nullptr, chunk.ReadBitmap()); EXPECT_EQ(1, Probe.Released);
 }
 
@@ -445,7 +443,7 @@ TEST_F(CKStateChunkBitmapTest, BitmapHandleWriterFallbackEncodesExactLegacyHeade
 #else
     VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels)); BITMAP_HANDLE bitmap = VxCreateBitmap(desc); ASSERT_NE(nullptr, bitmap);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteBitmap(bitmap, "zzz");
-    BitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.ExpectWritten(chunk);
+    CKTestBitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.ExpectWritten(chunk);
     EXPECT_EQ(1, Probe.Saves); EXPECT_EQ(1, Probe.SaveReleases); EXPECT_EQ(1, Probe.Released);
     EXPECT_EQ(0, std::memcmp(Probe.SavedPixels, DecodedPixels, 16)); VxDeleteBitmap(bitmap);
 #endif
@@ -453,7 +451,7 @@ TEST_F(CKStateChunkBitmapTest, BitmapHandleWriterFallbackEncodesExactLegacyHeade
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleNullWritesTwoZerosAndReleasesSelectedReader) {
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteBitmap(nullptr, "bmp");
-    BitmapWire wire; wire.Int(0); wire.Int(0); wire.ExpectWritten(chunk); EXPECT_EQ(0, Probe.Saves); EXPECT_EQ(1, Probe.Released);
+    CKTestBitmapWire wire; wire.Int(0); wire.Int(0); wire.ExpectWritten(chunk); EXPECT_EQ(0, Probe.Saves); EXPECT_EQ(1, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleSaveFailureWritesTwoZerosAndReleasesReader) {
@@ -463,14 +461,13 @@ TEST_F(CKStateChunkBitmapTest, BitmapHandleSaveFailureWritesTwoZerosAndReleasesR
     Probe.FailSave = true; VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels));
     BITMAP_HANDLE bitmap = VxCreateBitmap(desc); ASSERT_NE(nullptr, bitmap);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteBitmap(bitmap, "bmp");
-    BitmapWire wire; wire.Int(0); wire.Int(0); wire.ExpectWritten(chunk); EXPECT_EQ(1, Probe.Released); VxDeleteBitmap(bitmap);
+    CKTestBitmapWire wire; wire.Int(0); wire.Int(0); wire.ExpectWritten(chunk); EXPECT_EQ(1, Probe.Released); VxDeleteBitmap(bitmap);
 #endif
 }
 
-
 // Independently authored Pillow grayscale JPEG; a constant 1x1 value 37.
 // Decoder regression never uses CKStateChunk/CKJpegDecoder to create input.
-const CKBYTE LiteralGray37Jpeg[] = {
+static const CKBYTE LiteralGray37Jpeg[] = {
     0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01,
     0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x02, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02,
     0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02, 0x04, 0x03, 0x02, 0x02, 0x02, 0x02, 0x05, 0x04,
@@ -495,7 +492,7 @@ const CKBYTE LiteralGray37Jpeg[] = {
 };
 
 TEST_F(CKStateChunkBitmapTest, RawHistoricalJpegPlanesDecodeIndependentLiteralPixelsAndExactAlpha) {
-    BitmapWire wire; wire.Int(32); wire.Int(1); wire.Int(1); wire.Int(static_cast<int>(A_MASK));
+    CKTestBitmapWire wire; wire.Int(32); wire.Int(1); wire.Int(1); wire.Int(static_cast<int>(A_MASK));
     wire.Int(R_MASK); wire.Int(G_MASK); wire.Int(B_MASK); wire.Int(0x11);
     for (int i = 0; i < 3; ++i) wire.Buffer(LiteralGray37Jpeg, sizeof(LiteralGray37Jpeg));
     const CKBYTE alpha[] = {47}; wire.Buffer(alpha, 1); wire.Int(Sentinel);
@@ -507,7 +504,7 @@ TEST_F(CKStateChunkBitmapTest, RawHistoricalJpegPlanesDecodeIndependentLiteralPi
 }
 
 TEST_F(CKStateChunkBitmapTest, RawCorruptJpegPlanesFailAndConsumeTheSeparateAlphaFrame) {
-    BitmapWire wire; wire.Int(32); wire.Int(1); wire.Int(1); wire.Int(static_cast<int>(A_MASK));
+    CKTestBitmapWire wire; wire.Int(32); wire.Int(1); wire.Int(1); wire.Int(static_cast<int>(A_MASK));
     wire.Int(R_MASK); wire.Int(G_MASK); wire.Int(B_MASK); wire.Int(1);
     for (int i = 0; i < 3; ++i) wire.Buffer(EncodedBytes, 5);
     const CKBYTE alpha[] = {47}; wire.Buffer(alpha, 1); wire.Int(Sentinel);
@@ -516,14 +513,14 @@ TEST_F(CKStateChunkBitmapTest, RawCorruptJpegPlanesFailAndConsumeTheSeparateAlph
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderUnavailablePluginStopsAfterExtensionAndGuid) {
-    BitmapWire wire; ReaderHeader(wire, 1, 5, 99); wire.Words[1] = 0x007A7A7A;
+    CKTestBitmapWire wire; ReaderHeader(wire, 1, 5, 99); wire.Words[1] = 0x007A7A7A;
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16] = {}; VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(4, chunk.GetCurrentPos()); EXPECT_EQ(0, Probe.Created);
 }
 
 TEST_F(CKStateChunkBitmapTest, LegacyReadersUnavailableReturnNullAndPreserveTheFollowingRecord) {
-    Probe.Unavailable = true; BitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.Int(Sentinel);
+    Probe.Unavailable = true; CKTestBitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.Int(Sentinel);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); VxImageDescEx desc; desc.Width = 77;
     EXPECT_EQ(nullptr, chunk.ReadBitmap2(desc)); EXPECT_EQ(77, desc.Width); EXPECT_EQ(Sentinel, chunk.ReadInt());
     wire.Load(chunk); EXPECT_EQ(nullptr, chunk.ReadBitmap()); EXPECT_EQ(Sentinel, chunk.ReadInt());
@@ -532,15 +529,13 @@ TEST_F(CKStateChunkBitmapTest, LegacyReadersUnavailableReturnNullAndPreserveTheF
 
 TEST_F(CKStateChunkBitmapTest, BitmapWriterUnavailableRequestedAndFallbackReadersWriteTheEmptyFrame) {
     Probe.Unavailable = true; CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite();
-    chunk.WriteBitmap(nullptr, "tga"); BitmapWire wire; wire.Int(0); wire.Int(0); wire.ExpectWritten(chunk);
+    chunk.WriteBitmap(nullptr, "tga"); CKTestBitmapWire wire; wire.Int(0); wire.Int(0); wire.ExpectWritten(chunk);
     EXPECT_EQ(0, Probe.Created); EXPECT_EQ(0, Probe.Saves); EXPECT_EQ(0, Probe.Released);
 }
 
 TEST_F(CKStateChunkBitmapTest, ReaderRegisteredButUnavailableProviderReturnsFailureWithoutConsumingPayload) {
-    Probe.Unavailable = true; BitmapWire wire; ReaderHeader(wire); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
+    Probe.Unavailable = true; CKTestBitmapWire wire; ReaderHeader(wire); CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk);
     CKBYTE output[16]; std::memset(output, 77, sizeof(output)); VxImageDescEx desc = ImageDesc(output);
     EXPECT_FALSE(chunk.ReadReaderBitmap(desc)); EXPECT_EQ(4, chunk.GetCurrentPos()); EXPECT_EQ(0, Probe.Created);
     EXPECT_EQ(0, Probe.Reads); for (int i = 0; i < 16; ++i) EXPECT_EQ(77, output[i]);
 }
-
-} // namespace

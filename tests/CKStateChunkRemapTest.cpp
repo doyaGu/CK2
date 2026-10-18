@@ -4,11 +4,9 @@
 
 #include "CKAll.h"
 
-namespace {
-
 // Literal disk envelopes and relocation tables, independent of all chunk
 // object/manager/subchunk writers. Offsets and lengths are DWORD counts.
-void LoadRemapWire(CKStateChunk &chunk, int version, const int *words, int count,
+static void LoadRemapWire(CKStateChunk &chunk, int version, const int *words, int count,
                    const int *ids = nullptr, int idCount = 0,
                    const int *children = nullptr, int childCount = 0,
                    const int *managers = nullptr, int managerCount = 0) {
@@ -48,19 +46,19 @@ void LoadRemapWire(CKStateChunk &chunk, int version, const int *words, int count
     ASSERT_TRUE(chunk.ConvertFromBuffer(wire));
 }
 
-void ExpectRemapWords(CKStateChunk &chunk, const int *expected, int count) {
+static void ExpectRemapWords(CKStateChunk &chunk, const int *expected, int count) {
     ASSERT_EQ(count * static_cast<int>(sizeof(int)), chunk.GetDataSize());
     chunk.StartRead();
     for (int i = 0; i < count; ++i) EXPECT_EQ(expected[i], chunk.ReadInt()) << "word " << i;
 }
 
-const int ManagerA = 0x12345678;
-const int ManagerB = 0x23456789;
-const CKGUID RemapGuid(ManagerA, ManagerB);
+static const int ManagerA = 0x12345678;
+static const int ManagerB = 0x23456789;
+static const CKGUID RemapGuid(ManagerA, ManagerB);
 
-class TestRemapDependencies : public CKDependenciesContext {
+class CKTestRemapDependencies : public CKDependenciesContext {
 public:
-    explicit TestRemapDependencies(CKContext *context) : CKDependenciesContext(context) {}
+    explicit CKTestRemapDependencies(CKContext *context) : CKDependenciesContext(context) {}
     void AddMapping(CK_ID source, CK_ID target) { m_MapID.Insert(source, target); }
 };
 
@@ -86,7 +84,7 @@ TEST_F(CKStateChunkRemapTest, ModernIdsCountVisitedReferencesIncludingUnchangedA
     const int expected[] = {111, 22, 33, 44, 4, 111, 22, 0, 33};
     CKStateChunk chunk(CKCID_OBJECT, nullptr);
     LoadRemapWire(chunk, CHUNK_VERSION4, words, 9, ids, 5);
-    TestRemapDependencies dependencies(context);
+    CKTestRemapDependencies dependencies(context);
     dependencies.AddMapping(11, 111);
     dependencies.AddMapping(22, 22);
     EXPECT_EQ(7, chunk.RemapObjects(context, &dependencies));
@@ -97,7 +95,7 @@ TEST_F(CKStateChunkRemapTest, DependencyZeroTargetsPreserveOriginalReference) {
     const int words[] = {11, 22}; const int ids[] = {0, 1};
     CKStateChunk chunk(CKCID_OBJECT, nullptr);
     LoadRemapWire(chunk, CHUNK_VERSION1, words, 2, ids, 2);
-    TestRemapDependencies dependencies(context);
+    CKTestRemapDependencies dependencies(context);
     dependencies.AddMapping(11, 0);
     EXPECT_EQ(2, chunk.RemapObjects(context, &dependencies));
     ExpectRemapWords(chunk, words, 2);
@@ -138,7 +136,7 @@ TEST_F(CKStateChunkRemapTest, DependencyMapOverridesActualLoadSession) {
     const int expected[] = {88, 22};
     CKStateChunk chunk(CKCID_OBJECT, nullptr);
     LoadRemapWire(chunk, CHUNK_VERSION4, words, 2, ids, 2);
-    TestRemapDependencies dependencies(context); dependencies.AddMapping(11, 88);
+    CKTestRemapDependencies dependencies(context); dependencies.AddMapping(11, 88);
     EXPECT_EQ(2, chunk.RemapObjects(context, &dependencies));
     ExpectRemapWords(chunk, expected, 2);
     manager->EndLoadSession();
@@ -260,7 +258,7 @@ TEST_F(CKStateChunkRemapTest, SingleAndPackedChildrenRemapAndKeepSiblingFramesSe
     int expected[22]; std::memcpy(expected, words, sizeof(words)); expected[8] = 111; expected[20] = 222;
     CKStateChunk chunk(CKCID_OBJECT, nullptr);
     LoadRemapWire(chunk, CHUNK_VERSION4, words, 22, nullptr, 0, children, 3);
-    TestRemapDependencies dependencies(context); dependencies.AddMapping(11, 111); dependencies.AddMapping(22, 222);
+    CKTestRemapDependencies dependencies(context); dependencies.AddMapping(11, 111); dependencies.AddMapping(22, 222);
     EXPECT_EQ(2, chunk.RemapObjects(context, &dependencies));
     ExpectRemapWords(chunk, expected, 22);
 }
@@ -317,5 +315,3 @@ TEST_F(CKStateChunkRemapTest, RecursiveParameterChildReceivesGuidTableAndEntryCo
     EXPECT_EQ(1, chunk.RemapParameterInt(RemapGuid, table, 2));
     ExpectRemapWords(chunk, expected, 15);
 }
-
-} // namespace

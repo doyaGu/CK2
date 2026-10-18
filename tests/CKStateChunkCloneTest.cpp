@@ -4,34 +4,32 @@
 
 #include "CKAll.h"
 
-namespace {
-
-class CloneOwner {
+class CKTestCloneOwner {
 public:
-    explicit CloneOwner(CKStateChunk *chunk) : chunk_(chunk) {}
-    ~CloneOwner() { DeleteCKStateChunk(chunk_); }
+    explicit CKTestCloneOwner(CKStateChunk *chunk) : chunk_(chunk) {}
+    ~CKTestCloneOwner() { DeleteCKStateChunk(chunk_); }
     CKStateChunk *Get() const { return chunk_; }
     CKStateChunk *operator->() const { return chunk_; }
 private:
-    CloneOwner(const CloneOwner &);
-    CloneOwner &operator=(const CloneOwner &);
+    CKTestCloneOwner(const CKTestCloneOwner &);
+    CKTestCloneOwner &operator=(const CKTestCloneOwner &);
     CKStateChunk *chunk_;
 };
 
-int Header(int version, int dataVersion, int classId, int options) {
+static int Header(int version, int dataVersion, int classId, int options) {
     return static_cast<int>((static_cast<unsigned int>(version) << 16) |
                             (static_cast<unsigned int>(options) << 24) |
                             (classId << 8) | dataVersion);
 }
 
-void LoadLiteral(CKStateChunk &chunk) {
+static void LoadLiteral(CKStateChunk &chunk) {
     int wire[] = {Header(CHUNK_VERSION4, 0x5A, CKCID_PARAMETER, 7), 6,
                   0x1122, 3, 41, 0x3344, 0, 43,
                   2, 2, 5, 1, 4, 1, 2};
     ASSERT_TRUE(chunk.ConvertFromBuffer(wire));
 }
 
-void ExpectLiteral(CKStateChunk &chunk) {
+static void ExpectLiteral(CKStateChunk &chunk) {
     EXPECT_EQ(CKCID_PARAMETER, chunk.GetChunkClassID());
     EXPECT_EQ(CHUNK_VERSION4, chunk.GetChunkVersion());
     EXPECT_EQ(0x5A, chunk.GetDataVersion());
@@ -61,7 +59,7 @@ TEST(CKStateChunkCloneTest, PointerConstructorNullInitializesAnEmptyOwner) {
 }
 
 TEST(CKStateChunkCloneTest, FactoryNullCreatesAnEmptyWritableOwner) {
-    CloneOwner chunk(CreateCKStateChunk(static_cast<CKStateChunk *>(nullptr)));
+    CKTestCloneOwner chunk(CreateCKStateChunk(static_cast<CKStateChunk *>(nullptr)));
     ASSERT_NE(nullptr, chunk.Get());
     EXPECT_EQ(0, chunk->GetChunkClassID()); EXPECT_EQ(0, chunk->GetDataSize());
     chunk->StartWrite(); chunk->WriteInt(41); chunk->CloseChunk(); chunk->StartRead();
@@ -69,8 +67,8 @@ TEST(CKStateChunkCloneTest, FactoryNullCreatesAnEmptyWritableOwner) {
 }
 
 TEST(CKStateChunkCloneTest, FactoryClassCreatesIndependentOwnersAndNullDeleteIsValid) {
-    CloneOwner first(CreateCKStateChunk(CKCID_OBJECT, nullptr));
-    CloneOwner second(CreateCKStateChunk(CKCID_PARAMETER, nullptr));
+    CKTestCloneOwner first(CreateCKStateChunk(CKCID_OBJECT, nullptr));
+    CKTestCloneOwner second(CreateCKStateChunk(CKCID_PARAMETER, nullptr));
     ASSERT_NE(nullptr, first.Get()); ASSERT_NE(nullptr, second.Get());
     EXPECT_NE(first.Get(), second.Get()); EXPECT_EQ(CKCID_OBJECT, first->GetChunkClassID());
     EXPECT_EQ(CKCID_PARAMETER, second->GetChunkClassID());
@@ -90,7 +88,7 @@ TEST(CKStateChunkCloneTest, PointerConstructorCopiesLiteralMetadataAndPayload) {
 TEST(CKStateChunkCloneTest, FactoryCopySurvivesSourceDeletion) {
     CKStateChunk *source = CreateCKStateChunk(CKCID_OBJECT, nullptr);
     ASSERT_NE(nullptr, source); LoadLiteral(*source);
-    CloneOwner copy(CreateCKStateChunk(source)); ASSERT_NE(nullptr, copy.Get());
+    CKTestCloneOwner copy(CreateCKStateChunk(source)); ASSERT_NE(nullptr, copy.Get());
     EXPECT_NE(source->GetIds(), copy->GetIds());
     DeleteCKStateChunk(source);
     ExpectLiteral(*copy.Get());
@@ -258,12 +256,10 @@ TEST_F(CKStateChunkCloneContextTest, PointerAndFactoryCopiesUseFreshDynamicPolic
     CKObject *dynamic = context->CreateObject(CKCID_OBJECT, "CloneFactoryDynamic", CK_OBJECTCREATION_DYNAMIC);
     ASSERT_NE(nullptr, dynamic); ASSERT_TRUE(dynamic->IsDynamic());
     CKStateChunk source(CKCID_OBJECT, nullptr); source.StartWrite(); source.CloseChunk(); source.SetDynamic(FALSE);
-    CKStateChunk pointerCopy(&source); CloneOwner factoryCopy(CreateCKStateChunk(&source));
+    CKStateChunk pointerCopy(&source); CKTestCloneOwner factoryCopy(CreateCKStateChunk(&source));
     ASSERT_NE(nullptr, factoryCopy.Get());
     pointerCopy.StartWrite(); pointerCopy.WriteObject(dynamic); pointerCopy.CloseChunk(); pointerCopy.StartRead();
     factoryCopy->StartWrite(); factoryCopy->WriteObject(dynamic); factoryCopy->CloseChunk(); factoryCopy->StartRead();
     EXPECT_EQ(dynamic->GetID(), pointerCopy.ReadObjectID()); EXPECT_EQ(dynamic->GetID(), factoryCopy->ReadObjectID());
     context->DestroyObject(dynamic);
 }
-
-} // namespace

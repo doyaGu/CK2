@@ -4,11 +4,9 @@
 
 #include "CKAll.h"
 
-namespace {
-
 // Independent on-disk chunk envelope; never use object writers to manufacture
 // the IDs/counts under test. Old chunk versions carry a six-word envelope.
-void LoadObjectWords(CKStateChunk &chunk, int version, const int *words, int count, bool file = false) {
+static void LoadObjectWords(CKStateChunk &chunk, int version, const int *words, int count, bool file = false) {
     int envelope[64] = {};
     int start;
     if (version < CHUNK_VERSION2) {
@@ -28,7 +26,7 @@ void LoadObjectWords(CKStateChunk &chunk, int version, const int *words, int cou
     chunk.StartRead();
 }
 
-void ExpectLinkedWords(CKObjectArray *array, const CK_ID *expected, int count) {
+static void ExpectLinkedWords(CKObjectArray *array, const CK_ID *expected, int count) {
     ASSERT_NE(nullptr, array);
     ASSERT_EQ(count, array->GetCount());
     array->Reset();
@@ -253,5 +251,3 @@ TEST_F(CKStateChunkObjectReadTest, NegativeSequenceCountsProduceEmptyResultsWith
         chunk.StartRead(); chunk.ReadObjectArray(static_cast<CKObjectArray *>(nullptr)); EXPECT_EQ(wordCount, chunk.GetCurrentPos());
     }
 }
-
-} // namespace

@@ -2,9 +2,7 @@
 
 #include "CKAll.h"
 
-namespace {
-
-void ExpectOpenCloneWords(CKStateChunk &chunk, const int *expected, int count) {
+static void ExpectOpenCloneWords(CKStateChunk &chunk, const int *expected, int count) {
     ASSERT_EQ(count * 4, chunk.GetDataSize());
     chunk.StartRead();
     for (int i = 0; i < count; ++i) EXPECT_EQ(expected[i], chunk.ReadInt()) << i;
@@ -206,5 +204,3 @@ TEST_F(CKStateChunkWriterCloneContextTest, StateChunkParameterCopyInvokesCloneFo
     const int original[] = {41, 43, 47, 59}; ExpectOpenCloneWords(*source, original, 4);
     context->DestroyObject(sourceParam); context->DestroyObject(copyParam);
 }
-
-} // namespace
