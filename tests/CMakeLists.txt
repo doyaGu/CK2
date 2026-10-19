@@ -308,6 +308,17 @@ add_ck2_test(AVIReaderMixedIndexTest
 target_compile_definitions(AVIReaderMixedIndexTest PRIVATE CK_LIB)
 target_compile_features(AVIReaderMixedIndexTest PRIVATE cxx_std_17)
 
+add_ck2_test(AVIReaderVirtualPaletteTest
+        SOURCES AVIReaderVirtualPaletteTest.cpp
+                ../../Plugins/AVIReader/AVIReader.cpp
+                ../../Plugins/AVIReader/AviDemuxer.cpp
+                ../../Plugins/AVIReader/FrameDecoder.cpp
+                ../../Plugins/AVIReader/RiffReader.cpp
+                ../../Plugins/AVIReader/StbImageImpl.cpp
+        DEPENDENCIES CK2 VxMath stb)
+target_compile_definitions(AVIReaderVirtualPaletteTest PRIVATE CK_LIB)
+target_compile_features(AVIReaderVirtualPaletteTest PRIVATE cxx_std_17)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)
