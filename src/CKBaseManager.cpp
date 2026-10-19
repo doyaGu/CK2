@@ -11,7 +11,7 @@ CKBaseManager::CKBaseManager(CKContext *Context, CKGUID guid, CKSTRING Name) {
 
 CKBaseManager::~CKBaseManager() {
     if (m_Context && !m_Context->m_Init) {
-        if (m_Context->m_InactiveManagers.IsHere(this))
+        if (!m_Context->m_InactiveManagers.Remove(this))
             m_Context->m_ManagerTable.Remove(m_ManagerGuid);
         m_Context->BuildSortedLists();
     }

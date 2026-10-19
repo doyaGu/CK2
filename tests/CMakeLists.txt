@@ -92,6 +92,10 @@ add_ck2_test(CKMemoryPoolTest
         SOURCES CKMemoryPoolTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKBaseManagerTest
+        SOURCES CKBaseManagerTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 add_ck2_test(CKBitmapDataTransparencyTest
         SOURCES CKBitmapDataTransparencyTest.cpp
         DEPENDENCIES CK2 VxMath)
