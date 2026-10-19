@@ -115,6 +115,7 @@ set(CK2_PRIVATE_HEADERS
 set(CK2_SOURCES
         # Global Functions and Base Classes
         CKGlobals.cpp
+        CKGlobalMemory.cpp
         CKBaseManager.cpp
         CKContext.cpp
 

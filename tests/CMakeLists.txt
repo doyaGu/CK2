@@ -104,6 +104,14 @@ add_ck2_test(CKBitmapSlotTest
         SOURCES CKBitmapSlotTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKBitmapPropertiesTest
+        SOURCES CKBitmapPropertiesTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
+add_ck2_test(CKBitmapPropertyHelpersTest
+        SOURCES CKBitmapPropertyHelpersTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)

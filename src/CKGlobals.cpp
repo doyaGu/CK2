@@ -781,16 +781,6 @@ char *CKStrlwr(char *string) {
     return string;
 }
 
-CKBitmapProperties *CKCopyBitmapProperties(CKBitmapProperties *bp) {
-    if (!bp)
-        return nullptr;
-    if (bp->m_Size <= 0 || bp->m_Size >= 256)
-        return nullptr;
-    CKBitmapProperties *nbp = (CKBitmapProperties *) new CKBYTE[bp->m_Size];
-    memcpy(nbp, bp, bp->m_Size);
-    return nbp;
-}
-
 void CKCopyDefaultClassDependencies(CKDependencies &deps, CK_DEPENDENCIES_OPMODE mode) {
     switch (mode) {
     case CK_DEPENDENCIES_COPY:
@@ -828,10 +818,6 @@ CKDependencies *CKGetDefaultClassDependencies(CK_DEPENDENCIES_OPMODE mode) {
     default:
         return nullptr;
     }
-}
-
-void CKDeletePointer(void *ptr) {
-    delete[] static_cast<CKBYTE *>(ptr);
 }
 
 CKERROR CKCopyAllAttributes(CKBeObject *Src, CKBeObject *Dest) {
