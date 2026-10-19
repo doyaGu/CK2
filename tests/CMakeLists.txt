@@ -112,6 +112,15 @@ add_ck2_test(CKBitmapPropertyHelpersTest
         SOURCES CKBitmapPropertyHelpersTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKBitmapReaderContractTest
+        SOURCES CKBitmapReaderContractTest.cpp
+                ../../Plugins/ImageReader/ImageReader.cpp
+                ../../Plugins/ImageReader/BmpReader.cpp
+                ../../Plugins/ImageReader/TgaReader.cpp
+                ../../Plugins/ImageReader/PcxReader.cpp
+        DEPENDENCIES CK2 VxMath)
+target_compile_definitions(CKBitmapReaderContractTest PRIVATE CK_LIB)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)
