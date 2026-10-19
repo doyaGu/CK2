@@ -150,6 +150,16 @@ add_ck2_test(CKPcxDecodeContractTest
 target_compile_definitions(CKPcxDecodeContractTest PRIVATE CK_LIB)
 target_compile_features(CKPcxDecodeContractTest PRIVATE cxx_std_17)
 
+add_ck2_test(CKBmpTgaDecodeContractTest
+        SOURCES CKBmpTgaDecodeContractTest.cpp
+                ../../Plugins/ImageReader/ImageReader.cpp
+                ../../Plugins/ImageReader/BmpReader.cpp
+                ../../Plugins/ImageReader/TgaReader.cpp
+                ../../Plugins/ImageReader/PcxReader.cpp
+        DEPENDENCIES CK2 VxMath)
+target_compile_definitions(CKBmpTgaDecodeContractTest PRIVATE CK_LIB)
+target_compile_features(CKBmpTgaDecodeContractTest PRIVATE cxx_std_17)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)
