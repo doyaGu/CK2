@@ -99,15 +99,25 @@ TEST_F(AVIReaderInterlacedTest, IncompleteSecondFieldFailsThenNextFrameRecovers)
     AviInterlacedFile file(a); AviInterlacedReader reader; ASSERT_EQ(CK_OK,reader.Open(file)); CKMovieProperties *p=nullptr;
     EXPECT_EQ(CKMOVIEERROR_READERROR,reader.Reader->ReadFrame(1,&p)); Gray(reader.Frame(2)); Gray(reader.Frame(0));
 }
-TEST_F(AVIReaderInterlacedTest, FieldIndexStrideMismatchIsRejected) {
+TEST_F(AVIReaderInterlacedTest, FieldIndexStrideMismatchRecoversCompletePhysicalTimeline) {
     AviInterlacedData a; a.MakeIndex(false,true,true); a.Word(a.FieldIndex+8,2,2); AviInterlacedFile file(a); AviDemuxer demuxer;
-    EXPECT_FALSE(demuxer.Open(file.Path.string().c_str()));
+    ASSERT_TRUE(demuxer.Open(file.Path.string().c_str())); ASSERT_EQ(2,demuxer.GetFrameCount(0));
+    EXPECT_EQ(a.Index[0].Offset+8,demuxer.GetFrameInfo(0,0)->offset); EXPECT_EQ(a.Index[1].Offset+8,demuxer.GetFrameInfo(0,1)->offset);
+    AviInterlacedReader reader; ASSERT_EQ(CK_OK,reader.Open(file)); EXPECT_EQ(80,reader.Reader->GetMovieLength());
+    const int order[]={1,0,1}; for(int frame:order) { CKMovieProperties *p=reader.Frame(frame); ASSERT_NE(nullptr,p);
+        ASSERT_EQ(8,p->m_Format.Width); ASSERT_EQ(2,p->m_Format.Height); const CKBYTE *pixels=static_cast<const CKBYTE*>(p->m_Data);
+        for(int i=0;i<16;++i) { for(int c=0;c<3;++c)EXPECT_EQ(frame?34:17,pixels[i*4+c]); EXPECT_EQ(255,pixels[i*4+3]); } }
+    a.Word(44,0x30); AviInterlacedFile required(a); AviDemuxer mustUse; EXPECT_FALSE(mustUse.Open(required.Path.string().c_str()));
 }
-TEST_F(AVIReaderInterlacedTest, FieldIndexPastEndIsNotAcceptedAsValidIndex) {
+TEST_F(AVIReaderInterlacedTest, FieldIndexPastEndRecoversBothFramesWithoutDeletingTime) {
     AviInterlacedData a; a.MakeIndex(false,false,true); a.Word(a.FieldIndex+40,a.Read(a.FieldIndex+32)+49);
     AviInterlacedFile file(a); AviDemuxer demuxer; ASSERT_TRUE(demuxer.Open(file.Path.string().c_str()));
-    // Invalid first index entry is ignored; its neighbor remains one actual frame.
-    EXPECT_EQ(1,demuxer.GetFrameCount(0)); EXPECT_EQ(a.Index[0].Offset+8,demuxer.GetFrameInfo(0,0)->offset);
+    ASSERT_EQ(2,demuxer.GetFrameCount(0)); EXPECT_EQ(a.Index[0].Offset+8,demuxer.GetFrameInfo(0,0)->offset);
+    EXPECT_EQ(a.Index[1].Offset+8,demuxer.GetFrameInfo(0,1)->offset);
+    AviInterlacedReader reader; ASSERT_EQ(CK_OK,reader.Open(file)); EXPECT_EQ(80,reader.Reader->GetMovieLength());
+    const int order[]={1,0,1}; for(int frame:order) { CKMovieProperties *p=reader.Frame(frame); ASSERT_NE(nullptr,p);
+        const CKBYTE *pixels=static_cast<const CKBYTE*>(p->m_Data);
+        for(int i=0;i<16;++i) { for(int c=0;c<3;++c)EXPECT_EQ(frame?34:17,pixels[i*4+c]); EXPECT_EQ(255,pixels[i*4+3]); } }
 }
 TEST_F(AVIReaderInterlacedTest, JpegAppPayloadDoesNotCreateFalseFieldBoundary) {
     uint8_t bytes[2048]; unsigned n=AviFieldBytes(bytes,AviFieldA,sizeof(AviFieldA),1);
