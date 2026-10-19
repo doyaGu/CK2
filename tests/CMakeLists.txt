@@ -286,6 +286,17 @@ add_ck2_test(AVIReaderBroadcastTest
 target_compile_definitions(AVIReaderBroadcastTest PRIVATE CK_LIB)
 target_compile_features(AVIReaderBroadcastTest PRIVATE cxx_std_17)
 
+add_ck2_test(AVIReaderNtscOriginTest
+        SOURCES AVIReaderNtscOriginTest.cpp
+                ../../Plugins/AVIReader/AVIReader.cpp
+                ../../Plugins/AVIReader/AviDemuxer.cpp
+                ../../Plugins/AVIReader/FrameDecoder.cpp
+                ../../Plugins/AVIReader/RiffReader.cpp
+                ../../Plugins/AVIReader/StbImageImpl.cpp
+        DEPENDENCIES CK2 VxMath stb)
+target_compile_definitions(AVIReaderNtscOriginTest PRIVATE CK_LIB)
+target_compile_features(AVIReaderNtscOriginTest PRIVATE cxx_std_17)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)

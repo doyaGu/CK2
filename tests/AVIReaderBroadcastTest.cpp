@@ -68,7 +68,7 @@ TEST_F(AVIReaderBroadcastTest, PalHalfLinePlacesFieldsOnAdjacentRows) { Raw(625,
 TEST_F(AVIReaderBroadcastTest, NtscLateCaptureKeepsLeadingAndTrailingBlackRows) { Raw(525,22,285,12,4,5); }
 TEST_F(AVIReaderBroadcastTest, PalLateCaptureKeepsLeadingAndTrailingBlackRows) { Raw(625,25,338,12,4,5); }
 TEST_F(AVIReaderBroadcastTest, IndependentFieldDelaysLeaveInterleavedBlackRows) { Raw(525,20,285,12,0,5); }
-TEST_F(AVIReaderBroadcastTest, EarlyNtscFieldRowsAreClippedAtActiveOrigin) { Raw(525,19,282,12,-2,-1); }
+TEST_F(AVIReaderBroadcastTest, EarlyNtscFieldRowsRemainInsideCompatibleCanvas) { Raw(525,19,282,12,0,1); }
 TEST_F(AVIReaderBroadcastTest, EarlyPalFieldRowsAreClippedAtActiveOrigin) { Raw(625,22,335,12,-2,-1); }
 TEST_F(AVIReaderBroadcastTest, ReversedNtscDescriptorsRetainSourceFieldIdentity) { Raw(525,283,20,12,1,0,true); }
 TEST_F(AVIReaderBroadcastTest, ReversedPalDescriptorsRetainSourceFieldIdentity) { Raw(625,336,23,12,1,0,true); }
