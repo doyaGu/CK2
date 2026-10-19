@@ -84,6 +84,10 @@ add_ck2_test(CK2dCurvePointTest
         SOURCES CK2dCurvePointTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKMessageContractTest
+        SOURCES CKMessageContractTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 add_ck2_test(CKBitmapDataTransparencyTest
         SOURCES CKBitmapDataTransparencyTest.cpp
         DEPENDENCIES CK2 VxMath)
