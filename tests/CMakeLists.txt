@@ -100,6 +100,10 @@ add_ck2_test(CKBitmapDataTransparencyTest
         SOURCES CKBitmapDataTransparencyTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKBitmapSlotTest
+        SOURCES CKBitmapSlotTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)
