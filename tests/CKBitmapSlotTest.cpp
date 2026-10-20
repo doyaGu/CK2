@@ -210,14 +210,15 @@ TEST_F(CKBitmapSlotTest, ResizeInterpolatesAnIndependentFourByFourArgbGrid) {
     BitmapSlotPixels(slot, expected, 16);
 }
 
-TEST_F(CKBitmapSlotTest, ResizeDownsamplesLiteralSourcePositions) {
+TEST_F(CKBitmapSlotTest, ResizeDownsamplesTheCoveredArgbPixels) {
     CKBitmapSlot slot; slot.Allocate(4, 4, 32);
     const CKDWORD input[] = {0x10203040, 0x11111111, 0x50607080, 0x22222222,
         0x33333333, 0x44444444, 0x55555555, 0x66666666,
         0x90a0b0c0, 0x77777777, 0xd0e0f010, 0x88888888,
         0x99999999, 0xaaaaaaaa, 0xbbbbbbbb, 0xcccccccc};
     memcpy(slot.m_DataBuffer, input, sizeof(input)); VxImageDescEx src = BitmapSlotDesc(4, 4), dst = BitmapSlotDesc(2, 2); slot.Resize(src, dst);
-    const CKDWORD expected[] = {0x10203040, 0x50607080, 0x90a0b0c0, 0xd0e0f010}; BitmapSlotPixels(slot, expected, 4);
+    // Each output is the channel-wise mean of its four covered source pixels.
+    const CKDWORD expected[] = {0x262a2e32, 0x4b4f5357, 0x92969a9e, 0xb7bbbf87}; BitmapSlotPixels(slot, expected, 4);
 }
 
 TEST_F(CKBitmapSlotTest, ResizeReadsSourceRowsUsingTheSuppliedPitch) {
