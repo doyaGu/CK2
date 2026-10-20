@@ -407,6 +407,17 @@ add_ck2_test(AVIReaderStreamHeaderTest
 target_compile_definitions(AVIReaderStreamHeaderTest PRIVATE CK_LIB)
 target_compile_features(AVIReaderStreamHeaderTest PRIVATE cxx_std_17)
 
+add_ck2_test(AVIReaderSupportBoundaryTest
+        SOURCES AVIReaderSupportBoundaryTest.cpp
+                ../../Plugins/AVIReader/AVIReader.cpp
+                ../../Plugins/AVIReader/AviDemuxer.cpp
+                ../../Plugins/AVIReader/FrameDecoder.cpp
+                ../../Plugins/AVIReader/RiffReader.cpp
+                ../../Plugins/AVIReader/StbImageImpl.cpp
+        DEPENDENCIES CK2 VxMath stb)
+target_compile_definitions(AVIReaderSupportBoundaryTest PRIVATE CK_LIB)
+target_compile_features(AVIReaderSupportBoundaryTest PRIVATE cxx_std_17)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)
