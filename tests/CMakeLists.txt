@@ -363,6 +363,17 @@ add_ck2_test(AVIReaderPaletteAuthorityTest
 target_compile_definitions(AVIReaderPaletteAuthorityTest PRIVATE CK_LIB)
 target_compile_features(AVIReaderPaletteAuthorityTest PRIVATE cxx_std_17)
 
+add_ck2_test(AVIReaderVideo1DimensionsTest
+        SOURCES AVIReaderVideo1DimensionsTest.cpp
+                ../../Plugins/AVIReader/AVIReader.cpp
+                ../../Plugins/AVIReader/AviDemuxer.cpp
+                ../../Plugins/AVIReader/FrameDecoder.cpp
+                ../../Plugins/AVIReader/RiffReader.cpp
+                ../../Plugins/AVIReader/StbImageImpl.cpp
+        DEPENDENCIES CK2 VxMath stb)
+target_compile_definitions(AVIReaderVideo1DimensionsTest PRIVATE CK_LIB)
+target_compile_features(AVIReaderVideo1DimensionsTest PRIVATE cxx_std_17)
+
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
         DEPENDENCIES CK2 VxMath)
