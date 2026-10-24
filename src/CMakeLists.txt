@@ -195,6 +195,14 @@ list(PREPEND CK2_SOURCES CK2Module.cpp)
 function(ck2_configure_target TARGET_NAME)
     target_compile_features(${TARGET_NAME} PRIVATE cxx_std_11)
 
+    # SDK interface views and RCK implementations use parallel class hierarchies.
+    # GCC must retain virtual dispatch through those ABI-compatible views,
+    # including when link-time optimization is enabled by a consumer.
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${TARGET_NAME} PUBLIC -fno-devirtualize -fno-devirtualize-speculatively)
+        target_link_options(${TARGET_NAME} PUBLIC -fno-devirtualize -fno-devirtualize-speculatively)
+    endif ()
+
     target_include_directories(${TARGET_NAME}
             PUBLIC
             $<BUILD_INTERFACE:${CK2_INCLUDE_DIR}>
