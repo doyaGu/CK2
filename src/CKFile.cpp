@@ -1198,25 +1198,19 @@ CKERROR CKFile::EndSave() {
 
     m_Context->WarnAllBehaviors(CKM_BEHAVIORPOSTSAVE);
 
-    int managerCount = m_Context->GetManagerCount();
-    int savedManagerCount = 0;
-    if (managerCount > 0) {
-        m_ManagersData.Resize(managerCount);
-
-        for (int i = 0; i < managerCount; ++i) {
-            CKBaseManager *manager = m_Context->GetManager(i);
-
-            // Managers may return no data; keep the saved records contiguous.
-            CKFileManagerData *managerData = &m_ManagersData[savedManagerCount];
-            managerData->data = nullptr;
-            managerData->Manager = manager->GetGuid();
-
-            managerData->data = manager->SaveData(this);
-            if (managerData->data)
-                ++savedManagerCount;
-        }
+    const int managerCount = m_Context->GetManagerCount();
+    m_ManagersData.Reserve(managerCount);
+    for (int i = 0; i < managerCount; ++i) {
+        CKBaseManager *manager = m_Context->GetManager(i);
+        CKFileManagerData managerData;
+        managerData.Manager = manager->GetGuid();
+        managerData.data = manager->SaveData(this);
+        // Only completed records belong to the file. A throwing callback
+        // must not expose uninitialized capacity to ClearData().
+        if (managerData.data)
+            m_ManagersData.PushBack(managerData);
     }
-    m_ManagersData.Resize(savedManagerCount);
+    const int savedManagerCount = m_ManagersData.Size();
 
     CKPluginManager *pm = CKGetPluginManager();
     pm->ComputeDependenciesList(this);

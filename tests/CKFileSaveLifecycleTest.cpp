@@ -3,6 +3,7 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <stdexcept>
 #include "CKAll.h"
 
 static const CKGUID ProbeGuid(0x31415926, 0x27182818);
@@ -17,8 +18,8 @@ public:
 
 class CKTestSaveManager : public CKBaseManager {
 public:
-    explicit CKTestSaveManager(CKContext *context)
-        : CKBaseManager(context, ProbeGuid, const_cast<char *>("Save fixture")),
+    explicit CKTestSaveManager(CKContext *context, CKGUID guid = ProbeGuid)
+        : CKBaseManager(context, guid, const_cast<char *>("Save fixture")),
           Pre(0), Post(0), DataCalls(0), PreSaving(FALSE), PostSaving(FALSE),
           DataSaving(FALSE), EmitData(TRUE) {}
     CKDWORD GetValidFunctionsMask() override {
@@ -28,6 +29,7 @@ public:
     CKERROR PostSave() override { ++Post; PostSaving = m_Context->m_Saving; return CK_OK; }
     CKStateChunk *SaveData(CKFile *file) override {
         ++DataCalls; DataSaving = m_Context->m_Saving;
+        if (ThrowData) throw std::runtime_error("SaveData fixture failure");
         if (!EmitData) return nullptr;
         CKStateChunk *chunk = CreateCKStateChunk(CKCID_OBJECT, file);
         chunk->StartWrite(); chunk->WriteInt(0x12345678); chunk->CloseChunk();
@@ -35,6 +37,7 @@ public:
     }
     int Pre, Post, DataCalls;
     CKBOOL PreSaving, PostSaving, DataSaving, EmitData;
+    bool ThrowData = false;
 };
 
 static CKDWORD Word(const unsigned char *bytes, int offset) {
@@ -229,6 +232,31 @@ TEST_F(CKFileSaveLifecycleTest, SavedManagerRecordsAreContiguousAndCarryExactInd
         cursor += 12 + count;
     }
     EXPECT_TRUE(found); EXPECT_EQ(64 + Word(bytes, 28) + Word(bytes, 32), cursor); ExpectFinal(file);
+}
+
+TEST_F(CKFileSaveLifecycleTest, ThrowingManagerLeavesFileSafeToFinalizeAndRetry) {
+    auto *throwing = new CKTestSaveManager(Context, CKGUID(0x31415927, 0x27182818));
+    ASSERT_EQ(CK_OK, Context->RegisterNewManager(throwing));
+    throwing->ThrowData = true;
+    CKTestSaveFile file(Context);
+    Start(file);
+    // Seed unused capacity as a nonzero allocator would. These bytes are not
+    // records and must never become cleanup targets when a callback throws.
+    const int capacity = Context->GetManagerCount();
+    file.m_ManagersData.Reserve(capacity);
+    std::memset(file.m_ManagersData.Begin(), 0xA5, capacity * sizeof(CKFileManagerData));
+    EXPECT_THROW(file.EndSave(), std::runtime_error);
+    EXPECT_EQ(1, Manager->DataCalls);
+    EXPECT_EQ(1, throwing->DataCalls);
+    file.Finalize();
+    ExpectFinal(file);
+    EXPECT_EQ(1, throwing->Post);
+    throwing->ThrowData = false;
+    ASSERT_EQ(CK_OK, file.StartSave(const_cast<char *>(Output.c_str())));
+    EXPECT_EQ(CK_OK, file.EndSave());
+    EXPECT_FALSE(Context->m_Saving);
+    EXPECT_EQ(2, Manager->Post);
+    EXPECT_EQ(2, throwing->Post);
 }
 
 TEST_F(CKFileSaveLifecycleTest, InterfaceCallbackReceivesOnlyScriptsWithoutExistingInterfaceChunks) {
