@@ -481,12 +481,12 @@ public:
 
       + If the material has a texture it is set as current texture.
       + If material is two-sided  the culling is disabled : SetState(VXRENDERSTATE_CULLMODE,VXCULL_NONE) otherwise it is set to counter-clockwise SetState(VXRENDERSTATE_CULLMODE, VXCULL_CCW).
-      + The Texture Blend Mode is set : SetState(VXRENDERSTATE_TEXTUREMAPBLEND,TextureBlendMode);
+      + The Texture Blend Mode is set through SetTextureStageState(CKRST_TSS_TEXTUREMAPBLEND,TextureBlendMode,TextureStage).
       + The Shade Mode is set : SetState(VXRENDERSTATE_SHADEMODE,ShadeMode) unless the render context has a global shade mode in which case this is the one used.
-      + The Filtering Mode is set :SetState(VXRENDERSTATE_TEXTUREMAG,TextureMagMode) and SetState(VXRENDERSTATE_TEXTUREMIN,TextureMinMode)
-      + Texture Border Color and Address Mode (Wrap,Clamp,etc.) are set : 	Dev->SetState(VXRENDERSTATE_BORDERCOLOR,BorderColor ) and
-        Dev->SetState(VXRENDERSTATE_TEXTUREADDRESS,TextureAddressMode )
-      +	If Blending is enabled the blending is enabled through SetState(VXRENDERSTATE_BLENDENABLE, ...)
+      + The Filtering Mode is set through SetTextureStageState with CKRST_TSS_MAGFILTER and CKRST_TSS_MINFILTER.
+      + Texture Border Color and Address Mode (Wrap,Clamp,etc.) are set through SetTextureStageState
+        with CKRST_TSS_BORDERCOLOR and CKRST_TSS_ADDRESS.
+      +	If Blending is enabled the blending is enabled through SetState(VXRENDERSTATE_ALPHABLENDENABLE, ...)
         Z buffer writing is disabled according to hte current flag SetState(VXRENDERSTATE_ZWRITEENABLE, ...)
         and the Blending Factors are set SetState(VXRENDERSTATE_SRCBLEND, SrcBlendMode) and SetState(VXRENDERSTATE_DESTBLEND, DestBlendMode).
       + Alpha testing is set,SetState(VXRENDERSTATE_ALPHATESTENABLE,AlphaTestEnabled),SetState(VXRENDERSTATE_ALPHAFUNC, AlphaFunc),SetState(VXRENDERSTATE_ALPHAREF, AlphaRef);
