@@ -611,6 +611,8 @@ typedef enum CK_RENDER_FLAGS
     CK_RENDER_SKIPDRAWSCENE      = 0x00000400,  // Do not draw scene ( Both 3D and 2D objects)
     CK_RENDER_DONOTUPDATEEXTENTS = 0x00000800,  // Do not update object extents
     CK_RENDER_SKIP3D             = 0x00001000,  // Do not draw 3D objects (nor device callbacks)
+    CK_RENDER_SKIPALL            = 0x00002000,  // Skip all rendering work; remains set until the caller removes it.
+    CK_RENDER_ADJUSTFOV          = 0x00004000,  // Preserve vertical field of view using the camera aspect ratio.
     CK_RENDER_OPTIONSMASK        = 0x0000FFFF,  // All rendering flags
 
     CK_RENDER_PLAYERCONTEXT      = 0x00010000,  // Use by behaviors to know render contexts on which they should act.
