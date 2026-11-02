@@ -576,6 +576,11 @@ public:
     **************************************************************/
     virtual CKBOOL SetTexture(CKTexture *tex, CKBOOL Clamped = 0, int Stage = 0) = 0;
 
+    // Current CKTexture at this stage, or NULL if no texture is bound.
+    // Temporary sprite/native bindings are restored inside the engine before
+    // returning to callers. The returned object is borrowed.
+    virtual CKTexture *GetTexture(int Stage = 0) = 0;
+
     /*****************************************************
     Summary:Sets the rendering state for the current texture.
 
@@ -593,6 +598,7 @@ public:
     See Also:SetTexture,SetState,CKRST_TEXTURESTAGESTATETYPE,CKMaterial::SetAsCurrent
     *****************************************************/
     virtual CKBOOL SetTextureStageState(CKRST_TEXTURESTAGESTATETYPE State, CKDWORD Value, int Stage = 0) = 0;
+    virtual CKDWORD GetTextureStageState(CKRST_TEXTURESTAGESTATETYPE State, int Stage = 0) = 0;
 
     /*****************************************************
     Summary:Gets the rasterization context.
@@ -1300,6 +1306,7 @@ public:
     See also: SetProjectionTransformationMatrix,SetViewTransformationMatrix,SetWorldTransformationMatrix
     *****************************************************/
     virtual void SetTextureMatrix(const VxMatrix &M, int Stage = 0) = 0;
+    virtual const VxMatrix &GetTextureMatrix(int Stage = 0) = 0;
 
     /*****************************************************
     Summary:Sets the stereo parameters
