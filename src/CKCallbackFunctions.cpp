@@ -109,6 +109,15 @@ void CKInitializeParameterTypes(CKParameterManager *man) {
     intTypeDesc.StringFunction = CKIntStringFunc;
     man->RegisterParameterType(&intTypeDesc);
 
+    // RegisterNewFlags derives application flag types from this domain. Keep
+    // its integer ancestry available to type compatibility and editor clients.
+    CKParameterTypeDesc flagsTypeDesc = intTypeDesc;
+    flagsTypeDesc.Guid = CKPGUID_FLAGS;
+    flagsTypeDesc.TypeName = "Flags";
+    flagsTypeDesc.DerivedFrom = CKPGUID_INT;
+    flagsTypeDesc.dwFlags = CKPARAMETERTYPE_HIDDEN;
+    man->RegisterParameterType(&flagsTypeDesc);
+
     CKParameterTypeDesc timeTypeDesc;
     timeTypeDesc.Guid = CKPGUID_TIME;
     timeTypeDesc.DerivedFrom = CKPGUID_FLOAT;
