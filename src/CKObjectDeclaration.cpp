@@ -63,6 +63,10 @@ CKDWORD CKObjectDeclaration::GetVersion() {
     return m_Version;
 }
 
+CKQWORD CKObjectDeclaration::GetGeneration() {
+    return m_Generation;
+}
+
 void CKObjectDeclaration::SetCompatibleClassId(CK_CLASSID id) {
     m_CompatibleClassID = id;
 }
@@ -81,6 +85,7 @@ CKSTRING CKObjectDeclaration::GetCategory() {
 }
 
 CKObjectDeclaration::CKObjectDeclaration(CKSTRING Name) {
+    m_Generation = 0;
     m_Version = -1;
     m_Description = nullptr;
     m_Guid = CKGUID();

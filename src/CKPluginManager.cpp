@@ -13,6 +13,9 @@
 #include "CKBehavior.h"
 #include "CKFile.h"
 
+#include <atomic>
+#include <limits>
+#include <new>
 #include <ctype.h>
 #include <string.h>
 
@@ -20,6 +23,16 @@ extern XArray<CKContext *> g_Contextes;
 extern XObjDeclHashTable g_PrototypeDeclarationList;
 
 CKPluginEntry *g_TheCurrentPluginEntry;
+
+static CKQWORD NextPrototypeGeneration() {
+    // Registration identities survive CKShutdown/CKStartUp in the same process.
+    static std::atomic<CKQWORD> next{1};
+    CKQWORD value = next.load(std::memory_order_relaxed);
+    for (;;) {
+        if (value == std::numeric_limits<CKQWORD>::max()) throw std::bad_alloc();
+        if (next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
+    }
+}
 
 static int CKPluginAsciiICompare(const char *lhs, const char *rhs) {
     if (!lhs || !rhs)
@@ -1156,14 +1169,22 @@ void CKPluginManager::InitializeBehaviors(CKDLL_OBJECTDECLARATIONFUNCTION Fct, C
             CKGUID guid = decl->GetGuid();
             auto pair = g_PrototypeDeclarationList.TestInsert(guid, decl);
             if (pair.m_New) {
+                decl->m_Generation = NextPrototypeGeneration();
                 entry.m_BehaviorsInfo->m_BehaviorsGUID.PushBack(guid);
             } else {
                 CKObjectDeclaration *decl2 = CKGetObjectDeclarationFromGuid(guid);
                 if (decl2 && decl2 != decl) {
                     if (strcmp(decl->GetName(), decl2->GetName()) == 0 && decl->GetVersion() > decl2->GetVersion()) {
-                        *decl2 = *decl;
+                        // Retire the old prototype and its executable callbacks.
+                        // Shallow-copying the declaration would retain dangling
+                        // metadata and prototype pointers after deleting decl.
+                        CKRemovePrototypeDeclaration(decl2);
+                        decl->m_Generation = NextPrototypeGeneration();
+                        g_PrototypeDeclarationList.Insert(guid, decl);
+                        entry.m_BehaviorsInfo->m_BehaviorsGUID.PushBack(guid);
+                    } else {
+                        delete decl;
                     }
-                    delete decl;
                 }
             }
         }

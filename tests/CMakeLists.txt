@@ -57,6 +57,10 @@ add_ck2_test(CKBehaviorAccessTest
         SOURCES CKBehaviorAccessTest.cpp
         DEPENDENCIES CK2 VxMath)
 
+add_ck2_test(CKDeclarationGenerationTest
+        SOURCES CKDeclarationGenerationTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 add_ck2_test(CKGuidComparisonTest
         SOURCES
         CKGuidComparisonTest.cpp

@@ -49,6 +49,8 @@ See also: CKBehaviorPrototype,
 ********************************************************************************/
 class CKObjectDeclaration
 {
+    friend class CKPluginManager;
+
 public:
     //////////////////////////////////////////////////
     ////	CKObjectDeclaration Member Functions   ///
@@ -89,6 +91,11 @@ public:
     // Version information
     DLL_EXPORT void SetVersion(CKDWORD verion);
     DLL_EXPORT CKDWORD GetVersion();
+
+    // Identifies this effective prototype registration, independently of the
+    // plugin's version. Zero before registration; changes on replacement or
+    // unload/reload, including same-version reloads. Not serialized.
+    DLL_EXPORT CKQWORD GetGeneration();
 
     //-----------------------------------------------------
     // Class Id of object to which the declared behavior can apply
@@ -156,6 +163,7 @@ public:
     XString m_Name;
     int m_PluginIndex;
     XArray<CKGUID> m_ManagersGuid;
+    CKQWORD m_Generation;
 };
 
 #endif // CKOBJECTDECLARATION_H
