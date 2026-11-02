@@ -834,3 +834,15 @@ add_ck2_test(CKFileDependencyContractTest
         CK2 VxMath
 )
 target_compile_features(CKFileDependencyContractTest PRIVATE cxx_std_17)
+
+# Existing-API differential probe. Its fixtures predate lifetime handles.
+add_executable(CKObjectBehaviorProbe CKObjectBehaviorProbe.cpp)
+target_link_libraries(CKObjectBehaviorProbe PRIVATE CK2 VxMath)
+target_compile_features(CKObjectBehaviorProbe PRIVATE cxx_std_17)
+add_test(NAME CKObjectBehaviorDifferentialTest COMMAND ${CMAKE_COMMAND}
+        -DPROBE=$<TARGET_FILE:CKObjectBehaviorProbe>
+        -DFIXTURES=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/object-identity
+        -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/CKObjectBehaviorDifferentialTest.cmake)
+
+add_ck2_test(CKObjectIdentityTest SOURCES CKObjectIdentityTest.cpp DEPENDENCIES CK2 VxMath)
