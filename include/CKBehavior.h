@@ -337,6 +337,11 @@ public:
     DLL_EXPORT CKBehavior *GetSubBehavior(int pos);
     DLL_EXPORT int GetSubBehaviorCount();
 
+    // Moves an existing child to dst, shifting the intervening children.
+    // Both positions must belong to the same priority group. No callbacks,
+    // ownership changes or allocation. Invalid positions leave the graph unchanged.
+    DLL_EXPORT CKERROR MoveSubBehavior(int src, int dst);
+
     //----------------------------------------------------------------
     // Run Time Graph : Links between sub behaviors
     DLL_EXPORT CKERROR AddSubBehaviorLink(CKBehaviorLink *cbkl);

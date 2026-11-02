@@ -53,6 +53,10 @@ function(add_ck2_test test_name)
             )
 endfunction()
 
+add_ck2_test(CKBehaviorAccessTest
+        SOURCES CKBehaviorAccessTest.cpp
+        DEPENDENCIES CK2 VxMath)
+
 add_ck2_test(CKGuidComparisonTest
         SOURCES
         CKGuidComparisonTest.cpp

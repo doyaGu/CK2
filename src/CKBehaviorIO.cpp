@@ -12,6 +12,28 @@ CKBehaviorIO::CKBehaviorIO(CKContext *Context, CKSTRING name) : CKObject(Context
 
 CKBehaviorIO::~CKBehaviorIO() {}
 
+int CKBehaviorIO::GetLinkCount() {
+    return m_Links.Size();
+}
+
+CKBehaviorLink *CKBehaviorIO::GetLink(int pos) {
+    if (pos < 0 || pos >= m_Links.Size())
+        return nullptr;
+    return static_cast<CKBehaviorLink *>(m_Links[pos]);
+}
+
+CKERROR CKBehaviorIO::MoveLink(int src, int dst) {
+    if (src < 0 || dst < 0 || src >= m_Links.Size() || dst >= m_Links.Size())
+        return CKERR_INVALIDPARAMETER;
+    CKObject *link = m_Links[src];
+    for (int pos = src; pos < dst; ++pos)
+        m_Links[pos] = m_Links[pos + 1];
+    for (int pos = src; pos > dst; --pos)
+        m_Links[pos] = m_Links[pos - 1];
+    m_Links[dst] = link;
+    return CK_OK;
+}
+
 CK_CLASSID CKBehaviorIO::GetClassID() {
     return m_ClassID;
 }

@@ -1281,6 +1281,28 @@ int CKBehavior::GetSubBehaviorCount() {
     return m_GraphData->m_SubBehaviors.Size();
 }
 
+CKERROR CKBehavior::MoveSubBehavior(int src, int dst) {
+    if (!m_GraphData)
+        return CKERR_INVALIDPARAMETER;
+    XObjectPointerArray &children = m_GraphData->m_SubBehaviors;
+    if (src < 0 || dst < 0 || src >= children.Size() || dst >= children.Size())
+        return CKERR_INVALIDPARAMETER;
+    CKBehavior *child = static_cast<CKBehavior *>(children[src]);
+    const int priority = child->GetPriority();
+    const int first = src < dst ? src : dst;
+    const int last = src < dst ? dst : src;
+    for (int pos = first; pos <= last; ++pos) {
+        if (static_cast<CKBehavior *>(children[pos])->GetPriority() != priority)
+            return CKERR_INVALIDPARAMETER;
+    }
+    for (int pos = src; pos < dst; ++pos)
+        children[pos] = children[pos + 1];
+    for (int pos = src; pos > dst; --pos)
+        children[pos] = children[pos - 1];
+    children[dst] = child;
+    return CK_OK;
+}
+
 CKERROR CKBehavior::AddSubBehaviorLink(CKBehaviorLink *cbkl) {
     if (!m_GraphData || !cbkl)
         return CKERR_INVALIDPARAMETER;
@@ -1295,6 +1317,7 @@ CKBehaviorLink *CKBehavior::RemoveSubBehaviorLink(CKBehaviorLink *cbkl) {
     if (!m_GraphData->m_SubBehaviorLinks.Remove(cbkl))
         return nullptr;
     m_GraphData->m_Links.Remove(cbkl);
+    cbkl->SetOldFlags(cbkl->GetOldFlags() & ~CKBL_OLD_IN_DELAYED_LIST);
     return cbkl;
 }
 
@@ -1309,6 +1332,7 @@ CKBehaviorLink *CKBehavior::RemoveSubBehaviorLink(int pos) {
     CKBehaviorLink *plink = (CKBehaviorLink *) subBehaviorLinks[pos];
     subBehaviorLinks.RemoveAt(pos);
     m_GraphData->m_Links.Remove(plink);
+    plink->SetOldFlags(plink->GetOldFlags() & ~CKBL_OLD_IN_DELAYED_LIST);
     return plink;
 }
 

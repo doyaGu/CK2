@@ -6,6 +6,10 @@
 
 CK_CLASSID CKBehaviorLink::m_ClassID = CKCID_BEHAVIORLINK;
 
+CKBOOL CKBehaviorLink::IsActivationPending() {
+    return (m_OldFlags & CKBL_OLD_IN_DELAYED_LIST) != 0;
+}
+
 CKERROR CKBehaviorLink::SetInBehaviorIO(CKBehaviorIO *ckbioin) {
     if (!ckbioin)
         return CKERR_INVALIDPARAMETER;

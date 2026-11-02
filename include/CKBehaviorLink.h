@@ -74,6 +74,10 @@ public:
 
     void ResetActivationDelay() { m_ActivationDelay = m_InitialActivationDelay; }
 
+    // TRUE while this link has an activation in the graph's delayed queue.
+    // A configured/current delay alone does not imply a pending activation.
+    DLL_EXPORT CKBOOL IsActivationPending();
+
     /*************************************************
     Summary: Management of the initial activation delay.
 

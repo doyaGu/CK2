@@ -76,6 +76,13 @@ public:
     *************************************************/
     CKBehavior *GetOwner() { return m_OwnerBehavior; }
 
+    // Links whose GetInBehaviorIO() is this IO, in activation order.
+    // This applies to both behavior inputs and outputs.
+    DLL_EXPORT int GetLinkCount();
+    DLL_EXPORT CKBehaviorLink *GetLink(int pos);
+    // Moves an existing link without changing its endpoints or allocating.
+    DLL_EXPORT CKERROR MoveLink(int src, int dst);
+
     //-------------------------------------------------------------------------
     // Internal functions
 
