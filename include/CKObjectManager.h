@@ -20,6 +20,8 @@ public:
     int ObjectsByClass(CK_CLASSID cid, CKBOOL derived, CK_ID *obj_ids);
     int GetObjectsCount();
     CKObject *GetObject(CK_ID id);
+    CKObjectHandle GetObjectHandle(CK_ID id);
+    CKObject *GetObjectByHandle(const CKObjectHandle &handle);
 
     CKERROR DeleteAllObjects();
     CKERROR ClearAllObjects();
@@ -93,7 +95,6 @@ public:
 
 public:
     int m_ObjectCount;
-    CKObject **m_Objects;
     XClassArray<XObjectArray> m_ClassLists;
     CK_ID *m_LoadSession;
     int m_AllocatedObjectCount;
@@ -107,6 +108,13 @@ public:
     XObjectArray m_DynamicObjects;
     XBitArray m_SceneGlobalIndex;
     XBitArray m_GroupGlobalIndex;
+
+private:
+    struct ObjectSlot {
+        CKObject *Object;
+        CKQWORD Lifetime;
+    };
+    ObjectSlot *m_ObjectSlots;
 };
 
 #endif // CKOBJECTRMANAGER_H

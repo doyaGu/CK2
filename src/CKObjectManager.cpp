@@ -1,5 +1,9 @@
 #include "CKObjectManager.h"
 
+#include <atomic>
+#include <limits>
+#include <new>
+
 #include "CKContext.h"
 #include "CKSceneObject.h"
 #include "CKRenderManager.h"
@@ -12,6 +16,17 @@
 
 extern XClassInfoArray g_CKClassInfo;
 extern CK_CLASSID g_MaxClassID;
+
+static CKQWORD NextObjectLifetime() {
+    // Shared by all contexts and not reset by ClearAll or CKShutdown. No object
+    // callback or application data is involved in native lifetime bookkeeping.
+    static std::atomic<CKQWORD> next{1};
+    CKQWORD value = next.load(std::memory_order_relaxed);
+    for (;;) {
+        if (value == std::numeric_limits<CKQWORD>::max()) throw std::bad_alloc();
+        if (next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
+    }
+}
 
 int CKObjectManager::ObjectsByClass(CK_CLASSID cid, CKBOOL derived, CK_ID *obj_ids) {
     if (cid < 0 || cid >= g_MaxClassID)
@@ -50,11 +65,20 @@ int CKObjectManager::GetObjectsCount() {
 }
 
 CKObject *CKObjectManager::GetObject(CK_ID id) {
-    if (!m_Objects)
+    if (!m_ObjectSlots)
         return nullptr;
     if (id > static_cast<CK_ID>(m_ObjectCount))
         return nullptr;
-    return m_Objects[id];
+    return m_ObjectSlots[id].Object;
+}
+
+CKObjectHandle CKObjectManager::GetObjectHandle(CK_ID id) {
+    return GetObject(id) ? CKObjectHandle{id, m_ObjectSlots[id].Lifetime} : CKObjectHandle{};
+}
+
+CKObject *CKObjectManager::GetObjectByHandle(const CKObjectHandle &handle) {
+    CKObject *object = handle.Lifetime ? GetObject(handle.Id) : nullptr;
+    return object && m_ObjectSlots[handle.Id].Lifetime == handle.Lifetime ? object : nullptr;
 }
 
 CKERROR CKObjectManager::DeleteAllObjects() {
@@ -62,12 +86,12 @@ CKERROR CKObjectManager::DeleteAllObjects() {
         m_ClassLists[cid].Clear();
     }
 
-    if (m_Objects) {
+    if (m_ObjectSlots) {
         for (CK_ID id = 0; id <= static_cast<CK_ID>(m_ObjectCount); ++id) {
-            CKObject *obj = m_Objects[id];
+            CKObject *obj = m_ObjectSlots[id].Object;
             if (obj)
                 delete obj;
-            m_Objects[id] = nullptr;
+            m_ObjectSlots[id] = {};
         }
     }
 
@@ -87,7 +111,7 @@ CKERROR CKObjectManager::ClearAllObjects() {
 
     // Initialize: Mark all objects as to-be-deleted
     for (CK_ID id = static_cast<CK_ID>(m_ObjectCount); id > 0; --id) {
-        CKObject *obj = m_Objects[id];
+        CKObject *obj = m_ObjectSlots[id].Object;
         if (obj)
             obj->ModifyObjectFlags(CK_OBJECT_TOBEDELETED, 0);
     }
@@ -143,12 +167,12 @@ CKERROR CKObjectManager::ClearAllObjects() {
     // First pass: Delete non-protected behaviors with notification
     for (CK_ID id = static_cast<CK_ID>(m_ObjectCount); id > 0; --id) {
         if (!objectsToKeep.IsSet(id)) {
-            CKObject *obj = m_Objects[id];
+            CKObject *obj = m_ObjectSlots[id].Object;
             if (obj && CKIsChildClassOf(obj, CKCID_BEHAVIOR)) {
                 CKBehavior *beh = (CKBehavior *) obj;
                 beh->CallCallbackFunction(CKM_BEHAVIORDETACH);
                 delete beh;
-                m_Objects[id] = nullptr;
+                m_ObjectSlots[id] = {};
             }
         }
     }
@@ -165,10 +189,10 @@ CKERROR CKObjectManager::ClearAllObjects() {
             continue;
         }
 
-        CKObject *obj = m_Objects[id];
+        CKObject *obj = m_ObjectSlots[id].Object;
         if (obj) {
             delete obj;
-            m_Objects[id] = nullptr;
+            m_ObjectSlots[id] = {};
         }
 
         if (shouldDecrement) {
@@ -180,7 +204,7 @@ CKERROR CKObjectManager::ClearAllObjects() {
 
     // Finalize protected objects - rebuild class lists
     for (CK_ID id = 1; id <= static_cast<CK_ID>(m_ObjectCount); ++id) {
-        CKObject *obj = m_Objects[id];
+        CKObject *obj = m_ObjectSlots[id].Object;
         if (!obj)
             continue;
 
@@ -204,9 +228,9 @@ CKBOOL CKObjectManager::IsObjectSafe(CKObject *iObject) {
     if (!iObject)
         return FALSE;
 
-    // CK2.dll: starts from 0, loops while v3 <= m_ObjectsCount
+    // CK2.dll: starts from 0, loops while v3 <= m_ObjectCount
     for (CK_ID id = 0; id <= static_cast<CK_ID>(m_ObjectCount); ++id) {
-        if (m_Objects[id] == iObject)
+        if (m_ObjectSlots[id].Object == iObject)
             return TRUE;
     }
 
@@ -230,7 +254,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
         if (id == 0 || id > static_cast<CK_ID>(m_ObjectCount))
             continue;
 
-        CKObject *obj = m_Objects[id];
+        CKObject *obj = m_ObjectSlots[id].Object;
         if (obj) {
             notifiedClasses.Set(obj->GetClassID());
             obj->ModifyObjectFlags(flags, 0);
@@ -253,7 +277,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
                 if (notifiedClasses.CheckCommon(g_CKClassInfo[classId].CommonToBeNotify)) {
                     XObjectArray &classList = m_ClassLists[classId];
                     for (int i = 0; i < classList.Size(); ++i) {
-                        CKObject *obj = m_Objects[classList[i]];
+                        CKObject *obj = m_ObjectSlots[classList[i]].Object;
                         if (obj) {
                             obj->CheckPreDeletion();
                         }
@@ -268,7 +292,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
         if (id == 0 || id > static_cast<CK_ID>(m_ObjectCount))
             continue;
 
-        CKObject *obj = m_Objects[id];
+        CKObject *obj = m_ObjectSlots[id].Object;
         if (obj) {
             obj->PreDelete();
         }
@@ -279,7 +303,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
         if (id == 0 || id > static_cast<CK_ID>(m_ObjectCount))
             continue;
 
-        CKObject *obj = m_Objects[id];
+        CKObject *obj = m_ObjectSlots[id].Object;
         if (obj) {
             delete obj;
         }
@@ -296,7 +320,7 @@ CKERROR CKObjectManager::DeleteObjects(CK_ID *obj_ids, int Count, CK_CLASSID cid
                         if (id >= static_cast<CK_ID>(m_AllocatedObjectCount)) {
                             continue;
                         }
-                        CKObject *obj = m_Objects[id];
+                        CKObject *obj = m_ObjectSlots[id].Object;
                         if (obj) {
                             obj->CheckPostDeletion();
                         }
@@ -319,7 +343,7 @@ CKERROR CKObjectManager::GetRootEntities(XObjectPointerArray &array) {
         if (CKIsChildClassOf(cid, CKCID_3DENTITY)) {
             XObjectArray &classList = m_ClassLists[cid];
             for (XObjectArray::Iterator it = classList.Begin(); it != classList.End(); ++it) {
-                CK3dEntity *ent = (CK3dEntity *) m_Objects[*it];
+                CK3dEntity *ent = (CK3dEntity *) m_ObjectSlots[*it].Object;
                 if (ent && ent->GetParent() == nullptr)
                     array.PushBack(ent);
             }
@@ -340,6 +364,7 @@ CK_ID *CKObjectManager::GetObjectsListByClassID(CK_CLASSID cid) {
 }
 
 CK_ID CKObjectManager::RegisterObject(CKObject *iObject) {
+    const CKQWORD lifetime = NextObjectLifetime();
     CK_ID id = 0;
     if (!m_FreeObjectIDs.IsEmpty()) {
         id = m_FreeObjectIDs.PopBack();
@@ -347,18 +372,17 @@ CK_ID CKObjectManager::RegisterObject(CKObject *iObject) {
         ++m_ObjectCount;
         if (m_ObjectCount >= m_AllocatedObjectCount) {
             int newCount = m_AllocatedObjectCount + 100;
-            CKObject **newObjs = new CKObject *[newCount];
-            memset(newObjs, 0, newCount * sizeof(CKObject *));
-            if (m_Objects) {
-                memcpy(newObjs, m_Objects, m_AllocatedObjectCount * sizeof(CKObject *));
-                delete[] m_Objects;
+            ObjectSlot *newSlots = new ObjectSlot[newCount]();
+            if (m_ObjectSlots) {
+                memcpy(newSlots, m_ObjectSlots, m_AllocatedObjectCount * sizeof(ObjectSlot));
+                delete[] m_ObjectSlots;
             }
-            m_Objects = newObjs;
+            m_ObjectSlots = newSlots;
             m_AllocatedObjectCount = newCount;
         }
         id = m_ObjectCount;
     }
-    m_Objects[id] = iObject;
+    m_ObjectSlots[id] = {iObject, lifetime};
     return id;
 }
 
@@ -376,7 +400,7 @@ void CKObjectManager::UnRegisterObject(CK_ID id) {
     if (id == 0)
         return;
 
-    CKObject *obj = m_Objects[id];
+    CKObject *obj = m_ObjectSlots[id].Object;
 
     // CK2.dll only adds to free ID list if FREEID flag (0x8) is set and not in ClearAll
     if (obj && (obj->GetObjectFlags() & CK_OBJECT_FREEID) && !m_Context->m_InClearAll) {
@@ -384,7 +408,7 @@ void CKObjectManager::UnRegisterObject(CK_ID id) {
     }
 
     // CK2.dll nulls the object pointer
-    m_Objects[id] = nullptr;
+    m_ObjectSlots[id] = {};
 
     // CK2.dll removes from hash tables if they have entries
     if (m_ObjectAppData.Size() > 0)
@@ -398,7 +422,7 @@ CKObject *CKObjectManager::GetObjectByName(CKSTRING name, CKObject *previous) {
     CK_ID startId = previous ? previous->GetID() + 1 : 1;
 
     for (CK_ID id = startId; id <= static_cast<CK_ID>(m_ObjectCount); ++id) {
-        CKObject *obj = m_Objects[id];
+        CKObject *obj = m_ObjectSlots[id].Object;
         if (obj && obj->GetName() && strcmp(obj->GetName(), name) == 0) {
             return obj;
         }
@@ -528,10 +552,10 @@ int CKObjectManager::CheckIDArray(CK_ID *obj_ids, int Count) {
     int writeCursor = 0;
     int readCursor = 0;
 
-    // Phase 1: Fast path - original only checks if m_Objects[id] is non-null
+    // Phase 1: Fast path - original only checks if m_ObjectSlots[id].Object is non-null
     while (readCursor < Count) {
         CK_ID id = obj_ids[readCursor];
-        if (id >= static_cast<CK_ID>(m_AllocatedObjectCount) || !m_Objects[id]) {
+        if (id >= static_cast<CK_ID>(m_AllocatedObjectCount) || !m_ObjectSlots[id].Object) {
             break;
         }
         ++readCursor;
@@ -542,7 +566,7 @@ int CKObjectManager::CheckIDArray(CK_ID *obj_ids, int Count) {
     readCursor++;
     while (readCursor < Count) {
         CK_ID id = obj_ids[readCursor];
-        if (id < static_cast<CK_ID>(m_AllocatedObjectCount) && m_Objects[id]) {
+        if (id < static_cast<CK_ID>(m_AllocatedObjectCount) && m_ObjectSlots[id].Object) {
             obj_ids[writeCursor] = id;
             ++writeCursor;
         }
@@ -562,7 +586,7 @@ int CKObjectManager::CheckIDArrayPredeleted(CK_ID *obj_ids, int Count) {
     // Phase 1: Fast path - check object exists and ToBeDeleted flag
     while (readCursor < Count) {
         CK_ID id = obj_ids[readCursor];
-        CKObject *obj = (id < static_cast<CK_ID>(m_AllocatedObjectCount)) ? m_Objects[id] : nullptr;
+        CKObject *obj = (id < static_cast<CK_ID>(m_AllocatedObjectCount)) ? m_ObjectSlots[id].Object : nullptr;
         if (!obj || obj->IsToBeDeleted()) {
             break;
         }
@@ -574,7 +598,7 @@ int CKObjectManager::CheckIDArrayPredeleted(CK_ID *obj_ids, int Count) {
     readCursor++;
     while (readCursor < Count) {
         CK_ID id = obj_ids[readCursor];
-        CKObject *obj = (id < static_cast<CK_ID>(m_AllocatedObjectCount)) ? m_Objects[id] : nullptr;
+        CKObject *obj = (id < static_cast<CK_ID>(m_AllocatedObjectCount)) ? m_ObjectSlots[id].Object : nullptr;
         if (obj && !obj->IsToBeDeleted()) {
             obj_ids[writeCursor] = id;
             ++writeCursor;
@@ -690,7 +714,7 @@ CKERROR CKObjectManager::OnCKReset() {
 }
 
 CKObjectManager::~CKObjectManager() {
-    delete[] m_Objects;
+    delete[] m_ObjectSlots;
     delete[] m_LoadSession;
 }
 
@@ -698,8 +722,7 @@ CKObjectManager::CKObjectManager(CKContext *Context) : CKBaseManager(Context, OB
     m_MaxObjectID = 0;
     m_ObjectCount = 0;
     m_AllocatedObjectCount = 1000;
-    m_Objects = new CKObject *[1000];
-    memset(m_Objects, 0, m_AllocatedObjectCount * sizeof(CKObject *));
+    m_ObjectSlots = new ObjectSlot[m_AllocatedObjectCount]();
     m_LoadSession = nullptr;
     m_InLoadSession = FALSE;
     m_NeedDeleteAllDynamicObjects = FALSE;

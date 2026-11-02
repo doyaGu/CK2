@@ -129,6 +129,14 @@ CKObject *CKContext::GetObject(CK_ID ObjID) {
     return m_ObjectManager->GetObject(ObjID);
 }
 
+CKObjectHandle CKContext::GetObjectHandle(CK_ID Id) {
+    return m_ObjectManager->GetObjectHandle(Id);
+}
+
+CKObject *CKContext::GetObjectByHandle(const CKObjectHandle &Handle) {
+    return m_ObjectManager->GetObjectByHandle(Handle);
+}
+
 int CKContext::GetObjectCount() {
     return m_ObjectManager->GetObjectsCount();
 }
@@ -300,7 +308,7 @@ CKERROR CKContext::Reset() {
     int stateCount = m_ObjectManager->GetObjectsCountByClassID(CKCID_STATE);
     CK_ID *stateList = m_ObjectManager->GetObjectsListByClassID(CKCID_STATE);
     for (int i = 0; i < stateCount; ++i) {
-        CKStateObject *stateObject = (CKStateObject *) m_ObjectManager->m_Objects[stateList[i]];
+        CKStateObject *stateObject = (CKStateObject *) m_ObjectManager->GetObject(stateList[i]);
         if (stateObject)
             stateObject->Reset();
     }

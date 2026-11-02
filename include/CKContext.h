@@ -52,6 +52,10 @@ public:
     const XObjectArray &CopyObjects(const XObjectArray &SrcObjects, CKDependencies *Dependencies = NULL, CK_OBJECTCREATION_OPTIONS Options = CK_OBJECTCREATION_NONAMECHECK, CKSTRING AppendName = NULL);
 
     CKObject *GetObject(CK_ID ObjID);
+    // Checked lifetime lookup. Matching handles have the same lookup timing as
+    // GetObject(Id), including pending/deferred deletion until actual unregister.
+    CKObjectHandle GetObjectHandle(CK_ID Id);
+    CKObject *GetObjectByHandle(const CKObjectHandle &Handle);
     int GetObjectCount();
     int GetObjectSize(CKObject *obj);
     CKERROR DestroyObject(CKObject *obj, CKDWORD Flags = 0, CKDependencies *depoptions = NULL);

@@ -32,8 +32,9 @@ Remarks:
     the client object has a ID for it.The client object should verify that the referenced object
     still exists when used with the CKGetObject function.
 
-    + The global ID for an instance remains unique and unchanged through a application session, but there
-    is no guaranty that this ID will be the same when a level is saved and loaded back again.
+    + The ID remains unchanged while the object exists and can be reused after destruction.
+    Use CKObjectHandle when a reference must distinguish object lifetimes. File IDs continue
+    to be remapped when a level is saved and loaded.
 See also: CKObject::GetID, CKContext::GetObject
 *************************************************/
 typedef uint32_t CK_ID;
@@ -52,6 +53,16 @@ typedef uint32_t CKDWORD;
 typedef uint16_t CKWORD;
 typedef int32_t CKERROR;
 typedef uintptr_t CKUINTPTR;
+
+// A non-owning reference to one native object lifetime. Zero is unbound.
+// Lifetime values distinguish reused IDs, addresses and different contexts.
+// Handles are transient: files keep CK_ID references and their existing remap.
+// Resolve on the context's owning thread/exclusive native-access scope; this
+// value neither pins an object nor introduces concurrent object access.
+struct CKObjectHandle {
+    CK_ID Id;
+    CKQWORD Lifetime;
+};
 typedef int CKParameterType;
 typedef int CKOperationType;
 typedef int CKMessageType;
