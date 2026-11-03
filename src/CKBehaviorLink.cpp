@@ -123,6 +123,15 @@ void CKBehaviorLink::PreDelete() {
     }
 }
 
+void CKBehaviorLink::CheckPreDeletion() {
+    CKObject::CheckPreDeletion();
+    // Parked links are absent from the graph lists visited by IO::PreDelete.
+    if (m_InIO && m_InIO->IsToBeDeleted())
+        m_InIO = nullptr;
+    if (m_OutIO && m_OutIO->IsToBeDeleted())
+        m_OutIO = nullptr;
+}
+
 int CKBehaviorLink::GetMemoryOccupation() {
     return CKObject::GetMemoryOccupation() +
         static_cast<int>(sizeof(CKBehaviorLink) - sizeof(CKObject));
@@ -174,6 +183,7 @@ CKSTRING CKBehaviorLink::GetDependencies(int i, int mode) {
 }
 
 void CKBehaviorLink::Register() {
+    CKCLASSNOTIFYFROM(CKBehaviorLink, CKBehaviorIO);
     CKCLASSDEFAULTOPTIONS(CKBehaviorLink, CK_DEPENDENCIES_COPY);
 }
 

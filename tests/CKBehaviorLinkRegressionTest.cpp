@@ -588,6 +588,230 @@ TEST_F(CKRuntimeFixture, LegacyPartialLoadStress100Rounds) {
     }
 }
 
+// A removed graph link keeps its endpoints so it can be restored later.
+static CKBehaviorLink *CreateParkedLink(CKContext *context, CKBehavior *graph,
+                                        CKBehaviorIO *source, CKBehaviorIO *destination) {
+    auto *link = static_cast<CKBehaviorLink *>(context->CreateObject(CKCID_BEHAVIORLINK));
+    if (!link || link->SetInBehaviorIO(source) != CK_OK ||
+        link->SetOutBehaviorIO(destination) != CK_OK ||
+        graph->AddSubBehaviorLink(link) != CK_OK ||
+        graph->RemoveSubBehaviorLink(link) != link)
+        return nullptr;
+    return link;
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfParkedSourceClearsSourceReference) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *source = graph->CreateInput("source");
+    CKBehaviorIO *destination = graph->CreateOutput("destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    ASSERT_NE(nullptr, link);
+    const CK_ID sourceID = source->GetID(), linkID = link->GetID();
+
+    ASSERT_EQ(CK_OK, context_->DestroyObject(source));
+    ASSERT_EQ(nullptr, context_->GetObject(sourceID));
+    ASSERT_EQ(nullptr, link->GetInBehaviorIO());
+    EXPECT_EQ(destination, link->GetOutBehaviorIO());
+    ASSERT_EQ(CK_OK, context_->DestroyObject(link));
+    EXPECT_EQ(nullptr, context_->GetObject(linkID));
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfParkedDestinationPreservesSourceUntilRetirement) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *source = graph->CreateInput("source");
+    CKBehaviorIO *destination = graph->CreateOutput("destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    ASSERT_NE(nullptr, link);
+    const CK_ID destinationID = destination->GetID(), linkID = link->GetID();
+
+    ASSERT_EQ(CK_OK, context_->DestroyObject(destination));
+    ASSERT_EQ(nullptr, context_->GetObject(destinationID));
+    ASSERT_EQ(nullptr, link->GetOutBehaviorIO());
+    EXPECT_EQ(source, link->GetInBehaviorIO());
+    ASSERT_EQ(1, source->GetLinkCount());
+    EXPECT_EQ(link, source->GetLink(0));
+    ASSERT_EQ(CK_OK, context_->DestroyObject(link));
+    EXPECT_EQ(nullptr, context_->GetObject(linkID));
+    EXPECT_EQ(0, source->GetLinkCount());
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfGraphClearsBothParkedEndpoints) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *source = graph->CreateInput("source");
+    CKBehaviorIO *destination = graph->CreateOutput("destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    ASSERT_NE(nullptr, link);
+    const CK_ID graphID = graph->GetID(), sourceID = source->GetID(),
+                destinationID = destination->GetID(), linkID = link->GetID();
+
+    ASSERT_EQ(CK_OK, context_->DestroyObject(graph));
+    ASSERT_EQ(nullptr, context_->GetObject(graphID));
+    ASSERT_EQ(nullptr, context_->GetObject(sourceID));
+    ASSERT_EQ(nullptr, context_->GetObject(destinationID));
+    ASSERT_EQ(link, context_->GetObject(linkID));
+    ASSERT_EQ(nullptr, link->GetInBehaviorIO());
+    ASSERT_EQ(nullptr, link->GetOutBehaviorIO());
+    EXPECT_EQ(CK_OK, context_->DestroyObject(link));
+    EXPECT_EQ(nullptr, context_->GetObject(linkID));
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfDynamicGraphPreservesOrdinaryChildEndpoints) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(
+        CKCID_BEHAVIOR, "dynamic graph", CK_OBJECTCREATION_DYNAMIC));
+    auto *child = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    ASSERT_NE(nullptr, child);
+    graph->UseGraph();
+    child->UseGraph();
+    ASSERT_EQ(CK_OK, graph->AddSubBehavior(child));
+    CKBehaviorIO *source = child->CreateOutput("surviving source");
+    CKBehaviorIO *destination = child->CreateInput("surviving destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    ASSERT_NE(nullptr, link);
+    const CK_ID graphID = graph->GetID(), childID = child->GetID(), linkID = link->GetID();
+
+    ASSERT_EQ(CK_OK, context_->DestroyObject(graph));
+    ASSERT_EQ(nullptr, context_->GetObject(graphID));
+    ASSERT_EQ(child, context_->GetObject(childID));
+    EXPECT_EQ(nullptr, child->GetParent());
+    EXPECT_EQ(child, source->GetOwner());
+    EXPECT_EQ(source, link->GetInBehaviorIO());
+    EXPECT_EQ(destination, link->GetOutBehaviorIO());
+    ASSERT_EQ(CK_OK, context_->DestroyObject(link));
+    EXPECT_EQ(nullptr, context_->GetObject(linkID));
+    EXPECT_EQ(0, source->GetLinkCount());
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfBothEndpointsInBatchClearsParkedReferences) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *source = graph->CreateInput("source");
+    CKBehaviorIO *destination = graph->CreateOutput("destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    ASSERT_NE(nullptr, link);
+    CK_ID endpoints[] = {source->GetID(), destination->GetID()};
+
+    ASSERT_EQ(CK_OK, context_->DestroyObjects(endpoints, 2));
+    EXPECT_EQ(nullptr, context_->GetObject(endpoints[0]));
+    EXPECT_EQ(nullptr, context_->GetObject(endpoints[1]));
+    ASSERT_EQ(nullptr, link->GetInBehaviorIO());
+    ASSERT_EQ(nullptr, link->GetOutBehaviorIO());
+    EXPECT_EQ(CK_OK, context_->DestroyObject(link));
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfSourceAndLinkInBatchPreservesUnrelatedLinks) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *source = graph->CreateInput("deleted source");
+    CKBehaviorIO *otherSource = graph->CreateInput("surviving source");
+    CKBehaviorIO *destination = graph->CreateOutput("destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, otherSource);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    CKBehaviorLink *otherLink = CreateParkedLink(context_, graph, otherSource, destination);
+    ASSERT_NE(nullptr, link);
+    ASSERT_NE(nullptr, otherLink);
+    CK_ID objects[] = {source->GetID(), link->GetID()};
+
+    ASSERT_EQ(CK_OK, context_->DestroyObjects(objects, 2));
+    EXPECT_EQ(nullptr, context_->GetObject(objects[0]));
+    EXPECT_EQ(nullptr, context_->GetObject(objects[1]));
+    EXPECT_EQ(otherSource, otherLink->GetInBehaviorIO());
+    EXPECT_EQ(destination, otherLink->GetOutBehaviorIO());
+    ASSERT_EQ(1, otherSource->GetLinkCount());
+    EXPECT_EQ(otherLink, otherSource->GetLink(0));
+    ASSERT_EQ(CK_OK, context_->DestroyObject(otherLink));
+    EXPECT_EQ(0, otherSource->GetLinkCount());
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfDeferredSourceClearsReferenceOnCommit) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *source = graph->CreateInput("deferred source");
+    CKBehaviorIO *destination = graph->CreateOutput("destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    ASSERT_NE(nullptr, link);
+    const CK_ID sourceID = source->GetID();
+
+    context_->m_DeferDestroyObjects = TRUE;
+    EXPECT_EQ(CK_OK, context_->DestroyObject(source));
+    EXPECT_EQ(source, context_->GetObject(sourceID));
+    EXPECT_EQ(source, link->GetInBehaviorIO());
+    context_->m_DeferDestroyObjects = FALSE;
+    ASSERT_EQ(CK_OK, context_->m_ObjectManager->PostProcess());
+    ASSERT_EQ(nullptr, context_->GetObject(sourceID));
+    ASSERT_EQ(nullptr, link->GetInBehaviorIO());
+    EXPECT_EQ(destination, link->GetOutBehaviorIO());
+    EXPECT_EQ(CK_OK, context_->DestroyObject(link));
+}
+
+TEST_F(CKRuntimeFixture, DeletionOfPreviousSourceDoesNotClearReboundSource) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *previousSource = graph->CreateInput("previous source");
+    CKBehaviorIO *currentSource = graph->CreateInput("current source");
+    CKBehaviorIO *destination = graph->CreateOutput("destination");
+    ASSERT_NE(nullptr, previousSource);
+    ASSERT_NE(nullptr, currentSource);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, previousSource, destination);
+    ASSERT_NE(nullptr, link);
+    ASSERT_EQ(CK_OK, link->SetInBehaviorIO(currentSource));
+    ASSERT_EQ(CK_OK, context_->DestroyObject(previousSource));
+    EXPECT_EQ(currentSource, link->GetInBehaviorIO());
+    EXPECT_EQ(destination, link->GetOutBehaviorIO());
+    ASSERT_EQ(1, currentSource->GetLinkCount());
+    EXPECT_EQ(link, currentSource->GetLink(0));
+    ASSERT_EQ(CK_OK, context_->DestroyObject(link));
+    EXPECT_EQ(0, currentSource->GetLinkCount());
+}
+
+TEST_F(CKRuntimeFixture, DeletionWithoutNotificationKeepsExistingNoNotifyContract) {
+    auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, graph);
+    graph->UseGraph();
+    CKBehaviorIO *source = graph->CreateInput("source");
+    CKBehaviorIO *destination = graph->CreateOutput("silent destination");
+    ASSERT_NE(nullptr, source);
+    ASSERT_NE(nullptr, destination);
+    CKBehaviorLink *link = CreateParkedLink(context_, graph, source, destination);
+    ASSERT_NE(nullptr, link);
+    const CK_ID destinationID = destination->GetID();
+
+    ASSERT_EQ(CK_OK, context_->DestroyObject(destination, CK_DESTROY_NONOTIFY));
+    ASSERT_EQ(nullptr, context_->GetObject(destinationID));
+    // NONOTIFY deliberately leaves references in other objects untouched.
+    // Compare the stored value only; never dereference the deleted IO.
+    EXPECT_EQ(destination, link->GetOutBehaviorIO());
+    EXPECT_EQ(source, link->GetInBehaviorIO());
+    ASSERT_EQ(CK_OK, context_->DestroyObject(link));
+    EXPECT_EQ(0, source->GetLinkCount());
+}
+
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

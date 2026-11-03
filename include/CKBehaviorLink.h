@@ -121,6 +121,7 @@ public:
     virtual void PostLoad();
 
     virtual void PreDelete();
+    virtual void CheckPreDeletion();
 
     virtual int GetMemoryOccupation();
     virtual CKBOOL IsObjectUsed(CKObject *obj, CK_CLASSID cid);
