@@ -216,6 +216,17 @@ See Also: CKRenderContext::AddPreRenderCallBack,CKRenderContext::AddPostRenderCa
 ****************************************************************/
 typedef void (*CK_RENDERCALLBACK)(CKRenderContext *context, void *Argument);
 
+/****************************************************************
+Summary: Adjusts the flags of one Render invocation.
+
+Remarks:
+    + Flags points to the resolved options for this invocation only. It must
+    not be retained. The callback runs before SKIPALL and device validation;
+    it must not draw, recursively Render the same context, or throw exceptions.
+See Also: CKRenderContext::SetRenderOptionsCallBack
+****************************************************************/
+typedef void (*CK_RENDEROPTIONSCALLBACK)(CKRenderContext *context, CK_RENDER_FLAGS *Flags, void *Argument);
+
 /*******************************************************
 Summary: 3D or 2D entity rendering callback function
 

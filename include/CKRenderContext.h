@@ -1324,6 +1324,36 @@ public:
 
     virtual void GetStereoParameters(float &EyeSeparation, float &FocalLength) = 0;
 
+    /*****************************************************
+    Summary: Registers the single callback that adjusts each Render invocation's flags.
+
+    Remarks:
+        + Function must not be NULL; Argument may be NULL. TRUE is returned for
+        an empty slot or an identical (Function, Argument) registration. A
+        different existing registration is left unchanged and returns FALSE.
+        + Function and Argument are borrowed until matched removal or context
+        destruction. The slot survives scene callback cleanup and is not copied
+        or serialized. Remove it before destroying Argument or unloading Function.
+        + Called on the rendering thread after current/explicit option resolution
+        and before SKIPALL or device validation. Only the local flags are changed;
+        current render options and direct Clear/DrawScene/BackToFront calls are unaffected.
+        Returned flags retain the usual USECURRENTSETTINGS convention.
+        + Registration changes must be serialized with Render on the same thread.
+        Changes inside the callback apply to later invocations.
+    See also: RemoveRenderOptionsCallBack,CK_RENDEROPTIONSCALLBACK
+    *****************************************************/
+    virtual CKBOOL SetRenderOptionsCallBack(CK_RENDEROPTIONSCALLBACK Function, void *Argument) = 0;
+
+    /*****************************************************
+    Summary: Removes the matching render options callback.
+
+    Remarks:
+        + Function must not be NULL. An empty slot or a matching registration
+        returns TRUE; a different registration returns FALSE and is unchanged.
+    See also: SetRenderOptionsCallBack
+    *****************************************************/
+    virtual CKBOOL RemoveRenderOptionsCallBack(CK_RENDEROPTIONSCALLBACK Function, void *Argument) = 0;
+
     // Dynamic Cast method (returns NULL if the object can't be cast)
     static CKRenderContext *Cast(CKObject *iO)
     {
