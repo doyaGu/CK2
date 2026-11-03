@@ -110,6 +110,13 @@ void CKBehaviorIO::PreDelete() {
     }
 }
 
+void CKBehaviorIO::CheckPreDeletion() {
+    CKObject::CheckPreDeletion();
+    // Removed IOs can outlive their original Behavior.
+    if (m_OwnerBehavior && m_OwnerBehavior->IsToBeDeleted())
+        m_OwnerBehavior = nullptr;
+}
+
 int CKBehaviorIO::GetMemoryOccupation() {
     return CKObject::GetMemoryOccupation() +
         static_cast<int>(sizeof(CKBehaviorIO) - sizeof(CKObject));
@@ -150,6 +157,7 @@ CKSTRING CKBehaviorIO::GetDependencies(int i, int mode) {
 }
 
 void CKBehaviorIO::Register() {
+    CKCLASSNOTIFYFROM(CKBehaviorIO, CKBehavior);
     CKCLASSDEFAULTOPTIONS(CKBehaviorIO, CK_DEPENDENCIES_COPY);
 }
 

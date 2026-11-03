@@ -99,6 +99,7 @@ public:
     virtual CKERROR Load(CKStateChunk *chunk, CKFile *file);
 
     virtual void PreDelete();
+    virtual void CheckPreDeletion();
 
     virtual int GetMemoryOccupation();
 
