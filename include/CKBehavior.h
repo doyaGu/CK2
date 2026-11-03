@@ -228,6 +228,9 @@ public:
     // Owner Functions
     DLL_EXPORT CKBeObject *GetOwner();
     DLL_EXPORT CKBehavior *GetParent();
+    // Sets only the parent reference. Use AddSubBehavior/RemoveSubBehavior for
+    // graph membership, owner propagation, and attachment callbacks.
+    DLL_EXPORT void SetParent(CKBehavior *parent);
     DLL_EXPORT CKBehavior *GetOwnerScript();
 
     //----------------------------------------------------------------
@@ -435,7 +438,6 @@ protected:
     float m_LastExecutionTime;
     CK_ID m_InputTargetParam;
 
-    void SetParent(CKBehavior *parent);
     void SortSubs();
     void ResetExecutionTime();
     void ExecuteStepStart();
