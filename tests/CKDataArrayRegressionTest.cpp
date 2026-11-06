@@ -317,3 +317,76 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+
+TEST_F(CKRuntimeFixture, RepeatedStateRestoreRecyclesOwnedParameterIdsAndInvalidatesHandles) {
+    CKDataArray *array = static_cast<CKDataArray *>(context_->CreateObject(CKCID_DATAARRAY));
+    ASSERT_NE(nullptr, array);
+    array->InsertColumn(-1, CKARRAYTYPE_PARAMETER, "First", CKPGUID_INT);
+    array->InsertColumn(-1, CKARRAYTYPE_PARAMETER, "Second", CKPGUID_INT);
+    array->AddRow();
+    array->AddRow();
+    CKObjectHandle handles[4];
+    for (int row = 0; row < 2; ++row) {
+        for (int col = 0; col < 2; ++col) {
+            int value = row * 10 + col;
+            ASSERT_TRUE(array->SetElementValue(row, col, &value));
+            CKParameter *parameter = reinterpret_cast<CKParameter *>(*array->GetElement(row, col));
+            ASSERT_NE(nullptr, parameter);
+            handles[row * 2 + col] = context_->GetObjectHandle(parameter->GetID());
+        }
+    }
+    CKStateChunk *state = array->Save(nullptr, CK_STATESAVE_ALL);
+    ASSERT_NE(nullptr, state);
+    const int high = context_->GetObjectCount();
+    for (int iteration = 0; iteration < 20; ++iteration) {
+        ASSERT_EQ(CK_OK, array->Load(state, nullptr));
+        EXPECT_EQ(high, context_->GetObjectCount());
+        for (int row = 0; row < 2; ++row) {
+            for (int col = 0; col < 2; ++col) {
+                int value = -1;
+                ASSERT_TRUE(array->GetElementValue(row, col, &value));
+                EXPECT_EQ(row * 10 + col, value);
+                EXPECT_EQ(nullptr, context_->GetObjectByHandle(handles[row * 2 + col]));
+            }
+        }
+    }
+    DeleteCKStateChunk(state);
+    context_->DestroyObject(array);
+}
+
+TEST_F(CKRuntimeFixture, ParameterRemovalRecyclesIdsAndPreservesExternalShortcuts) {
+    for (int operation = 0; operation < 4; ++operation) {
+        CKDataArray *array = static_cast<CKDataArray *>(context_->CreateObject(CKCID_DATAARRAY));
+        ASSERT_NE(nullptr, array);
+        array->InsertColumn(-1, CKARRAYTYPE_PARAMETER, "Value", CKPGUID_INT);
+        array->AddRow();
+        CKParameter *parameter = reinterpret_cast<CKParameter *>(*array->GetElement(0, 0));
+        ASSERT_NE(nullptr, parameter);
+        const CK_ID id = parameter->GetID();
+        const CKObjectHandle handle = context_->GetObjectHandle(id);
+        CKParameterOut *external = context_->CreateCKParameterOut("External shortcut", CKPGUID_INT);
+        ASSERT_NE(nullptr, external);
+        int expected = 71;
+        ASSERT_EQ(CK_OK, external->SetValue(&expected));
+        switch (operation) {
+        case 0: array->RemoveRow(0); break;
+        case 1: array->RemoveColumn(0); break;
+        case 2: array->SetColumnType(0, CKARRAYTYPE_INT); break;
+        case 3: ASSERT_TRUE(array->PasteShortcut(0, 0, external)); break;
+        }
+        CKObject *replacement = context_->CreateObject(CKCID_OBJECT);
+        ASSERT_NE(nullptr, replacement);
+        EXPECT_EQ(id, replacement->GetID()) << operation;
+        EXPECT_EQ(nullptr, context_->GetObjectByHandle(handle));
+        if (operation == 3) {
+            EXPECT_EQ(reinterpret_cast<CKUINTPTR>(external), *array->GetElement(0, 0));
+            int value = 0;
+            ASSERT_TRUE(array->GetElementValue(0, 0, &value));
+            EXPECT_EQ(expected, value);
+        }
+        context_->DestroyObject(array);
+        EXPECT_EQ(external, context_->GetObject(external->GetID()));
+        context_->DestroyObject(external);
+        context_->DestroyObject(replacement);
+    }
+}

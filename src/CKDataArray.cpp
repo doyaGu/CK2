@@ -260,7 +260,7 @@ void CKDataArray::RemoveColumn(int c) {
         case CKARRAYTYPE_PARAMETER: {
             CKParameter *param = (CKParameter *) *element;
             if (param && param->GetOwner() == this) {
-                m_Context->DestroyObject(param);
+                m_Context->DestroyObject(param, CK_DESTROY_TEMPOBJECT);
             }
             break;
         }
@@ -460,7 +460,7 @@ void CKDataArray::SetColumnType(int c, CK_ARRAYTYPE newType, CKGUID paramGuid) {
             }
 
             if (param->GetOwner() == this) {
-                m_Context->DestroyObject(param);
+                m_Context->DestroyObject(param, CK_DESTROY_TEMPOBJECT);
             }
             break;
         }
@@ -661,7 +661,7 @@ CKBOOL CKDataArray::PasteShortcut(int i, int c, CKParameter *pout) {
 
     CKParameter *param = reinterpret_cast<CKParameter *>(element);
     if (param && param->GetOwner() == this) {
-        m_Context->DestroyObject(param);
+        m_Context->DestroyObject(param, CK_DESTROY_TEMPOBJECT);
     }
 
     element = reinterpret_cast<CKUINTPTR>(pout);
@@ -1174,7 +1174,7 @@ void CKDataArray::RemoveRow(int n) {
         case CKARRAYTYPE_PARAMETER: {
             CKParameter *param = reinterpret_cast<CKParameter *>(element);
             if (param && param->GetOwner() == this) {
-                m_Context->DestroyObject(param);
+                m_Context->DestroyObject(param, CK_DESTROY_TEMPOBJECT);
             }
             break;
         }
@@ -1232,7 +1232,7 @@ void CKDataArray::SwapRows(int i1, int i2) {
 void CKDataArray::Clear(CKBOOL Params) {
     XArray<CK_ID> paramsToDestroy;
 
-    for (int i = m_DataMatrix.Size() - 1; i >= 0; --i) {
+    for (int i = 0; i < m_DataMatrix.Size(); ++i) {
         CKDataRow *row = m_DataMatrix[i];
 
         for (int col = 0; col < m_FormatArray.Size(); ++col) {
@@ -1267,12 +1267,12 @@ void CKDataArray::Clear(CKBOOL Params) {
         }
 
         delete row;
-        m_DataMatrix.RemoveAt(i);
+        m_DataMatrix[i] = nullptr;
     }
     m_DataMatrix.Clear();
 
     if (Params && !paramsToDestroy.IsEmpty()) {
-        m_Context->DestroyObjects(paramsToDestroy.Begin(), paramsToDestroy.Size());
+        m_Context->DestroyObjects(paramsToDestroy.Begin(), paramsToDestroy.Size(), CK_DESTROY_TEMPOBJECT);
     }
 }
 
