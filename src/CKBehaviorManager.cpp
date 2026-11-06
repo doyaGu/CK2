@@ -97,7 +97,7 @@ void CKBehaviorManager::ManageObjectsActivity() {
         if (*it < 0) {
             beo->ResetExecutionTime();
             m_BeObjects.Remove(beo);
-        } else if (*it > 0 && m_BeObjects.AddIfNotHere(beo)) {
+        } else if (m_BeObjects.AddIfNotHere(beo)) {
             changed = TRUE;
         }
     }

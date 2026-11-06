@@ -443,6 +443,30 @@ TEST_F(CKRuntimeFixture, DelayedPropagationStress100Rounds) {
     }
 }
 
+TEST_F(CKRuntimeFixture, BalancedActivityRequestsRegisterAnInactiveOwner) {
+    CKBehaviorManager *manager = context_->GetBehaviorManager();
+    ASSERT_NE(nullptr, manager);
+    const int before = manager->GetObjectsCount();
+    CKBeObject *owner = static_cast<CKBeObject *>(context_->CreateObject(CKCID_BEOBJECT));
+    ASSERT_NE(nullptr, owner);
+
+    // CK2.dll's deferred activity processing includes zero balances in the
+    // active branch (0x2400C80A), so equal requests still register the owner.
+    manager->AddObjectNextFrame(owner);
+    manager->RemoveObjectNextFrame(owner);
+    manager->ManageObjectsActivity();
+    EXPECT_EQ(before + 1, manager->GetObjectsCount());
+    bool present = false;
+    for (int i = 0; i < manager->GetObjectsCount(); ++i)
+        if (manager->GetObject(i) == owner) present = true;
+    EXPECT_TRUE(present);
+
+    manager->RemoveObjectNextFrame(owner);
+    manager->ManageObjectsActivity();
+    EXPECT_EQ(before, manager->GetObjectsCount());
+    context_->DestroyObject(owner);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
