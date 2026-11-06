@@ -496,6 +496,54 @@ TEST_F(CKRuntimeFixture, WaveSoundRecreationWithoutAudioManagerPreservesState) {
     context_->DestroyObject(sound);
 }
 
+TEST_F(CKRuntimeFixture, DefaultObjectCopyClonesAttributeParameters) {
+    CKAttributeManager *attributes = context_->GetAttributeManager();
+    const CKAttributeType type = attributes->RegisterNewAttributeType(
+        "CopyAttributeParameter", CKPGUID_INT, CKCID_BEOBJECT);
+    ASSERT_GE(type, 0);
+    CKBeObject *source = static_cast<CKBeObject *>(context_->CreateObject(CKCID_BEOBJECT));
+    ASSERT_NE(nullptr, source);
+    ASSERT_TRUE(source->SetAttribute(type));
+    CKParameterOut *parameter = source->GetAttributeParameter(type);
+    ASSERT_NE(nullptr, parameter);
+    const int expected = 137;
+    ASSERT_EQ(CK_OK, parameter->SetValue(&expected));
+    CKBeObject *copy = static_cast<CKBeObject *>(context_->CopyObject(source));
+    ASSERT_NE(nullptr, copy);
+    ASSERT_TRUE(copy->HasAttribute(type));
+    CKParameterOut *copiedParameter = copy->GetAttributeParameter(type);
+    ASSERT_NE(nullptr, copiedParameter);
+    EXPECT_NE(parameter, copiedParameter);
+    EXPECT_EQ(copy, copiedParameter->GetOwner());
+    EXPECT_EQ(source, parameter->GetOwner());
+    int actual = 0;
+    ASSERT_EQ(CK_OK, copiedParameter->GetValue(&actual));
+    EXPECT_EQ(expected, actual);
+    actual = 241;
+    ASSERT_EQ(CK_OK, copiedParameter->SetValue(&actual));
+    ASSERT_EQ(CK_OK, parameter->GetValue(&actual));
+    EXPECT_EQ(expected, actual);
+    context_->DestroyObject(copy);
+    context_->DestroyObject(source);
+    attributes->UnRegisterAttribute(type);
+}
+
+TEST_F(CKRuntimeFixture, DefaultObjectCopySkipsNoncopyableAttributes) {
+    CKAttributeManager *attributes = context_->GetAttributeManager();
+    const CKAttributeType type = attributes->RegisterNewAttributeType(
+        "SkipCopyAttribute", CKPGUID_INT, CKCID_BEOBJECT, CK_ATTRIBUT_DONOTCOPY);
+    ASSERT_GE(type, 0);
+    CKBeObject *source = static_cast<CKBeObject *>(context_->CreateObject(CKCID_BEOBJECT));
+    ASSERT_NE(nullptr, source);
+    ASSERT_TRUE(source->SetAttribute(type));
+    CKBeObject *copy = static_cast<CKBeObject *>(context_->CopyObject(source));
+    ASSERT_NE(nullptr, copy);
+    EXPECT_FALSE(copy->HasAttribute(type));
+    context_->DestroyObject(copy);
+    context_->DestroyObject(source);
+    attributes->UnRegisterAttribute(type);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
