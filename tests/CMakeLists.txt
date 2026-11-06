@@ -34,6 +34,10 @@ function(add_ck2_test test_name)
     )
 
     target_compile_definitions(${test_name} PRIVATE "CK2_EXPORTS")
+    get_target_property(_ck2_test_runtime_type CK2 TYPE)
+    if (_ck2_test_runtime_type STREQUAL "STATIC_LIBRARY" AND test_name STREQUAL "CKMessageContractTest")
+        target_compile_definitions(${test_name} PRIVATE CK2_TEST_STATIC_RUNTIME)
+    endif ()
 
     set_target_properties(${test_name} PROPERTIES FOLDER "Tests")
 
@@ -45,6 +49,16 @@ function(add_ck2_test test_name)
             $<TARGET_FILE:VxMath>
             $<TARGET_FILE_DIR:${test_name}>
     )
+    if (WIN32 AND TARGET SDL3::SDL3)
+        get_target_property(_ck2_test_sdl_type SDL3::SDL3 TYPE)
+        if (_ck2_test_sdl_type STREQUAL "SHARED_LIBRARY")
+            add_custom_command(TARGET ${test_name} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:SDL3::SDL3>
+                    $<TARGET_FILE_DIR:${test_name}>
+                    VERBATIM)
+        endif ()
+    endif ()
 
             add_test(NAME ${test_name}
                     COMMAND ${CMAKE_COMMAND} -E env

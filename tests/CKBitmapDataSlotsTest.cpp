@@ -1,3 +1,5 @@
+#include "CKPluginFixtureConfig.h"
+
 #include <gtest/gtest.h>
 
 #ifndef CK_LIB

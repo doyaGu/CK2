@@ -11,10 +11,12 @@
 
 // This internal helper is not exported by the fixed SDK. Bridge only its
 // native 0x240089DF flag contract; messages and parameter objects remain real.
+#ifndef CK2_TEST_STATIC_RUNTIME
 void CKParameter::MessageDeleteAfterUse(CKBOOL value) {
     if (value) ModifyObjectFlags(CK_PARAMETEROUT_DELETEAFTERUSE, 0);
     else ModifyObjectFlags(0, CK_PARAMETEROUT_DELETEAFTERUSE);
 }
+#endif
 
 class MessageProbe : public CKMessage {
 public:

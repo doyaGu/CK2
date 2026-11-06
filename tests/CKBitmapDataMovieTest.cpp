@@ -1,3 +1,5 @@
+#include "CKPluginFixtureConfig.h"
+
 #include <gtest/gtest.h>
 #include <cstddef>
 #include <type_traits>
