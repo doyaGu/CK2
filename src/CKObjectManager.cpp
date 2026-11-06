@@ -1,9 +1,5 @@
 #include "CKObjectManager.h"
 
-#include <atomic>
-#include <limits>
-#include <new>
-
 #include "CKContext.h"
 #include "CKSceneObject.h"
 #include "CKRenderManager.h"
@@ -14,6 +10,9 @@
 #include "CKBehavior.h"
 #include "CKGlobals.h"
 
+#include <atomic>
+#include <new>
+
 extern XClassInfoArray g_CKClassInfo;
 extern CK_CLASSID g_MaxClassID;
 
@@ -23,7 +22,7 @@ static CKQWORD NextObjectLifetime() {
     static std::atomic<CKQWORD> next{1};
     CKQWORD value = next.load(std::memory_order_relaxed);
     for (;;) {
-        if (value == std::numeric_limits<CKQWORD>::max()) throw std::bad_alloc();
+        if (value == ~CKQWORD(0)) throw std::bad_alloc();
         if (next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
     }
 }

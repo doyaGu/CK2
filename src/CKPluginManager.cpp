@@ -10,11 +10,9 @@
 #include "CKTexture.h"
 #include "CKSprite.h"
 #include "CKWaveSound.h"
-#include "CKBehavior.h"
 #include "CKFile.h"
 
 #include <atomic>
-#include <limits>
 #include <new>
 #include <ctype.h>
 #include <string.h>
@@ -29,7 +27,7 @@ static CKQWORD NextPrototypeGeneration() {
     static std::atomic<CKQWORD> next{1};
     CKQWORD value = next.load(std::memory_order_relaxed);
     for (;;) {
-        if (value == std::numeric_limits<CKQWORD>::max()) throw std::bad_alloc();
+        if (value == ~CKQWORD(0)) throw std::bad_alloc();
         if (next.compare_exchange_weak(value, value + 1, std::memory_order_relaxed)) return value;
     }
 }
