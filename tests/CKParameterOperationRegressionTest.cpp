@@ -445,3 +445,38 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+
+TEST_F(CKRuntimeFixture, UpdatePreservesAuthoredNamesAndInitializesUnnamedPorts) {
+    const CKGUID guid(0x6E505F10u, 0x11B2A0D1u);
+    CKParameterManager *manager = context_->GetParameterManager();
+    ASSERT_NE(nullptr, manager);
+    manager->RegisterOperationType(guid, "PreserveOperationNames");
+    CKParameterOperation *operation = context_->CreateCKParameterOperation(
+        "PreserveOperationNames", guid, CKPGUID_INT, CKPGUID_INT, CKPGUID_INT);
+    ASSERT_NE(nullptr, operation);
+    CKParameterIn *first = operation->GetInParameter1();
+    CKParameterIn *second = operation->GetInParameter2();
+    CKParameterOut *result = operation->GetOutParameter();
+    ASSERT_NE(nullptr, first);
+    ASSERT_NE(nullptr, second);
+    ASSERT_NE(nullptr, result);
+    first->SetName("In1");
+    second->SetName("In2");
+    result->SetName("Out");
+    operation->Update();
+    EXPECT_STREQ("In1", first->GetName());
+    EXPECT_STREQ("In2", second->GetName());
+    EXPECT_STREQ("Out", result->GetName());
+    EXPECT_EQ(operation, first->GetOwner());
+    EXPECT_EQ(operation, second->GetOwner());
+    EXPECT_EQ(operation, result->GetOwner());
+    first->SetName(nullptr);
+    second->SetName(nullptr);
+    result->SetName(nullptr);
+    operation->Update();
+    EXPECT_STREQ("Pin 0", first->GetName());
+    EXPECT_STREQ("Pin 1", second->GetName());
+    EXPECT_STREQ("Pout 0", result->GetName());
+    context_->DestroyObject(operation->GetID());
+    manager->UnRegisterOperationType(guid);
+}

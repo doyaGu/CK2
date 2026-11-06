@@ -2788,6 +2788,7 @@ void CKBehavior::HierarchyPostLoad() {
         }
     }
 
+    // Reuse matching prototype strings while preserving names saved by the author.
     // Process input parameters
     int paramIndex = 0;
     for (CKObject **it = m_InParameter.Begin(); it != m_InParameter.End(); ++it, ++paramIndex) {
@@ -2800,7 +2801,7 @@ void CKBehavior::HierarchyPostLoad() {
             CKSTRING expectedName = proto->GetInParamName(paramIndex);
             if (expectedName) {
                 CKSTRING paramName = param->GetName();
-                if (!paramName || strcmp(paramName, expectedName) != 0) {
+                if (paramName && strcmp(paramName, expectedName) == 0) {
                     param->SetName(expectedName, TRUE);
                 }
             }
@@ -2819,7 +2820,7 @@ void CKBehavior::HierarchyPostLoad() {
             if (proto) {
                 CKSTRING expectedName = proto->GetOutParamName(paramIndex);
                 CKSTRING paramName = param->GetName();
-                if (expectedName && (!paramName || strcmp(paramName, expectedName) != 0)) {
+                if (expectedName && paramName && strcmp(paramName, expectedName) == 0) {
                     param->SetName(expectedName, TRUE);
                 }
             }
@@ -2837,7 +2838,7 @@ void CKBehavior::HierarchyPostLoad() {
         if (proto) {
             CKSTRING expectedName = proto->GetLocalParamName(paramIndex);
             CKSTRING paramName = param->GetName();
-            if (expectedName && (!paramName || strcmp(paramName, expectedName) != 0)) {
+            if (expectedName && paramName && strcmp(paramName, expectedName) == 0) {
                 param->SetName(expectedName, TRUE);
             }
         }
@@ -2854,7 +2855,7 @@ void CKBehavior::HierarchyPostLoad() {
         if (proto) {
             CKSTRING expectedName = proto->GetInIOName(ioIndex);
             CKSTRING ioName = io->GetName();
-            if (expectedName && (!ioName || strcmp(ioName, expectedName) != 0)) {
+            if (expectedName && ioName && strcmp(ioName, expectedName) == 0) {
                 io->SetName(expectedName, TRUE);
             }
         }
@@ -2871,7 +2872,7 @@ void CKBehavior::HierarchyPostLoad() {
         if (proto) {
             CKSTRING expectedName = proto->GetOutIOName(ioIndex);
             CKSTRING ioName = io->GetName();
-            if (expectedName && (!ioName || strcmp(ioName, expectedName) != 0)) {
+            if (expectedName && ioName && strcmp(ioName, expectedName) == 0) {
                 io->SetName(expectedName, TRUE);
             }
         }

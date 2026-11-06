@@ -121,6 +121,66 @@ TEST_F(CKRuntimeFixture, PostLoadDoesNotRenameSharedUpstreamSource) {
     EXPECT_STREQ("ChildInput", childInput->GetName());
 }
 
+static const CKGUID PostLoadNamesGuid(0x791ab607, 0x18a54d32);
+
+static CKERROR CreatePostLoadNamesPrototype(CKBehaviorPrototype **result) {
+    CKBehaviorPrototype *proto = CreateCKBehaviorPrototype("PostLoad names");
+    proto->DeclareInput("Default input");
+    proto->DeclareOutput("Default output");
+    proto->DeclareInParameter("Default argument", CKPGUID_INT);
+    proto->DeclareOutParameter("Default result", CKPGUID_INT);
+    proto->DeclareLocalParameter("Default local", CKPGUID_INT);
+    *result = proto;
+    return CK_OK;
+}
+
+static void DeclarePostLoadNames(XObjectDeclarationArray *declarations) {
+    CKObjectDeclaration *declaration = CreateCKObjectDeclaration("PostLoad names");
+    declaration->SetGuid(PostLoadNamesGuid);
+    declaration->SetVersion(0x10000);
+    declaration->SetCreationFunction(CreatePostLoadNamesPrototype);
+    CKStoreDeclaration(declarations, declaration);
+}
+
+static CKPluginInfo *PostLoadNamesPluginInfo(int index) {
+    if (index != 0) return nullptr;
+    static CKPluginInfo info;
+    info.m_GUID = CKGUID(0x791ab607, 0x18a54d33);
+    info.m_Type = CKPLUGIN_BEHAVIOR_DLL;
+    return &info;
+}
+
+TEST_F(CKRuntimeFixture, PostLoadPreservesSavedPortNamesAndUnnamedLocalParameter) {
+    ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin(
+        "PostLoad names fixture", nullptr, PostLoadNamesPluginInfo, nullptr, DeclarePostLoadNames));
+
+    CKBehavior *root = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    CKBehavior *child = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
+    ASSERT_NE(nullptr, root);
+    ASSERT_NE(nullptr, child);
+    root->UseGraph();
+    root->ModifyFlags(CKBEHAVIOR_TOPMOST, 0);
+    ASSERT_EQ(CK_OK, child->InitFromGuid(PostLoadNamesGuid));
+    ASSERT_EQ(CK_OK, root->AddSubBehavior(child));
+    child->GetInput(0)->SetName("Saved input");
+    child->GetOutput(0)->SetName("Saved output");
+    child->GetInputParameter(0)->SetName("Saved argument");
+    child->GetOutputParameter(0)->SetName("Saved result");
+    child->GetLocalParameter(0)->SetName(nullptr);
+
+    root->PostLoad();
+
+    EXPECT_STREQ("Saved input", child->GetInput(0)->GetName());
+    EXPECT_STREQ("Saved output", child->GetOutput(0)->GetName());
+    EXPECT_STREQ("Saved argument", child->GetInputParameter(0)->GetName());
+    EXPECT_STREQ("Saved result", child->GetOutputParameter(0)->GetName());
+    EXPECT_EQ(nullptr, child->GetLocalParameter(0)->GetName());
+    EXPECT_EQ(child, child->GetInput(0)->GetOwner());
+    EXPECT_EQ(child, child->GetInputParameter(0)->GetOwner());
+    context_->DestroyObject(root);
+    CKRemovePrototypeDeclaration(CKGetObjectDeclarationFromGuid(PostLoadNamesGuid));
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

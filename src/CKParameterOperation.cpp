@@ -87,14 +87,14 @@ void CKParameterOperation::Update() {
 
     if (m_In1) {
         m_In1->SetOwner(this);
-        if (!m_In1->m_Name || (m_In1->m_Name != m_In1Name && strcmp(m_In1->m_Name, m_In1Name) != 0)) {
+        if (!m_In1->m_Name || (m_In1->m_Name != m_In1Name && strcmp(m_In1->m_Name, m_In1Name) == 0)) {
             m_In1->SetName(m_In1Name, TRUE);
         }
     }
 
     if (m_In2) {
         m_In2->SetOwner(this);
-        if (!m_In2->m_Name || (m_In2->m_Name != m_In2Name && strcmp(m_In2->m_Name, m_In2Name) != 0)) {
+        if (!m_In2->m_Name || (m_In2->m_Name != m_In2Name && strcmp(m_In2->m_Name, m_In2Name) == 0)) {
             m_In2->SetName(m_In2Name, TRUE);
         }
     }
@@ -102,7 +102,7 @@ void CKParameterOperation::Update() {
     if (m_Out) {
         m_Out->SetOwner(this);
         m_Out->m_ObjectFlags |= CK_PARAMETEROUT_PARAMOP;
-        if (!m_Out->m_Name || (m_Out->m_Name != m_OutName && strcmp(m_Out->m_Name, m_OutName) != 0)) {
+        if (!m_Out->m_Name || (m_Out->m_Name != m_OutName && strcmp(m_Out->m_Name, m_OutName) == 0)) {
             m_Out->SetName(m_OutName, TRUE);
         }
     }
