@@ -484,6 +484,18 @@ TEST_F(CKRuntimeFixture, ParameterOutCopyReplacesDestinationList) {
     EXPECT_EQ(srcDest, dstOut->GetDestination(0));
 }
 
+TEST_F(CKRuntimeFixture, WaveSoundRecreationWithoutAudioManagerPreservesState) {
+    ASSERT_EQ(nullptr, context_->GetManagerByGuid(SOUND_MANAGER_GUID));
+    CKWaveSound *sound = static_cast<CKWaveSound *>(context_->CreateObject(CKCID_WAVESOUND));
+    ASSERT_NE(nullptr, sound);
+    const CKDWORD state = sound->GetState();
+    EXPECT_EQ(CKERR_INVALIDPARAMETER, sound->Recreate(FALSE));
+    EXPECT_EQ(state, sound->GetState());
+    EXPECT_EQ(CKERR_INVALIDPARAMETER, sound->Recreate(TRUE));
+    EXPECT_EQ(state, sound->GetState());
+    context_->DestroyObject(sound);
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

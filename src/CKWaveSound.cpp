@@ -712,6 +712,9 @@ void CKWaveSound::SetDataToRead(int Size) {
 }
 
 CKERROR CKWaveSound::Recreate(CKBOOL Safe) {
+    if (!m_SoundManager)
+        return CKERR_INVALIDPARAMETER;
+
     SaveSettings();
 
     CKERROR err = TryRecreate();
