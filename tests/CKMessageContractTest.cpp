@@ -182,8 +182,9 @@ TEST_F(CKMessageContractTest, DuplicateMarkedParametersAreDeletedOnceAndLaterSta
 
 TEST_F(CKMessageContractTest, DestructionToleratesAParameterDeletedBeforeTheMessage) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter);
+    const CK_ID id = parameter->GetID();
     { CKMessage message(Context); message.AddParameter(parameter, TRUE); CKDestroyObject(parameter); }
-    SUCCEED();
+    EXPECT_EQ(nullptr, Context->GetObject(id));
 }
 
 TEST_F(CKMessageContractTest, RemovingAMarkedParameterDetachesItFromMessageCleanup) {

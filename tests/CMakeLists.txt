@@ -868,3 +868,7 @@ add_test(NAME CKObjectBehaviorDifferentialTest COMMAND ${CMAKE_COMMAND}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/CKObjectBehaviorDifferentialTest.cmake)
 
 add_ck2_test(CKObjectIdentityTest SOURCES CKObjectIdentityTest.cpp DEPENDENCIES CK2 VxMath)
+
+if (WIN32 AND MSVC)
+    target_sources(CKPathManagerRegressionTest PRIVATE LongPaths.manifest)
+endif ()

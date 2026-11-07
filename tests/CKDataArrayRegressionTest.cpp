@@ -29,10 +29,6 @@ protected:
 CKContext *CKRuntimeFixture::context_ = nullptr;
 
 TEST_F(CKRuntimeFixture, SetElementValueFromParameterClearsUpperBitsForObjectColumn) {
-    if (sizeof(CKUINTPTR) <= sizeof(CKDWORD)) {
-        GTEST_SKIP() << "64-bit specific regression";
-    }
-
     CKDataArray *array = static_cast<CKDataArray *>(
         context_->CreateObject(CKCID_DATAARRAY, "DataArrayRegression", CK_OBJECTCREATION_DYNAMIC));
     ASSERT_NE(nullptr, array);

@@ -421,15 +421,11 @@ TEST_F(CKStateChunkBitmapTest, LegacyShortPayloadIsConsumedWithoutReadingFiveByt
 }
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleDecodeProducesActualPixelsAndReleasesBothReaderAllocations) {
-#ifndef _WIN32
-    GTEST_SKIP() << "Handle pixel contract gate is Win32/x64; non-Windows surface implementation remains separate.";
-#else
     Probe.Palette = true; CKTestBitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.Int(Sentinel);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); wire.Load(chunk); BITMAP_HANDLE bitmap = chunk.ReadBitmap(); ASSERT_NE(nullptr, bitmap);
     VxImageDescEx desc; CKBYTE *pixels = VxConvertBitmap(bitmap, desc); ASSERT_NE(nullptr, pixels);
     EXPECT_EQ(0, std::memcmp(pixels, DecodedPixels, 16)); EXPECT_EQ(1, Probe.PixelReleases); EXPECT_EQ(1, Probe.PaletteReleases);
     EXPECT_EQ(1, Probe.Released); EXPECT_EQ(Sentinel, chunk.ReadInt()); delete[] pixels; VxDeleteBitmap(bitmap);
-#endif
 }
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleDecodeFailureReleasesReaderAndReturnsNull) {
@@ -438,15 +434,11 @@ TEST_F(CKStateChunkBitmapTest, BitmapHandleDecodeFailureReleasesReaderAndReturns
 }
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleWriterFallbackEncodesExactLegacyHeaderAndActualConvertedPixels) {
-#ifndef _WIN32
-    GTEST_SKIP() << "Handle pixel contract gate is Win32/x64.";
-#else
     VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels)); BITMAP_HANDLE bitmap = VxCreateBitmap(desc); ASSERT_NE(nullptr, bitmap);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteBitmap(bitmap, "zzz");
     CKTestBitmapWire wire; LegacyFrame(wire, "CKBMP"); wire.ExpectWritten(chunk);
     EXPECT_EQ(1, Probe.Saves); EXPECT_EQ(1, Probe.SaveReleases); EXPECT_EQ(1, Probe.Released);
     EXPECT_EQ(0, std::memcmp(Probe.SavedPixels, DecodedPixels, 16)); VxDeleteBitmap(bitmap);
-#endif
 }
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleNullWritesTwoZerosAndReleasesSelectedReader) {
@@ -455,14 +447,10 @@ TEST_F(CKStateChunkBitmapTest, BitmapHandleNullWritesTwoZerosAndReleasesSelected
 }
 
 TEST_F(CKStateChunkBitmapTest, BitmapHandleSaveFailureWritesTwoZerosAndReleasesReader) {
-#ifndef _WIN32
-    GTEST_SKIP() << "Handle pixel contract gate is Win32/x64.";
-#else
     Probe.FailSave = true; VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels));
     BITMAP_HANDLE bitmap = VxCreateBitmap(desc); ASSERT_NE(nullptr, bitmap);
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteBitmap(bitmap, "bmp");
     CKTestBitmapWire wire; wire.Int(0); wire.Int(0); wire.ExpectWritten(chunk); EXPECT_EQ(1, Probe.Released); VxDeleteBitmap(bitmap);
-#endif
 }
 
 // Independently authored Pillow grayscale JPEG; a constant 1x1 value 37.

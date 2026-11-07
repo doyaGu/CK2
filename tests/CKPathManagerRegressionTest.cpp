@@ -525,8 +525,7 @@ TEST_F(CKRuntimeFixture, ResolveFileNameFindsFileInLongCurrentDirectory) {
     CreateTestFile(filePath);
 
     const XString previousDirectory = VxGetCurrentDirectory();
-    if (!VxSetCurrentDirectory(longDir.CStr()))
-        GTEST_SKIP() << "Long current directory is not supported by this process";
+    ASSERT_TRUE(VxSetCurrentDirectory(longDir.CStr()));
 
     XString resolvedFile = fileName;
     EXPECT_EQ(CK_OK, pathManager->ResolveFileName(resolvedFile, DATA_PATH_IDX, -1));
