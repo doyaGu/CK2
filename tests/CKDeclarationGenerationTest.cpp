@@ -20,32 +20,31 @@ void Declarations(XObjectDeclarationArray *out) {
     decl->SetCreationFunction(Prototype);
     CKStoreDeclaration(out, decl);
 }
-class TestPluginManager : public CKPluginManager {
-public:
-    using CKPluginManager::InitializeBehaviors;
-};
+CKPluginInfo *PluginInfo(int) {
+    static CKPluginInfo info = {};
+    info.m_Type = CKPLUGIN_BEHAVIOR_DLL;
+    return &info;
+}
 
 TEST(CKDeclarationGenerationTest, RegistrationReplacementAndSameVersionReloadAreDistinct) {
     ASSERT_EQ(CK_OK, CKStartUp());
     {
-        TestPluginManager manager;
-        CKPluginEntry entry;
-        entry.m_BehaviorsInfo = new CKPluginEntryBehaviorsData;
-        entry.m_IndexInCategory = 0;
+        CKPluginManager *manager = CKGetPluginManager();
+        ASSERT_NE(nullptr, manager);
         auto *unregistered = CreateCKObjectDeclaration("Unregistered");
         EXPECT_EQ(0u, unregistered->GetGeneration());
         delete unregistered;
         version = 1;
-        manager.InitializeBehaviors(Declarations, entry);
+        ASSERT_EQ(CK_OK, manager->RegisterStaticPlugin("GenerationFirst", nullptr, PluginInfo, nullptr, Declarations));
         auto *first = CKGetObjectDeclarationFromGuid(guid);
         ASSERT_NE(nullptr, first);
         const CKQWORD generation = first->GetGeneration();
         EXPECT_NE(0u, generation);
         ASSERT_NE(nullptr, CKGetPrototypeFromGuid(guid));
-        manager.InitializeBehaviors(Declarations, entry);
+        ASSERT_EQ(CK_OK, manager->RegisterStaticPlugin("GenerationSameVersion", nullptr, PluginInfo, nullptr, Declarations));
         EXPECT_EQ(generation, CKGetObjectDeclarationFromGuid(guid)->GetGeneration());
         version = 2;
-        manager.InitializeBehaviors(Declarations, entry);
+        ASSERT_EQ(CK_OK, manager->RegisterStaticPlugin("GenerationReplacement", nullptr, PluginInfo, nullptr, Declarations));
         auto *replacement = CKGetObjectDeclarationFromGuid(guid);
         ASSERT_NE(nullptr, replacement);
         const CKQWORD replacementGeneration = replacement->GetGeneration();
@@ -56,7 +55,7 @@ TEST(CKDeclarationGenerationTest, RegistrationReplacementAndSameVersionReloadAre
         ASSERT_NE(nullptr, CKGetPrototypeFromGuid(guid));
         ASSERT_EQ(CK_OK, CKRemovePrototypeDeclaration(replacement));
         EXPECT_EQ(nullptr, CKGetObjectDeclarationFromGuid(guid));
-        manager.InitializeBehaviors(Declarations, entry);
+        ASSERT_EQ(CK_OK, manager->RegisterStaticPlugin("GenerationReload", nullptr, PluginInfo, nullptr, Declarations));
         auto *reloaded = CKGetObjectDeclarationFromGuid(guid);
         ASSERT_NE(nullptr, reloaded);
         EXPECT_NE(replacementGeneration, reloaded->GetGeneration());
