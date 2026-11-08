@@ -10,7 +10,7 @@
 #endif
 
 // This internal helper is not exported by the fixed SDK. Bridge only its
-// native 0x240089DF flag contract; messages and parameter objects remain real.
+// native 0x240089DF behavior flags; messages and parameters use actual CK2 objects.
 #ifndef CK2_TEST_STATIC_RUNTIME
 void CKParameter::MessageDeleteAfterUse(CKBOOL value) {
     if (value) ModifyObjectFlags(CK_PARAMETEROUT_DELETEAFTERUSE, 0);
@@ -40,7 +40,7 @@ public:
     }
 };
 
-class CKMessageContractTest : public ::testing::Test {
+class CKMessageDeliveryTest : public ::testing::Test {
 protected:
     CKContext *Context = nullptr;
     void SetUp() override {
@@ -55,7 +55,7 @@ protected:
     }
 };
 
-TEST_F(CKMessageContractTest, ConstructorInitializesNativeDefaultsAndKeepsTheBorrowedContext) {
+TEST_F(CKMessageDeliveryTest, ConstructorInitializesNativeDefaultsAndKeepsTheBorrowedContext) {
     MessageProbe message(Context);
     EXPECT_EQ(1, MessageProbe::References(message)); EXPECT_EQ(-1, message.GetMsgType());
     EXPECT_EQ(CK_MESSAGE_SINGLE, message.GetSendingType()); EXPECT_EQ(0u, message.SenderID());
@@ -63,21 +63,21 @@ TEST_F(CKMessageContractTest, ConstructorInitializesNativeDefaultsAndKeepsTheBor
     EXPECT_EQ(nullptr, message.GetSender()); EXPECT_EQ(nullptr, message.GetRecipient()); EXPECT_EQ(0, message.GetParameterCount());
 }
 
-TEST_F(CKMessageContractTest, LayoutMatchesNativeWin32AndPointerSizedX64Fields) {
+TEST_F(CKMessageDeliveryTest, LayoutMatchesNativeWin32AndPointerSizedX64Fields) {
     MessageProbe message(Context); const size_t x86[] = {0,4,8,12,16,20,20,24}, x64[] = {0,4,8,16,20,24,24,32};
     for (int i = 0; i < 8; ++i) EXPECT_EQ(sizeof(void *) == 4 ? x86[i] : x64[i], message.Offset(i));
     EXPECT_EQ(sizeof(void *) == 4 ? 28u : 40u, sizeof(CKMessage)); EXPECT_EQ(sizeof(void *), alignof(CKMessage));
     EXPECT_FALSE((bool)__is_polymorphic(CKMessage)); EXPECT_FALSE((bool)__is_base_of(CKObject, CKMessage));
 }
 
-TEST_F(CKMessageContractTest, MessageTypeAndSendingModeAreIndependentStoredValues) {
+TEST_F(CKMessageDeliveryTest, MessageTypeAndSendingModeAreIndependentStoredValues) {
     CKMessage message(Context); message.SetMsgType(123); message.SetSendingType(CK_MESSAGE_GROUP);
     EXPECT_EQ(123, message.GetMsgType()); EXPECT_EQ(CK_MESSAGE_GROUP, message.GetSendingType());
     message.SetSendingType(CK_MESSAGE_BROADCAST); EXPECT_EQ(123, message.GetMsgType());
     message.SetMsgType(-7); EXPECT_EQ(-7, message.GetMsgType()); EXPECT_EQ(CK_MESSAGE_BROADCAST, message.GetSendingType());
 }
 
-TEST_F(CKMessageContractTest, SenderAndRecipientResolveIdsWithoutOwningTheObjects) {
+TEST_F(CKMessageDeliveryTest, SenderAndRecipientResolveIdsWithoutOwningTheObjects) {
     CKBeObject *sender = Object("sender"), *recipient = Object("recipient"); ASSERT_NE(nullptr, sender); ASSERT_NE(nullptr, recipient);
     CK_ID senderID = sender->GetID(), recipientID = recipient->GetID();
     { MessageProbe message(Context); message.SetSender(sender); message.SetRecipient(recipient);
@@ -86,14 +86,14 @@ TEST_F(CKMessageContractTest, SenderAndRecipientResolveIdsWithoutOwningTheObject
     EXPECT_EQ(sender, Context->GetObject(senderID)); EXPECT_EQ(recipient, Context->GetObject(recipientID));
 }
 
-TEST_F(CKMessageContractTest, SenderAndRecipientCanBeClearedAndDeletedIdsResolveToNull) {
+TEST_F(CKMessageDeliveryTest, SenderAndRecipientCanBeClearedAndDeletedIdsResolveToNull) {
     CKBeObject *sender = Object("sender"), *recipient = Object("recipient"); ASSERT_NE(nullptr, sender); ASSERT_NE(nullptr, recipient);
     CKMessage message(Context); message.SetSender(sender); message.SetRecipient(recipient);
     CKDestroyObject(sender); CKDestroyObject(recipient); EXPECT_EQ(nullptr, message.GetSender()); EXPECT_EQ(nullptr, message.GetRecipient());
     message.SetSender(nullptr); message.SetRecipient(nullptr); EXPECT_EQ(nullptr, message.GetSender()); EXPECT_EQ(nullptr, message.GetRecipient());
 }
 
-TEST_F(CKMessageContractTest, BroadcastTypeAcceptsBeObjectHierarchyAndSharesTheRecipientUnion) {
+TEST_F(CKMessageDeliveryTest, BroadcastTypeAcceptsBeObjectHierarchyAndSharesTheRecipientUnion) {
     MessageProbe message(Context); message.SetSendingType(CK_MESSAGE_BROADCAST);
     EXPECT_EQ(CK_OK, message.SetBroadcastObjectType()); EXPECT_EQ(CKCID_BEOBJECT, message.BroadcastClass());
     EXPECT_EQ(static_cast<CK_ID>(CKCID_BEOBJECT), message.RecipientID());
@@ -102,26 +102,26 @@ TEST_F(CKMessageContractTest, BroadcastTypeAcceptsBeObjectHierarchyAndSharesTheR
     EXPECT_EQ(static_cast<CK_CLASSID>(recipient->GetID()), message.BroadcastClass());
 }
 
-TEST_F(CKMessageContractTest, InvalidBroadcastClassPreservesThePreviousUnionAndMode) {
+TEST_F(CKMessageDeliveryTest, InvalidBroadcastClassPreservesThePreviousUnionAndMode) {
     MessageProbe message(Context); ASSERT_EQ(CK_OK, message.SetBroadcastObjectType(CKCID_GROUP));
     EXPECT_EQ(CKERR_INVALIDPARAMETER, message.SetBroadcastObjectType(CKCID_PARAMETER));
     EXPECT_EQ(CKCID_GROUP, message.BroadcastClass()); EXPECT_EQ(CK_MESSAGE_SINGLE, message.GetSendingType());
 }
 
-TEST_F(CKMessageContractTest, NullParameterOperationsDoNotAllocateOrChangeMessageState) {
+TEST_F(CKMessageDeliveryTest, NullParameterOperationsDoNotAllocateOrChangeMessageState) {
     MessageProbe message(Context); EXPECT_EQ(CKERR_INVALIDPARAMETER, message.AddParameter(nullptr));
     EXPECT_EQ(CKERR_INVALIDPARAMETER, message.RemoveParameter(nullptr)); EXPECT_EQ(nullptr, message.Parameters());
     EXPECT_EQ(0, message.GetParameterCount()); EXPECT_EQ(nullptr, message.GetParameter(0));
 }
 
-TEST_F(CKMessageContractTest, ParametersKeepInsertionOrderAndPreserveDuplicateSlots) {
+TEST_F(CKMessageDeliveryTest, ParametersKeepInsertionOrderAndPreserveDuplicateSlots) {
     CKParameterLocal *a = Parameter("a"), *b = Parameter("b"); ASSERT_NE(nullptr, a); ASSERT_NE(nullptr, b);
     CKMessage message(Context); ASSERT_EQ(CK_OK, message.AddParameter(a)); ASSERT_EQ(CK_OK, message.AddParameter(b));
     ASSERT_EQ(CK_OK, message.AddParameter(a)); ASSERT_EQ(3, message.GetParameterCount());
     EXPECT_EQ(a, message.GetParameter(0)); EXPECT_EQ(b, message.GetParameter(1)); EXPECT_EQ(a, message.GetParameter(2));
 }
 
-TEST_F(CKMessageContractTest, AddParameterSetsOrClearsTheParametersGlobalDeleteAfterUseFlag) {
+TEST_F(CKMessageDeliveryTest, AddParameterSetsOrClearsTheParametersGlobalDeleteAfterUseFlag) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter);
     CKMessage message(Context); ASSERT_EQ(CK_OK, message.AddParameter(parameter, TRUE));
     EXPECT_NE(0u, parameter->GetObjectFlags() & CK_PARAMETEROUT_DELETEAFTERUSE);
@@ -129,20 +129,20 @@ TEST_F(CKMessageContractTest, AddParameterSetsOrClearsTheParametersGlobalDeleteA
     EXPECT_EQ(0u, parameter->GetObjectFlags() & CK_PARAMETEROUT_DELETEAFTERUSE); EXPECT_EQ(2, message.GetParameterCount());
 }
 
-TEST_F(CKMessageContractTest, RemoveParameterRemovesOnlyTheFirstMatchingDuplicate) {
+TEST_F(CKMessageDeliveryTest, RemoveParameterRemovesOnlyTheFirstMatchingDuplicate) {
     CKParameterLocal *a = Parameter("a"), *b = Parameter("b"); ASSERT_NE(nullptr, a); ASSERT_NE(nullptr, b);
     CKMessage message(Context); message.AddParameter(a); message.AddParameter(b); message.AddParameter(a);
     EXPECT_EQ(CK_OK, message.RemoveParameter(a)); ASSERT_EQ(2, message.GetParameterCount());
     EXPECT_EQ(b, message.GetParameter(0)); EXPECT_EQ(a, message.GetParameter(1));
 }
 
-TEST_F(CKMessageContractTest, RemovingAnAbsentParameterFromANonemptyListStillSucceeds) {
+TEST_F(CKMessageDeliveryTest, RemovingAnAbsentParameterFromANonemptyListStillSucceeds) {
     CKParameterLocal *a = Parameter("a"), *b = Parameter("b"); ASSERT_NE(nullptr, a); ASSERT_NE(nullptr, b);
     CKMessage message(Context); EXPECT_EQ(CKERR_INVALIDPARAMETER, message.RemoveParameter(a));
     message.AddParameter(a); EXPECT_EQ(CK_OK, message.RemoveParameter(b)); ASSERT_EQ(1, message.GetParameterCount()); EXPECT_EQ(a, message.GetParameter(0));
 }
 
-TEST_F(CKMessageContractTest, RemovingTheLastParameterReleasesTheListButDoesNotDestroyTheParameter) {
+TEST_F(CKMessageDeliveryTest, RemovingTheLastParameterReleasesTheListButDoesNotDestroyTheParameter) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     MessageProbe message(Context); message.AddParameter(parameter, TRUE);
     EXPECT_EQ(CK_OK, message.RemoveParameter(parameter)); EXPECT_EQ(0, message.GetParameterCount()); EXPECT_EQ(nullptr, message.Parameters());
@@ -150,50 +150,50 @@ TEST_F(CKMessageContractTest, RemovingTheLastParameterReleasesTheListButDoesNotD
     EXPECT_EQ(CKERR_INVALIDPARAMETER, message.RemoveParameter(parameter));
 }
 
-TEST_F(CKMessageContractTest, ParameterLookupRejectsInvalidIndexesAndStaleIdsWithoutChangingTheCount) {
+TEST_F(CKMessageDeliveryTest, ParameterLookupRejectsInvalidIndexesAndStaleIdsWithoutChangingTheCount) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CKMessage message(Context); message.AddParameter(parameter);
     EXPECT_EQ(nullptr, message.GetParameter(-1)); EXPECT_EQ(nullptr, message.GetParameter(1));
     CKDestroyObject(parameter); EXPECT_EQ(nullptr, message.GetParameter(0)); EXPECT_EQ(1, message.GetParameterCount());
 }
 
-TEST_F(CKMessageContractTest, ParameterLookupDoesNotReturnANonparameterStoredUnderAnId) {
+TEST_F(CKMessageDeliveryTest, ParameterLookupDoesNotReturnANonparameterStoredUnderAnId) {
     CKBeObject *object = Object(); ASSERT_NE(nullptr, object); MessageProbe message(Context); message.AppendRaw(object->GetID());
     EXPECT_EQ(nullptr, message.GetParameter(0)); EXPECT_EQ(1, message.GetParameterCount());
 }
 
-TEST_F(CKMessageContractTest, DestructionPreservesUnmarkedParameters) {
+TEST_F(CKMessageDeliveryTest, DestructionPreservesUnmarkedParameters) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     { CKMessage message(Context); ASSERT_EQ(CK_OK, message.AddParameter(parameter, FALSE)); }
     EXPECT_EQ(parameter, Context->GetObject(id));
 }
 
-TEST_F(CKMessageContractTest, DestructionDeletesMarkedParametersButKeepsOtherEntries) {
+TEST_F(CKMessageDeliveryTest, DestructionDeletesMarkedParametersButKeepsOtherEntries) {
     CKParameterLocal *a = Parameter("temporary"), *b = Parameter("retained"); ASSERT_NE(nullptr, a); ASSERT_NE(nullptr, b);
     CK_ID aID = a->GetID(), bID = b->GetID();
     { CKMessage message(Context); message.AddParameter(a, TRUE); message.AddParameter(b, FALSE); }
     EXPECT_EQ(nullptr, Context->GetObject(aID)); EXPECT_EQ(b, Context->GetObject(bID));
 }
 
-TEST_F(CKMessageContractTest, DuplicateMarkedParametersAreDeletedOnceAndLaterStaleSlotsAreSkipped) {
+TEST_F(CKMessageDeliveryTest, DuplicateMarkedParametersAreDeletedOnceAndLaterStaleSlotsAreSkipped) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     { CKMessage message(Context); message.AddParameter(parameter, TRUE); message.AddParameter(parameter, TRUE); }
     EXPECT_EQ(nullptr, Context->GetObject(id));
 }
 
-TEST_F(CKMessageContractTest, DestructionToleratesAParameterDeletedBeforeTheMessage) {
+TEST_F(CKMessageDeliveryTest, DestructionToleratesAParameterDeletedBeforeTheMessage) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter);
     const CK_ID id = parameter->GetID();
     { CKMessage message(Context); message.AddParameter(parameter, TRUE); CKDestroyObject(parameter); }
     EXPECT_EQ(nullptr, Context->GetObject(id));
 }
 
-TEST_F(CKMessageContractTest, RemovingAMarkedParameterDetachesItFromMessageCleanup) {
+TEST_F(CKMessageDeliveryTest, RemovingAMarkedParameterDetachesItFromMessageCleanup) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     { CKMessage message(Context); message.AddParameter(parameter, TRUE); message.RemoveParameter(parameter); }
     EXPECT_EQ(parameter, Context->GetObject(id));
 }
 
-TEST_F(CKMessageContractTest, DeleteAfterUsePolicyIsReadFromTheLiveParameterAtDestruction) {
+TEST_F(CKMessageDeliveryTest, DeleteAfterUsePolicyIsReadFromTheLiveParameterAtDestruction) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     { CKMessage message(Context); message.AddParameter(parameter, TRUE); parameter->MessageDeleteAfterUse(FALSE); }
     EXPECT_EQ(parameter, Context->GetObject(id));
@@ -201,7 +201,7 @@ TEST_F(CKMessageContractTest, DeleteAfterUsePolicyIsReadFromTheLiveParameterAtDe
     EXPECT_EQ(nullptr, Context->GetObject(id));
 }
 
-TEST_F(CKMessageContractTest, TwoMessagesSharingAMarkedParameterSkipTheAlreadyDestroyedObject) {
+TEST_F(CKMessageDeliveryTest, TwoMessagesSharingAMarkedParameterSkipTheAlreadyDestroyedObject) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     CKMessage *first = new CKMessage(Context), *second = new CKMessage(Context);
     first->AddParameter(parameter, TRUE); second->AddParameter(parameter, TRUE);
@@ -209,7 +209,7 @@ TEST_F(CKMessageContractTest, TwoMessagesSharingAMarkedParameterSkipTheAlreadyDe
     EXPECT_EQ(0, second->Release());
 }
 
-TEST_F(CKMessageContractTest, ReferenceCountingDefersParameterCleanupUntilTheFinalRelease) {
+TEST_F(CKMessageDeliveryTest, ReferenceCountingDefersParameterCleanupUntilTheFinalRelease) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     CKMessage *message = new CKMessage(Context); message->AddParameter(parameter, TRUE);
     EXPECT_EQ(2, message->AddRef()); EXPECT_EQ(3, message->AddRef());
@@ -218,14 +218,14 @@ TEST_F(CKMessageContractTest, ReferenceCountingDefersParameterCleanupUntilTheFin
     EXPECT_EQ(0, message->Release()); EXPECT_EQ(nullptr, Context->GetObject(id));
 }
 
-TEST_F(CKMessageContractTest, QueueingAddsAManagerReferenceAndProcessingReleasesOnlyThatReference) {
+TEST_F(CKMessageDeliveryTest, QueueingAddsAManagerReferenceAndProcessingReleasesOnlyThatReference) {
     CKMessageManager *manager = Context->GetMessageManager(); ASSERT_NE(nullptr, manager);
     CKMessage *message = new CKMessage(Context); message->SetMsgType(0);
     ASSERT_EQ(CK_OK, manager->SendMessage(message)); EXPECT_EQ(2, MessageProbe::References(*message));
     ASSERT_EQ(CK_OK, manager->PostProcess()); EXPECT_EQ(1, MessageProbe::References(*message)); EXPECT_EQ(0, message->Release());
 }
 
-TEST_F(CKMessageContractTest, FailedQueueingLeavesTheCallersReferenceAndParametersIntact) {
+TEST_F(CKMessageDeliveryTest, FailedQueueingLeavesTheCallersReferenceAndParametersIntact) {
     CKParameterLocal *parameter = Parameter(); ASSERT_NE(nullptr, parameter); CK_ID id = parameter->GetID();
     CKMessage *message = new CKMessage(Context); ASSERT_EQ(CK_OK, message->AddParameter(parameter, TRUE));
     EXPECT_EQ(-1, message->GetMsgType());
@@ -235,7 +235,7 @@ TEST_F(CKMessageContractTest, FailedQueueingLeavesTheCallersReferenceAndParamete
     EXPECT_EQ(nullptr, Context->GetObject(id));
 }
 
-TEST_F(CKMessageContractTest, ADetachedEmptyMessageCanBeConstructedInspectedAndReleased) {
+TEST_F(CKMessageDeliveryTest, ADetachedEmptyMessageCanBeConstructedInspectedAndReleased) {
     CKMessage *message = new CKMessage(nullptr); EXPECT_EQ(0, message->GetParameterCount()); EXPECT_EQ(nullptr, message->GetParameter(0));
     EXPECT_EQ(2, message->AddRef()); EXPECT_EQ(1, message->Release()); EXPECT_EQ(0, message->Release());
 }

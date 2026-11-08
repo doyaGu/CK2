@@ -14,43 +14,43 @@ static CKFilePluginDependencies MakeDependencies(CKGUID first = GuidA, CKGUID se
     return result;
 }
 
-// This modern SDK adapter has no original 2.1 operator body. Its value contract
+// This modern SDK adapter has no original 2.1 equality operator. Comparison
 // follows the category, ordered GUIDs and the per-GUID availability exposed by
 // GetMissingPlugins; bit storage beyond the GUID list is allocation state.
-TEST(CKFileDependencyContractTest, ValueComparisonDistinguishesSameSizedGuidLists) {
+TEST(CKFileDependencyComparisonTest, ValueComparisonDistinguishesSameSizedGuidLists) {
     CKFilePluginDependencies first = MakeDependencies(), second = MakeDependencies(MissingGuid);
     EXPECT_FALSE(first == second); EXPECT_FALSE(second == first);
 }
 
-TEST(CKFileDependencyContractTest, ValueComparisonKeepsGuidOrderAndDuplicatePositions) {
+TEST(CKFileDependencyComparisonTest, ValueComparisonKeepsGuidOrderAndDuplicatePositions) {
     CKFilePluginDependencies ordered = MakeDependencies(), reversed = MakeDependencies(GuidB, GuidA);
     CKFilePluginDependencies repeated = MakeDependencies(GuidA, GuidA);
     EXPECT_FALSE(ordered == reversed); EXPECT_FALSE(ordered == repeated);
 }
 
-TEST(CKFileDependencyContractTest, ValueComparisonDistinguishesAvailabilityForTheSameGuid) {
+TEST(CKFileDependencyComparisonTest, ValueComparisonDistinguishesAvailabilityForTheSameGuid) {
     CKFilePluginDependencies available = MakeDependencies(), missing(available); missing.ValidGuids.Unset(0);
     EXPECT_FALSE(available == missing); EXPECT_FALSE(missing == available);
 }
 
-TEST(CKFileDependencyContractTest, ValueComparisonScopesIdenticalGuidsByCategory) {
+TEST(CKFileDependencyComparisonTest, ValueComparisonScopesIdenticalGuidsByCategory) {
     CKFilePluginDependencies managers = MakeDependencies(), readers(managers); readers.m_PluginCategory = CKPLUGIN_BITMAP_READER;
     EXPECT_FALSE(managers == readers);
 }
 
-TEST(CKFileDependencyContractTest, SpareValidityCapacityAndBitsDoNotChangeDependencyValue) {
+TEST(CKFileDependencyComparisonTest, SpareValidityCapacityAndBitsDoNotChangeDependencyValue) {
     CKFilePluginDependencies first = MakeDependencies(), second(first);
     second.ValidGuids.Set(63); ASSERT_NE(first.ValidGuids.Size(), second.ValidGuids.Size());
     EXPECT_TRUE(first == second); EXPECT_TRUE(second == first);
     second.ValidGuids.Unset(63); EXPECT_TRUE(first == second);
 }
 
-TEST(CKFileDependencyContractTest, EmptyDependencyValuesIgnoreValidityStorageCapacity) {
+TEST(CKFileDependencyComparisonTest, EmptyDependencyValuesIgnoreValidityStorageCapacity) {
     CKFilePluginDependencies first, second; first.m_PluginCategory = second.m_PluginCategory = CKPLUGIN_MANAGER_DLL;
     second.ValidGuids.Set(63); EXPECT_TRUE(first == second); EXPECT_TRUE(second == first);
 }
 
-TEST(CKFileDependencyContractTest, EqualDependencyCopiesRemainEqualAfterIndependentStorageGrowth) {
+TEST(CKFileDependencyComparisonTest, EqualDependencyCopiesRemainEqualAfterIndependentStorageGrowth) {
     CKFilePluginDependencies original = MakeDependencies(), copy(original);
     EXPECT_TRUE(original == original); EXPECT_TRUE(original == copy);
     for (int i = 0; i < 40; ++i) {
@@ -90,20 +90,20 @@ static CKPluginInfo Plugins[2];
 static int PluginCount() { return 2; }
 static CKPluginInfo *PluginInfo(int index) { return index >= 0 && index < 2 ? &Plugins[index] : nullptr; }
 
-class CKFileDependencyApiContractTest : public ::testing::Test {
+class CKFilePluginAvailabilityTest : public ::testing::Test {
 protected:
     CKContext *Context = nullptr;
     static void SetUpTestSuite() {
         ASSERT_EQ(CK_OK, CKStartUp()); Plugins[0].m_GUID = GuidA; Plugins[1].m_GUID = GuidB;
         Plugins[0].m_Type = Plugins[1].m_Type = CKPLUGIN_MANAGER_DLL;
-        ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin("Pass38 dependency contract", PluginCount, PluginInfo));
+        ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin("Plugin availability test registration", PluginCount, PluginInfo));
     }
     static void TearDownTestSuite() { CKShutdown(); }
     void SetUp() override { ASSERT_EQ(CK_OK, CKCreateContext(&Context, nullptr, 0, 0)); }
     void TearDown() override { if (Context) CKCloseContext(Context); }
 };
 
-TEST_F(CKFileDependencyApiContractTest, LoadedGroupsPreserveCategoryOrderGuidDuplicatesAndPerPositionValidity) {
+TEST_F(CKFilePluginAvailabilityTest, LoadedGroupsPreserveCategoryOrderGuidDuplicatesAndPerPositionValidity) {
     const CKGUID managers[] = {GuidA, MissingGuid, GuidA, GuidB}, readers[] = {GuidA}, reversed[] = {GuidB, GuidA};
     CKTestDependencyFrame wire; wire.Group(CKPLUGIN_MANAGER_DLL, managers, 4); wire.Group(CKPLUGIN_BITMAP_READER, readers, 1);
     wire.Group(CKPLUGIN_MANAGER_DLL, reversed, 2); wire.Finish(); CKFile file(Context);
@@ -117,7 +117,7 @@ TEST_F(CKFileDependencyApiContractTest, LoadedGroupsPreserveCategoryOrderGuidDup
     EXPECT_TRUE((*groups)[2].ValidGuids.IsSet(0)); EXPECT_TRUE((*groups)[2].ValidGuids.IsSet(1));
 }
 
-TEST_F(CKFileDependencyApiContractTest, LoadedSameSizedDependencyGroupsRemainDifferentValues) {
+TEST_F(CKFilePluginAvailabilityTest, LoadedSameSizedDependencyGroupsRemainDifferentValues) {
     const CKGUID first[] = {GuidA, MissingGuid}, second[] = {GuidB, MissingGuid}; CKTestDependencyFrame wire;
     wire.Group(CKPLUGIN_MANAGER_DLL, first, 2); wire.Group(CKPLUGIN_MANAGER_DLL, second, 2); wire.Finish(); CKFile file(Context);
     ASSERT_EQ(CKERR_PLUGINSMISSING, file.OpenMemory(wire.Bytes, wire.Size, CK_LOAD_CHECKDEPENDENCIES));
@@ -125,7 +125,7 @@ TEST_F(CKFileDependencyApiContractTest, LoadedSameSizedDependencyGroupsRemainDif
     EXPECT_FALSE((*groups)[0] == (*groups)[1]);
 }
 
-TEST_F(CKFileDependencyApiContractTest, SameWireWithExplicitCheckChangesAvailabilityAndDependencyValue) {
+TEST_F(CKFilePluginAvailabilityTest, SameWireWithExplicitCheckChangesAvailabilityAndDependencyValue) {
     const CKGUID guids[] = {GuidA, MissingGuid}; CKTestDependencyFrame wire; wire.Group(CKPLUGIN_MANAGER_DLL, guids, 2); wire.Finish();
     CKFile unchecked(Context), checked(Context); ASSERT_EQ(CK_OK, unchecked.OpenMemory(wire.Bytes, wire.Size));
     ASSERT_EQ(CKERR_PLUGINSMISSING, checked.OpenMemory(wire.Bytes, wire.Size, CK_LOAD_CHECKDEPENDENCIES));
@@ -133,7 +133,7 @@ TEST_F(CKFileDependencyApiContractTest, SameWireWithExplicitCheckChangesAvailabi
     EXPECT_FALSE(first.ValidGuids.IsSet(0)); EXPECT_TRUE(second.ValidGuids.IsSet(0)); EXPECT_FALSE(first == second);
 }
 
-TEST_F(CKFileDependencyApiContractTest, GuidCountAboveBitmapCapacityTreatsUnallocatedBitsAsUnavailable) {
+TEST_F(CKFilePluginAvailabilityTest, GuidCountAboveBitmapCapacityTreatsUnallocatedBitsAsUnavailable) {
     CKGUID guids[40]; for (int i = 0; i < 40; ++i) guids[i] = CKGUID(0x38000001, i + 1);
     CKTestDependencyFrame wire; wire.Group(CKPLUGIN_MANAGER_DLL, guids, 40); wire.Finish(); CKFile file(Context);
     ASSERT_EQ(CKERR_PLUGINSMISSING, file.OpenMemory(wire.Bytes, wire.Size, CK_LOAD_CHECKDEPENDENCIES));
@@ -142,7 +142,7 @@ TEST_F(CKFileDependencyApiContractTest, GuidCountAboveBitmapCapacityTreatsUnallo
     EXPECT_TRUE(loaded == copy); copy.ValidGuids.Set(35); EXPECT_FALSE(loaded == copy);
 }
 
-TEST_F(CKFileDependencyApiContractTest, ProducerUsesPluginRegistrationOrderAndCollapsesRepeatedManagerNeeds) {
+TEST_F(CKFilePluginAvailabilityTest, ProducerUsesPluginRegistrationOrderAndCollapsesRepeatedManagerNeeds) {
     CKFile file(Context); file.m_IndexByClassId.Resize(128); file.m_ManagersData.Resize(3);
     for (int i = 0; i < 3; ++i) { file.m_ManagersData[i].data = nullptr; file.m_ManagersData[i].Manager = i == 1 ? GuidA : GuidB; }
     CKGetPluginManager()->ComputeDependenciesList(&file); XClassArray<CKFilePluginDependencies> *groups = file.GetMissingPlugins();
@@ -161,7 +161,7 @@ public:
     }
 };
 
-TEST_F(CKFileDependencyApiContractTest, SaveProducerWritesCategoryOrderedGuidsAndReaderDerivesAvailability) {
+TEST_F(CKFilePluginAvailabilityTest, SaveProducerWritesCategoryOrderedGuidsAndReaderDerivesAvailability) {
     CKTestDependencySaveManager *second = new CKTestDependencySaveManager(Context, GuidB);
     new CKTestDependencySaveManager(Context, GuidA); Context->SetFileWriteMode(CKFILE_UNCOMPRESSED);
     char temporaryName[100]; std::snprintf(temporaryName, sizeof(temporaryName), "ckfile-dependency-contract38-%p.cmo", static_cast<void *>(this));

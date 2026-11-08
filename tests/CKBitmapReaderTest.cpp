@@ -64,7 +64,7 @@ static void ReaderSetSavePixels(CKBitmapProperties &properties, CKBYTE *pixels) 
     properties.m_Format.Image = nullptr; properties.m_Data = pixels;
 }
 
-TEST(CKBitmapReaderContractTest, AbstractSingleBaseLayoutAndMethodSignaturesArePreserved) {
+TEST(CKBitmapReaderTest, AbstractSingleBaseLayoutAndMethodSignaturesArePreserved) {
     EXPECT_TRUE((std::is_base_of<CKDataReader, CKBitmapReader>::value));
     EXPECT_TRUE(std::is_abstract<CKBitmapReader>::value);
     EXPECT_TRUE(std::has_virtual_destructor<CKBitmapReader>::value);
@@ -80,14 +80,14 @@ TEST(CKBitmapReaderContractTest, AbstractSingleBaseLayoutAndMethodSignaturesAreP
     EXPECT_EQ(owner.Reader, dynamic_cast<CKBitmapReader *>(base));
 }
 
-TEST(CKBitmapReaderContractTest, BaseFlagsAdvertiseFileAndMemoryLoadAndSaveWithoutStreaming) {
+TEST(CKBitmapReaderTest, BaseFlagsAdvertiseFileAndMemoryLoadAndSaveWithoutStreaming) {
     BitmapReaderOwner owner(0);
     ASSERT_NE(nullptr, owner.Reader);
     EXPECT_EQ(15, owner.Reader->CKBitmapReader::GetFlags());
     EXPECT_EQ(0, owner.Reader->CKBitmapReader::GetFlags() & (CK_DATAREADER_STREAMFILE | CK_DATAREADER_STREAMURL));
 }
 
-TEST(CKBitmapReaderContractTest, BaseAlphaPolicyDoesNotInspectOrClaimOwnershipOfProperties) {
+TEST(CKBitmapReaderTest, BaseAlphaPolicyDoesNotInspectOrClaimOwnershipOfProperties) {
     BitmapReaderOwner owner(0);
     ASSERT_NE(nullptr, owner.Reader);
     BmpBitmapProperties properties;
@@ -98,7 +98,7 @@ TEST(CKBitmapReaderContractTest, BaseAlphaPolicyDoesNotInspectOrClaimOwnershipOf
     EXPECT_EQ(32u, properties.m_BitDepth);
 }
 
-TEST(CKBitmapReaderContractTest, ProductionReadersAdvertiseTheirImplementedCapabilities) {
+TEST(CKBitmapReaderTest, ProductionReadersAdvertiseTheirImplementedCapabilities) {
     const int expected[] = {15, 15, 5};
     for (int i = 0; i < 3; ++i) {
         BitmapReaderOwner owner(i);
@@ -109,7 +109,7 @@ TEST(CKBitmapReaderContractTest, ProductionReadersAdvertiseTheirImplementedCapab
     }
 }
 
-TEST(CKBitmapReaderContractTest, DefaultPropertiesAreBorrowedStableBlocksWithReaderIdentity) {
+TEST(CKBitmapReaderTest, DefaultPropertiesAreBorrowedStableBlocksWithReaderIdentity) {
     for (int i = 0; i < 2; ++i) {
         BitmapReaderOwner owner(i);
         ASSERT_NE(nullptr, owner.Reader);
@@ -124,7 +124,7 @@ TEST(CKBitmapReaderContractTest, DefaultPropertiesAreBorrowedStableBlocksWithRea
     }
 }
 
-TEST(CKBitmapReaderContractTest, ExtendedSaveOptionsReachTheConcreteReaderThroughTheBaseInterface) {
+TEST(CKBitmapReaderTest, ExtendedSaveOptionsReachTheConcreteReaderThroughTheBaseInterface) {
     BitmapReaderOwner bmp(0), tga(1);
     ASSERT_NE(nullptr, bmp.Reader); ASSERT_NE(nullptr, tga.Reader);
     BmpBitmapProperties bmpOptions; bmpOptions.m_BitDepth = 32;
@@ -142,7 +142,7 @@ TEST(CKBitmapReaderContractTest, ExtendedSaveOptionsReachTheConcreteReaderThroug
     EXPECT_EQ(TRUE, tga.Reader->IsAlphaSaved(properties));
 }
 
-TEST(CKBitmapReaderContractTest, BmpMemoryReadReturnsZeroAndDecodesIndependentKnownBytes) {
+TEST(CKBitmapReaderTest, BmpMemoryReadReturnsZeroAndDecodesIndependentKnownBytes) {
     CKBYTE bytes[62]; ReaderMakeBmp(bytes);
     BitmapReaderOwner owner(0); ASSERT_NE(nullptr, owner.Reader);
     CKBitmapProperties *properties = nullptr;
@@ -150,7 +150,7 @@ TEST(CKBitmapReaderContractTest, BmpMemoryReadReturnsZeroAndDecodesIndependentKn
     ReaderExpectPixels(properties);
 }
 
-TEST(CKBitmapReaderContractTest, TgaMemoryReadReturnsZeroAndDecodesIndependentKnownBytes) {
+TEST(CKBitmapReaderTest, TgaMemoryReadReturnsZeroAndDecodesIndependentKnownBytes) {
     CKBYTE bytes[24] = {};
     bytes[2] = 2; bytes[12] = 2; bytes[14] = 1; bytes[16] = 24; bytes[17] = 0x20;
     const CKBYTE pixels[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
@@ -161,7 +161,7 @@ TEST(CKBitmapReaderContractTest, TgaMemoryReadReturnsZeroAndDecodesIndependentKn
     ReaderExpectPixels(properties);
 }
 
-TEST(CKBitmapReaderContractTest, PcxMemoryReadUsesItsLoadOnlyInterfaceAndKnownPlanarBytes) {
+TEST(CKBitmapReaderTest, PcxMemoryReadUsesItsLoadOnlyInterfaceAndKnownPlanarBytes) {
     CKBYTE bytes[134] = {};
     bytes[0] = 10; bytes[1] = 5; bytes[2] = 1; bytes[3] = 8; bytes[8] = 1;
     bytes[65] = 3; bytes[66] = 2; bytes[68] = 1;
@@ -173,7 +173,7 @@ TEST(CKBitmapReaderContractTest, PcxMemoryReadUsesItsLoadOnlyInterfaceAndKnownPl
     ReaderExpectPixels(properties);
 }
 
-TEST(CKBitmapReaderContractTest, FileReadUsesTheSameZeroSuccessConventionAndDecodedPixelContract) {
+TEST(CKBitmapReaderTest, FileReadReturnsZeroAndPublishesDecodedPixels) {
     CKBYTE bytes[62]; ReaderMakeBmp(bytes);
     BitmapReaderTestFile file;
     FILE *stream = std::fopen(file.Path.string().c_str(), "wb");
@@ -186,7 +186,7 @@ TEST(CKBitmapReaderContractTest, FileReadUsesTheSameZeroSuccessConventionAndDeco
     ReaderExpectPixels(properties);
 }
 
-TEST(CKBitmapReaderContractTest, TruncatedInputReturnsAnErrorAndTheReaderCanStillReadAValidImage) {
+TEST(CKBitmapReaderTest, TruncatedInputReturnsAnErrorAndTheReaderCanStillReadAValidImage) {
     CKBYTE invalid[3] = {'B', 'M', 0}, bytes[62]; ReaderMakeBmp(bytes);
     BitmapReaderOwner owner(0); ASSERT_NE(nullptr, owner.Reader);
     CKBitmapProperties *properties = nullptr;
@@ -195,7 +195,7 @@ TEST(CKBitmapReaderContractTest, TruncatedInputReturnsAnErrorAndTheReaderCanStil
     ReaderExpectPixels(properties);
 }
 
-TEST(CKBitmapReaderContractTest, UnsupportedAsynchronousReadDoesNotReportFalseSuccess) {
+TEST(CKBitmapReaderTest, UnsupportedAsynchronousReadDoesNotReportFalseSuccess) {
     for (int i = 0; i < 3; ++i) {
         BitmapReaderOwner owner(i); ASSERT_NE(nullptr, owner.Reader);
         CKBitmapProperties *properties = nullptr;
@@ -204,7 +204,7 @@ TEST(CKBitmapReaderContractTest, UnsupportedAsynchronousReadDoesNotReportFalseSu
     }
 }
 
-TEST(CKBitmapReaderContractTest, SaveMemoryReturnsByteCountAndIndependentBmpFileBytes) {
+TEST(CKBitmapReaderTest, SaveMemoryReturnsByteCountAndIndependentBmpFileBytes) {
     CKBYTE pixels[] = {0x11, 0x22, 0x33, 0xff, 0x44, 0x55, 0x66, 0xff};
     BmpBitmapProperties properties; ReaderSetSavePixels(properties, pixels);
     BitmapReaderOwner owner(0); ASSERT_NE(nullptr, owner.Reader);
@@ -222,7 +222,7 @@ TEST(CKBitmapReaderContractTest, SaveMemoryReturnsByteCountAndIndependentBmpFile
     EXPECT_EQ(0x11, pixels[0]); EXPECT_EQ(pixels, properties.m_Data);
 }
 
-TEST(CKBitmapReaderContractTest, SaveFileReturnsBytesWrittenAndPreservesBorrowedSourcePixels) {
+TEST(CKBitmapReaderTest, SaveFileReturnsBytesWrittenAndPreservesBorrowedSourcePixels) {
     CKBYTE pixels[] = {0x11, 0x22, 0x33, 0xff, 0x44, 0x55, 0x66, 0xff};
     BmpBitmapProperties properties; ReaderSetSavePixels(properties, pixels);
     BitmapReaderOwner owner(0); ASSERT_NE(nullptr, owner.Reader);
@@ -239,7 +239,7 @@ TEST(CKBitmapReaderContractTest, SaveFileReturnsBytesWrittenAndPreservesBorrowed
     EXPECT_EQ(pixels, properties.m_Data); EXPECT_EQ(0x66, pixels[6]);
 }
 
-TEST(CKBitmapReaderContractTest, PcxUnsupportedSaveReturnsZeroAndNoEncodedBuffer) {
+TEST(CKBitmapReaderTest, PcxUnsupportedSaveReturnsZeroAndNoEncodedBuffer) {
     BitmapReaderOwner owner(2); ASSERT_NE(nullptr, owner.Reader);
     CKBitmapProperties properties;
     void *memory = &properties;
@@ -250,7 +250,7 @@ TEST(CKBitmapReaderContractTest, PcxUnsupportedSaveReturnsZeroAndNoEncodedBuffer
     EXPECT_FALSE(std::filesystem::exists(file.Path));
 }
 
-TEST(CKBitmapReaderContractTest, DecodedStorageIsReleasedByItsReaderBeforeReleasingTheReaderItself) {
+TEST(CKBitmapReaderTest, DecodedStorageIsReleasedByItsReaderBeforeReleasingTheReaderItself) {
     CKBYTE bytes[62]; ReaderMakeBmp(bytes);
     BitmapReaderOwner owner(0); ASSERT_NE(nullptr, owner.Reader);
     CKBitmapProperties *properties = nullptr;

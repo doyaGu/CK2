@@ -283,7 +283,7 @@ TEST(CKStateChunkLifecycleTest, ParserClearResetsAllThreeIndependentCursorFields
     EXPECT_EQ(0, parser.CurrentPos); EXPECT_EQ(0, parser.PrevIdentifierPos); EXPECT_EQ(0, parser.DataSize);
 }
 
-TEST(CKStateChunkLifecycleTest, CompactPreservesEmptyListAllocationContract) {
+TEST(CKStateChunkLifecycleTest, CompactPreservesEmptyListAllocations) {
     IntListStruct list;
     list.Compact();
     EXPECT_EQ(0, list.Size); EXPECT_EQ(0, list.AllocatedSize); EXPECT_EQ(nullptr, list.Data);

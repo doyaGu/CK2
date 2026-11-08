@@ -128,7 +128,7 @@ protected:
         PluginInfo.m_GUID = KnownGuid;
         PluginInfo.m_Type = CKPLUGIN_MANAGER_DLL;
         ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin(
-            "Pass37 dependency contract", PluginCount, PluginDetails));
+            "File plugin dependency test registration", PluginCount, PluginDetails));
     }
     static void TearDownTestSuite() { CKShutdown(); }
     void SetUp() override { ASSERT_EQ(CK_OK, CKCreateContext(&Context, nullptr, 0, 0)); }

@@ -68,7 +68,7 @@ static void PcxDecodeRejectPreservingImage(CKBYTE *bytes, int size) {
     }
 }
 
-TEST(CKPcxDecodeContractTest, RawRgbHonorsPlanePaddingAndNonzeroOrigin) {
+TEST(CKPcxDecodeTest, RawRgbHonorsPlanePaddingAndNonzeroOrigin) {
     CKBYTE bytes[152]; PcxDecodeHeader(bytes, 3, 2, 8, 3, 4, 0);
     PcxDecodeWord(bytes, 4, 10); PcxDecodeWord(bytes, 8, 12);
     PcxDecodeWord(bytes, 6, 20); PcxDecodeWord(bytes, 10, 21);
@@ -82,7 +82,7 @@ TEST(CKPcxDecodeContractTest, RawRgbHonorsPlanePaddingAndNonzeroOrigin) {
     PcxDecodeExpect(properties, 3, 2, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, RleEscapedHighValuesProduceIndependentRgbPixels) {
+TEST(CKPcxDecodeTest, RleEscapedHighValuesProduceIndependentRgbPixels) {
     CKBYTE bytes[134]; PcxDecodeHeader(bytes, 2, 1, 8, 3, 2);
     const CKBYTE encoded[] = {0xc2, 0xc1, 0xc2, 0xff, 0xc2, 0xc0};
     memcpy(bytes + 128, encoded, sizeof(encoded));
@@ -92,7 +92,7 @@ TEST(CKPcxDecodeContractTest, RleEscapedHighValuesProduceIndependentRgbPixels) {
     PcxDecodeExpect(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, ARunMayContinueAcrossColorPlanes) {
+TEST(CKPcxDecodeTest, ARunMayContinueAcrossColorPlanes) {
     CKBYTE bytes[130]; PcxDecodeHeader(bytes, 2, 1, 8, 3, 2);
     bytes[128] = 0xc6; bytes[129] = 0x44;
     const CKBYTE expected[] = {0x44,0x44,0x44,255, 0x44,0x44,0x44,255};
@@ -101,7 +101,7 @@ TEST(CKPcxDecodeContractTest, ARunMayContinueAcrossColorPlanes) {
     PcxDecodeExpect(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, NativeCompatibleRunContinuationAcrossRowsIsNotDiscarded) {
+TEST(CKPcxDecodeTest, NativeCompatibleRunContinuationAcrossRowsIsNotDiscarded) {
     CKBYTE bytes[134]; PcxDecodeHeader(bytes, 2, 2, 8, 3, 2);
     const CKBYTE encoded[] = {0xc8,0x44, 0x11,0x22,0x33,0x55};
     memcpy(bytes + 128, encoded, sizeof(encoded));
@@ -112,7 +112,7 @@ TEST(CKPcxDecodeContractTest, NativeCompatibleRunContinuationAcrossRowsIsNotDisc
     PcxDecodeExpect(properties, 2, 2, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, NativeZeroCountPacketDoesNotInventAnExtraPixel) {
+TEST(CKPcxDecodeTest, NativeZeroCountPacketDoesNotInventAnExtraPixel) {
     CKBYTE bytes[136]; PcxDecodeHeader(bytes, 2, 1, 8, 3, 2);
     const CKBYTE encoded[] = {0xc0,0x99, 0x11,0x22,0x33,0x44,0x55,0x66};
     memcpy(bytes + 128, encoded, sizeof(encoded));
@@ -122,7 +122,7 @@ TEST(CKPcxDecodeContractTest, NativeZeroCountPacketDoesNotInventAnExtraPixel) {
     PcxDecodeExpect(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, MaximumRunCountFillsAllSixtyThreeDecodedBytes) {
+TEST(CKPcxDecodeTest, MaximumRunCountFillsAllSixtyThreeDecodedBytes) {
     CKBYTE bytes[130]; PcxDecodeHeader(bytes, 21, 1, 8, 3, 21);
     bytes[128] = 0xff; bytes[129] = 0x17;
     CKBYTE expected[84];
@@ -141,7 +141,7 @@ static void PcxDecodePalette(CKBYTE *bytes, int offset) {
     memcpy(bytes + offset + 4, colors, sizeof(colors));
 }
 
-TEST(CKPcxDecodeContractTest, IndexedRowsUseTheTrailingPaletteWithoutChangingPixelIndices) {
+TEST(CKPcxDecodeTest, IndexedRowsUseTheTrailingPaletteWithoutChangingPixelIndices) {
     CKBYTE bytes[901]; PcxDecodeHeader(bytes, 2, 2, 8, 1, 2);
     bytes[128] = 1; bytes[129] = 2; bytes[130] = 2; bytes[131] = 1;
     PcxDecodePalette(bytes, 132);
@@ -152,7 +152,7 @@ TEST(CKPcxDecodeContractTest, IndexedRowsUseTheTrailingPaletteWithoutChangingPix
     PcxDecodeExpect(properties, 2, 2, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, CompleteIndexedImageWithoutPaletteKeepsTheGrayscaleFallback) {
+TEST(CKPcxDecodeTest, CompleteIndexedImageWithoutPaletteKeepsTheGrayscaleFallback) {
     CKBYTE bytes[130]; PcxDecodeHeader(bytes, 2, 1, 8, 1, 2);
     bytes[128] = 0x11; bytes[129] = 0x77;
     const CKBYTE expected[] = {0x11,0x11,0x11,255, 0x77,0x77,0x77,255};
@@ -161,7 +161,7 @@ TEST(CKPcxDecodeContractTest, CompleteIndexedImageWithoutPaletteKeepsTheGrayscal
     PcxDecodeExpect(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, PaletteImmediatelyFollowingPixelsStillWorksWithTrailingMetadata) {
+TEST(CKPcxDecodeTest, PaletteImmediatelyFollowingPixelsStillWorksWithTrailingMetadata) {
     CKBYTE bytes[902]; PcxDecodeHeader(bytes, 2, 1, 8, 1, 2);
     bytes[128] = 1; bytes[129] = 2; PcxDecodePalette(bytes, 130);
     bytes[899] = 'E'; bytes[900] = 'N'; bytes[901] = 'D';
@@ -171,7 +171,7 @@ TEST(CKPcxDecodeContractTest, PaletteImmediatelyFollowingPixelsStillWorksWithTra
     PcxDecodeExpect(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, PlanarAndPackedLowBitDepthRowsKeepTheirHeaderPalette) {
+TEST(CKPcxDecodeTest, PlanarAndPackedLowBitDepthRowsKeepTheirHeaderPalette) {
     const int bits[] = {1,1,2,4}; const int planes[] = {1,4,1,1};
     for (int i = 0; i < 4; ++i) {
         SCOPED_TRACE(i);
@@ -187,7 +187,7 @@ TEST(CKPcxDecodeContractTest, PlanarAndPackedLowBitDepthRowsKeepTheirHeaderPalet
     }
 }
 
-TEST(CKPcxDecodeContractTest, FourthColorPlaneSuppliesActualAlphaValues) {
+TEST(CKPcxDecodeTest, FourthColorPlaneSuppliesActualAlphaValues) {
     CKBYTE bytes[136]; PcxDecodeHeader(bytes, 2, 1, 8, 4, 2, 0);
     const CKBYTE planes[] = {1,2, 3,4, 5,6, 7,8};
     memcpy(bytes + 128, planes, sizeof(planes));
@@ -197,27 +197,27 @@ TEST(CKPcxDecodeContractTest, FourthColorPlaneSuppliesActualAlphaValues) {
     PcxDecodeExpect(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, EveryRawPayloadTruncationLeavesThePreviousImageIntact) {
+TEST(CKPcxDecodeTest, EveryRawPayloadTruncationLeavesThePreviousImageIntact) {
     CKBYTE bytes[134]; PcxDecodeKnownSample(bytes); bytes[2] = 0;
     for (int size = 128; size < 134; ++size) {
         SCOPED_TRACE(size); PcxDecodeRejectPreservingImage(bytes, size);
     }
 }
 
-TEST(CKPcxDecodeContractTest, EveryRleLiteralPayloadTruncationLeavesThePreviousImageIntact) {
+TEST(CKPcxDecodeTest, EveryRleLiteralPayloadTruncationLeavesThePreviousImageIntact) {
     CKBYTE bytes[134]; PcxDecodeKnownSample(bytes);
     for (int size = 128; size < 134; ++size) {
         SCOPED_TRACE(size); PcxDecodeRejectPreservingImage(bytes, size);
     }
 }
 
-TEST(CKPcxDecodeContractTest, MissingRunValueCannotBorrowAByteFromTheVgaPalette) {
+TEST(CKPcxDecodeTest, MissingRunValueCannotBorrowAByteFromTheVgaPalette) {
     CKBYTE bytes[898]; PcxDecodeHeader(bytes, 2, 1, 8, 1, 2);
     bytes[128] = 0xc2; PcxDecodePalette(bytes, 129);
     PcxDecodeRejectPreservingImage(bytes, sizeof(bytes));
 }
 
-TEST(CKPcxDecodeContractTest, PaletteBytesCannotCompleteAShortIndexedImage) {
+TEST(CKPcxDecodeTest, PaletteBytesCannotCompleteAShortIndexedImage) {
     for (int encoding = 0; encoding < 2; ++encoding) {
         SCOPED_TRACE(encoding);
         CKBYTE bytes[898]; PcxDecodeHeader(bytes, 2, 1, 8, 1, 2, encoding);
@@ -226,13 +226,13 @@ TEST(CKPcxDecodeContractTest, PaletteBytesCannotCompleteAShortIndexedImage) {
     }
 }
 
-TEST(CKPcxDecodeContractTest, RunBeyondTheEntireImageIsRejectedInsteadOfClipped) {
+TEST(CKPcxDecodeTest, RunBeyondTheEntireImageIsRejectedInsteadOfClipped) {
     CKBYTE bytes[130]; PcxDecodeHeader(bytes, 2, 1, 8, 3, 2);
     bytes[128] = 0xc7; bytes[129] = 0x44;
     PcxDecodeRejectPreservingImage(bytes, sizeof(bytes));
 }
 
-TEST(CKPcxDecodeContractTest, AnUndersizedPlaneStrideCannotProduceAnInventedBlackColumn) {
+TEST(CKPcxDecodeTest, AnUndersizedPlaneStrideCannotProduceAnInventedBlackColumn) {
     const int bits[] = {1,2,4,8,8,8}; const int planes[] = {1,1,1,1,3,4};
     for (int i = 0; i < 6; ++i) {
         SCOPED_TRACE(i);
@@ -242,7 +242,7 @@ TEST(CKPcxDecodeContractTest, AnUndersizedPlaneStrideCannotProduceAnInventedBlac
     }
 }
 
-TEST(CKPcxDecodeContractTest, MissingFinalRowIsNotReportedAsSuccessfulBlackPixels) {
+TEST(CKPcxDecodeTest, MissingFinalRowIsNotReportedAsSuccessfulBlackPixels) {
     for (int encoding = 0; encoding < 2; ++encoding) {
         SCOPED_TRACE(encoding);
         CKBYTE bytes[134]; PcxDecodeKnownSample(bytes);
@@ -251,7 +251,7 @@ TEST(CKPcxDecodeContractTest, MissingFinalRowIsNotReportedAsSuccessfulBlackPixel
     }
 }
 
-TEST(CKPcxDecodeContractTest, FileDecodeFailurePreservesThePreviousImageAndAllowsRetry) {
+TEST(CKPcxDecodeTest, FileDecodeFailurePreservesThePreviousImageAndAllowsRetry) {
     PcxDecodeReader owner; CKBYTE bytes[134]; PcxDecodeKnownSample(bytes);
     CKBitmapProperties *before = nullptr, *after = nullptr;
     ASSERT_EQ(0, owner.Reader->ReadMemory(bytes, sizeof(bytes), &before));
@@ -273,7 +273,7 @@ TEST(CKPcxDecodeContractTest, FileDecodeFailurePreservesThePreviousImageAndAllow
     PcxDecodeExpect(after, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKPcxDecodeContractTest, RepeatedSingleBytePacketsPreserveAllSixPlaneValues) {
+TEST(CKPcxDecodeTest, RepeatedSingleBytePacketsPreserveAllSixPlaneValues) {
     CKBYTE bytes[140]; PcxDecodeHeader(bytes, 2, 1, 8, 3, 2);
     const CKBYTE values[] = {0x11,0x22,0x33,0x44,0x55,0x66};
     for (int i = 0; i < 6; ++i) { bytes[128 + i * 2] = 0xc1; bytes[129 + i * 2] = values[i]; }

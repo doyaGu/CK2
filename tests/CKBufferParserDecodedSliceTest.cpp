@@ -18,7 +18,7 @@ static void FillNativeProbeKey(CKDWORD *key, int scenario) {
     }
 }
 
-TEST(CKBufferParserDecodedContractTest, UnsupportedDecodedBorrowedSlicesRetainNativeObservedStateAndAllowRawExtraction) {
+TEST(CKBufferParserDecodedSliceTest, UnsupportedDecodedBorrowedSlicesRetainNativeObservedStateAndAllowRawExtraction) {
     // The oracle is actual original 2.5 memory/file parser virtual dispatch:
     // null results and unchanged source at these keys, cursors and spans.
     // This certifies the current unsupported boundary, not a 2.1 cipher.
@@ -67,7 +67,7 @@ TEST(CKBufferParserDecodedContractTest, UnsupportedDecodedBorrowedSlicesRetainNa
     EXPECT_EQ(0, std::memcmp(bytes, savedBytes, sizeof(bytes)));
 }
 
-TEST(CKBufferParserDecodedContractTest, UnsupportedDecodedOwnedSlicePreservesOwnerAndCanStillBeReadAndReleased) {
+TEST(CKBufferParserDecodedSliceTest, UnsupportedDecodedOwnedSlicePreservesOwnerAndCanStillBeReadAndReleased) {
     unsigned char bytes[32], savedBytes[32];
     FillNativeProbeBytes(bytes);
     std::memcpy(savedBytes, bytes, sizeof(bytes));

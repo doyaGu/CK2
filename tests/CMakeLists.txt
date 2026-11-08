@@ -35,7 +35,7 @@ function(add_ck2_test test_name)
 
     target_compile_definitions(${test_name} PRIVATE "CK2_EXPORTS")
     get_target_property(_ck2_test_runtime_type CK2 TYPE)
-    if (_ck2_test_runtime_type STREQUAL "STATIC_LIBRARY" AND test_name STREQUAL "CKMessageContractTest")
+    if (_ck2_test_runtime_type STREQUAL "STATIC_LIBRARY" AND test_name STREQUAL "CKMessageDeliveryTest")
         target_compile_definitions(${test_name} PRIVATE CK2_TEST_STATIC_RUNTIME)
     endif ()
 
@@ -106,8 +106,8 @@ add_ck2_test(CK2dCurvePointTest
         SOURCES CK2dCurvePointTest.cpp
         DEPENDENCIES CK2 VxMath)
 
-add_ck2_test(CKMessageContractTest
-        SOURCES CKMessageContractTest.cpp
+add_ck2_test(CKMessageDeliveryTest
+        SOURCES CKMessageDeliveryTest.cpp
         DEPENDENCIES CK2 VxMath)
 
 add_ck2_test(CKMemoryPoolTest
@@ -134,23 +134,23 @@ add_ck2_test(CKBitmapPropertyHelpersTest
         SOURCES CKBitmapPropertyHelpersTest.cpp
         DEPENDENCIES CK2 VxMath)
 
-add_ck2_test(CKBitmapReaderContractTest
-        SOURCES CKBitmapReaderContractTest.cpp
+add_ck2_test(CKBitmapReaderTest
+        SOURCES CKBitmapReaderTest.cpp
                 ../../Plugins/ImageReader/ImageReader.cpp
                 ../../Plugins/ImageReader/BmpReader.cpp
                 ../../Plugins/ImageReader/TgaReader.cpp
                 ../../Plugins/ImageReader/PcxReader.cpp
         DEPENDENCIES CK2 VxMath)
-target_compile_definitions(CKBitmapReaderContractTest PRIVATE CK_LIB)
+target_compile_definitions(CKBitmapReaderTest PRIVATE CK_LIB)
 
-add_ck2_test(CKDataReaderContractTest
-        SOURCES CKDataReaderContractTest.cpp
+add_ck2_test(CKDataReaderTest
+        SOURCES CKDataReaderTest.cpp
                 ../../Plugins/ImageReader/ImageReader.cpp
                 ../../Plugins/ImageReader/BmpReader.cpp
                 ../../Plugins/ImageReader/TgaReader.cpp
                 ../../Plugins/ImageReader/PcxReader.cpp
         DEPENDENCIES CK2 VxMath)
-target_compile_definitions(CKDataReaderContractTest PRIVATE CK_LIB)
+target_compile_definitions(CKDataReaderTest PRIVATE CK_LIB)
 
 add_ck2_test(CKImageReaderPropertyLifecycleTest
         SOURCES CKImageReaderPropertyLifecycleTest.cpp
@@ -162,33 +162,33 @@ add_ck2_test(CKImageReaderPropertyLifecycleTest
 target_compile_definitions(CKImageReaderPropertyLifecycleTest PRIVATE CK_LIB)
 target_compile_features(CKImageReaderPropertyLifecycleTest PRIVATE cxx_std_17)
 
-add_ck2_test(CKPcxDecodeContractTest
-        SOURCES CKPcxDecodeContractTest.cpp
+add_ck2_test(CKPcxDecodeTest
+        SOURCES CKPcxDecodeTest.cpp
                 ../../Plugins/ImageReader/ImageReader.cpp
                 ../../Plugins/ImageReader/BmpReader.cpp
                 ../../Plugins/ImageReader/TgaReader.cpp
                 ../../Plugins/ImageReader/PcxReader.cpp
         DEPENDENCIES CK2 VxMath)
-target_compile_definitions(CKPcxDecodeContractTest PRIVATE CK_LIB)
-target_compile_features(CKPcxDecodeContractTest PRIVATE cxx_std_17)
+target_compile_definitions(CKPcxDecodeTest PRIVATE CK_LIB)
+target_compile_features(CKPcxDecodeTest PRIVATE cxx_std_17)
 
-add_ck2_test(CKBmpTgaDecodeContractTest
-        SOURCES CKBmpTgaDecodeContractTest.cpp
+add_ck2_test(CKBmpTgaDecodeTest
+        SOURCES CKBmpTgaDecodeTest.cpp
                 ../../Plugins/ImageReader/ImageReader.cpp
                 ../../Plugins/ImageReader/BmpReader.cpp
                 ../../Plugins/ImageReader/TgaReader.cpp
                 ../../Plugins/ImageReader/PcxReader.cpp
         DEPENDENCIES CK2 VxMath)
-target_compile_definitions(CKBmpTgaDecodeContractTest PRIVATE CK_LIB)
-target_compile_features(CKBmpTgaDecodeContractTest PRIVATE cxx_std_17)
+target_compile_definitions(CKBmpTgaDecodeTest PRIVATE CK_LIB)
+target_compile_features(CKBmpTgaDecodeTest PRIVATE cxx_std_17)
 
-add_ck2_test(CKBmpTgaSaveContractTest
-        SOURCES CKBmpTgaSaveContractTest.cpp
+add_ck2_test(CKBmpTgaSaveTest
+        SOURCES CKBmpTgaSaveTest.cpp
                 ../../Plugins/ImageReader/ImageReader.cpp
                 ../../Plugins/ImageReader/PcxReader.cpp
         DEPENDENCIES CK2 VxMath)
-target_compile_definitions(CKBmpTgaSaveContractTest PRIVATE CK_LIB)
-target_compile_features(CKBmpTgaSaveContractTest PRIVATE cxx_std_17)
+target_compile_definitions(CKBmpTgaSaveTest PRIVATE CK_LIB)
+target_compile_features(CKBmpTgaSaveTest PRIVATE cxx_std_17)
 
 add_ck2_test(CKBmpTgaSaveArithmeticTest
         SOURCES CKBmpTgaSaveArithmeticTest.cpp
@@ -220,16 +220,16 @@ add_ck2_test(CKImageSaveSignedPitchTest
 target_compile_definitions(CKImageSaveSignedPitchTest PRIVATE CK_LIB)
 target_compile_features(CKImageSaveSignedPitchTest PRIVATE cxx_std_17)
 
-add_ck2_test(CKMovieReaderContractTest
-        SOURCES CKMovieReaderContractTest.cpp
+add_ck2_test(CKMovieReaderTest
+        SOURCES CKMovieReaderTest.cpp
                 ../../Plugins/AVIReader/AVIReader.cpp
                 ../../Plugins/AVIReader/AviDemuxer.cpp
                 ../../Plugins/AVIReader/FrameDecoder.cpp
                 ../../Plugins/AVIReader/RiffReader.cpp
                 ../../Plugins/AVIReader/StbImageImpl.cpp
         DEPENDENCIES CK2 VxMath stb)
-target_compile_definitions(CKMovieReaderContractTest PRIVATE CK_LIB)
-target_compile_features(CKMovieReaderContractTest PRIVATE cxx_std_17)
+target_compile_definitions(CKMovieReaderTest PRIVATE CK_LIB)
+target_compile_features(CKMovieReaderTest PRIVATE cxx_std_17)
 
 add_ck2_test(AVIReaderTimelineTest
         SOURCES AVIReaderTimelineTest.cpp
@@ -429,16 +429,16 @@ add_ck2_test(AVIReaderStreamHeaderTest
 target_compile_definitions(AVIReaderStreamHeaderTest PRIVATE CK_LIB)
 target_compile_features(AVIReaderStreamHeaderTest PRIVATE cxx_std_17)
 
-add_ck2_test(AVIReaderSupportBoundaryTest
-        SOURCES AVIReaderSupportBoundaryTest.cpp
+add_ck2_test(AVIReaderFormatSupportTest
+        SOURCES AVIReaderFormatSupportTest.cpp
                 ../../Plugins/AVIReader/AVIReader.cpp
                 ../../Plugins/AVIReader/AviDemuxer.cpp
                 ../../Plugins/AVIReader/FrameDecoder.cpp
                 ../../Plugins/AVIReader/RiffReader.cpp
                 ../../Plugins/AVIReader/StbImageImpl.cpp
         DEPENDENCIES CK2 VxMath stb)
-target_compile_definitions(AVIReaderSupportBoundaryTest PRIVATE CK_LIB)
-target_compile_features(AVIReaderSupportBoundaryTest PRIVATE cxx_std_17)
+target_compile_definitions(AVIReaderFormatSupportTest PRIVATE CK_LIB)
+target_compile_features(AVIReaderFormatSupportTest PRIVATE cxx_std_17)
 
 add_ck2_test(CKBitmapDataSlotsTest
         SOURCES CKBitmapDataSlotsTest.cpp
@@ -750,22 +750,22 @@ if (TARGET CK2Static)
             DEPENDENCIES
             CK2Static VxMath
     )
-    add_ck2_test(CKBufferParserContractTest
+    add_ck2_test(CKBufferParserFlushTest
             SOURCES
-            CKBufferParserContractTest.cpp
+            CKBufferParserFlushTest.cpp
             DEPENDENCIES
             CK2Static VxMath
     )
-    target_compile_features(CKBufferParserContractTest PRIVATE cxx_std_17)
-    add_ck2_test(CKBufferParserEncodeContractTest
+    target_compile_features(CKBufferParserFlushTest PRIVATE cxx_std_17)
+    add_ck2_test(CKBufferParserEncodeTest
             SOURCES
-            CKBufferParserEncodeContractTest.cpp
+            CKBufferParserEncodeTest.cpp
             DEPENDENCIES
             CK2Static VxMath
     )
-    add_ck2_test(CKBufferParserDecodedContractTest
+    add_ck2_test(CKBufferParserDecodedSliceTest
             SOURCES
-            CKBufferParserDecodedContractTest.cpp
+            CKBufferParserDecodedSliceTest.cpp
             DEPENDENCIES
             CK2Static VxMath
     )
@@ -775,8 +775,8 @@ if (TARGET CK2Static)
             DEPENDENCIES
             CK2Static VxMath
     )
-    target_compile_features(CKBufferParserEncodeContractTest PRIVATE cxx_std_17)
-    target_compile_features(CKBufferParserDecodedContractTest PRIVATE cxx_std_17)
+    target_compile_features(CKBufferParserEncodeTest PRIVATE cxx_std_17)
+    target_compile_features(CKBufferParserDecodedSliceTest PRIVATE cxx_std_17)
     target_compile_features(CKBufferParserChunkOutputTest PRIVATE cxx_std_17)
 endif ()
 
@@ -833,29 +833,29 @@ add_ck2_test(CKFileLayoutStateTest
 )
 target_compile_features(CKFileLayoutStateTest PRIVATE cxx_std_17)
 
-add_ck2_test(CKFileIoCompletionTest
+add_ck2_test(CKFileIoTest
         SOURCES
-        CKFileIoCompletionTest.cpp
+        CKFileIoTest.cpp
         DEPENDENCIES
         CK2 VxMath
 )
-target_compile_features(CKFileIoCompletionTest PRIVATE cxx_std_17)
+target_compile_features(CKFileIoTest PRIVATE cxx_std_17)
 
-add_ck2_test(CKFileSessionContractTest
+add_ck2_test(CKFileLoadSessionTest
         SOURCES
-        CKFileSessionContractTest.cpp
+        CKFileLoadSessionTest.cpp
         DEPENDENCIES
         CK2 VxMath
 )
-target_compile_features(CKFileSessionContractTest PRIVATE cxx_std_17)
+target_compile_features(CKFileLoadSessionTest PRIVATE cxx_std_17)
 
-add_ck2_test(CKFileDependencyContractTest
+add_ck2_test(CKFileDependencyComparisonTest
         SOURCES
-        CKFileDependencyContractTest.cpp
+        CKFileDependencyComparisonTest.cpp
         DEPENDENCIES
         CK2 VxMath
 )
-target_compile_features(CKFileDependencyContractTest PRIVATE cxx_std_17)
+target_compile_features(CKFileDependencyComparisonTest PRIVATE cxx_std_17)
 
 # Existing-API differential probe. Its fixtures predate lifetime handles.
 add_executable(CKObjectBehaviorProbe CKObjectBehaviorProbe.cpp)

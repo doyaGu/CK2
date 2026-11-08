@@ -61,7 +61,7 @@ static void BmpTgaExpectIndices(CKBitmapProperties *properties, int width, int h
     BmpTgaExpectPixels(properties, width, height, expected, count * 4);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRgb32BottomUpPreservesAllAlphaBytes) {
+TEST(CKBmpTgaDecodeTest, BmpRgb32BottomUpPreservesAllAlphaBytes) {
     const CKBYTE payload[] = {7,8,9,128, 10,11,12,255, 1,2,3,0, 4,5,6,127};
     const CKBYTE expected[] = {1,2,3,0, 4,5,6,127, 7,8,9,128, 10,11,12,255};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 2, 2, 32, BI_RGB, payload, sizeof(payload));
@@ -70,7 +70,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRgb32BottomUpPreservesAllAlphaBytes) {
     BmpTgaExpectPixels(properties, 2, 2, expected, sizeof(expected));
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRgb32TopDownPreservesAllAlphaBytes) {
+TEST(CKBmpTgaDecodeTest, BmpRgb32TopDownPreservesAllAlphaBytes) {
     const CKBYTE payload[] = {1,2,3,0, 4,5,6,127, 7,8,9,128, 10,11,12,255};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 2, -2, 32, BI_RGB, payload, sizeof(payload));
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -78,7 +78,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRgb32TopDownPreservesAllAlphaBytes) {
     BmpTgaExpectPixels(properties, 2, 2, payload, sizeof(payload));
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRgb32DoesNotReplaceFullyTransparentAlphaWithOpaque) {
+TEST(CKBmpTgaDecodeTest, BmpRgb32DoesNotReplaceFullyTransparentAlphaWithOpaque) {
     const CKBYTE payload[] = {1,2,3,0, 4,5,6,0};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 2, 1, 32, BI_RGB, payload, sizeof(payload));
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -86,7 +86,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRgb32DoesNotReplaceFullyTransparentAlphaWith
     BmpTgaExpectPixels(properties, 2, 1, payload, sizeof(payload));
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpFileReadKeepsTheStoredRgb32Transparency) {
+TEST(CKBmpTgaDecodeTest, BmpFileReadKeepsTheStoredRgb32Transparency) {
     const CKBYTE payload[] = {1,2,3,37, 4,5,6,128};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 2, 1, 32, BI_RGB, payload, sizeof(payload));
     BmpTgaDecodeReader owner(0);
@@ -102,7 +102,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpFileReadKeepsTheStoredRgb32Transparency) {
     BmpTgaExpectPixels(properties, 2, 1, payload, sizeof(payload));
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRgb24PaddingCannotBecomeAlpha) {
+TEST(CKBmpTgaDecodeTest, BmpRgb24PaddingCannotBecomeAlpha) {
     const CKBYTE payload[] = {4,5,6,0, 1,2,3,0xcc};
     const CKBYTE expected[] = {1,2,3,255, 4,5,6,255};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 1, 2, 24, BI_RGB, payload, sizeof(payload));
@@ -111,7 +111,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRgb24PaddingCannotBecomeAlpha) {
     BmpTgaExpectPixels(properties, 1, 2, expected, sizeof(expected));
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRgb16UsesOpaqueRgb555) {
+TEST(CKBmpTgaDecodeTest, BmpRgb16UsesOpaqueRgb555) {
     const CKBYTE payload[] = {0x00,0x7c, 0xe0,0x03};
     const CKBYTE expected[] = {0,0,255,255, 0,255,0,255};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 2, 1, 16, BI_RGB, payload, sizeof(payload));
@@ -120,7 +120,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRgb16UsesOpaqueRgb555) {
     BmpTgaExpectPixels(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpCoreHeaderReadsThreeBytePaletteEntries) {
+TEST(CKBmpTgaDecodeTest, BmpCoreHeaderReadsThreeBytePaletteEntries) {
     CKBYTE bytes[36] = {};
     bytes[0] = 'B'; bytes[1] = 'M'; bytes[2] = sizeof(bytes); bytes[10] = 32;
     bytes[14] = 12; bytes[18] = 2; bytes[20] = 1; bytes[22] = 1; bytes[24] = 1;
@@ -131,7 +131,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpCoreHeaderReadsThreeBytePaletteEntries) {
     const CKBYTE indices[] = {0,1}; BmpTgaExpectIndices(properties, 2, 1, indices, 2);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpInfoPaletteReservedBytesDoNotSupplyPixelAlpha) {
+TEST(CKBmpTgaDecodeTest, BmpInfoPaletteReservedBytesDoNotSupplyPixelAlpha) {
     const CKBYTE payload[] = {0,1,0,0};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 2, 1, 8, BI_RGB, payload, sizeof(payload), 2);
     bytes[57] = 0; bytes[61] = 37;
@@ -140,7 +140,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpInfoPaletteReservedBytesDoNotSupplyPixelAlph
     const CKBYTE indices[] = {0,1}; BmpTgaExpectIndices(properties, 2, 1, indices, 2);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRle8EarlyEndUsesPaletteZeroForUntouchedPixels) {
+TEST(CKBmpTgaDecodeTest, BmpRle8EarlyEndUsesPaletteZeroForUntouchedPixels) {
     const CKBYTE payload[] = {1,1,0,1};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 4, 1, 8, BI_RLE8, payload, sizeof(payload), 4);
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -148,7 +148,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRle8EarlyEndUsesPaletteZeroForUntouchedPixel
     const CKBYTE indices[] = {1,0,0,0}; BmpTgaExpectIndices(properties, 4, 1, indices, 4);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRle4EarlyEndUsesPaletteZeroForUntouchedPixels) {
+TEST(CKBmpTgaDecodeTest, BmpRle4EarlyEndUsesPaletteZeroForUntouchedPixels) {
     const CKBYTE payload[] = {1,0x10,0,1};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 4, 1, 4, BI_RLE4, payload, sizeof(payload), 4);
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -156,7 +156,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRle4EarlyEndUsesPaletteZeroForUntouchedPixel
     const CKBYTE indices[] = {1,0,0,0}; BmpTgaExpectIndices(properties, 4, 1, indices, 4);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRle8DeltaPreservesPaletteZeroHolesAndBottomUpOrder) {
+TEST(CKBmpTgaDecodeTest, BmpRle8DeltaPreservesPaletteZeroHolesAndBottomUpOrder) {
     const CKBYTE payload[] = {1,1,0,2,1,0,1,2,0,0,3,3,0,1};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 3, 2, 8, BI_RLE8, payload, sizeof(payload), 4);
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -164,7 +164,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRle8DeltaPreservesPaletteZeroHolesAndBottomU
     const CKBYTE indices[] = {3,3,3,1,0,2}; BmpTgaExpectIndices(properties, 3, 2, indices, 6);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRle4AbsoluteNibblesLeavePaletteZeroAfterEarlyEnd) {
+TEST(CKBmpTgaDecodeTest, BmpRle4AbsoluteNibblesLeavePaletteZeroAfterEarlyEnd) {
     const CKBYTE payload[] = {0,3,0x12,0x30,0,1};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 5, 1, 4, BI_RLE4, payload, sizeof(payload), 4);
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -172,7 +172,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRle4AbsoluteNibblesLeavePaletteZeroAfterEarl
     const CKBYTE indices[] = {1,2,3,0,0}; BmpTgaExpectIndices(properties, 5, 1, indices, 5);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRle8AbsoluteOddPaddingAndEolDoNotBecomePixels) {
+TEST(CKBmpTgaDecodeTest, BmpRle8AbsoluteOddPaddingAndEolDoNotBecomePixels) {
     const CKBYTE payload[] = {0,3,1,2,3,0xff,0,0,3,1,0,1};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 3, 2, 8, BI_RLE8, payload, sizeof(payload), 4);
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -180,7 +180,7 @@ TEST(CKBmpTgaDecodeContractTest, BmpRle8AbsoluteOddPaddingAndEolDoNotBecomePixel
     const CKBYTE indices[] = {1,1,1,1,2,3}; BmpTgaExpectIndices(properties, 3, 2, indices, 6);
 }
 
-TEST(CKBmpTgaDecodeContractTest, BmpRle4EncodedRunAlternatesTheTwoNibbles) {
+TEST(CKBmpTgaDecodeTest, BmpRle4EncodedRunAlternatesTheTwoNibbles) {
     const CKBYTE payload[] = {4,0x12,0,1};
     CKBYTE bytes[256]; int size = BmpTgaMakeBmp(bytes, 4, 1, 4, BI_RLE4, payload, sizeof(payload), 4);
     BmpTgaDecodeReader owner(0); CKBitmapProperties *properties = nullptr;
@@ -210,10 +210,10 @@ static void BmpTgaCheckOrigins(bool rle) {
     }
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaRawPixelsHonorAllFourOriginCombinations) { BmpTgaCheckOrigins(false); }
-TEST(CKBmpTgaDecodeContractTest, TgaRleRawPacketHonorsAllFourOriginCombinations) { BmpTgaCheckOrigins(true); }
+TEST(CKBmpTgaDecodeTest, TgaRawPixelsHonorAllFourOriginCombinations) { BmpTgaCheckOrigins(false); }
+TEST(CKBmpTgaDecodeTest, TgaRleRawPacketHonorsAllFourOriginCombinations) { BmpTgaCheckOrigins(true); }
 
-TEST(CKBmpTgaDecodeContractTest, TgaRlePacketsCanSpanRowsWithoutLosingPixels) {
+TEST(CKBmpTgaDecodeTest, TgaRlePacketsCanSpanRowsWithoutLosingPixels) {
     CKBYTE bytes[29]; BmpTgaTgaHeader(bytes, 2, 3, 24, 10, 0x20);
     const CKBYTE payload[] = {0x83,1,2,3, 1,4,5,6,7,8,9}; memcpy(bytes + 18, payload, sizeof(payload));
     const CKBYTE expected[] = {1,2,3,255, 1,2,3,255, 1,2,3,255, 1,2,3,255, 4,5,6,255, 7,8,9,255};
@@ -222,7 +222,7 @@ TEST(CKBmpTgaDecodeContractTest, TgaRlePacketsCanSpanRowsWithoutLosingPixels) {
     BmpTgaExpectPixels(properties, 2, 3, expected, sizeof(expected));
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaPaletteOriginAndStoredAlphaAreAppliedToIndices) {
+TEST(CKBmpTgaDecodeTest, TgaPaletteOriginAndStoredAlphaAreAppliedToIndices) {
     CKBYTE bytes[28]; BmpTgaTgaHeader(bytes, 2, 1, 8, 1, 0x28);
     bytes[1] = 1; bytes[3] = 5; bytes[5] = 2; bytes[7] = 32;
     const CKBYTE payload[] = {1,2,3,37, 4,5,6,128, 6,5}; memcpy(bytes + 18, payload, sizeof(payload));
@@ -232,7 +232,7 @@ TEST(CKBmpTgaDecodeContractTest, TgaPaletteOriginAndStoredAlphaAreAppliedToIndic
     BmpTgaExpectPixels(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaGray16PreservesTheSeparateAlphaByte) {
+TEST(CKBmpTgaDecodeTest, TgaGray16PreservesTheSeparateAlphaByte) {
     CKBYTE bytes[22]; BmpTgaTgaHeader(bytes, 2, 1, 16, 3, 0x28);
     const CKBYTE payload[] = {0x11,0, 0x77,128}; memcpy(bytes + 18, payload, sizeof(payload));
     const CKBYTE expected[] = {0x11,0x11,0x11,0, 0x77,0x77,0x77,128};
@@ -241,7 +241,7 @@ TEST(CKBmpTgaDecodeContractTest, TgaGray16PreservesTheSeparateAlphaByte) {
     BmpTgaExpectPixels(properties, 2, 1, expected, sizeof(expected));
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaRgb16DescriptorEnablesTheStoredAlphaBit) {
+TEST(CKBmpTgaDecodeTest, TgaRgb16DescriptorEnablesTheStoredAlphaBit) {
     CKBYTE bytes[22]; BmpTgaTgaHeader(bytes, 2, 1, 16, 2, 0x21);
     const CKBYTE payload[] = {0,0x7c, 0xe0,0x83}; memcpy(bytes + 18, payload, sizeof(payload));
     const CKBYTE expected[] = {0,0,255,0, 0,255,0,255};
@@ -266,25 +266,25 @@ static void BmpTgaRejectTga(CKBYTE *bytes, int size) {
     ASSERT_EQ(0, owner.Reader->ReadMemory(good, sizeof(good), &after));
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaOversizedRepeatPacketDoesNotSucceedByClipping) {
+TEST(CKBmpTgaDecodeTest, TgaOversizedRepeatPacketDoesNotSucceedByClipping) {
     CKBYTE bytes[22]; BmpTgaTgaHeader(bytes, 2, 1, 24, 10, 0x20);
     bytes[18] = 0x82; bytes[19] = 1; bytes[20] = 2; bytes[21] = 3;
     BmpTgaRejectTga(bytes, sizeof(bytes));
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaOversizedRawPacketDoesNotIgnoreTheExtraPixel) {
+TEST(CKBmpTgaDecodeTest, TgaOversizedRawPacketDoesNotIgnoreTheExtraPixel) {
     CKBYTE bytes[28]; BmpTgaTgaHeader(bytes, 2, 1, 24, 10, 0x20);
     bytes[18] = 2; const CKBYTE payload[] = {1,2,3,4,5,6,7,8,9}; memcpy(bytes + 19, payload, sizeof(payload));
     BmpTgaRejectTga(bytes, sizeof(bytes));
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaShortOversizedRawPacketCannotMasqueradeAsACompleteImage) {
+TEST(CKBmpTgaDecodeTest, TgaShortOversizedRawPacketCannotMasqueradeAsACompleteImage) {
     CKBYTE bytes[25]; BmpTgaTgaHeader(bytes, 2, 1, 24, 10, 0x20);
     bytes[18] = 2; const CKBYTE payload[] = {1,2,3,4,5,6}; memcpy(bytes + 19, payload, sizeof(payload));
     BmpTgaRejectTga(bytes, sizeof(bytes));
 }
 
-TEST(CKBmpTgaDecodeContractTest, TgaTruncatedLegalPacketPreservesTheOldImageAndCanBeRetried) {
+TEST(CKBmpTgaDecodeTest, TgaTruncatedLegalPacketPreservesTheOldImageAndCanBeRetried) {
     CKBYTE bytes[24]; BmpTgaTgaHeader(bytes, 2, 1, 24, 10, 0x20);
     bytes[18] = 1; const CKBYTE payload[] = {1,2,3,4,5}; memcpy(bytes + 19, payload, sizeof(payload));
     BmpTgaRejectTga(bytes, sizeof(bytes));

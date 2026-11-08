@@ -821,7 +821,7 @@ TEST_F(CKRuntimeFixture, DeletionOfPreviousSourceDoesNotClearReboundSource) {
     EXPECT_EQ(0, currentSource->GetLinkCount());
 }
 
-TEST_F(CKRuntimeFixture, DeletionWithoutNotificationKeepsExistingNoNotifyContract) {
+TEST_F(CKRuntimeFixture, DeletionWithoutNotificationPreservesLinkIoPointers) {
     auto *graph = static_cast<CKBehavior *>(context_->CreateObject(CKCID_BEHAVIOR));
     ASSERT_NE(nullptr, graph);
     graph->UseGraph();

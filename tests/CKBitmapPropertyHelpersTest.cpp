@@ -53,7 +53,7 @@ struct BitmapPropertyGuardedPages {
     }
 };
 
-TEST(CKBitmapPropertyHelpersTest, RejectsNullAndAllSizeBoundariesOutsideTheByteBlockContract) {
+TEST(CKBitmapPropertyHelpersTest, RejectsNullAndInvalidPropertyBlockSizes) {
     EXPECT_EQ(nullptr, CKCopyBitmapProperties(nullptr));
     CKBitmapProperties properties;
     const int sizes[] = {INT_MIN, -256, -1, 0, 256, 257, INT_MAX};

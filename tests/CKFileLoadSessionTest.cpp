@@ -62,7 +62,7 @@ static CK_LOADMODE Choose(CK_CLASSID cid, CKSTRING oldName, CKSTRING newName, CK
     if (object) EXPECT_EQ(probe->Existing, *object);
     EXPECT_TRUE(probe->Context->m_InLoad);
     // SDK callback's NewName is the writable context string buffer. The portable
-    // CKSTRING alias is const char*, while the callback contract still fills it.
+    // CKSTRING alias is const char*, but the load callback writes the new name into it.
     if (probe->Choice == CKLOAD_RENAME) std::strcpy(const_cast<char *>(newName), "CallbackRenamed");
     return probe->Choice;
 }
@@ -123,7 +123,7 @@ public:
     CKDWORD SaveFlags = 0; int AttributeSaving = 0;
 };
 
-class CKFileSessionContractTest : public ::testing::Test {
+class CKFileLoadSessionTest : public ::testing::Test {
 protected:
     CKContext *Context = nullptr;
     std::filesystem::path Directory;
@@ -159,7 +159,7 @@ protected:
     }
 };
 
-TEST_F(CKFileSessionContractTest, TwoStageLoadKeepsChoiceCallbackUntilItCreatesTheObject) {
+TEST_F(CKFileLoadSessionTest, TwoStageLoadKeepsChoiceCallbackUntilItCreatesTheObject) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     CKTestChoiceProbe choice{Context, existing, CKLOAD_RENAME}; Context->SetUserLoadCallback(Choose, &choice);
     CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
@@ -171,7 +171,7 @@ TEST_F(CKFileSessionContractTest, TwoStageLoadKeepsChoiceCallbackUntilItCreatesT
     EXPECT_STREQ("Session", existing->GetName()); EXPECT_EQ(1, objects.GetCount()); ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, UseCurrentRegistersExistingObjectWithoutReloadingOrReturningIt) {
+TEST_F(CKFileLoadSessionTest, UseCurrentRegistersExistingObjectWithoutReloadingOrReturningIt) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     existing->ModifyObjectFlags(CK_OBJECT_HIERACHICALHIDE, CK_OBJECT_VISIBLE);
     const CKDWORD oldFlags = existing->GetObjectFlags(); const int oldCount = Context->GetObjectCount();
@@ -187,7 +187,7 @@ TEST_F(CKFileSessionContractTest, UseCurrentRegistersExistingObjectWithoutReload
     ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, DefaultLoadCreatesDuplicatesWithoutInvokingTheChoiceCallback) {
+TEST_F(CKFileLoadSessionTest, DefaultLoadCreatesDuplicatesWithoutInvokingTheChoiceCallback) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     CKTestChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
     CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
@@ -197,7 +197,7 @@ TEST_F(CKFileSessionContractTest, DefaultLoadCreatesDuplicatesWithoutInvokingThe
     ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, AutomaticRenameCreatesAUniqueNameAndReturnsTheNewObject) {
+TEST_F(CKFileLoadSessionTest, AutomaticRenameCreatesAUniqueNameAndReturnsTheNewObject) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     Context->SetAutomaticLoadMode(CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME);
     CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects;
@@ -207,7 +207,7 @@ TEST_F(CKFileSessionContractTest, AutomaticRenameCreatesAUniqueNameAndReturnsThe
     EXPECT_EQ(created, Context->GetObjectByNameAndClass(created->GetName(), CKCID_BEOBJECT)); ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, UserChoiceTakesPrecedenceOverAutomaticRename) {
+TEST_F(CKFileLoadSessionTest, UserChoiceTakesPrecedenceOverAutomaticRename) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     Context->SetAutomaticLoadMode(CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME, CKLOAD_RENAME);
     CKTestChoiceProbe choice{Context, existing, CKLOAD_USECURRENT}; Context->SetUserLoadCallback(Choose, &choice);
@@ -217,7 +217,7 @@ TEST_F(CKFileSessionContractTest, UserChoiceTakesPrecedenceOverAutomaticRename) 
     EXPECT_EQ(0, objects.GetCount()); ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, RepeatedLoadRearmsCallbacksAndAppendsOnlyNewlyLoadedObjects) {
+TEST_F(CKFileLoadSessionTest, RepeatedLoadRearmsCallbacksAndAppendsOnlyNewlyLoadedObjects) {
     CKObject *existing = Existing(); ASSERT_NE(nullptr, existing);
     CKTestChoiceProbe first{Context, existing, CKLOAD_USECURRENT}, second{Context, existing, CKLOAD_RENAME};
     CKTestSessionFrame frame; CKFile file(Context); CKObjectArray objects; objects.InsertRear(existing);
@@ -232,7 +232,7 @@ TEST_F(CKFileSessionContractTest, RepeatedLoadRearmsCallbacksAndAppendsOnlyNewly
     EXPECT_EQ(1, file.m_IndexByClassId[CKCID_BEOBJECT].Size()); ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, ManagerPayloadAndProgressRepeatAcrossMappedAndMemoryLoads) {
+TEST_F(CKFileLoadSessionTest, ManagerPayloadAndProgressRepeatAcrossMappedAndMemoryLoads) {
     CKTestSessionManager *manager = Manager(); CKTestUIProbe ui{Context}; Context->SetInterfaceMode(TRUE, ObserveUI, &ui);
     CKTestSessionFrame frame(true); std::string input = Path("source.cmo"); Write(input, frame);
     CKFile file(Context); CKObjectArray objects;
@@ -244,7 +244,7 @@ TEST_F(CKFileSessionContractTest, ManagerPayloadAndProgressRepeatAcrossMappedAnd
     ASSERT_EQ(1, file.m_ManagersData.Size()); EXPECT_EQ(nullptr, file.m_ManagersData[0].data); ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, ConsecutiveSaveSessionsResetObjectMasksFlagsAndOutputSummary) {
+TEST_F(CKFileLoadSessionTest, ConsecutiveSaveSessionsResetObjectMasksFlagsAndOutputSummary) {
     CKTestSessionManager *manager = Manager(); CKObject *object = Existing(); ASSERT_NE(nullptr, object);
     std::string first = Path("first.cmo"), second = Path("second.cmo"); CKFile file(Context);
     ASSERT_EQ(CK_OK, file.StartSave(first.data(), 0x3811)); file.SaveObject(object); ASSERT_EQ(CK_OK, file.EndSave());
@@ -258,7 +258,7 @@ TEST_F(CKFileSessionContractTest, ConsecutiveSaveSessionsResetObjectMasksFlagsAn
     EXPECT_EQ(1u, Get(bytes, 44)); EXPECT_EQ(object->GetID(), Get(bytes, 48));
 }
 
-TEST_F(CKFileSessionContractTest, LoadAndSaveUsesSourceWriteModeAndConversionFlagsDuringRealManagerSave) {
+TEST_F(CKFileLoadSessionTest, LoadAndSaveUsesSourceWriteModeAndConversionFlagsDuringRealManagerSave) {
     CKTestSessionManager *manager = Manager(); CKTestSessionFrame frame(true, CKFILE_WHOLECOMPRESSED);
     std::string input = Path("source.cmo"), output = Path("converted.cmo"); Write(input, frame);
     CKFile file(Context); file.LoadAndSave(input.data(), output.data());
@@ -272,7 +272,7 @@ TEST_F(CKFileSessionContractTest, LoadAndSaveUsesSourceWriteModeAndConversionFla
     EXPECT_EQ(2, manager->DataLoads); ExpectChoiceCleared();
 }
 
-TEST_F(CKFileSessionContractTest, LoadAndSaveSamePathReleasesMappingBeforeReplacingTheInput) {
+TEST_F(CKFileLoadSessionTest, LoadAndSaveSamePathReleasesMappingBeforeReplacingTheInput) {
     CKTestSessionManager *manager = Manager(); CKTestSessionFrame frame(true); std::string path = Path("in-place.cmo"); Write(path, frame);
     CKFile file(Context); file.LoadAndSave(path.data(), path.data());
     EXPECT_EQ(1, manager->DataSaves); EXPECT_FALSE(Context->m_Saving); EXPECT_EQ(nullptr, file.m_MappedFile);
@@ -280,7 +280,7 @@ TEST_F(CKFileSessionContractTest, LoadAndSaveSamePathReleasesMappingBeforeReplac
     EXPECT_EQ(1u, file.m_FileInfo.ObjectCount); EXPECT_EQ(0, Context->GetAttributeManager()->m_Saving);
 }
 
-TEST_F(CKFileSessionContractTest, ConsecutiveConversionsDoNotLeakPreviousWriteModesOrObjectQueues) {
+TEST_F(CKFileLoadSessionTest, ConsecutiveConversionsDoNotLeakPreviousWriteModesOrObjectQueues) {
     CKTestSessionManager *manager = Manager(); CKTestSessionFrame plain(true), packed(true, CKFILE_WHOLECOMPRESSED);
     std::string source1 = Path("plain.cmo"), source2 = Path("packed.cmo"), output1 = Path("out1.cmo"), output2 = Path("out2.cmo");
     Write(source1, plain); Write(source2, packed); CKFile file(Context);

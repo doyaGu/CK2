@@ -161,19 +161,19 @@ static void WriterCheckSource(int reader, int inputKind) {
     EXPECT_EQ(pixels, properties->m_Data); EXPECT_EQ(nullptr, properties->m_Format.Image);
 }
 
-TEST(CKBmpTgaSaveContractTest, BmpConvertsPaddedBgr24Source) { WriterCheckSource(0,0); }
-TEST(CKBmpTgaSaveContractTest, TgaConvertsPaddedBgr24Source) { WriterCheckSource(1,0); }
-TEST(CKBmpTgaSaveContractTest, BmpConvertsRgb565Source) { WriterCheckSource(0,1); }
-TEST(CKBmpTgaSaveContractTest, TgaConvertsRgb565Source) { WriterCheckSource(1,1); }
-TEST(CKBmpTgaSaveContractTest, BmpConvertsIndexedSourceThroughItsPalette) { WriterCheckSource(0,2); }
-TEST(CKBmpTgaSaveContractTest, TgaConvertsIndexedSourceThroughItsPalette) { WriterCheckSource(1,2); }
-TEST(CKBmpTgaSaveContractTest, BmpAppliesSourceComponentMasks) { WriterCheckSource(0,3); }
-TEST(CKBmpTgaSaveContractTest, TgaAppliesSourceComponentMasks) { WriterCheckSource(1,3); }
-TEST(CKBmpTgaSaveContractTest, SourceWithoutAlphaProducesOpaque32BitOutput) {
+TEST(CKBmpTgaSaveTest, BmpConvertsPaddedBgr24Source) { WriterCheckSource(0,0); }
+TEST(CKBmpTgaSaveTest, TgaConvertsPaddedBgr24Source) { WriterCheckSource(1,0); }
+TEST(CKBmpTgaSaveTest, BmpConvertsRgb565Source) { WriterCheckSource(0,1); }
+TEST(CKBmpTgaSaveTest, TgaConvertsRgb565Source) { WriterCheckSource(1,1); }
+TEST(CKBmpTgaSaveTest, BmpConvertsIndexedSourceThroughItsPalette) { WriterCheckSource(0,2); }
+TEST(CKBmpTgaSaveTest, TgaConvertsIndexedSourceThroughItsPalette) { WriterCheckSource(1,2); }
+TEST(CKBmpTgaSaveTest, BmpAppliesSourceComponentMasks) { WriterCheckSource(0,3); }
+TEST(CKBmpTgaSaveTest, TgaAppliesSourceComponentMasks) { WriterCheckSource(1,3); }
+TEST(CKBmpTgaSaveTest, SourceWithoutAlphaProducesOpaque32BitOutput) {
     WriterCheckSource(0,4); WriterCheckSource(1,4);
 }
 
-TEST(CKBmpTgaSaveContractTest, CanonicalImageViewTakesPrecedenceOverTheDataFallback) {
+TEST(CKBmpTgaSaveTest, CanonicalImageViewTakesPrecedenceOverTheDataFallback) {
     const CKBYTE expected[] = {1,2,3,37, 4,5,6,128}; CKBYTE pixels[8]; memcpy(pixels, expected, 8);
     CKBYTE other[8] = {};
     for (int reader = 0; reader < 2; ++reader) {
@@ -188,7 +188,7 @@ TEST(CKBmpTgaSaveContractTest, CanonicalImageViewTakesPrecedenceOverTheDataFallb
     }
 }
 
-TEST(CKBmpTgaSaveContractTest, BmpIndexedBlackWhiteAndRgb555HaveIndependentExpectedColors) {
+TEST(CKBmpTgaSaveTest, BmpIndexedBlackWhiteAndRgb555HaveIndependentExpectedColors) {
     CKBYTE pixels[] = {0,0,0,255, 255,255,255,255};
     ImageWriterOwner owner(0); BmpBitmapProperties properties;
     WriterSource(properties, pixels, 2, 1, 32, 8);
@@ -235,7 +235,7 @@ static void WriterCheckBmpRle(const CKBYTE *bytes, int length, int width, int he
     FAIL() << "Missing BMP RLE end-of-bitmap escape";
 }
 
-TEST(CKBmpTgaSaveContractTest, BmpRleRowsHaveCorrectOrderAndEndEscapes) {
+TEST(CKBmpTgaSaveTest, BmpRleRowsHaveCorrectOrderAndEndEscapes) {
     CKBYTE pixels[] = {17,17,17,255, 34,34,34,255, 51,51,51,255,
                        68,68,68,255, 68,68,68,255, 68,68,68,255};
     const CKBYTE expected[] = {17,34,51,68,68,68};
@@ -245,7 +245,7 @@ TEST(CKBmpTgaSaveContractTest, BmpRleRowsHaveCorrectOrderAndEndEscapes) {
     WriterCheckBmpRle(static_cast<CKBYTE *>(encoded.Data), length, 3, 2, expected);
 }
 
-TEST(CKBmpTgaSaveContractTest, BmpRleHandlesOddLiteralsAndRunsBeyond255Pixels) {
+TEST(CKBmpTgaSaveTest, BmpRleHandlesOddLiteralsAndRunsBeyond255Pixels) {
     CKBYTE pixels[1036], gray[259];
     for (int i = 0; i < 259; ++i) {
         gray[i] = i < 3 ? static_cast<CKBYTE>(i + 1) : 77;
@@ -257,7 +257,7 @@ TEST(CKBmpTgaSaveContractTest, BmpRleHandlesOddLiteralsAndRunsBeyond255Pixels) {
     WriterCheckBmpRle(static_cast<CKBYTE *>(encoded.Data), length, 259, 1, gray);
 }
 
-TEST(CKBmpTgaSaveContractTest, TgaRawOptionsHaveCorrectHeadersAndQuantizedPixelBytes) {
+TEST(CKBmpTgaSaveTest, TgaRawOptionsHaveCorrectHeadersAndQuantizedPixelBytes) {
     CKBYTE pixels[] = {255,255,255,37, 0,0,0,128};
     ImageWriterOwner owner(1); TgaBitmapProperties p; WriterSource(p, pixels, 2, 1, 32, 8);
     const int depths[] = {16,24,32,64};
@@ -294,7 +294,7 @@ static void WriterCheckTgaRle(const CKBYTE *bytes, int length, int width, int he
     EXPECT_EQ(length, pos);
 }
 
-TEST(CKBmpTgaSaveContractTest, TgaRleSplitsRunsAt128WithoutLosingTheTail) {
+TEST(CKBmpTgaSaveTest, TgaRleSplitsRunsAt128WithoutLosingTheTail) {
     CKBYTE pixels[520];
     for (int i = 0; i < 130; ++i) {
         pixels[i * 4] = 1; pixels[i * 4 + 1] = 2; pixels[i * 4 + 2] = 3; pixels[i * 4 + 3] = 37;
@@ -306,7 +306,7 @@ TEST(CKBmpTgaSaveContractTest, TgaRleSplitsRunsAt128WithoutLosingTheTail) {
     WriterCheckTgaRle(static_cast<CKBYTE *>(encoded.Data), length, 130, 1, pixels);
 }
 
-TEST(CKBmpTgaSaveContractTest, TgaRleMixesRawAndRepeatedPixelsAcrossRows) {
+TEST(CKBmpTgaSaveTest, TgaRleMixesRawAndRepeatedPixelsAcrossRows) {
     CKBYTE pixels[] = {1,2,3,37, 4,5,6,128, 7,8,9,255, 7,8,9,255,
                        7,8,9,255, 10,11,12,0, 13,14,15,255, 16,17,18,37};
     ImageWriterOwner owner(1); ImageWriterBytes encoded(owner.Reader); TgaBitmapProperties p;
@@ -337,17 +337,17 @@ static int WriterFileCase(int reader, int fault) {
     return result;
 }
 
-TEST(CKBmpTgaSaveContractTest, FileAndMemoryWritersReturnTheirActualByteCounts) {
+TEST(CKBmpTgaSaveTest, FileAndMemoryWritersReturnTheirActualByteCounts) {
     EXPECT_GT(WriterFileCase(0,0), 0); EXPECT_GT(WriterFileCase(1,0), 0);
 }
-TEST(CKBmpTgaSaveContractTest, PartialWritesReturnZeroAndCloseTheActualFileOnce) {
+TEST(CKBmpTgaSaveTest, PartialWritesReturnZeroAndCloseTheActualFileOnce) {
     EXPECT_EQ(0, WriterFileCase(0,1)); EXPECT_EQ(0, WriterFileCase(1,1));
 }
-TEST(CKBmpTgaSaveContractTest, LateCloseFailuresReturnZeroAndCloseTheActualHandleOnce) {
+TEST(CKBmpTgaSaveTest, LateCloseFailuresReturnZeroAndCloseTheActualHandleOnce) {
     EXPECT_EQ(0, WriterFileCase(0,2)); EXPECT_EQ(0, WriterFileCase(1,2));
 }
 
-TEST(CKBmpTgaSaveContractTest, OpenFailureReturnsZeroWithoutWritingOrClosingAnInvalidStream) {
+TEST(CKBmpTgaSaveTest, OpenFailureReturnsZeroWithoutWritingOrClosingAnInvalidStream) {
     CKBYTE pixels[] = {1,2,3,255};
     for (int reader = 0; reader < 2; ++reader) {
         ImageWriterOwner owner(reader); BmpBitmapProperties bmp; TgaBitmapProperties tga;
@@ -367,10 +367,10 @@ static void WriterTgaDimension(int width, int height) {
     EXPECT_EQ(0, result); EXPECT_EQ(nullptr, encoded.Data);
     delete[] pixels;
 }
-TEST(CKBmpTgaSaveContractTest, TgaWidth65536CannotSilentlyWrapToZero) { WriterTgaDimension(65536,1); }
-TEST(CKBmpTgaSaveContractTest, TgaHeight65536CannotSilentlyWrapToZero) { WriterTgaDimension(1,65536); }
+TEST(CKBmpTgaSaveTest, TgaWidth65536CannotSilentlyWrapToZero) { WriterTgaDimension(65536,1); }
+TEST(CKBmpTgaSaveTest, TgaHeight65536CannotSilentlyWrapToZero) { WriterTgaDimension(1,65536); }
 
-TEST(CKBmpTgaSaveContractTest, TgaMaximumRepresentableWidthRemainsSupported) {
+TEST(CKBmpTgaSaveTest, TgaMaximumRepresentableWidthRemainsSupported) {
     CKBYTE *pixels = new CKBYTE[65535 * 4]; memset(pixels, 255, 65535 * 4);
     ImageWriterOwner owner(1); ImageWriterBytes encoded(owner.Reader); TgaBitmapProperties p;
     WriterSource(p, pixels, 65535, 1, 32, 65535 * 4);
@@ -384,7 +384,7 @@ TEST(CKBmpTgaSaveContractTest, TgaMaximumRepresentableWidthRemainsSupported) {
     delete[] pixels;
 }
 
-TEST(CKBmpTgaSaveContractTest, ConversionLeavesBorrowedPixelsPaletteAndPropertiesUnchanged) {
+TEST(CKBmpTgaSaveTest, ConversionLeavesBorrowedPixelsPaletteAndPropertiesUnchanged) {
     CKBYTE pixels[] = {0,1,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc};
     CKBYTE palette[] = {1,2,3,4,5,6}; CKBYTE before[6]; memcpy(before, palette, sizeof(before));
     for (int reader = 0; reader < 2; ++reader) {

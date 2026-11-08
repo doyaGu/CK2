@@ -8,7 +8,7 @@
 #include <windows.h>
 #endif
 
-class CKFileIoCompletionTest : public ::testing::Test {
+class CKFileIoTest : public ::testing::Test {
 protected:
     static void SetUpTestSuite() { ASSERT_EQ(CK_OK, CKStartUp()); }
     static void TearDownTestSuite() { CKShutdown(); }
@@ -34,7 +34,7 @@ protected:
     std::filesystem::path Directory;
 };
 
-TEST_F(CKFileIoCompletionTest, EmptySavePublishesActualBytesAndCompletesSession) {
+TEST_F(CKFileIoTest, EmptySavePublishesActualBytesAndCompletesSession) {
     std::string name = (Directory / "empty.cmo").string();
     CKFile file(Context);
     ASSERT_EQ(CK_OK, file.StartSave(name.data(), 0));
@@ -112,7 +112,7 @@ struct CKTestSavePipe {
     }
 };
 
-TEST_F(CKFileIoCompletionTest, FinalFlushFailureIsReportedAndSaveSessionCanBeReused) {
+TEST_F(CKFileIoTest, FinalFlushFailureIsReportedAndSaveSessionCanBeReused) {
     // Independent CRT control distinguishes a buffered close failure from an
     // open error or a short fwrite. No runtime stream or CRT function is mocked.
     {
@@ -151,7 +151,7 @@ TEST_F(CKFileIoCompletionTest, FinalFlushFailureIsReportedAndSaveSessionCanBeReu
     EXPECT_EQ(CK_OK, file.Load(retry.data(), nullptr));
 }
 
-TEST_F(CKFileIoCompletionTest, IncludedResourceWriteFailureIsReportedAndSessionCloses) {
+TEST_F(CKFileIoTest, IncludedResourceWriteFailureIsReportedAndSessionCloses) {
     std::string resource = (Directory / "payload.bin").string();
     FILE *stream = std::fopen(resource.c_str(), "wb");
     ASSERT_NE(nullptr, stream);

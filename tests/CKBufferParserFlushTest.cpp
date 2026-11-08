@@ -60,7 +60,7 @@ struct CKTestRetryFile {
     ~CKTestRetryFile() { if (Name[0]) std::remove(Name); }
 };
 
-TEST(CKBufferParserContractTest, ExtractFileReportsBufferedCloseFailureAndRetainsSliceForRetry) {
+TEST(CKBufferParserFlushTest, ExtractFileReportsBufferedCloseFailureAndRetainsSliceForRetry) {
     unsigned char source[258];
     for (int i = 0; i < 258; ++i) source[i] = static_cast<unsigned char>(i * 73 + 19);
     source[0] = 0xa7;

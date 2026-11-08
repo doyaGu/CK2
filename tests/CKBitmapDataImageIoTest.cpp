@@ -366,7 +366,7 @@ TEST_F(CKBitmapDataImageIoTest, SaveWithoutSurfaceOrDefaultPropertiesReleasesRea
     EXPECT_EQ(0, ImageIo.Saves); ExpectReleased();
 }
 
-TEST_F(CKBitmapDataImageIoTest, SaveHighSlotFallsBackToCurrentAsTheSurfaceContractRequires) {
+TEST_F(CKBitmapDataImageIoTest, SaveOutOfRangeSlotFallsBackToCurrentSurface) {
     CKBitmapData bitmap; ImageIoPixels(bitmap); EXPECT_EQ(TRUE, bitmap.SaveImage("result.qif", 99));
     EXPECT_EQ(0x00112233u, ImageIo.SavedPixels[0]); EXPECT_EQ(0xffbbccddu, ImageIo.SavedPixels[3]); ExpectReleased();
 }

@@ -6,7 +6,7 @@
 
 // Original CK2 2.5.0.48 memory/file parser probes leave this literal unchanged
 // after Encode(17, key), at cursors 3 and 7 with two nonzero keys. This is the
-// unsupported legacy codec contract, not proof of successful 2.1 encryption.
+// observed no-op encoding in 2.5; this does not demonstrate 2.1 encryption.
 static const unsigned char PlainBytes[32] = {
     0x05, 0x0c, 0x13, 0x1a, 0x21, 0x28, 0x2f, 0x36,
     0x3d, 0x44, 0x4b, 0x52, 0x59, 0x60, 0x67, 0x6e,
@@ -14,7 +14,7 @@ static const unsigned char PlainBytes[32] = {
     0xad, 0xb4, 0xbb, 0xc2, 0xc9, 0xd0, 0xd7, 0xde,
 };
 
-TEST(CKBufferParserEncodeContractTest, BorrowedLegacyEncodePreservesLiteralSpanAndFollowingRead) {
+TEST(CKBufferParserEncodeTest, BorrowedLegacyEncodePreservesLiteralSpanAndFollowingRead) {
     unsigned char bytes[32];
     std::memcpy(bytes, PlainBytes, sizeof(bytes));
     CKDWORD key[4] = {0x01234567u, 0x89abcdefu, 0xfedcba98u, 0x76543210u};
@@ -35,7 +35,7 @@ TEST(CKBufferParserEncodeContractTest, BorrowedLegacyEncodePreservesLiteralSpanA
     EXPECT_EQ(0, std::memcmp(PlainBytes, bytes, sizeof(bytes)));
 }
 
-TEST(CKBufferParserEncodeContractTest, OwnedLegacyEncodeKeepsIndependentStorageAndOwner) {
+TEST(CKBufferParserEncodeTest, OwnedLegacyEncodeKeepsIndependentStorageAndOwner) {
     unsigned char bytes[32];
     std::memcpy(bytes, PlainBytes, sizeof(bytes));
     CKBufferParser source(bytes, sizeof(bytes));
@@ -67,7 +67,7 @@ TEST(CKBufferParserEncodeContractTest, OwnedLegacyEncodeKeepsIndependentStorageA
     EXPECT_EQ(PlainBytes[31], bytes[31]);
 }
 
-TEST(CKBufferParserEncodeContractTest, LegacyEncodeDoesNotChangeIndependentSeededChecksum) {
+TEST(CKBufferParserEncodeTest, LegacyEncodeDoesNotChangeIndependentSeededChecksum) {
     unsigned char bytes[32];
     std::memcpy(bytes, PlainBytes, sizeof(bytes));
     CKBufferParser parser(bytes, sizeof(bytes));

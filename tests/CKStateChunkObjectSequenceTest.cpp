@@ -163,7 +163,7 @@ TEST_F(CKStateChunkObjectSequenceTest, ClassMinusOneAllowsDynamicSingleAndSequen
     const int ids[] = {0, -1, 2}; ExpectObjectWire(chunk, words, 5, ids, 3);
 }
 
-TEST_F(CKStateChunkObjectSequenceTest, RawObjectArrayPreservesUnresolvedIdsZerosDuplicatesAndIteratorContract) {
+TEST_F(CKStateChunkObjectSequenceTest, RawObjectArrayPreservesUnresolvedIdsZerosDuplicatesAndIteratorPosition) {
     CKObjectArray array; array.InsertRear(static_cast<CK_ID>(41)); array.InsertRear(static_cast<CK_ID>(0));
     array.InsertRear(static_cast<CK_ID>(41)); array.InsertRear(static_cast<CK_ID>(0xFFFFFFFFu));
     ASSERT_TRUE(array.PositionSeek(2));
@@ -229,7 +229,7 @@ TEST_F(CKStateChunkObjectSequenceTest, FileContextObjectArrayFiltersBeforeMappin
     dynamic.ModifyObjectFlags(CK_OBJECT_DYNAMIC, 0);
     CKTestObjectSequenceSaveFile file(context); ASSERT_TRUE(file.Begin()); file.SaveObject(&fixed);
     // Explicit zero-key mapping distinguishes filtering then lookup from an
-    // unconditional -1 write, and records the exact native lookup contract.
+    // unconditional -1 write, and records unresolved-ID lookup results.
     file.m_ObjectsHashTable.Insert(0, 7); file.m_ObjectsHashTable.Insert(dynamic.GetID(), 9);
     CKObjectArray array; array.InsertRear(&fixed); array.InsertRear(&dynamic); array.InsertRear(&absent);
     array.InsertRear(static_cast<CK_ID>(0)); array.InsertRear(static_cast<CK_ID>(0x7FFFFFFEu));

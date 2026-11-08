@@ -117,7 +117,7 @@ protected:
             ReaderInfos[i].m_Extension = CKFileExtension(const_cast<char *>(extensions[i]));
             ReaderInfos[i].m_Type = CKPLUGIN_BITMAP_READER;
         }
-        ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin("Pass34 bitmap contract reader", ReaderCount, ReaderInfo, CreateReader));
+        ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin("State chunk bitmap test reader", ReaderCount, ReaderInfo, CreateReader));
     }
     static void TearDownTestSuite() { CKShutdown(); }
     void SetUp() override { Probe.Reset(); }
@@ -242,7 +242,7 @@ static CKBitmapProperties WriterProperties() {
     CKBitmapProperties props; props.m_Ext = CKFileExtension("ckq"); props.m_ReaderGuid = CKGUID(0x34340001, 7); return props;
 }
 
-TEST_F(CKStateChunkBitmapTest, ReaderWriterAlphaSavedUsesExactHeaderAndPluginSaveReleaseContract) {
+TEST_F(CKStateChunkBitmapTest, AlphaSaveWritesExactHeaderAndReleasesPluginWriter) {
     CKTestBitmapReader reader; CKBitmapProperties props = WriterProperties();
     VxImageDescEx desc = ImageDesc(const_cast<CKBYTE *>(DecodedPixels));
     CKStateChunk chunk(CKCID_TEXTURE, nullptr); chunk.StartWrite(); chunk.WriteReaderBitmap(desc, &reader, &props);

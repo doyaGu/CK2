@@ -25,12 +25,12 @@ static void DataReaderBmp(CKBYTE (&bytes)[62]) {
     memcpy(bytes + 54, pixels, sizeof(pixels));
 }
 
-class CKDataReaderContractTest : public ::testing::Test {
+class CKDataReaderTest : public ::testing::Test {
 protected:
     CKContext *Context = nullptr;
     static void SetUpTestSuite() {
         ASSERT_EQ(CK_OK, CKStartUp());
-        ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin("Production image readers for base contract",
+        ASSERT_EQ(CK_OK, CKGetPluginManager()->RegisterStaticPlugin("Image readers for CKDataReader tests",
             CKGet_ImageReader_PluginInfoCount, CKGet_ImageReader_PluginInfo, CKGet_ImageReader_Reader));
     }
     static void TearDownTestSuite() { CKShutdown(); }
@@ -48,7 +48,7 @@ protected:
     }
 };
 
-TEST_F(CKDataReaderContractTest, AbstractBaseHasOneVirtualPointerAndTheCommonTypedSlots) {
+TEST_F(CKDataReaderTest, AbstractBaseHasOneVirtualPointerAndTheCommonTypedSlots) {
     EXPECT_TRUE(std::is_abstract<CKDataReader>::value);
     EXPECT_TRUE(std::has_virtual_destructor<CKDataReader>::value);
     EXPECT_EQ(sizeof(void *), sizeof(CKDataReader));
@@ -64,7 +64,7 @@ TEST_F(CKDataReaderContractTest, AbstractBaseHasOneVirtualPointerAndTheCommonTyp
     EXPECT_EQ(static_cast<void *>(owner.Reader), static_cast<void *>(bitmap));
 }
 
-TEST_F(CKDataReaderContractTest, FactorySelectedReadersExposeStableBorrowedPluginIdentity) {
+TEST_F(CKDataReaderTest, FactorySelectedReadersExposeStableBorrowedPluginIdentity) {
     const CKGUID expected[] = {CKGUID(0x614a243f, 0x437b3343), CKGUID(0xbca97223, 0x48578bca), CKGUID(0x585c7216, 0x33302657)};
     const char *extensions[] = {"Bmp", "Tga", "Pcx"};
     for (int i = 0; i < 3; ++i) {
@@ -80,7 +80,7 @@ TEST_F(CKDataReaderContractTest, FactorySelectedReadersExposeStableBorrowedPlugi
     }
 }
 
-TEST_F(CKDataReaderContractTest, HostCachesTheActualReaderCountsAndCapabilities) {
+TEST_F(CKDataReaderTest, HostCachesTheActualReaderCountsAndCapabilities) {
     const CKGUID guids[] = {BMPREADER_GUID, TGAREADER_GUID, CKGUID(0x585c7216, 0x33302657)};
     const int counts[] = {1, 2, 0}, flags[] = {15, 15, 5};
     for (int i = 0; i < 3; ++i) {
@@ -93,7 +93,7 @@ TEST_F(CKDataReaderContractTest, HostCachesTheActualReaderCountsAndCapabilities)
     }
 }
 
-TEST_F(CKDataReaderContractTest, HostBuildsTheBmpDepthEnumFromTheProductionDescription) {
+TEST_F(CKDataReaderTest, HostBuildsTheBmpDepthEnumFromTheProductionDescription) {
     CKStructStruct *settings = Settings(BMPREADER_GUID);
     ASSERT_NE(nullptr, settings); ASSERT_EQ(1, settings->NbData);
     EXPECT_STREQ("Bit Depth", settings->Desc[0]);
@@ -104,7 +104,7 @@ TEST_F(CKDataReaderContractTest, HostBuildsTheBmpDepthEnumFromTheProductionDescr
     for (int i = 0; i < 5; ++i) { EXPECT_EQ(expected[i], depth->Vals[i]); EXPECT_NE('\0', depth->Desc[i][0]); }
 }
 
-TEST_F(CKDataReaderContractTest, HostBuildsSeparateTgaDepthEnumAndRleBoolean) {
+TEST_F(CKDataReaderTest, HostBuildsSeparateTgaDepthEnumAndRleBoolean) {
     CKStructStruct *settings = Settings(TGAREADER_GUID);
     ASSERT_NE(nullptr, settings); ASSERT_EQ(2, settings->NbData);
     EXPECT_STREQ("Bit Depth", settings->Desc[0]);
@@ -117,7 +117,7 @@ TEST_F(CKDataReaderContractTest, HostBuildsSeparateTgaDepthEnumAndRleBoolean) {
     for (int i = 0; i < 4; ++i) EXPECT_EQ(expected[i], depth->Vals[i]);
 }
 
-TEST_F(CKDataReaderContractTest, HostTransfersIndependentOptionValuesThroughGeneratedParameters) {
+TEST_F(CKDataReaderTest, HostTransfersIndependentOptionValuesThroughGeneratedParameters) {
     CKDWORD original[] = {32, 1};
     CKParameterOut *options = CKGetPluginManager()->GetReaderOptionData(Context, original, CKFileExtension("tga"));
     ASSERT_NE(nullptr, options);
@@ -138,7 +138,7 @@ TEST_F(CKDataReaderContractTest, HostTransfersIndependentOptionValuesThroughGene
     EXPECT_EQ(32u, original[0]); EXPECT_EQ(1u, original[1]);
 }
 
-TEST_F(CKDataReaderContractTest, ReadOnlyPcxDoesNotRegisterUnusedSaveSettings) {
+TEST_F(CKDataReaderTest, ReadOnlyPcxDoesNotRegisterUnusedSaveSettings) {
     CKPluginEntry *entry = Entry(CKGUID(0x585c7216, 0x33302657));
     ASSERT_NE(nullptr, entry); ASSERT_NE(nullptr, entry->m_ReadersInfo);
     EXPECT_EQ(0, entry->m_ReadersInfo->m_OptionCount);
@@ -147,7 +147,7 @@ TEST_F(CKDataReaderContractTest, ReadOnlyPcxDoesNotRegisterUnusedSaveSettings) {
     EXPECT_EQ(nullptr, CKGetPluginManager()->GetReaderOptionData(Context, &value, CKFileExtension("pcx")));
 }
 
-TEST_F(CKDataReaderContractTest, DescriptionQueriesDoNotResetActiveConcreteSaveOptions) {
+TEST_F(CKDataReaderTest, DescriptionQueriesDoNotResetActiveConcreteSaveOptions) {
     DataReaderOwner owner(1); ASSERT_NE(nullptr, owner.Reader);
     CKBitmapReader *bitmap = static_cast<CKBitmapReader *>(owner.Reader);
     TgaBitmapProperties options; options.m_BitDepth = 32; options.m_UseRLE = 1;
@@ -162,7 +162,7 @@ TEST_F(CKDataReaderContractTest, DescriptionQueriesDoNotResetActiveConcreteSaveO
     EXPECT_EQ(1u, static_cast<TgaBitmapProperties *>(properties)->m_UseRLE);
 }
 
-TEST_F(CKDataReaderContractTest, ReleaseThroughTheBaseLeavesAnotherDecodedReaderUsable) {
+TEST_F(CKDataReaderTest, ReleaseThroughTheBaseLeavesAnotherDecodedReaderUsable) {
     DataReaderOwner first(0), second(0); ASSERT_NE(nullptr, first.Reader); ASSERT_NE(nullptr, second.Reader);
     CKBYTE bytes[62]; DataReaderBmp(bytes);
     CKBitmapProperties *one = nullptr, *two = nullptr;
@@ -175,7 +175,7 @@ TEST_F(CKDataReaderContractTest, ReleaseThroughTheBaseLeavesAnotherDecodedReader
     EXPECT_EQ(15, second.Reader->GetFlags()); EXPECT_EQ(1, second.Reader->GetOptionsCount());
 }
 
-TEST_F(CKDataReaderContractTest, VirtualBaseDeletionOfARealReaderPreservesSharedPluginMetadata) {
+TEST_F(CKDataReaderTest, VirtualBaseDeletionOfARealReaderPreservesSharedPluginMetadata) {
     DataReaderOwner owner(0); ASSERT_NE(nullptr, owner.Reader);
     CKPluginInfo *metadata = owner.Reader->GetReaderInfo(); ASSERT_NE(nullptr, metadata);
     CKBYTE bytes[62]; DataReaderBmp(bytes);
