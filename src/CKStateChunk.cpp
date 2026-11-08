@@ -1113,7 +1113,8 @@ CKStateChunk *CKStateChunk::ReadSubChunk() {
 
 void CKStateChunk::WriteByte(CKCHAR byte) {
     CheckSize(sizeof(int));
-    m_Data[m_ChunkParser->CurrentPos++] = byte;
+    // Byte records sign-extend to a DWORD even when plain char is unsigned.
+    m_Data[m_ChunkParser->CurrentPos++] = static_cast<signed char>(byte);
 }
 
 CKBYTE CKStateChunk::ReadByte() {
