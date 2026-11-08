@@ -2,12 +2,23 @@
 
 #include <cstdio>
 #include <cstring>
+
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+#include <limits.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#endif
+
 #include "CKAll.h"
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
 // The peer connects but never reads. This small write remains in the CRT
 // buffer: an independent control below proves the error occurs at fclose.
 struct CKTestDisconnectedOutputPipe {
@@ -25,7 +36,7 @@ struct CKTestDisconnectedOutputPipe {
     }
 
     CKTestDisconnectedOutputPipe() : Pipe(INVALID_HANDLE_VALUE), Thread(nullptr), Connected(false) {
-        std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\BallancedPass38Parser-%lu-%p",
+        std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\Ballanced-ParserFlush-%lu-%p",
             GetCurrentProcessId(), static_cast<void *>(this));
         Pipe = CreateNamedPipeA(Name, PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE | PIPE_WAIT,
             1, 1, 1, 0, nullptr);
@@ -47,18 +58,61 @@ struct CKTestDisconnectedOutputPipe {
         }
     }
 };
+#endif
 
 struct CKTestRetryFile {
+#ifdef _WIN32
     char Name[MAX_PATH];
+#else
+    char Name[PATH_MAX];
+#endif
     CKTestRetryFile() {
+#ifdef _WIN32
         char directory[MAX_PATH];
         const DWORD length = GetTempPathA(MAX_PATH, directory);
         Name[0] = '\0';
         if (length && length < MAX_PATH)
-            GetTempFileNameA(directory, "p38", 0, Name);
+            GetTempFileNameA(directory, "ckp", 0, Name);
+#else
+        const char *directory = getenv("TMPDIR");
+        if (!directory || !directory[0]) directory = "/tmp";
+        const int length = std::snprintf(Name, sizeof(Name), "%s/ck-parser-XXXXXX", directory);
+        if (length < 0 || length >= static_cast<int>(sizeof(Name))) {
+            Name[0] = '\0';
+            return;
+        }
+        const int descriptor = mkstemp(Name);
+        if (descriptor < 0) Name[0] = '\0';
+        else EXPECT_EQ(0, close(descriptor));
+#endif
     }
     ~CKTestRetryFile() { if (Name[0]) std::remove(Name); }
 };
+
+#ifndef _WIN32
+struct CKTestFileSizeLimit {
+    struct rlimit Previous;
+    struct sigaction PreviousSignal;
+    bool Ready;
+    bool SignalChanged;
+
+    CKTestFileSizeLimit() : Ready(false), SignalChanged(false) {
+        if (getrlimit(RLIMIT_FSIZE, &Previous) != 0) return;
+        struct sigaction ignored = {};
+        ignored.sa_handler = SIG_IGN;
+        if (sigemptyset(&ignored.sa_mask) != 0) return;
+        if (sigaction(SIGXFSZ, &ignored, &PreviousSignal) != 0) return;
+        SignalChanged = true;
+        struct rlimit limited = Previous;
+        limited.rlim_cur = 0;
+        Ready = setrlimit(RLIMIT_FSIZE, &limited) == 0;
+    }
+    ~CKTestFileSizeLimit() {
+        if (Ready) EXPECT_EQ(0, setrlimit(RLIMIT_FSIZE, &Previous));
+        if (SignalChanged) EXPECT_EQ(0, sigaction(SIGXFSZ, &PreviousSignal, nullptr));
+    }
+};
+#endif
 
 TEST(CKBufferParserFlushTest, ExtractFileReportsBufferedCloseFailureAndRetainsSliceForRetry) {
     unsigned char source[258];
@@ -66,6 +120,9 @@ TEST(CKBufferParserFlushTest, ExtractFileReportsBufferedCloseFailureAndRetainsSl
     source[0] = 0xa7;
     source[257] = 0xb9;
     const unsigned char firstPayloadByte = source[1];
+    unsigned char original[sizeof(source)];
+    std::memcpy(original, source, sizeof(source));
+#ifdef _WIN32
     {
         CKTestDisconnectedOutputPipe control;
         ASSERT_NE(INVALID_HANDLE_VALUE, control.Pipe);
@@ -81,8 +138,23 @@ TEST(CKBufferParserFlushTest, ExtractFileReportsBufferedCloseFailureAndRetainsSl
         ASSERT_EQ(WAIT_OBJECT_0, WaitForSingleObject(control.Thread, 5000));
         EXPECT_TRUE(control.Connected);
     }
+#else
+    {
+        CKTestRetryFile control;
+        ASSERT_NE('\0', control.Name[0]);
+        CKTestFileSizeLimit limit;
+        ASSERT_TRUE(limit.Ready);
+        FILE *stream = std::fopen(control.Name, "wb");
+        ASSERT_NE(nullptr, stream);
+        const size_t written = std::fwrite(source + 1, 1, 256, stream);
+        const int closed = std::fclose(stream);
+        EXPECT_EQ(256u, written);
+        EXPECT_NE(0, closed);
+    }
+#endif
     CKBufferParser parser(source, sizeof(source));
     parser.Seek(1);
+#ifdef _WIN32
     {
         CKTestDisconnectedOutputPipe pipe;
         ASSERT_NE(INVALID_HANDLE_VALUE, pipe.Pipe);
@@ -92,6 +164,17 @@ TEST(CKBufferParserFlushTest, ExtractFileReportsBufferedCloseFailureAndRetainsSl
         ASSERT_EQ(WAIT_OBJECT_0, WaitForSingleObject(pipe.Thread, 5000));
         EXPECT_TRUE(pipe.Connected);
     }
+#else
+    {
+        CKTestRetryFile rejected;
+        ASSERT_NE('\0', rejected.Name[0]);
+        CKTestFileSizeLimit limit;
+        ASSERT_TRUE(limit.Ready);
+        EXPECT_FALSE(parser.ExtractFile(rejected.Name, 256));
+        EXPECT_EQ(1, parser.CursorPos());
+    }
+#endif
+    EXPECT_EQ(0, std::memcmp(original, source, sizeof(source)));
     CKTestRetryFile retry;
     ASSERT_NE('\0', retry.Name[0]);
     ASSERT_TRUE(parser.ExtractFile(retry.Name, 256));
@@ -110,5 +193,3 @@ TEST(CKBufferParserFlushTest, ExtractFileReportsBufferedCloseFailureAndRetainsSl
     ASSERT_TRUE(parser.Read(&next, 1));
     EXPECT_EQ(0xb9, next);
 }
-
-#endif
