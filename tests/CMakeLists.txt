@@ -69,6 +69,16 @@ add_test(NAME CKTestRuntimeCopy COMMAND "${CMAKE_COMMAND}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/RuntimeCopyTest.cmake")
 set_tests_properties(CKTestRuntimeCopy PROPERTIES TIMEOUT 120)
 
+add_test(NAME CKMinizIncrementalBuild COMMAND "${CMAKE_COMMAND}"
+        "-DDEPENDENCY_DIR=${CMAKE_CURRENT_SOURCE_DIR}/../deps"
+        "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/miniz-incremental-test"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
+        "-DTEST_TOOLSET=${CMAKE_GENERATOR_TOOLSET}"
+        "-DTEST_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/MinizIncrementalBuildTest.cmake")
+set_tests_properties(CKMinizIncrementalBuild PROPERTIES TIMEOUT 180)
+
 add_ck2_test(CKBehaviorAccessTest
         SOURCES CKBehaviorAccessTest.cpp
         DEPENDENCIES CK2 VxMath)
