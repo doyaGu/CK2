@@ -41,24 +41,20 @@ function(add_ck2_test test_name)
 
     set_target_properties(${test_name} PROPERTIES FOLDER "Tests")
 
-    add_custom_command(TARGET ${test_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:CK2>
-            $<TARGET_FILE_DIR:${test_name}>
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:VxMath>
-            $<TARGET_FILE_DIR:${test_name}>
-    )
+    set(_ck2_test_runtime_arguments
+            "-DCK2_RUNTIME=$<TARGET_FILE:CK2>"
+            "-DVXMATH_RUNTIME=$<TARGET_FILE:VxMath>")
     if (WIN32 AND TARGET SDL3::SDL3)
         get_target_property(_ck2_test_sdl_type SDL3::SDL3 TYPE)
         if (_ck2_test_sdl_type STREQUAL "SHARED_LIBRARY")
-            add_custom_command(TARGET ${test_name} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    $<TARGET_FILE:SDL3::SDL3>
-                    $<TARGET_FILE_DIR:${test_name}>
-                    VERBATIM)
+            list(APPEND _ck2_test_runtime_arguments "-DSDL_RUNTIME=$<TARGET_FILE:SDL3::SDL3>")
         endif ()
     endif ()
+    add_custom_command(TARGET ${test_name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} ${_ck2_test_runtime_arguments}
+                    "-DDESTINATION=$<TARGET_FILE_DIR:${test_name}>"
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/CopyTestRuntime.cmake"
+            VERBATIM)
 
             add_test(NAME ${test_name}
                     COMMAND ${CMAKE_COMMAND} -E env
@@ -66,6 +62,12 @@ function(add_ck2_test test_name)
                     $<TARGET_FILE:${test_name}>
             )
 endfunction()
+
+add_test(NAME CKTestRuntimeCopy COMMAND "${CMAKE_COMMAND}"
+        "-DCOPY_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/CopyTestRuntime.cmake"
+        "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/runtime-copy-test"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/RuntimeCopyTest.cmake")
+set_tests_properties(CKTestRuntimeCopy PROPERTIES TIMEOUT 120)
 
 add_ck2_test(CKBehaviorAccessTest
         SOURCES CKBehaviorAccessTest.cpp
