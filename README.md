@@ -1,12 +1,12 @@
 # CK2 - Virtools Behavioral Engine
 
-CK2 is a source-level reimplementation of the Virtools behavioral engine used by Ballance. It provides the object model, behavioral scripting runtime, managers, scenes, parameter system, and file serialization expected by the surrounding Ballanced runtime.
+CK2 reimplements the Virtools behavioral engine: its object model, visual scripting runtime, managers, scenes, parameter system, and file serialization.
 
 ## Support scope
 
-The instructions in this document describe CK2's `sdl` branch. That branch is continuously built as part of [Ballanced](https://github.com/doyaGu/Ballanced) on Windows, Linux, and macOS. The Ballanced root `CMakePresets.json` is the source of truth for the supported full-runtime platform and architecture matrix.
+The instructions in this document describe CK2's `sdl` branch. [NeMo2](https://github.com/doyaGu/NeMo2) assembles and tests the engine on Windows, Linux, and macOS; its root presets define the engine platform and architecture matrix.
 
-Standalone CK2 builds use this repository's CMake options and can have a narrower dependency/toolchain matrix than the assembled Ballanced runtime.
+Standalone CK2 builds use this repository's CMake options.
 
 ## Features
 
@@ -27,19 +27,18 @@ Standalone CK2 builds use this repository's CMake options and can have a narrowe
 
 ## Building
 
-### Recommended: Ballanced superproject
+### NeMo2 engine
 
-For a runnable game runtime, build CK2 through Ballanced so the exact VxMath, Player, renderer, managers, plugins, and Building Blocks commits are used together:
+Build through NeMo2 to use the pinned VxMath, renderer, managers, plugins, and building blocks together:
 
 ```bash
-git clone --recurse-submodules https://github.com/doyaGu/Ballanced.git
-cd Ballanced
-cmake --preset macos-arm64-tests # choose the preset for your host
-cmake --build --preset macos-arm64-tests-release
-ctest --preset macos-arm64-tests-release
+git clone --recurse-submodules https://github.com/doyaGu/NeMo2.git
+cd NeMo2
+cmake --preset macos-arm64-runtime # choose the preset for your host
+cmake --build --preset macos-arm64-runtime-release
 ```
 
-See the [Ballanced build guide](https://github.com/doyaGu/Ballanced/blob/sdl/BUILD.md) for the complete preset matrix.
+See the [NeMo2 build guide](https://github.com/doyaGu/NeMo2/blob/main/BUILD.md) for the complete preset matrix.
 
 ### Standalone
 
@@ -54,9 +53,8 @@ Requirements:
 ```bash
 git clone --branch sdl --recurse-submodules https://github.com/doyaGu/CK2.git
 cd CK2
-cmake -S . -B build -DCK2_BUILD_TESTS=ON
+cmake -S . -B build -DCK2_BUILD_TESTS=OFF
 cmake --build build --config Release
-ctest --test-dir build -C Release --output-on-failure
 ```
 
 For single-configuration generators such as Ninja, set `-DCMAKE_BUILD_TYPE=Release`; the `--config Release` and `-C Release` arguments may be omitted.
@@ -70,7 +68,7 @@ For single-configuration generators such as Ninja, set `-DCMAKE_BUILD_TYPE=Relea
 
 ## Testing
 
-The GoogleTest suite covers state chunks, object and scene lifetimes, parameters, behavior links and scheduling, path handling, plugins, and file-decoder regressions.
+Enable `CK2_BUILD_TESTS` to build the GoogleTest suite. It covers state chunks, object and scene lifetimes, parameters, behavior links and scheduling, path handling, plugins, and file-decoder regressions. For incremental verification, build the affected test targets and select their CTest names with `-R`.
 
 ```bash
 ctest --test-dir build -C Release --output-on-failure
@@ -97,7 +95,7 @@ if (CKCreateContext(&context, nullptr, 0) == CK_OK) {
 
 ## Versioning
 
-CK2 is versioned independently. Ballanced releases pin an exact CK2 commit; the CK2 version is not expected to match the Ballanced or BallancePlayer version.
+CK2 is versioned independently. NeMo2 pins its commit without overriding the module version.
 
 ## License
 
