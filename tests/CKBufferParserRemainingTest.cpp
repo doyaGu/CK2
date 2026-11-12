@@ -75,7 +75,7 @@ struct CKTestClosedPipe {
     }
 
     CKTestClosedPipe() : Pipe(INVALID_HANDLE_VALUE), Thread(nullptr), Connected(false) {
-        std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\BallancedPass36Parser-%lu-%p",
+        std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\NeMo2Pass36Parser-%lu-%p",
             GetCurrentProcessId(), static_cast<void *>(this));
         Pipe = CreateNamedPipeA(Name, PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE | PIPE_WAIT,
             1, 1, 1, 0, nullptr);

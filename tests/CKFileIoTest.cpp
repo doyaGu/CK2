@@ -88,7 +88,7 @@ struct CKTestSavePipe {
         return 0;
     }
     CKTestSavePipe() {
-        std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\BallancedPass37Save-%lu-%p",
+        std::snprintf(Name, sizeof(Name), "\\\\.\\pipe\\NeMo2Pass37Save-%lu-%p",
             GetCurrentProcessId(), static_cast<void *>(this));
         Ready = CreateEventA(nullptr, TRUE, FALSE, nullptr);
         Pipe = CreateNamedPipeA(Name, PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE | PIPE_WAIT,
