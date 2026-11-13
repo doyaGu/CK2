@@ -1591,7 +1591,7 @@ void CKDataArray::RandomShuffle() {
         return;
 
     for (int i = 0; i < rowCount; ++i) {
-        const int randomIndex = rand() % rowCount;
+        const int randomIndex = m_Context->Random() % rowCount;
         SwapRows(i, randomIndex);
     }
 }

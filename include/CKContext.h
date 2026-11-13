@@ -13,6 +13,8 @@
 //-------------------------------------------------------------------------
 
 typedef XClassArray<CKClassDesc> XClassInfoArray;
+// Range of the original Windows runtime's random generator, on every host.
+static const int CK_RANDOM_MAX = 0x7fff;
 typedef XArray<CKBaseManager *> XManagerArray;
 
 //-------- HashTable with CKGUID as Key for Managers and ObjectDeclarations
@@ -45,6 +47,11 @@ class DLL_EXPORT CKContext
     friend class CKBehavior;
 
 public:
+    // Context-owned MSVC-compatible sequence. Set the seed after context
+    // creation and before loading content. Play/Reset do not rewind it.
+    // Use on the context's thread, or synchronize access to that context.
+    void SetRandomSeed(CKDWORD seed);
+    int Random();
     //------------------------------------------------------
     // Objects Management
     CKObject *CreateObject(CK_CLASSID cid, CKSTRING Name = NULL, CK_OBJECTCREATION_OPTIONS Options = CK_OBJECTCREATION_NONAMECHECK, CK_CREATIONMODE *Res = NULL);
@@ -343,6 +350,7 @@ public:
     CKBOOL m_InDynamicCreationMode;
     XObjectArray m_CopyObjects;
     XObjectPointerArray m_ObjectsUnused;
+    CKDWORD m_RandomState;
 };
 
 #endif // CKCONTEXT_H

@@ -4,6 +4,12 @@
 #include "VxWindowFunctions.h"
 #include "CKGlobals.h"
 #include "CKContext.h"
+#include <atomic>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 static void NormalizeNativePathSeparators(XString &path) {
     for (char *p = path.Str(); *p; p = (char *)CKNextFilePathCharacter(p)) {
@@ -177,9 +183,17 @@ static CKBOOL ResolveNativePathCandidate(XString &candidate, const char *directo
     return FALSE;
 }
 
-XString CKGetTempPath() {
-    char dir[64];
-    snprintf(dir, sizeof(dir), "VTmp%d", rand());
+static XString CKGetTempPath(CKContext *context) {
+    static std::atomic<unsigned int> serial{0};
+#ifdef _WIN32
+    const unsigned long process = GetCurrentProcessId();
+#else
+    const unsigned long process = static_cast<unsigned long>(getpid());
+#endif
+    // Seeded contexts can draw identical values. Their scratch directories
+    // must still be distinct, including when a context address is reused.
+    char dir[96];
+    snprintf(dir, sizeof(dir), "VTmp%d-%lu-%u", context->Random(), process, serial.fetch_add(1));
 
     XString path = VxGetTempPath();
     XString tempPath;
@@ -197,7 +211,7 @@ CKPathManager::CKPathManager(CKContext *Context) : CKBaseManager(Context, PATH_M
     AddCategory(sound);
 
     m_TemporaryFolderExist = FALSE;
-    m_TemporaryFolder = CKGetTempPath();
+    m_TemporaryFolder = CKGetTempPath(Context);
 
     m_Context->RegisterNewManager(this);
 }

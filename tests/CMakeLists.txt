@@ -653,6 +653,11 @@ add_ck2_test(CKContextRegressionTest
         CK2 VxMath
 )
 
+add_ck2_test(CKRandomContextTest
+        SOURCES CKRandomContextTest.cpp
+        DEPENDENCIES CK2 VxMath
+)
+
 add_ck2_test(CKSceneRegressionTest
         SOURCES
         CKSceneRegressionTest.cpp

@@ -18,6 +18,13 @@ Standalone CK2 builds use this repository's CMake options.
 
 ## Architecture
 
+`CKContext::SetRandomSeed` selects a context-owned sequence; `Random` returns
+the legacy Windows runtime's inclusive `0..32767` range on every platform.
+The default seed comes from startup time. Creating, advancing or reseeding one
+context leaves other contexts and the host C runtime's random stream unchanged.
+Scene reset does not rewind it. Set a seed after context creation and before
+loading content; use the generator on the context's thread or synchronize access.
+
 - `CKContext`: central engine context and manager owner
 - `CKObject`: base object, identity, lifetime, and serialization
 - `CKBeObject`: behavior-capable objects and message handling

@@ -44,6 +44,7 @@ CKDependencies g_DefaultReplaceDependencies;
 CKDependencies g_DefaultDeleteDependencies;
 CKDependencies g_DefaultSaveDependencies;
 CKStats g_MainStats;
+CKDWORD CKDefaultRandomSeed = 1;
 ProcessorsType g_TheProcessor;
 CKPluginManager g_ThePluginManager;
 VxImageDescEx Default32Desc;
@@ -77,7 +78,7 @@ void CKInitStartPath() {
 CKERROR CKStartUp() {
     CKInitStartPath();
 
-    srand((unsigned int)time(nullptr));
+    CKDefaultRandomSeed = static_cast<CKDWORD>(time(nullptr));
 
     Default32Desc.BitsPerPixel = 32;
     Default32Desc.RedMask = R_MASK;

@@ -814,8 +814,8 @@ CKGUID CKContext::GetSecureGuid() {
     CKGUID guid;
 
     do {
-        guid.d1 = (rand() & 0xFFFF) | ((rand() & 0xFFFF) << 16);
-        guid.d2 = (rand() & 0xFFFF) | ((rand() & 0xFFFF) << 16);
+        guid.d1 = (Random() & 0xFFFF) | ((Random() & 0xFFFF) << 16);
+        guid.d2 = (Random() & 0xFFFF) | ((Random() & 0xFFFF) << 16);
     } while (CKGetObjectDeclarationFromGuid(guid) ||
         m_ParameterManager->OperationGuidToCode(guid) >= 0 ||
         m_ParameterManager->ParameterGuidToType(guid) >= 0 ||
@@ -1728,7 +1728,20 @@ void CKContext::ReleaseMemoryPool(int index) {
         m_MemoryPoolMask.Unset(index);
 }
 
+void CKContext::SetRandomSeed(CKDWORD seed) {
+    m_RandomState = seed;
+}
+
+int CKContext::Random() {
+    // Unsigned 32-bit wrap and the 15-bit result match the legacy CRT.
+    m_RandomState = m_RandomState * 214013u + 2531011u;
+    return static_cast<int>((m_RandomState >> 16) & CK_RANDOM_MAX);
+}
+
+extern CKDWORD CKDefaultRandomSeed;
+
 CKContext::CKContext(WIN_HANDLE iWin, int iRenderEngine, CKDWORD Flags) : m_DependenciesContext(this) {
+    SetRandomSeed(CKDefaultRandomSeed);
     field_498 = 0;
     field_494 = nullptr;
     field_4A0 = 0;
